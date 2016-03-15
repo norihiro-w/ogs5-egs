@@ -1024,6 +1024,9 @@ int Linear_EQS::solveWithLIS(CNumerics* m_num, bool compress)
 	ierr = lis_solve(AA, bb, xx, solver);
 	CHKERR(ierr);
 	ScreenMessage2("-> done\n");
+	int status = 0;
+	lis_solver_get_status(solver, &status);
+	printf("status   : %d\n", status);
 	int iter = 0;
 	ierr = lis_solver_get_iters(solver, &iter);
 	// NW
@@ -1068,7 +1071,7 @@ int Linear_EQS::solveWithLIS(CNumerics* m_num, bool compress)
 	ScreenMessage2(
 	    "------------------------------------------------------------------\n");
 
-	return iter;
+	return (status == 0) ? iter : -1;
 }
 #endif
 
