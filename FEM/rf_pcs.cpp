@@ -4471,6 +4471,21 @@ double CRFProcess::Execute()
 #else
 	iter_lin = ExecuteLinearSolver();
 #endif
+	if (iter_lin == -1)
+	{
+		ScreenMessage("*** Linear solve failed\n");
+// abort
+#ifdef NEW_EQS  // WW
+		if (!configured_in_nonlinearloop)
+#if defined(USE_MPI)
+			dom->eqs->Clean();
+#else
+			// Also allocate temporary memory for linear solver. WW
+			eqs_new->Clean();
+#endif
+#endif
+		return -1;
+	}
 	iter_lin_max = std::max(iter_lin_max, iter_lin);
 
 	//----------------------------------------------------------------------
@@ -9560,6 +9575,13 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 	for (iter_nlin = 0; iter_nlin < m_num->nls_max_iterations; iter_nlin++)
 	{
 		nl_itr_err = Execute();
+		if (nl_itr_err == -1.)  // linear solve broken
+		{
+			ScreenMessage("*** Nonlinear solve failed\n");
+			accepted = false;
+			Tim->last_dt_accepted = false;
+			break;
+		}
 		//
 		// ---------------------------------------------------
 		// LINEAR SOLUTION
