@@ -8981,16 +8981,21 @@ double CRFProcess::CalcNodeValueChanges(int ii)
 		current_norm += u1 * u1;
 	}
 
-	diff_norm = sqrt(diff_norm);
-	current_norm = sqrt(current_norm);
-	double changes = diff_norm / (current_norm + DBL_EPSILON);
 #ifdef USE_PETSC
-	double changes_global = 0;
-	MPI_Allreduce(&changes, &changes_global, 1, MPI_DOUBLE, MPI_MAX,
+	double diff_norm_global = 0;
+	MPI_Allreduce(&diff_norm, &diff_norm_global, 1, MPI_DOUBLE, MPI_SUM,
 	              MPI_COMM_WORLD);
-	changes = changes_global;
+	diff_norm = std::sqrt(diff_norm_global);
+	double current_norm_global = 0;
+	MPI_Allreduce(&current_norm, &current_norm_global, 1, MPI_DOUBLE, MPI_SUM,
+	              MPI_COMM_WORLD);
+	current_norm = std::sqrt(current_norm_global);
+#else
+	diff_norm = std::sqrt(diff_norm);
+	current_norm = std::sqrt(current_norm);
 #endif
-	return changes;
+
+	return diff_norm / (current_norm + DBL_EPSILON);
 }
 
 /**************************************************************************
@@ -9018,16 +9023,21 @@ double CRFProcess::CalcVelocityChanges()
 			}
 		}
 	}
+#ifdef USE_PETSC
+	double diff_norm_global = 0;
+	MPI_Allreduce(&diff_norm, &diff_norm_global, 1, MPI_DOUBLE, MPI_SUM,
+	              MPI_COMM_WORLD);
+	diff_norm = std::sqrt(diff_norm_global);
+	double current_norm_global = 0;
+	MPI_Allreduce(&current_norm, &current_norm_global, 1, MPI_DOUBLE, MPI_SUM,
+	              MPI_COMM_WORLD);
+	current_norm = std::sqrt(current_norm_global);
+#else
 	diff_norm = std::sqrt(diff_norm);
 	current_norm = std::sqrt(current_norm);
-	double changes = diff_norm / (current_norm + DBL_EPSILON);
-#ifdef USE_PETSC
-	double changes_global = 0;
-	MPI_Allreduce(&changes, &changes_global, 1, MPI_DOUBLE, MPI_MAX,
-	              MPI_COMM_WORLD);
-	changes = changes_global;
 #endif
-	return changes;
+
+	return diff_norm / (current_norm + DBL_EPSILON);
 }
 
 /**************************************************************************
