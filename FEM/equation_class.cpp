@@ -1070,10 +1070,7 @@ int Linear_EQS::solveWithLIS(CNumerics* m_num, bool compress)
 	ScreenMessage2(
 	    "------------------------------------------------------------------\n");
 
-	if (iter < m_num->ls_max_iterations)
-		return iter;
-	else
-		return -1;
+	return (status == 0) ? iter : -1;
 }
 #endif
 
