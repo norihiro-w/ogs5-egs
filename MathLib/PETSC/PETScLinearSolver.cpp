@@ -251,18 +251,22 @@ void PETScLinearSolver::ConfigLinear(const PetscReal tol, const PetscInt maxits,
 			{
 				// key-value or only key
 				std::string& str1 = *itr;
+				std::string val = "";
 				if (str1.find('-') == std::string::npos) continue;
 				++itr;
-				if (itr == lst.end()) break;
-				std::string val = "";
-				std::string& str2 = *itr;
-				if (str2.find('-') == std::string::npos)
-					val = str2;
-				else
-					--itr;
+				if (itr != lst.end())
+				{
+					std::string& str2 = *itr;
+					if (str2[0] != '-')
+						val = str2;
+					else
+						--itr;
+				}
 				vec_para.push_back(std::make_pair(str1, val));
 				PetscPrintf(PETSC_COMM_WORLD, "\t %s = %s\n", str1.c_str(),
 				            val.c_str());
+				if (itr == lst.end())
+					break;
 			}
 		}
 		for (std::vector<Para>::iterator itr = vec_para.begin();
