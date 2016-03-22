@@ -4,7 +4,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.3)
 
 # Project name
-PROJECT(OGS)
+PROJECT(OGS5-EGS)
 
 ### CMake setup ###
 INCLUDE(scripts/CMakeConfiguration/CMakeSetup.cmake)
