@@ -652,7 +652,8 @@ void CRFProcess::setSolver(petsc_group::PETScLinearSolver* petsc_solver)
 	eqs_new = petsc_solver;
 	eqs_new->Config(m_num->ls_error_tolerance, m_num->ls_max_iterations,
 	                m_num->getLinearSolverName(),
-	                m_num->getPreconditionerName(), m_num->ls_extra_arg);
+	                m_num->getPreconditionerName(), m_num->ls_extra_arg,
+	                convertProcessTypeToString(this->getProcessType()) + "_");
 }
 //------------------------------------------------------------
 /*!

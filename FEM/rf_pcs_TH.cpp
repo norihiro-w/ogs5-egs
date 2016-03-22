@@ -693,7 +693,7 @@ void CRFProcessTH::setSolver(petsc_group::PETScLinearSolver* petsc_solver)
 		eqs_new->ConfigWithNonlinear(
 		    m_num->ls_error_tolerance, m_num->ls_max_iterations,
 		    m_num->getLinearSolverName(), m_num->getPreconditionerName(),
-		    m_num->ls_extra_arg);
+		    m_num->ls_extra_arg, "");
 		//	SNESGSSetTolerances(eqs_new->snes, PETSC_DECIDE,
 		// m_num->nls_error_tolerance[0], PETSC_DECIDE,
 		// m_num->nls_max_iterations);
@@ -711,7 +711,7 @@ void CRFProcessTH::setSolver(petsc_group::PETScLinearSolver* petsc_solver)
 	{
 		eqs_new->Config(m_num->ls_error_tolerance, m_num->ls_max_iterations,
 		                m_num->getLinearSolverName(),
-		                m_num->getPreconditionerName(), m_num->ls_extra_arg);
+		                m_num->getPreconditionerName(), m_num->ls_extra_arg, "");
 	}
 }
 

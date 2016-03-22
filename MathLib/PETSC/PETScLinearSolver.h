@@ -42,13 +42,13 @@ public:
 	~PETScLinearSolver();
 
 	void Config(const PetscReal tol, const PetscInt maxits, const KSPType lsol,
-	            const PCType prec_type, const std::string& misc_setting = "");
+	            const PCType prec_type, const std::string& misc_setting, const std::string& prefix);
 	void ConfigWithNonlinear(const PetscReal tol, const PetscInt maxits,
 	                         const KSPType lsol, const PCType prec_type,
-	                         const std::string& misc_setting = "");
+	                         const std::string& misc_setting, const std::string& prefix);
 	void ConfigLinear(const PetscReal tol, const PetscInt maxits,
 	                  const KSPType lsol, const PCType prec_type,
-	                  const std::string& misc_setting = "");
+	                  const std::string& misc_setting, const std::string& prefix);
 
 	void Init(const int* sparse_index = NULL);
 
