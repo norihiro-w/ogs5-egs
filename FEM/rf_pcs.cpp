@@ -4473,6 +4473,7 @@ double CRFProcess::Execute()
 #endif
 	if (iter_lin == -1)
 	{
+		ScreenMessage("*** Linear solve failed\n");
 // abort
 #ifdef NEW_EQS  // WW
 		if (!configured_in_nonlinearloop)
@@ -9586,6 +9587,7 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 		nl_itr_err = Execute();
 		if (nl_itr_err == -1.)  // linear solve broken
 		{
+			ScreenMessage("*** Nonlinear solve failed\n");
 			accepted = false;
 			Tim->last_dt_accepted = false;
 			break;
