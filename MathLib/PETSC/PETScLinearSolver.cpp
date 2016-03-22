@@ -419,8 +419,6 @@ int PETScLinearSolver::Solver()
 #else
 	KSPSetOperators(lsolver, A, A, DIFFERENT_NONZERO_PATTERN);
 #endif
-	PetscReal b0_norm = .0;
-	VecNorm(b, NORM_2, &b0_norm);
 	KSPSolve(lsolver, b, x);
 
 	const char* slv_type;
@@ -441,14 +439,10 @@ int PETScLinearSolver::Solver()
 	PetscPrintf(PETSC_COMM_WORLD, "solver    : %s\n", slv_type);
 	PetscPrintf(PETSC_COMM_WORLD, "precon    : %s\n", prc_type);
 	PetscPrintf(PETSC_COMM_WORLD, "iteration : %d/%d\n", its, maxits);
-	PetscPrintf(PETSC_COMM_WORLD, "||b0||    : %e\n", b0_norm);
 	PetscPrintf(PETSC_COMM_WORLD, "||b||     : %e\n", b_norm);
 	PetscPrintf(PETSC_COMM_WORLD,
 	            "residual  : ||r||=%e, ||r||/||b||=%e(approx.), rtol=%e\n",
 	            r_norm, error_r, rtol);
-	PetscPrintf(PETSC_COMM_WORLD,
-	            "residual  : ||r||=%e, ||r||/||b0||=%e(approx.), rtol=%e\n",
-	            r_norm, r_norm / b0_norm, rtol);
 	if (reason >= 0)
 	{
 		PetscPrintf(PETSC_COMM_WORLD, "status    : Converged (reason=%d)\n",
