@@ -432,17 +432,19 @@ int PETScLinearSolver::Solver()
 	KSPGetTolerances(lsolver, &rtol, &abstol, &dtol, &maxits);
 	PetscReal r_norm = .0;
 	KSPGetResidualNorm(lsolver, &r_norm);
-	PetscReal b_norm = .0;
-	VecNorm(b, NORM_2, &b_norm);
-	PetscReal error_r = r_norm / b_norm;
+//	PetscReal b_norm = .0;
+//	VecNorm(b, NORM_2, &b_norm);
+//	PetscReal error_r = r_norm / b_norm;
 
 	PetscPrintf(PETSC_COMM_WORLD, "solver    : %s\n", slv_type);
 	PetscPrintf(PETSC_COMM_WORLD, "precon    : %s\n", prc_type);
 	PetscPrintf(PETSC_COMM_WORLD, "iteration : %d/%d\n", its, maxits);
-	PetscPrintf(PETSC_COMM_WORLD, "||b||     : %e\n", b_norm);
+//	PetscPrintf(PETSC_COMM_WORLD, "||b||     : %e\n", b_norm);
 	PetscPrintf(PETSC_COMM_WORLD,
-	            "residual  : ||r||=%e, ||r||/||b||=%e(approx.), rtol=%e\n",
-	            r_norm, error_r, rtol);
+	            "residual  : ||r||=%e, rel. tol=%e\n", r_norm, rtol);
+//	PetscPrintf(PETSC_COMM_WORLD,
+//	            "residual  : ||r||=%e, ||r||/||b||=%e(approx.), rtol=%e\n",
+//	            r_norm, error_r, rtol);
 	if (reason >= 0)
 	{
 		PetscPrintf(PETSC_COMM_WORLD, "status    : Converged (reason=%d)\n",
