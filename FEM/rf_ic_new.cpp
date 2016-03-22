@@ -1018,8 +1018,7 @@ void CInitialCondition::SetDomain(int nidx)
 		// WW if (m_msh){
 		for (k = 0; (size_t)k < SubNumber; k++)
 		{
-			std::cout << "-> set " << k << "th subdomain"
-			          << "\n";
+			ScreenMessage("-> set %d th subdomain\n", k);
 			GEOGetNodesInMaterialDomain(m_msh, subdom_index[k], nodes_vector,
 			                            quadratic);
 			if (this->getProcessDistributionType() == FiniteElement::GRADIENT)
