@@ -1019,6 +1019,7 @@ int Linear_EQS::solveWithLIS(CNumerics* m_num, bool compress)
 	ierr = lis_solver_set_option(solver_options, solver);
 	ierr = lis_solver_set_option(tol_option, solver);
 	ierr = lis_solver_set_option("-print mem", solver);
+	ierr = lis_solver_set_optionC(solver);
 	ScreenMessage2("-> Execute Lis\n");
 	ierr = lis_solve(AA, bb, xx, solver);
 	CHKERR(ierr);
