@@ -2119,11 +2119,19 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 		// subkeyword found
 		if (line_string.find("$DEACTIVATED_SUBDOMAIN") != string::npos)
 		{
-			// WW
-			*pcs_file >> NumDeactivated_SubDomains >> ws;
-			Deactivated_SubDomain = new int[NumDeactivated_SubDomains];
-			for (int i = 0; i < NumDeactivated_SubDomains; i++)
-				*pcs_file >> Deactivated_SubDomain[i] >> ws;
+			*pcs_file >> NumDeactivated_SubDomains;
+			pcs_file->ignore(MAX_ZEILE, '\n');
+
+			if (NumDeactivated_SubDomains > 0) {
+				Deactivated_SubDomain = new int[NumDeactivated_SubDomains];
+				std::stringstream ss;
+				for (int i = 0; i < NumDeactivated_SubDomains; i++) {
+					*pcs_file >> Deactivated_SubDomain[i] >> ws;
+					ss << Deactivated_SubDomain[i] << " ";
+				}
+				ScreenMessage("-> Deactivate subdomain(s) : %s\n", ss.str().c_str());
+			}
+
 			continue;
 		}
 		//....................................................................
