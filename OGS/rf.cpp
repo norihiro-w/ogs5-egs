@@ -303,7 +303,7 @@ int main(int argc, char* argv[])
 	ScreenMessage2("Elapsed time    : %ld s\n", elapsed_time_mpi);
 #else
 	ScreenMessage2("CPU time    : %ld s\n", TGetTimer(0));
-	ScreenMessage2("Elapsed time: %ld s\n", runTime.elapsed());
+	ScreenMessage2("Elapsed time: %g s\n", runTime.elapsed());
 #endif
 
 #endif // TESTTIME
