@@ -8564,12 +8564,6 @@ int GetRFProcessProcessing(char* rfpp_type)
 	return 0;
 }
 
-int GetRFProcessProcessingAndActivation(const char*)
-{
-	ScreenMessage("GetRFProcessProcessingAndActivation - to be removed\n");
-	return 0;
-}
-
 long GetRFProcessNumComponents(void)
 {
 	// DisplayMsgLn("GetRFProcessNumComponents - to be removed");
@@ -8577,43 +8571,6 @@ long GetRFProcessNumComponents(void)
 	return no_components;
 }
 
-int GetRFControlModex(void)
-{
-	cout << "GetRFControlModex - to be removed" << endl;
-	return 0;
-}
-
-int GetRFProcessDensityFlow(void)
-{
-	if (show_onces_density)
-		cout << "GetRFProcessDensityFlow - to be removed" << endl;
-	show_onces_density = false;
-	return 0;
-}
-
-int GetRFProcessNumContinua(void)
-{
-	cout << "GetRFProcessNumContinua - to be removed" << endl;
-	return 0;
-}
-
-int GetRFProcessNumElectricFields(void)
-{
-	cout << "GetRFProcessNumElectricFields - to be removed" << endl;
-	return 0;
-}
-
-int GetRFProcessNumTemperatures(void)
-{
-	cout << "GetRFProcessNumTemperatures - to be removed" << endl;
-	return -1;
-}
-
-int GetRFProcessSimulation(void)
-{
-	cout << "GetRFProcessSimulation - to be removed" << endl;
-	return -1;
-}
 
 /**************************************************************************
    ROCKFLOW - Funktion: ModelsAddNodeValInfoStructure

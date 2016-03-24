@@ -532,8 +532,7 @@ Problem::~Problem()
 	//
 	PCSDestroyAllProcesses();
 	//
-	if (GetRFProcessProcessingAndActivation("MT") &&
-	    GetRFProcessNumComponents() > 0)
+	if (GetRFProcessNumComponents() > 0)
 	{
 		DestroyREACT();  // SB
 		cp_vec.clear();  // Destroy component properties vector

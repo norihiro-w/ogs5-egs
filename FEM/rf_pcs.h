@@ -1104,7 +1104,6 @@ extern int GetRFProcessFlowModel(void);
 extern int GetRFProcessHeatReactModel(void);
 extern int GetRFProcessNumPhases(void);
 extern int GetRFProcessProcessing(char*);
-extern int GetRFProcessProcessingAndActivation(const char*);
 extern long GetRFProcessNumComponents(void);
 extern int GetRFControlModex(void);
 extern int GetRFProcessDensityFlow(void);
