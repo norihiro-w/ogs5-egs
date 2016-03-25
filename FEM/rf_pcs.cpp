@@ -4466,7 +4466,7 @@ double CRFProcess::Execute()
 	// 21.12.2007
 	iter_lin = dom->eqs->Solver(eqs_new->x, global_eqs_dim);
 #else
-#ifdef LIS
+#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
 	bool compress_eqs = (type / 10 == 4 || this->NumDeactivated_SubDomains > 0);
 	iter_lin = eqs_new->Solver(this->m_num, compress_eqs);  // NW
 #else
@@ -4596,7 +4596,7 @@ double CRFProcess::Execute()
 		// 21.12.2007
 		dom->eqs->Solver(eqs_new->x, global_eqs_dim);
 #else
-#ifdef LIS
+#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
 		eqs_new->Solver(this->m_num);  // NW
 #else
 		eqs_new->Solver();

@@ -96,7 +96,7 @@ IF(OGS_FEM_PETSC)
 ELSE(OGS_FEM_PETSC)
 	SET( SOURCES ${SOURCES} par_ddc.h par_ddc.cpp)
 	## New sparse class. WW
-	IF(OGS_FEM_MKL OR OGS_FEM_LIS)
+	IF(OGS_FEM_MKL OR OGS_FEM_LIS OR OGS_FEM_Paralution)
 		SET( SOURCES ${SOURCES} equation_class.h equation_class.cpp )
 	ELSE()
 		SET( SOURCES ${SOURCES} solver.h solver.cpp matrix_routines.h matrix_routines.cpp)
