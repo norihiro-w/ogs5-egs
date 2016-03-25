@@ -8,32 +8,19 @@ cache:
   - apt
 
 env:
-  - CASE=FEM CMAKE_ARGS="-DOGS_FEM=ON"
-  - CASE=LIS CMAKE_ARGS="-DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=$TRAVIS_BUILD_DIR/lis-cmake-master/include  -DLIS_LIBRARIES=$TRAVIS_BUILD_DIR/lis-cmake-master/build/lib/liblis.a"
-  - CASE=PETSC CMAKE_ARGS="-DOGS_FEM_PETSC=ON -DPETSC_DIR=/usr/lib/petscdir/3.4.2/"
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+  - secure: "XTpmCY/ed1czuPQDoDjxB3oyoYHWqcoVg/YY3OLVR8DLEPfLVxgZlLfXC+Lmujr8aSW+Xwo2SNyVcaTh24wzBbVaUt57CD7FgTGA4R7kC6zmMOaXQyiNNwFUyB7daA9khWHDWvViTwUezjjDNKS3gmgWX2qlALlg/sYsivt6oDZJTNqkPVRunv8q3gehXinWrPEU6MYllkaIBFR5rCSUHQJwUd0bGl9urARxjpytXei+X1Y6lTtdn1ErIYOv6ve74nzzyxg4C6BUxAmiJa4xYrKTlkrzEM7IzGbN0tekO2P0bR7aFqunIZM5xDrIsZ5kYy2m+dWo4FnKwB02uEQ5dSKxyT5pRVrLbWi5R3AidiS/NJIni3O1D8wZWJzJ5R3Jp/zgLHxV4+rvaAj5vqHcqH5UCR7J6D4qq7qZeDg7irEFwYFQz4ZzgdAc3dqq5CdmPQStHrIdBBVtG3b6aae2KjVSA0NUa1jItDx1td98S2Js6Uf3RJqHEsHKEjm733HdYMdgbXjzOG4jCNZ0VyWj4ZM++gLuUKPohJfvOzNw12bCh1ph2rEzMHPe+beS3w5xhwHl8KAFdRhGGjY+ULC2b1m7PTGwtShH8n9pzBFoZ4NidqkDJT2qMMK4vuqAyAeLMOWx1pMHiOP9ET20EVHyn2UPM/bfjL53KCGX/43T1mQ="
 
-before_install:
-  # -- External package sources --
-  - if [[ "$CASE" == "PETSC" ]]; then sudo add-apt-repository --yes ppa:feelpp/petsc; fi
-  - if [[ "$CASE" == "LIS" ]]; then sudo apt-get install gfortran; fi
-  - travis_retry sudo apt-get update -qq;
+addons:
+  coverity_scan:
+    project:
+      name: "norihiro-w/ogs5-egs"
+      description: "Build submitted via Travis CI"
+    notification_email: norihiro.w@gmail.com
+    build_command_prepend: "mkdir build && cd build && cmake -DOGS_FEM=ON .."
+    build_command:   "make"
+    branch_pattern: coverity-scan
 
-install:
-  # PetSc
-  - if [[ "$CASE" == "PETSC" ]]; then travis_retry sudo apt-get install -qq libpetsc3.4.2-dev; fi
-  # Lis
-  - if [[ "$CASE" == "LIS" ]]; then wget https://github.com/norihiro-w/lis-cmake/archive/master.zip; fi
-  - if [[ "$CASE" == "LIS" ]]; then unzip master.zip && cd lis-cmake-master; fi
-  - if [[ "$CASE" == "LIS" ]]; then mkdir build && cd build && cmake .. && make && cd ../..; fi
-
-script:
-  - mkdir build
-  - cd build
-  - cmake $CMAKE_ARGS ..
-  - make
-
-notifications:
-  email:
-    on_success: change
-    on_failure: always
 
