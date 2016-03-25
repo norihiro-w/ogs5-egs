@@ -4,6 +4,10 @@ OpenGeoSys5-EGS
 [![Tag](https://img.shields.io/github/tag/norihiro-w/ogs5-egs.svg?style=flat-square)](https://github.com/norihiro-w/ogs5-egs/releases)
 [![BSD License (modified)](http://img.shields.io/badge/license-BSD-blue.svg?style=flat-square)](https://github.com/norihiro-w/ogs5-egs/blob/master/LICENSE.txt)
 [![Travis](https://img.shields.io/travis/norihiro-w/ogs5-egs.svg?style=flat-square)](https://travis-ci.org/norihiro-w/ogs5-egs)
+<a href="https://scan.coverity.com/projects/norihiro-w-ogs5-egs">
+  <img alt="Coverity Scan Build Status"
+       src="https://scan.coverity.com/projects/8242/badge.svg"/>
+</a>
 
 This code is a branch of OpenGeoSys5 specially developed for modeling deep geothermal reservoirs. The code is based on the OGS official version 5.3.3 and will not support all the features in the official version (https://github.com/ufz/ogs5).
 
