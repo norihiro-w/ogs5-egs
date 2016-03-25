@@ -1190,7 +1190,7 @@ void paralution_solve_with_pre(T_SOLVER &ls, PARALUTION::PreType::type &preType,
 		paralution_solve(ls, m_num, AA, bb, xx, iter, status);
 	} else if  (preType == PreType::AMG) {
 		paralution::AMG<paralution::LocalMatrix <double >, paralution::LocalVector<double>, double> p;
-		p.InitMaxIter(2);
+		p.InitMaxIter(1);
 		p.Verbose(0);
 		ls.SetPreconditioner(p);
 		paralution_solve(ls, m_num, AA, bb, xx, iter, status);
