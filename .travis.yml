@@ -23,4 +23,6 @@ addons:
     build_command:   "make"
     branch_pattern: coverity-scan
 
+script:
+    - echo "done"
 
