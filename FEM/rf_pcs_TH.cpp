@@ -242,7 +242,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 #if defined(USE_MPI)
 		dom->eqsH->Solver(eqs_new->x, global_eqs_dim);
 #elif defined(NEW_EQS)
-#ifdef LIS
+#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
 		bool compress_eqs =
 		    (type / 10 == 4 || this->NumDeactivated_SubDomains > 0);
 		iter_lin = eqs_new->Solver(this->m_num, compress_eqs);  // NW

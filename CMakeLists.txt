@@ -36,6 +36,7 @@ OPTION(OGS_FEM_PETSC "Use PETSc parallel solver" OFF)
 #OPTION(OGS_USE_QT "User interface configuration" OFF)
 OPTION(OGS_FEM_LIS "Library of Iterative Solvers for Linear Systems configuration" OFF)
 OPTION(OGS_FEM_MKL "Math kernel library configuration" OFF)
+OPTION(OGS_FEM_Paralution "Paralution libarary for linear solve" OFF)
 
 OPTION(OGS_ONLY_TH "Optimize OGS for TH simulations" OFF)
 
@@ -134,6 +135,14 @@ IF(OGS_FEM_MKL)
 	SET(MKL ON CACHE BOOL "Use Math Kernel Library")
 	MARK_AS_ADVANCED(PARALLEL_USE_OPENMP LIS MKL)
 ENDIF(OGS_FEM_MKL)
+
+IF(OGS_FEM_Paralution)
+	SET(PARALLEL_USE_OPENMP ON CACHE BOOL "Use Library of Iterative Solvers")
+	MARK_AS_ADVANCED(PARALLEL_USE_OPENMP)
+	set(NEW_EQS ON)
+	ADD_DEFINITIONS(-DNEW_EQS -DUSE_PARALUTION)
+	INCLUDE_DIRECTORIES (${Paralution_INCLUDE})
+ENDIF()
 
 IF(LIS)
 	MESSAGE (STATUS "Configuring for FEM command line with LIS" )

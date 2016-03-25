@@ -284,7 +284,7 @@ protected:
 	int mysize;
 	int myrank;
 #elif defined(NEW_EQS)
-#ifdef LIS
+#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
 public:
 	Linear_EQS* eqs_new;
 #else
