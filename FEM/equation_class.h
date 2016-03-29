@@ -135,6 +135,7 @@ public:
 	const double* getX() const { return x; }
 	double RHS(const long i) const { return b[i]; }
 	double NormX();
+	double ComputeNormRHS() { return Norm(b); }
 	double NormRHS() { return bNorm; }
 #if defined(USE_MPI)
 	int DOF() { return A->Dof(); }
