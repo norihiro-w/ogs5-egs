@@ -152,7 +152,7 @@ void FEMRead(const std::string& file_base_name, std::vector<CFEMesh*>& mesh_vec,
 	for (size_t i = 0; i < mesh_vec.size(); i++)
 	{
 		CFEMesh* msh = mesh_vec[i];
-		ScreenMessage("-> Mesh %d: found %d nodes, %d elements",
+		ScreenMessage("-> Mesh %d: found %d nodes, %d elements\n",
 		              i, msh->nod_vector.size(), msh->ele_vector.size());
 	}
 }
