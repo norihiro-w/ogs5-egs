@@ -229,15 +229,26 @@ double CRFProcessTH::Execute(int loop_process_number)
 		    "|dp|_2=%.3e, |dT|_2=%.3e, |dp/p|_2=%.3e, |dT/T|_2=%.3e "
 		    "(tol.p=%.1e,T=%.1e)\n",
 		    dp_L2, dT_L2, dp_L2 / p_L2, dT_L2 / T_L2, tol_dp, tol_dT);
+		ScreenMessage("------------------------------------------------\n");
+		ScreenMessage("-> Nonlinear iteration: %d/%d, |r|=%.3e, |r|/|r0|=%.3e\n", iter_nlin - 1,
+		              n_max_iterations, NormR, NormR / InitialNorm);
+		ScreenMessage("------------------------------------------------\n");
 #else
 		Error = NormR / InitialNorm;
-		ScreenMessage("|r|=%.3e, |r|/|r0|=%.3e", NormR, NormR / InitialNorm);
+		double r_dof[2] = {};
+		for (size_t ii = 0; ii < this->GetPrimaryVNumber(); ii++) {
+			const size_t nnodes = this->m_msh->GetNodesNumber(false);
+			const size_t shift = nnodes * ii;
+			for (size_t i = 0; i < nnodes; i++)
+				r_dof[ii] += std::pow(eqs_new->getRHS()[shift + i], 2);
+			r_dof[ii] = std::sqrt(r_dof[ii]);
+		}
+		ScreenMessage("------------------------------------------------\n");
+		ScreenMessage("-> Nonlinear iteration: %d/%d, |r|=%.3e, |r|/|r0|=%.3e, |rp|=%.3e, |rT|=%.3e\n", iter_nlin - 1,
+		              n_max_iterations, NormR, NormR / InitialNorm, r_dof[0], r_dof[1]);
+		ScreenMessage("------------------------------------------------\n");
 #endif
 
-		ScreenMessage("------------------------------------------------\n");
-		ScreenMessage("-> Nonlinear iteration: %d/%d, ||r||=%g\n", iter_nlin - 1,
-		              n_max_iterations, NormR);
-		ScreenMessage("------------------------------------------------\n");
 
 		if (Error < newton_tol)
 		{
