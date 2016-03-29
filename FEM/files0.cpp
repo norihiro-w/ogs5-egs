@@ -258,21 +258,22 @@ int ReadData(char* dateiname,
 	ScreenMessage("\tcurrent mem: %d MB\n",
 	              mem_watch.getVirtMemUsage() / (1024 * 1024));
 #endif
-	if (!mesh_vec.empty())  // KR
+	if (mesh_vec.empty())  // KR
 	{
-		fem_msh_vector.insert(fem_msh_vector.end(),
-		                      mesh_vec.begin(),
-		                      mesh_vec.end());  // re-inserted by KR
+		abort();
+	}
+	fem_msh_vector.insert(fem_msh_vector.end(),
+						  mesh_vec.begin(),
+						  mesh_vec.end());  // re-inserted by KR
 #ifndef USE_PETSC
-		CompleteMesh();  // WW
+	CompleteMesh();  // WW
 #else
 #if 0
-		ScreenMessage("Optimize geometric objects\n");
-		geo_obj.optimiseObjects(unique_name, *fem_msh_vector[0]->getGrid());
-		ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024*1024) );
+	ScreenMessage("Optimize geometric objects\n");
+	geo_obj.optimiseObjects(unique_name, *fem_msh_vector[0]->getGrid());
+	ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024*1024) );
 #endif
 #endif
-	}
 
 // SBOK4209 MSHWrite(dateiname);
 // PCTRead is bounded by msh
@@ -291,8 +292,6 @@ int ReadData(char* dateiname,
 	// PNTPropertiesRead(dateiname);
 
 	msgdat = (char*)Free(msgdat);
-
-	if (!mesh_vec.empty()) return 100;  // magic number?
 
 	return 1;
 }
