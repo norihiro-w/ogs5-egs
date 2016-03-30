@@ -235,6 +235,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 		ScreenMessage("------------------------------------------------\n");
 #else
 		Error = NormR / InitialNorm;
+#if 0
 		double r_dof[2] = {};
 		for (size_t ii = 0; ii < this->GetPrimaryVNumber(); ii++) {
 			const size_t nnodes = this->m_msh->GetNodesNumber(false);
@@ -247,6 +248,12 @@ double CRFProcessTH::Execute(int loop_process_number)
 		ScreenMessage("-> Nonlinear iteration: %d/%d, |r|=%.3e, |r|/|r0|=%.3e, |rp|=%.3e, |rT|=%.3e\n", iter_nlin - 1,
 		              n_max_iterations, NormR, NormR / InitialNorm, r_dof[0], r_dof[1]);
 		ScreenMessage("------------------------------------------------\n");
+#else
+		ScreenMessage("------------------------------------------------\n");
+		ScreenMessage("-> Nonlinear iteration: %d/%d, |r|=%.3e, |r|/|r0|=%.3e\n", iter_nlin - 1,
+		              n_max_iterations, NormR, NormR / InitialNorm);
+		ScreenMessage("------------------------------------------------\n");
+#endif
 #endif
 
 
