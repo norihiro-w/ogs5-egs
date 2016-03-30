@@ -235,7 +235,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 		ScreenMessage("------------------------------------------------\n");
 #else
 		Error = NormR / InitialNorm;
-#if 0
+#if 1
 		double r_dof[2] = {};
 		for (size_t ii = 0; ii < this->GetPrimaryVNumber(); ii++) {
 			const size_t nnodes = this->m_msh->GetNodesNumber(false);
