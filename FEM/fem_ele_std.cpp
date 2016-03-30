@@ -10887,22 +10887,6 @@ void CFiniteElementStd::PrintTheSetOfElementMatrices(std::string mark)
 	}
 }
 
-#if 0
-void CFiniteElementStd::AssembleTHEquation()
-{
-	// r_p
-	fem1->ConfigElement(MeshElement, false);
-	fem1->Assembly(false);
-
-	// J_pp
-
-	// J_pT
-
-	// r_T
-	fem2->ConfigElement(MeshElement, false);
-	fem2->Assembly(false);
-}
-#else
 void CFiniteElementStd::AssembleTHEquation(bool updateA, bool updateRHS)
 {
 	const unsigned c_dim = dim;
@@ -12109,7 +12093,6 @@ void CFiniteElementStd::AssembleTHEquation(bool updateA, bool updateRHS)
 		}
 	}
 }
-#endif
 
 }  // end namespace
 
