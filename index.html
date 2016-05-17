@@ -34,7 +34,14 @@
           <h3>
 <a id="about" class="anchor" href="#about" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>About</h3>
 
-<p>This website provides information about OGS5-EGS code. The code is a branch of OpenGeoSys5 (<a href="http://www.opengeosys.org">www.opengeosys.org</a>) specially focusing on deep geothermal reservoir modeling with discrete fractures. The code is based on the OGS version 5.3.3 and is not fully compatible with the official version.</p>
+<p>This website provides information about OGS5-EGS code. The code is a branch of OpenGeoSys (<a href="http://www.opengeosys.org">www.opengeosys.org</a>) v5.3.3 for deep geothermal reservoir modeling developed by <a href="https://github.com/norihiro-w" class="user-mention">@norihiro-w</a>. </p>
+
+<p>Please be aware that </p>
+
+<ul>
+<li>The code is not fully compatible with the official version.</li>
+<li>Use of the official OGS version is recommended if your problem can work with it.</li>
+</ul>
 
 <h3>
 <a id="license" class="anchor" href="#license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>License</h3>
@@ -43,21 +50,25 @@
 All rights reserved.</p>
 
 <p>Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-1. Redistributions of source code must retain the above copyright
-   notice, this list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright
-   notice, this list of conditions and the following disclaimer in the
-   documentation and/or other materials provided with the distribution.
-3. All advertising materials mentioning features or use of this software
-   must display the following acknowledgement:
-   This product includes software developed by the OpenGeoSys Community.
-4. Neither the name of the OpenGeoSys Community nor the
-   names of its contributors may be used to endorse or promote products
-   derived from this software without specific prior written permission.
-5. Attribute the OpenGeoSys Community, preferably citing an appropriate
-   paper listed on the OpenGeoSys Community homepage:
-   <a href="http://www.opengeosys.org/papers">http://www.opengeosys.org/papers</a></p>
+modification, are permitted provided that the following conditions are met:</p>
+
+<ol>
+<li>Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.</li>
+<li>Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.</li>
+<li>All advertising materials mentioning features or use of this software
+must display the following acknowledgement:
+This product includes software developed by the OpenGeoSys Community.</li>
+<li>Neither the name of the OpenGeoSys Community nor the
+names of its contributors may be used to endorse or promote products
+derived from this software without specific prior written permission.</li>
+<li>Attribute the OpenGeoSys Community, preferably citing an appropriate
+paper listed on the OpenGeoSys Community homepage:
+<a href="http://www.opengeosys.org/papers">http://www.opengeosys.org/papers</a>
+</li>
+</ol>
 
 <p>THIS SOFTWARE IS PROVIDED BY THE OpenGeoSys Community ''AS IS'' AND ANY
 EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -71,15 +82,62 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</p>
 
 <h3>
+<a id="features" class="anchor" href="#features" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Features</h3>
+
+<ul>
+<li>Groundwater flow and heat transport modeling in porous media and discretely fractured porous media based on FEM</li>
+<li>Unstructured mesh with mixed dimensional elements</li>
+<li>Parallelization: OpenMP with Lis / MPI with PETSc</li>
+</ul>
+
+<h3>
+<a id="change-logs" class="anchor" href="#change-logs" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Change logs</h3>
+
+<p>see <a href="https://github.com/norihiro-w/ogs5-egs/releases">Release Note</a></p>
+
+<h3>
+<a id="third-party-libraries" class="anchor" href="#third-party-libraries" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Third-party libraries</h3>
+
+<p>The code uses the following external libraries</p>
+
+<ul>
+<li><a href="http://www.partow.net/programming/exprtk/">ExprtTk</a></li>
+<li><a href="http://rapidxml.sourceforge.net/">RapidXML</a></li>
+<li>
+<a href="http://www.ssisc.org/lis/">Lis</a> (optional) *Latest Lis is not supported yet. please use <a href="http://www.ssisc.org/lis/dl/lis-1.2.70.tar.gz">older one</a>.</li>
+<li>
+<a href="https://www.mcs.anl.gov/petsc/">PETSc</a> (optional)</li>
+<li>MKL (optional)</li>
+</ul>
+
+<h3>
+<a id="how-to-compile" class="anchor" href="#how-to-compile" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>How to compile</h3>
+
+<h4>
+<a id="with-lis" class="anchor" href="#with-lis" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>with Lis</h4>
+
+<ol>
+<li>Compile Lis</li>
+<li>Download source codes from above links and extract it</li>
+<li>Compile OGS as</li>
+</ol>
+
+<pre><code>cd [source-directory]
+mkdir ../build
+cd ../build
+cmake ../[source-directory] -DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=[lis include dir] -DLIS_INCLUDE_DIR=[lis include dir] -DLIS_LIBRARIES=[lis library path]
+</code></pre>
+
+<h3>
 <a id="tutorials" class="anchor" href="#tutorials" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Tutorials</h3>
 
 <p>Please note that some of the tutorials were prepared a few years ago and don't work as it is with the latest source code.</p>
 
 <ul>
-<li>Basics of heat transport modeling using OGS (<a href="https://docs.opengeosys.org/books/geoenergy-modeling-i">link</a>)</li>
-<li>Reservoir modeling with porous media approach (<a href="">pdf</a>)</li>
-<li>Reservoir modeling with discrete fractures (<a href="">pdf</a>) </li>
-<li>Meshing with Gina (<a href="">pdf</a>)</li>
+<li>Basics of heat transport modeling with OGS (<a href="https://docs.opengeosys.org/books/geoenergy-modeling-i">book</a>, <a href="/docs/Slides_OGS_Geothermal_Basics.pdf">slides</a>)</li>
+<li>Flow and heat transport modeling in EGS reservoirs with porous media approach (<a href="/docs/Tutorial_EPM.pdf">pdf</a>)</li>
+<li>Flow and heat transport modeling in EGS reservoirs with discrete fracture approach (<a href="/docs/Tutorial_DF.pdf">pdf</a>) </li>
+<li>Meshing with Gina (<a href="/docs/Meshing_GINA_SingleFracture.pdf">pdf</a>)</li>
 </ul>
 
 <h3>
