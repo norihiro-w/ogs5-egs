@@ -7,6 +7,8 @@ OpenGeoSys5-EGS
 
 This code is a branch of OpenGeoSys5 specially developed for modeling deep geothermal reservoirs. The code is based on the OGS official version 5.3.3 and will not support all the features in the official version (https://github.com/ufz/ogs5).
 
+For more information, please visit http://norihiro-w.github.io/ogs5-egs
+
 ## OpenGeoSys project ##
 
 [OpenGeoSys][ogs] (OGS) is a scientific open source project for the development of
@@ -36,7 +38,7 @@ Open the Visual Studio solution which was created in the build-directory or just
 
 ## License ##
 
-OpenGeoSys is distributed under a Modified BSD License which encourages users to
+OpenGeoSys is distributed under a modified BSD License which encourages users to
 attribute the work of the OpenGeoSys Community especially in scientific
 publications. See the [LICENSE.txt][license-source] for the license text.
 
