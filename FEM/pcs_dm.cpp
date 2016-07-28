@@ -354,7 +354,7 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 
 	// setup mesh
 	m_msh->SwitchOnQuadraticNodes(true);
-	if (hasAnyProcessDeactivatedSubdomains || NumDeactivated_SubDomains > 0 ||
+	if (hasAnyProcessDeactivatedSubdomains || Deactivated_SubDomain.size() > 0 ||
 	    num_type_name.find("EXCAVATION") != string::npos)
 		CheckMarkedElement();
 
@@ -441,7 +441,7 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 			eqs_new->MappingSolution();
 #elif defined(LIS)
 			bool compress_eqs =
-			    (type / 10 == 4 || this->NumDeactivated_SubDomains > 0);
+				(type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
 			eqs_new->Solver(this->m_num, compress_eqs);
 #elif defined(NEW_EQS)
 			eqs_new->Solver();
@@ -2644,9 +2644,7 @@ void CRFProcessDeformation::ReleaseLoadingByExcavation()
 	}
 	//
 	// Deactivate the subdomains to be excavated
-	if (Deactivated_SubDomain) delete[] Deactivated_SubDomain;
-	Deactivated_SubDomain = new int[SizeSubD];
-	NumDeactivated_SubDomains = SizeSubD;
+	Deactivated_SubDomain.resize(SizeSubD);
 	for (j = 0; j < SizeSubD; j++)
 		Deactivated_SubDomain[j] = ExcavDomainIndex[j];
 

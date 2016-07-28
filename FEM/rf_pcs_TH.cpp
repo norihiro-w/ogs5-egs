@@ -75,7 +75,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 	clock_t dm_time = -clock();
 
 	m_msh->SwitchOnQuadraticNodes(false);
-	if (hasAnyProcessDeactivatedSubdomains || NumDeactivated_SubDomains > 0)
+	if (hasAnyProcessDeactivatedSubdomains || Deactivated_SubDomain.size() > 0)
 		CheckMarkedElement();
 
 #if defined(USE_PETSC)
@@ -244,7 +244,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 #elif defined(NEW_EQS)
 #ifdef LIS
 		bool compress_eqs =
-		    (type / 10 == 4 || this->NumDeactivated_SubDomains > 0);
+			(type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
 		iter_lin = eqs_new->Solver(this->m_num, compress_eqs);  // NW
 #else
 		iter_lin = eqs_new->Solver();  // 27.11.2007
