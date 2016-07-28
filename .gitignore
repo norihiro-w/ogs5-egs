@@ -5,3 +5,4 @@ Build*/
 benchOut.txt
 benchSummary.csv
 svnInfo.txt
+*.txt.user
