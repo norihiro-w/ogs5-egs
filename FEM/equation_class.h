@@ -133,8 +133,10 @@ public:
 	void SetKnownX_i(const long i, const double x_i);
 	double X(const long i) const { return x[i]; }
 	const double* getX() const { return x; }
+	const double* getRHS() const { return b; }
 	double RHS(const long i) const { return b[i]; }
 	double NormX();
+	double ComputeNormRHS() { return Norm(b); }
 	double NormRHS() { return bNorm; }
 #if defined(USE_MPI)
 	int DOF() { return A->Dof(); }

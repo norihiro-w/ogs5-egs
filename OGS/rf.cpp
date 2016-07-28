@@ -9,6 +9,7 @@
 
 
 #include <cstdlib>
+#include <ctime>
 #ifdef SUPERCOMPUTER
 // kg44 test for buffered output
 #include <cstdio>
@@ -258,8 +259,8 @@ int main(int argc, char* argv[])
 	}
 
 	ScreenMessage("\n---------------------------------------------\n");
-	ScreenMessage("ogs version: %s\n", OGS_VERSION);
-	ScreenMessage("ogs date: %s\n", OGS_DATE);
+	ScreenMessage("ogs version    : %s\n", OGS_VERSION);
+	ScreenMessage("ogs date       : %s\n", OGS_DATE);
 #ifdef CMAKE_CMD_ARGS
 	ScreenMessage("cmake command line arguments: %s\n", CMAKE_CMD_ARGS);
 #endif  // CMAKE_CMD_ARGS
@@ -272,6 +273,11 @@ int main(int argc, char* argv[])
 #ifdef BUILD_TIMESTAMP
 	ScreenMessage("build timestamp: %s\n", BUILD_TIMESTAMP);
 #endif  // BUILD_TIMESTAMP
+
+	time_t tm =time(NULL );
+	struct tm * curtime = localtime ( &tm );
+	ScreenMessage("current time   : %s", asctime(curtime));
+
 #ifdef USE_PETSC
 	MPI_Barrier(PETSC_COMM_WORLD);
 #endif
