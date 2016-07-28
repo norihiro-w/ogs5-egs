@@ -273,8 +273,7 @@ protected:  // WW
 	void CopyU_n();            // 29.08.2008. WW
 	// Time unit factor
 	double time_unit_factor;
-	int NumDeactivated_SubDomains;
-	int* Deactivated_SubDomain;
+	std::vector<int> Deactivated_SubDomain;
 // New equation and solver objects WW
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
 public:

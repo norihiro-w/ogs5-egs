@@ -156,7 +156,7 @@ Problem::Problem(char* filename)
 	for (size_t i = 0; i < pcs_vector.size(); i++)
 	{
 		hasAnyProcessDeactivatedSubdomains =
-		    (pcs_vector[i]->NumDeactivated_SubDomains > 0);
+			(pcs_vector[i]->Deactivated_SubDomain.size() > 0);
 		if (hasAnyProcessDeactivatedSubdomains) break;
 	}
 	//----------------------------------------------------------------------
