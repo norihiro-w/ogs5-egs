@@ -25,25 +25,16 @@ INCLUDE(scripts/CMakeConfiguration/GeneralProjectSetup.cmake)
 ###############
 
 # Configurations
-#OPTION(OGS_FEM_SP "Sparse matrix configuration" OFF)
-#OPTION(OGS_FEM_JFNK "Jacobi free Newton-Krylov method for H2M problem" OFF)
 OPTION(OGS_FEM_PETSC "Use PETSc parallel solver" OFF)
-#OPTION(OGS_FEM_GEMS "GEMS configuration" OFF)
-#OPTION(OGS_FEM_PQC "Phreeqc configuration" OFF)
-#OPTION(OGS_FEM_BRNS "BRNS configuration" OFF)
-#OPTION(OGS_FEM_CHEMAPP "CHEMAPP configuration" OFF)
-#OPTION(OGS_USE_QT "User interface configuration" OFF)
-OPTION(OGS_FEM_LIS "Library of Iterative Solvers for Linear Systems configuration" OFF)
+OPTION(OGS_FEM_LIS "Library of Iterative Solvers for Linear Systems configuration" ON)
 OPTION(OGS_FEM_MKL "Math kernel library configuration" OFF)
 OPTION(OGS_FEM_Paralution "Paralution libarary for linear solve" OFF)
 
 OPTION(OGS_ONLY_TH "Optimize OGS for TH simulations" OFF)
 
-# supported on Linux and Windows
-#OPTION(OGS_FEM_MPI "Message passing interface configuration" OFF)
 
 # Set default configuration when no other config is given
-IF (NOT OGS_FEM AND NOT OGS_FEM_SP AND NOT OGS_FEM_GEMS AND NOT OGS_FEM_PQC AND NOT OGS_FEM_BRNS AND NOT OGS_FEM_CHEMAPP AND NOT OGS_FEM_LIS AND NOT OGS_FEM_MKL AND NOT OGS_FEM_MPI AND NOT OGS_USE_QT AND NOT OGS_FEM_PETSC)
+IF (NOT OGS_FEM_LIS AND NOT OGS_FEM_MKL AND NOT OGS_FEM_PETSC)
 	MESSAGE (STATUS "No configuration specified. Default confuguration is used.")
 	SET (OGS_FEM ON)
 ENDIF ()
