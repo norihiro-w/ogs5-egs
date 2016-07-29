@@ -10,20 +10,6 @@ SET ( SOURCES
 	testBase.cpp
 )
 
-# Add tests here if they need testdata
-IF(TESTDATA_DIR_FOUND)
-	SET(SOURCES ${SOURCES}
-		GEO/TestPointInTriangle.cpp
-		GEO/TestPointInPolygon.cpp
-	)
-ENDIF()
-
-IF (NOT MSVC)
-	SET ( SOURCES ${SOURCES}
-		testOgs.cxx
-		testBmSkel.cxx)
-ENDIF (NOT MSVC)
-
 INCLUDE_DIRECTORIES(
 	${CMAKE_SOURCE_DIR}/tests/gtest
 	${CMAKE_SOURCE_DIR}/Base
@@ -47,13 +33,11 @@ TARGET_LINK_LIBRARIES(testrunner
 
 IF (MSVC)
 	SET(testrunnerExe ${EXECUTABLE_OUTPUT_PATH}/Release/testrunner)
-	SET(QtTestrunnerExe ${EXECUTABLE_OUTPUT_PATH}/Release/QtTestrunner)
 ELSE ()
 	SET(testrunnerExe ${EXECUTABLE_OUTPUT_PATH}/testrunner)
 	IF("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
 		TARGET_LINK_LIBRARIES( testrunner pthread )
 	ENDIF() # "${CMAKE_SYSTEM_NAME}" MATCHES "Linux"
-	SET (QtTestrunnerExe ${EXECUTABLE_OUTPUT_PATH}/QtTestrunner)
 ENDIF() # MSVC
 
 # Add targets for running tests (with coverage reports)
@@ -85,8 +69,3 @@ ELSE (OGS_ONE_BIG_GTEST)
 	ADD_GOOGLE_TESTS ( ${testrunnerExe} ${SOURCES})
 ENDIF (OGS_ONE_BIG_GTEST)
 
-# add new test models here not all of these models will be needed, depending
-# on compile flags but it is safe to copy them all across
-IF (NOT MSVC)
-	ADD_SUBDIRECTORY( data/bmskel )
-ENDIF (NOT MSVC)
