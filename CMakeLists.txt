@@ -26,7 +26,7 @@ INCLUDE(scripts/CMakeConfiguration/GeneralProjectSetup.cmake)
 
 # Configurations
 OPTION(OGS_FEM_PETSC "Use PETSc parallel solver" OFF)
-OPTION(OGS_FEM_LIS "Library of Iterative Solvers for Linear Systems configuration" ON)
+OPTION(OGS_FEM_LIS "Library of Iterative Solvers for Linear Systems configuration" OFF)
 OPTION(OGS_FEM_MKL "Math kernel library configuration" OFF)
 OPTION(OGS_FEM_Paralution "Paralution libarary for linear solve" OFF)
 
@@ -36,7 +36,7 @@ OPTION(OGS_ONLY_TH "Optimize OGS for TH simulations" OFF)
 # Set default configuration when no other config is given
 IF (NOT OGS_FEM_LIS AND NOT OGS_FEM_MKL AND NOT OGS_FEM_PETSC)
 	MESSAGE (STATUS "No configuration specified. Default confuguration is used.")
-	SET (OGS_FEM ON)
+	SET (OGS_FEM_LIS ON)
 ENDIF ()
 
 # Check if a valid OGS configuration is given (see Macros.cmake)
