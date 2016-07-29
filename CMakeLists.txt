@@ -25,7 +25,6 @@ INCLUDE(scripts/CMakeConfiguration/GeneralProjectSetup.cmake)
 ###############
 
 # Configurations
-OPTION(OGS_FEM "Default configuration" OFF)
 #OPTION(OGS_FEM_SP "Sparse matrix configuration" OFF)
 #OPTION(OGS_FEM_JFNK "Jacobi free Newton-Krylov method for H2M problem" OFF)
 OPTION(OGS_FEM_PETSC "Use PETSc parallel solver" OFF)
@@ -97,10 +96,6 @@ ENDIF() # PROCESSOR_COUNT
 IF(OGS_ONLY_TH)
     ADD_DEFINITIONS(-DOGS_ONLY_TH)
 ENDIF()
-
-IF(OGS_FEM)
-	 MESSAGE (STATUS	"Configuring for FEM command line" )
-ENDIF(OGS_FEM)
 
 IF(OGS_FEM_PETSC)
 	MESSAGE (STATUS "Configuring for PETSc" )
