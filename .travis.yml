@@ -8,7 +8,6 @@ cache:
   - apt
 
 env:
-  - CASE=FEM CMAKE_ARGS="-DOGS_FEM=ON"
   - CASE=LIS CMAKE_ARGS="-DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=$TRAVIS_BUILD_DIR/lis-cmake-master/include  -DLIS_LIBRARIES=$TRAVIS_BUILD_DIR/lis-cmake-master/build/lib/liblis.a"
   - CASE=PETSC CMAKE_ARGS="-DOGS_FEM_PETSC=ON -DPETSC_DIR=/usr/lib/petscdir/3.4.2/"
 
