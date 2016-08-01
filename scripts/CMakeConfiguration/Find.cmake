@@ -15,6 +15,9 @@ ELSE()
 	SET(BENCHMARK_REF_DIR_FOUND  ${BENCHMARK_DIR_FOUND}/../benchmarks/)
 ENDIF()
 
+get_filename_component(AbsPathBenchRefDur ${BENCHMARK_REF_DIR_FOUND} ABSOLUTE)
+SET(BENCHMARK_REF_DIR_FOUND ${AbsPathBenchRefDur})
+
 MESSAGE(STATUS "Benchmarks directory")
 MESSAGE(STATUS "- intput files dir: ${BENCHMARK_DIR_FOUND}")
 MESSAGE(STATUS "- reference files dir: ${BENCHMARK_REF_DIR_FOUND}")
