@@ -162,7 +162,7 @@
 // #error to indicate a fatal error.  Users can either #undef
 // the names before including mpi.h or include mpi.h *before* stdio.h
 // or iostream.
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || defined(USE_MPI_REGSOIL)
+#if defined(USE_MPI)
 #include <mpi.h>
 #endif
 

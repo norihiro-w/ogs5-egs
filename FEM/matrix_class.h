@@ -334,10 +334,6 @@ public:
 	// Print
 	void Write(std::ostream& os = std::cout);
 	void Write_BIN(std::ostream& os);
-// Domain decomposition
-#if defined(USE_MPI)
-	void DiagonalEntries(double* diag_e);
-#endif
 private:
 	// Data
 	double* entry;

@@ -102,9 +102,7 @@ using process::CRFProcessDeformation;
 std::string FileName;  // WW
 std::string FilePath;  // 23.02.2009. WW
 
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) ||      \
-    defined(USE_MPI_REGSOIL) || defined(USE_MPI_GEMS) || \
-    defined(USE_MPI_BRNS) || defined(USE_PETSC)
+#if defined(USE_MPI) || defined(USE_PETSC)
 int mysize;  // NW
 int myrank;
 #endif

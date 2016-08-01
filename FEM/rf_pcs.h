@@ -1097,7 +1097,6 @@ extern std::vector<int>
 //
 extern std::string project_title;  // OK41
 extern bool pcs_created;
-extern std::vector<LINEAR_SOLVER*> PCS_Solver;  // WW
 // OK
 extern void MMPCalcSecondaryVariablesNew(CRFProcess* m_pcs, bool NAPLdiss);
 extern void CalcNewNAPLSat(CRFProcess* m_pcs);  // CB 01/08

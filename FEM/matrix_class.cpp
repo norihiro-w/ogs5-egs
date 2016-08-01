@@ -1862,33 +1862,6 @@ void CSparseMatrix::Precond_Jacobi(double* vec_s, double* vec_r)
 			vec_r[i] = vec_s[i] / diag;
 		}
 }
-#if defined(USE_MPI)
-/*\!
- ********************************************************************
-   Get diagonal entries of the matrix
-   Programm:
-   12/2007 WW
- ********************************************************************/
-void CSparseMatrix::DiagonalEntries(double* diag_e)
-{
-	long i, idof;
-	//
-	if (DOF > 1)
-		// Although this piece of code can deal with the case
-		// of DOF = 1, we also prepare a special piece of code for
-		// the case of DOF = 1 just for efficiency
-		for (i = 0; i < rows; i++)
-			for (idof = 0; idof < DOF; idof++)
-				diag_e[idof * rows + i] =
-				    entry[(idof * DOF + idof) * size_entry_column +
-				          diag_entry[i]];
-	//
-	else  // DOF = 1
-
-		for (i = 0; i < rows; i++)
-			diag_e[i] = entry[diag_entry[i]];
-}
-#endif  // USE_MPI
 
 #if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
 /********************************************************************

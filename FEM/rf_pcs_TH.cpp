@@ -141,28 +141,20 @@ double CRFProcessTH::Execute(int loop_process_number)
 //----------------------------------------------------------------------
 // Refresh solver
 #if defined(NEW_EQS)
-#ifndef USE_MPI
 		eqs_new->Initialize();  // 27.11.2007 WW
-#endif
 #elif defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
 		eqs_new->Initialize();
-#else
-		SetZeroLinearSolver(eqs);
 #endif
 
 		ScreenMessage("-> Assembling equation system...\n");
 		GlobalAssembly();
 
 //
-#ifdef USE_MPI
-		const double NormR = dom->eqsH->NormRHS();
-#elif defined(NEW_EQS)
+#if defined(NEW_EQS)
 		const double NormR = eqs_new->ComputeNormRHS();
 //		const double NormR = eqs_new->NormRHS();
 #elif defined(USE_PETSC)
 		const double NormR = eqs_new->GetVecNormRHS();
-#else
-		const double NormR = NormOfUnkonwn_orRHS(false);
 #endif
 #if defined(USE_PETSC)
 		double rp_max = std::numeric_limits<double>::max(),
@@ -257,16 +249,10 @@ double CRFProcessTH::Execute(int loop_process_number)
 
 		ScreenMessage("-> Calling linear solver...\n");
 // Linear solver
-#if defined(USE_MPI)
-		dom->eqsH->Solver(eqs_new->x, global_eqs_dim);
-#elif defined(NEW_EQS)
-#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
+#if defined(NEW_EQS)
 		bool compress_eqs =
 			(type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
 		iter_lin = eqs_new->Solver(this->m_num, compress_eqs);  // NW
-#else
-		iter_lin = eqs_new->Solver();  // 27.11.2007
-#endif
 #elif defined(USE_PETSC)
 		//		if (write_leqs) {
 		//			std::string fname = FileName + "_" +
@@ -297,8 +283,6 @@ double CRFProcessTH::Execute(int loop_process_number)
 			VecAXPY(eqs_new->total_x, 1.0, eqs_new->x);
 			//			VecView(eqs_new->total_x, PETSC_VIEWER_STDOUT_SELF);
 		}
-#else
-		iter_lin = ExecuteLinearSolver();
 #endif
 		if (iter_lin < 0)
 		{
@@ -346,8 +330,6 @@ double CRFProcessTH::Execute(int loop_process_number)
 		NormDx = eqs_new->NormX();
 #elif defined(USE_PETSC)
 		NormDx = eqs_new->GetVecNormX();
-#else
-		NormDx = NormOfUnkonwn_orRHS();
 #endif
 		ScreenMessage("-> |dx|=%.3e\n", NormDx);
 
@@ -446,12 +428,8 @@ double CRFProcessTH::Execute(int loop_process_number)
 //	RecoverSolution();
 //
 #ifdef NEW_EQS  // WW
-#if defined(USE_MPI)
-	dom->eqsH->Clean();
-#else
 	// Also allocate temporary memory for linear solver. WW
 	eqs_new->Clean();
-#endif
 #endif
 
 	// For coupling control
@@ -489,8 +467,6 @@ void CRFProcessTH::UpdateIterativeStep(const double damp)
 //	long shift = 0;
 #if defined(NEW_EQS)
 	const double* eqs_x = eqs_new->getX();
-#elif !defined(USE_PETSC)
-	const double* eqs_x = eqs->x;
 #endif
 
 	// x^k1 = x^k + dx
@@ -543,45 +519,6 @@ void CRFProcessTH::UpdateIterativeStep(const double damp)
 #endif
 }
 
-#if !defined(NEW_EQS) && !defined(USE_PETSC)
-double CRFProcessTH::NormOfUnkonwn_orRHS(bool isUnknowns)
-{
-	int i, j;
-	long number_of_nodes;
-	long v_shift = 0;
-	double NormW = 0.0;
-	double val;
-
-#ifdef G_DEBUG
-	if (!eqs)
-	{
-		printf(" \n Warning: solver not defined, exit from loop_ww.cc");
-		exit(1);
-	}
-#endif
-
-	double* vec = NULL;
-	if (isUnknowns)
-		vec = eqs->x;
-	else
-		vec = eqs->b;
-
-	int end = pcs_number_of_primary_nvals;
-
-	for (i = 0; i < end; i++)
-	{
-		number_of_nodes = num_nodes_p_var[i];
-		for (j = 0; j < number_of_nodes; j++)
-		{
-			val = vec[v_shift + j];
-			NormW += val * val;
-		}
-
-		v_shift += number_of_nodes;
-	}
-	return sqrt(NormW);
-}
-#endif
 
 #ifdef USE_PETSC
 void CRFProcessTH::setSolver(petsc_group::PETScLinearSolver* petsc_solver)

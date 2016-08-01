@@ -66,8 +66,7 @@ extern size_t max_dim;  // OK411 todo
 #endif
 #include "vtk.h"
 
-#if defined(USE_PETSC) || defined(USE_MPI) || defined(USE_MPI_PARPROC) || \
-    defined(USE_MPI_REGSOIL)  //|| defined(other parallel libs)//03.3012. WW
+#if defined(USE_PETSC) || defined(USE_MPI)
 #include <mpi.h>
 #endif
 

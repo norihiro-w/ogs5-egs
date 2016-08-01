@@ -35,7 +35,7 @@ solver
 #include <set>
 
 /*--------------------- MPI Parallel  -------------------*/
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || defined(USE_MPI_REGSOIL)
+#if defined(USE_MPI)
 #include <mpi.h>
 #endif
 /*--------------------- MPI Parallel  -------------------*/
@@ -205,7 +205,6 @@ extern size_t max_dim;  // OK411 todo
 // PCS vector
 //////////////////////////////////////////////////////////////////////////
 // It is better to have space between data type and data name. WW
-vector<LINEAR_SOLVER*> PCS_Solver;  // WW
 vector<CRFProcess*> pcs_vector;
 vector<double*> ele_val_vector;  // PCH
 // vector<string> ele_val_name_vector; // PCH
@@ -734,9 +733,6 @@ void CRFProcess::Create()
 		if (m_msh == fem_msh_vector[k]) break;
 	// WW 02.2013. Pardiso
 	int eqs_num = 3;
-#ifdef USE_MPI
-	eqs_num = 2;
-#endif
 
 	// if(type==4||type==41)
 	//   eqs_new = EQS_Vector[2*k+1];
@@ -744,10 +740,6 @@ void CRFProcess::Create()
 		eqs_new = EQS_Vector[eqs_num * k + 1];
 	else
 	{
-// eqs_new = EQS_Vector[2*k];
-#ifdef USE_MPI
-		eqs_new = EQS_Vector[eqs_num * k];
-#else
 		if (getProcessType() == FiniteElement::MULTI_PHASE_FLOW ||
 		    getProcessType() == FiniteElement::PS_GLOBAL ||
 		    getProcessType() == FiniteElement::TH_MONOLITHIC)
@@ -758,7 +750,6 @@ void CRFProcess::Create()
 		{
 			eqs_new = EQS_Vector[eqs_num * k];
 		}
-#endif
 	}  // WW 02.2013. Pardiso
 #else
 	// WW  phase=1;
@@ -1080,13 +1071,8 @@ void CRFProcess::Create()
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
 	size_unknowns = m_msh->NodesNumber_Quadratic * pcs_number_of_primary_nvals;
 #elif defined(NEW_EQS)
-/// For JFNK. 01.10.2010. WW
 	{
-#ifdef USE_MPI
-		size_unknowns = eqs_new->size_global;
-#else
 		size_unknowns = eqs_new->A->Dim();
-#endif
 	}
 #endif
 
@@ -1530,41 +1516,13 @@ void PCSDestroyAllProcesses(void)
 	long i;
 	int j;
 //----------------------------------------------------------------------
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-                         // SOLver
 #ifdef NEW_EQS           // WW
-#if defined(USE_MPI)
-	for (j = 0; j < (int)EQS_Vector.size(); j += 2)  // WW
-#else
 	for (j = 0; j < (int)EQS_Vector.size(); j++)   // WW
-#endif
 	{
 		if (EQS_Vector[j]) delete EQS_Vector[j];
 		EQS_Vector[j] = NULL;
-#if defined(USE_MPI)
-		EQS_Vector[j + 1] = NULL;
-#endif
 	}
-#else  // ifdef NEW_EQS
-	// SOLDelete()
-	LINEAR_SOLVER* eqs;
-	for (j = 0; j < (int)PCS_Solver.size(); j++)
-	{
-		eqs = PCS_Solver[j];
-		if (eqs->unknown_vector_indeces)
-			eqs->unknown_vector_indeces =
-			    (int*)Free(eqs->unknown_vector_indeces);
-		if (eqs->unknown_node_numbers)
-			eqs->unknown_node_numbers = (long*)Free(eqs->unknown_node_numbers);
-		if (eqs->unknown_update_methods)
-			eqs->unknown_update_methods =
-			    (int*)Free(eqs->unknown_update_methods);
-		eqs = DestroyLinearSolver(eqs);
-	}
-	PCS_Solver.clear();  // WW
 #endif
-//------
-#endif  //#if defined(USE_PETSC) // || defined(other parallel libs)//03.3012. WW
 
 	//----------------------------------------------------------------------
 	// PCS
@@ -4398,19 +4356,8 @@ double CRFProcess::Execute()
 	// TEST 	double x_norm = eqs_new->GetVecNormX();
 	eqs_new->MappingSolution();
 #elif defined(NEW_EQS)  // WW
-#if defined(USE_MPI)
-	// 21.12.2007
-	iter_lin = dom->eqs->Solver(eqs_new->x, global_eqs_dim);
-#else
-#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
 	bool compress_eqs = (type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
 	iter_lin = eqs_new->Solver(this->m_num, compress_eqs);  // NW
-#else
-	iter_lin = eqs_new->Solver();
-#endif
-#endif
-#else
-	iter_lin = ExecuteLinearSolver();
 #endif
 	if (iter_lin == -1)
 	{
@@ -4418,12 +4365,8 @@ double CRFProcess::Execute()
 // abort
 #ifdef NEW_EQS  // WW
 		if (!configured_in_nonlinearloop)
-#if defined(USE_MPI)
-			dom->eqs->Clean();
-#else
 			// Also allocate temporary memory for linear solver. WW
 			eqs_new->Clean();
-#endif
 #endif
 		return -1;
 	}
@@ -4477,13 +4420,7 @@ double CRFProcess::Execute()
 #else
 #ifdef NEW_EQS  // WW
 		if (!configured_in_nonlinearloop)
-#if defined(USE_MPI)
-			dom->ConfigEQS(m_num, global_eqs_dim);
-#else
 			eqs_new->Initialize();
-#endif
-#else
-		SetZeroLinearSolver(eqs);
 #endif
 #endif
 
@@ -4527,25 +4464,7 @@ double CRFProcess::Execute()
 		eqs_new->Solver();
 		eqs_new->MappingSolution();
 #else
-#ifdef NEW_EQS  // WW
-#if defined(USE_MPI)
-		// 21.12.2007
-		dom->eqs->Solver(eqs_new->x, global_eqs_dim);
-#else
-#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
 		eqs_new->Solver(this->m_num);  // NW
-#else
-		eqs_new->Solver();
-// kg44 the next lines are for debug?
-//		string fname = FileName + "_equation_results.txt";
-//		ofstream dum(fname.c_str(), ios::out | ios::trunc);
-//		eqs_new->Write(dum);
-//		exit(1);
-#endif
-#endif
-#else  // ifdef NEW_EQS
-		ExecuteLinearSolver();
-#endif
 #endif  // USE_PETSC
 	}
 	//----------------------------------------------------------------------
@@ -7235,46 +7154,6 @@ int CRFProcess::ExecuteLinearSolver(void)
 	    if (fabs(eqs->x[i])<MKleinsteZahl)
 	      eqs->x[i] = 0.0;
 	 */
-	//-----------------------------------------------------------------------
-	return iter_sum;
-}
-#endif
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   06/2005 PCH Overriding
-   last modification:
-**************************************************************************/
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-//#ifndef NEW_EQS                                   //WW 07.11.2008
-int CRFProcess::ExecuteLinearSolver(LINEAR_SOLVER* eqs)
-{
-	long iter_count;
-	long iter_sum = 0;
-	// WW int found = 0;
-	//-----------------------------------------------------------------------
-	// Set EQS
-	SetLinearSolver(eqs);
-	//--------------------------------------------------------------------
-	// NUM
-	// WW found = 1;
-	cg_maxiter = m_num->ls_max_iterations;  // OK lsp->maxiter;
-	cg_eps = m_num->ls_error_tolerance;     // OK lsp->eps;
-	// cg_repeat = lsp->repeat;
-	vorkond = m_num->ls_precond;                 // OK lsp->precond;
-	linear_error_type = m_num->ls_error_method;  // OK lsp->criterium;
-
-	iter_count = eqs->LinearSolver(eqs->b, eqs->x, eqs->dim);
-	eqs->master_iter = iter_count;
-	if (iter_count >= cg_maxiter)
-	{
-		cout << "Warning in CRFProcess::ExecuteLinearSolver() - Maximum "
-		        "iteration number reached" << endl;
-		return -1;
-	}
-	iter_sum += iter_count;
 	//-----------------------------------------------------------------------
 	return iter_sum;
 }
