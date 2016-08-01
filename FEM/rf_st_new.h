@@ -420,7 +420,6 @@ extern void STWrite(std::string);
 // extern void STCreateFromPNT();
 extern std::vector<CSourceTerm*> st_vector;
 extern void STDelete();
-void STCreateFromLIN(std::vector<CGLLine*>);
 CSourceTerm* STGet(std::string);
 extern void STGroupDelete(std::string pcs_type_name, std::string pcs_pv_name);
 extern void STGroupsDelete(void);  // Haibing;
@@ -431,49 +430,5 @@ extern std::vector<std::string> analytical_processes;
 extern CSourceTerm* STGet(const std::string&, const std::string&,
                           const std::string&);
 
-// WW moved here
-// CMCD, WW
-extern double GetAnalyticalSolution(long node_number, CSourceTerm* m_st);
-// extern  void GetRiverNODValue(double& value, CNodeValue* cnodev, const
-// CSourceTerm* m_st);
-extern double GetConditionalNODValue(CSourceTerm* m_st, CNodeValue* cnodev);
-// MB
-extern void GetCriticalDepthNODValue(double& value, CSourceTerm*,
-                                     long msh_node);
-// JOD
-extern void GetCouplingNODValue(double& value, CSourceTerm* m_st,
-                                CNodeValue* cnodev);
-// JOD
-extern void GetCouplingNODValueNewton(double& value, CSourceTerm* m_st,
-                                      CNodeValue* cnodev);
-// JOD
-extern double CalcCouplingValue(double factor,
-                                double h_this,
-                                double h_cond,
-                                double z_cond,
-                                CSourceTerm* m_st);
-// JOD
-extern void GetCouplingNODValueMixed(double& value, CSourceTerm* m_st,
-                                     CNodeValue* cnodev);
-// JOD
-extern void GetCouplingFieldVariables(double* h_this,
-                                      double* h_cond,
-                                      double* h_shifted,
-                                      double* h_averaged,
-                                      double* z_this,
-                                      double* z_cond,
-                                      CSourceTerm* m_st,
-                                      CNodeValue* cnodev);
-// JOD
-extern double GetRelativeCouplingPermeability(const CRFProcess* m_pcs,
-                                              double head,
-                                              const CSourceTerm* m_st,
-                                              long msh_node);
-// JOD
-extern void GetPhilipNODValue(double& value, const CSourceTerm* m_st);
-// JOD
-extern void GetGreenAmptNODValue(double& value, CSourceTerm* m_st,
-                                 long msh_node);
-// JOD
 extern void GetNODValue(double& value, CNodeValue* cnodev, CSourceTerm* m_st);
 #endif
