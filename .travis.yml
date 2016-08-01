@@ -16,7 +16,7 @@ env:
   - CASE=PETSC CMAKE_ARGS="-DOGS_FEM_PETSC=ON -DPETSC_DIR=/usr/lib/petscdir/3.4.2/"
 
 before_install:
-  # -- External package sources --
+  - openssl aes-256-cbc -K $encrypted_fc068b29a656_key -iv $encrypted_fc068b29a656_iv -in .dropbox_uploader.enc -out ~\/.dropbox_uploader -d
   - if [[ "$CASE" == "PETSC" ]]; then sudo add-apt-repository --yes ppa:feelpp/petsc; fi
   - if [[ "$CASE" == "LIS" ]]; then sudo apt-get install gfortran; fi
   - travis_retry sudo apt-get update -qq;
@@ -43,6 +43,9 @@ script:
   - if [[ "$CASE" == "LIS" ]]; then ctest -E 'Tests|FILE|EXCEED'; fi
   - if [[ "$CASE" == "LIS" ]]; then ctest -R 'FILECOMPARE' -E 'EXCEED'; fi
 
+#after_failure:
+#  - '[ -f ~/.dropbox_uploader ] && ./dropbox_uploader.sh upload t/results/ travis-artifacts/$TRAVIS_JOB_NUMBER/'
+  
 notifications:
   email:
     on_success: change
