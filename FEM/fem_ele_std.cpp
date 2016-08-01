@@ -6735,65 +6735,7 @@ void CFiniteElementStd::AssembleParabolicEquation()
 	    (!dynamic))  // Newton method
 		StiffMatrix->multi(NodalVal1, NodalVal, -1.0);
 
-/// If JFNK. 10.08.2010 WW
-#if defined(NEW_EQS) && defined(JFNK_H2M)
-	if (pcs->m_num->nls_method == 2)
-	{
-		StiffMatrix->multi(NodalVal1, NodalVal, -1.0);
 
-		/// Save diagnal entry for Jacobi preconditioner. 02.2011. WW
-		if (pcs->JFNK_precond)
-		{
-			if (PcsType == V)
-			{
-				int jj_sh;
-				long j_sh = 0;
-				for (ii = 0; ii < 2; ii++)
-				{
-					i_sh = NodeShift[ii + dm_shift];
-					ii_sh = ii * nnodes;
-					for (jj = 0; jj < 2; jj++)
-					{
-						j_sh = NodeShift[jj + dm_shift];
-						jj_sh = jj * nnodes;
-						for (i = 0; i < nnodes; i++)
-						{
-							kk = i_sh + eqs_number[i];
-							for (j = 0; j < nnodes; j++)
-							{
-#ifdef USE_OPENMP  // 13.11.2008. WW
-#pragma omp critical
-#endif
-								/// JFNK and Jacobi preconditioner
-								if (kk != j_sh + eqs_number[j]) continue;
-								pcs->eqs_new->prec_M[kk] +=
-								    (*StiffMatrix)(i + ii_sh, j + jj_sh);
-							}
-						}
-					}
-				}
-			}
-			else
-			{
-				cshift += NodeShift[dm_shift];  // WW 05.01.07
-				for (i = 0; i < nnodes; i++)
-				{
-					kk = cshift + eqs_number[i];
-					for (j = 0; j < nnodes; j++)
-					{
-#ifdef USE_OPENMP  // 13.11.2008. WW
-#pragma omp critical
-#endif
-						/// JFNK and Jacobi preconditioner
-						if (kk != cshift + eqs_number[j]) continue;
-						pcs->eqs_new->prec_M[kk] += (*StiffMatrix)(i, j);
-					}
-				}
-			}
-		}
-	}
-// else                                  /// else if not JFNK
-#endif  // end of  #ifdef NEW_EQS
 	//{
 	//----------------------------------------------------------------------
 	// Add local matrix to global matrix

@@ -858,11 +858,6 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 				    (*tmp_B_matrix_T)(j, k) * (dstress[k] - stress0[k]) * fkt;
 		// TEST             (*B_matrix_T)(j,k)*dstress[k]*fkt;
 		if (PreLoad == 11) continue;
-// Local assembly of stiffness matrix, B^T C B
-#ifdef JFNK_H2M
-		/// If JFNK. 18.10.2010. WW
-		if (pcs->m_num->nls_method == 2 && (!pcs->JFNK_precond)) continue;
-#endif
 		(*tmp_AuxMatrix2) = 0.0;
 		// NW
 		tmp_B_matrix_T->multi(*p_D, *tmp_AuxMatrix2);
@@ -1315,32 +1310,6 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 	f1 = 1.0;
 	f2 = -1.0;
 
-#if defined(NEW_EQS) && defined(JFNK_H2M)
-	/// If not JFNK. 02.2011. WW
-	if (pcs->m_num->nls_method == 2)
-	{
-		if (!pcs->JFNK_precond) return;
-
-		long kk = 0;
-		// Assemble Jacobi preconditioner
-		for (size_t k = 0; k < ele_dim; k++)
-		{
-			for (size_t l = 0; l < ele_dim; l++)
-				for (i = 0; i < nnodesHQ; i++)
-				{
-					kk = eqs_number[i] + NodeShift[k];
-					for (j = 0; j < nnodesHQ; j++)
-					{
-						if (kk != eqs_number[j] + NodeShift[l]) continue;
-						pcs->eqs_new->prec_M[kk] +=
-						    (*Stiffness)(i + k * nnodesHQ, j + l * nnodesHQ);
-					}
-				}
-			// loop l
-		}  // loop k
-		return;
-	}
-#endif
 	double biot = 1.0;
 	biot = smat->biot_const;
 #if defined(NEW_EQS)
@@ -2096,11 +2065,6 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 	double t1 = 0.0;
 	bool Strain_TCS = false;
 
-#ifdef JFNK_H2M
-	bool JFNK = false;
-	if (pcs->m_num->nls_method == 2)  // 10.09.2010. WW
-		JFNK = true;
-#endif
 	//
 	ThermalExpansion = 0.0;
 	// Thermal effect
@@ -2251,14 +2215,8 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 					dstress[i] += (*eleV_DM->Stress)(i, gp);
 				break;
 			case 1:  // Drucker-Prager model
-#ifdef JFNK_H2M
-				if (smat->StressIntegrationDP(gp, eleV_DM, dstress, dPhi,
-				                              update) &&
-				    !JFNK)
-#else
 				if (smat->StressIntegrationDP(gp, eleV_DM, dstress, dPhi,
 				                              update))
-#endif
 
 					// WW DevStress = smat->devS;
 					smat->ConsistentTangentialDP(ConsistDep, dPhi, ele_dim);

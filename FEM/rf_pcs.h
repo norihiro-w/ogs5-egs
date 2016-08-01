@@ -157,18 +157,6 @@ typedef struct
 	int id;
 } VirialCoefficients;
 
-#ifdef JFNK_H2M
-/// Dirchlet BC at node. 09.2010. WW
-typedef struct
-{
-	int var_idx;
-	bool incremental;
-	long bc_eqs_idx;
-	long bc_node;
-	double bc_value;
-	double bc_value0;
-} bc_JFNK;
-#endif
 
 // MB moved inside the Process object
 // extern vector<double*>nod_val_vector; //OK
@@ -332,17 +320,6 @@ public:
 	//....................................................................
 	// 1-GEO
 	int ite_steps;  /// Newton step index;
-#ifdef JFNK_H2M
-
-	/// Norn of F for Newton method
-	double norm_F0;
-	/// Buffer array for JFNK, 13.08.2010. WW
-	bool JFNK_precond;
-	double* norm_u_JFNK;
-	double* array_u_JFNK;
-	double* array_Fu_JFNK;
-	std::vector<bc_JFNK> BC_JFNK;
-#endif
 public:
 	// BG, DL Calculate phase transition of CO2
 	void CO2_H2O_NaCl_VLE_isobaric(double T,
@@ -733,17 +710,6 @@ public:
 	void GlobalAssembly_std(bool is_quad, bool Check2D3D = false);
 	/// Assemble EQS for deformation process.
 	virtual void GlobalAssembly_DM() {}
-#if defined(NEW_EQS) && defined(JFNK_H2M)
-	/// Jacobian free methid to calculate J*v.
-	// 11.08.2010.
-	void Jacobian_Multi_Vector_JFNK(double* v = NULL, double* Jv = NULL);
-	/// Recovery du from the temporary vector.
-	void Recovery_du_JFNK();  // 02.11.2010.
-	/// Line serach for Newton method.
-	double LineSearch();  // 10.12.2010.
-	/// Force term control for inexact Newton method. 01.2011.
-	bool ForceTermCriterion(double* Jdx, const int num_iteration);
-#endif
 	void AddFCT_CorrectionVector();  // NW
 	void ConfigureCouplingForLocalAssemblier();
 	void CalIntegrationPointValue();

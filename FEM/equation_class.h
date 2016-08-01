@@ -83,11 +83,6 @@ public:
 	void Precond_Jacobi(const double* vec_s, double* vec_r);
 //#endif
 //
-#ifdef JFNK_H2M
-	/// GMRES. 01.09.2010. WW
-	void setPCS(::CRFProcess* the_pcs) { a_pcs = the_pcs; }
-	void Init_Precond_Jacobi_JFNK();
-#endif
 	void ComputePreconditioner();
 	void ComputePreconditioner_Jacobi();
 	void ComputePreconditioner_ILU() {}
@@ -195,10 +190,6 @@ private:  // Dot not remove this!
 	double dot(const double* xx, const double* yy);
 	inline double Norm(const double* xx) { return sqrt(dot(xx, xx)); }
 	inline bool CheckNormRHS(const double normb_new);
-#ifdef JFNK_H2M
-	/// 30.06.2010. WW
-	CRFProcess* a_pcs;
-#endif
 	/// GMRES. 30.06.2010. WW
 	/// GMRES H matrix
 	mutable Matrix H;

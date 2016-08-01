@@ -237,12 +237,6 @@ CRFProcess::CRFProcess(void)
       Write_Matrix(false),
       matrix_file(NULL),
       WriteSourceNBC_RHS(0),
-#ifdef JFNK_H2M
-      JFNK_precond(false),
-      norm_u_JFNK(NULL),
-      array_u_JFNK(NULL),
-      array_Fu_JFNK(NULL),
-#endif
       ele_val_name_vector(std::vector<std::string>())
 {
 	iter_lin = 0;
@@ -534,11 +528,6 @@ CRFProcess::~CRFProcess(void)
 	DeleteArray(num_nodes_p_var);
 	// 20.08.2010. WW
 	DeleteArray(p_var_index);
-#ifdef JFNK_H2M
-	DeleteArray(array_u_JFNK);   // 13.08.2010. WW
-	DeleteArray(array_Fu_JFNK);  // 31.08.2010. WW
-	DeleteArray(norm_u_JFNK);    // 24.11.2010. WW
-#endif
 	//----------------------------------------------------------------------
 	if (this->m_num && this->m_num->fct_method > 0)  // NW
 	{
@@ -1097,15 +1086,6 @@ void CRFProcess::Create()
 	size_unknowns = m_msh->NodesNumber_Quadratic * pcs_number_of_primary_nvals;
 #elif defined(NEW_EQS)
 /// For JFNK. 01.10.2010. WW
-#ifdef JFNK_H2M
-	if (m_num->nls_method == 2)
-	{
-		size_unknowns = eqs_new->size_global;
-		array_u_JFNK = new double[eqs_new->size_global];
-		array_Fu_JFNK = new double[eqs_new->size_global];
-	}
-	else
-#endif
 	{
 #ifdef USE_MPI
 		size_unknowns = eqs_new->size_global;
@@ -3209,10 +3189,6 @@ void CRFProcess::ConfigDeformation()
 		    problem_dimension_dm * m_msh->GetNodesNumber(true);
 		Shift[problem_dimension_dm + 1] =
 		    Shift[problem_dimension_dm] + m_msh->GetNodesNumber(false);
-
-#ifdef JFNK_H2M
-		norm_u_JFNK = new double[2];
-#endif
 	}
 
 	if (type / 10 == 4)
@@ -6240,14 +6216,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 	Linear_EQS* eqs_p = NULL;
 #endif
 //------------------------------------------------------------WW
-#ifdef JFNK_H2M
-	if (m_num->nls_method == 2 && BC_JFNK.size() > 0)  // 29.10.2010. WW
-		return;
-
-	/// For JFNK
-	bool bc_inre_flag = false;
-	double bc_init_value = 0.;
-#endif
 
 	// WW
 	double Scaling = 1.0;
@@ -6567,17 +6535,9 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 						SetNodeValue(m_bc_node->geo_node_number, idx0,
 						             bc_value);
 
-#ifdef JFNK_H2M
-					bc_inre_flag = false;
-					bc_init_value = 0.;
-#endif
 				}
 				else
 				{
-#ifdef JFNK_H2M
-					bc_inre_flag = true;
-					bc_init_value = bc_value;
-#endif
 					/// if JFNK and if the first Newton step. 11.11.2010. WW
 					// if(m_num->nls_method==2&&ite_steps==1) /// JFNK
 					/// p_{n+1} = p_b,
@@ -6605,23 +6565,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 			bc_eqs_index += shift;
 #endif
 
-#ifdef JFNK_H2M
-			/// If JFNK method (09.2010. WW):
-			if (m_num->nls_method == 2)
-			{
-				bc_JFNK new_bc_entry;
-				new_bc_entry.var_idx = idx0 + 1;
-				new_bc_entry.bc_node = m_bc_node->geo_node_number;
-				new_bc_entry.bc_eqs_idx = bc_eqs_index;
-				new_bc_entry.bc_value = bc_value;
-
-				new_bc_entry.incremental = bc_inre_flag;
-				new_bc_entry.bc_value0 = bc_init_value;
-				BC_JFNK.push_back(new_bc_entry);
-			}
-			else
-			{
-#endif
 				//----------------------------------------------------------------
 				//----------------------------------------------------------------
 				/* // Make the follows as comment by WW. 04.03.2008
@@ -6673,9 +6616,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 			eqs_p->SetKnownX_i(bc_eqs_index, bc_value);
 #else
 			MXRandbed(bc_eqs_index, bc_value, eqs_rhs);
-#endif
-#ifdef JFNK_H2M
-			}
 #endif
 		}
 	}

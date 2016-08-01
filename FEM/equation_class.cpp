@@ -91,34 +91,13 @@ namespace Math_Group
    10/2007 WW/
 **************************************************************************/
 Linear_EQS::Linear_EQS(const SparseTable& sparse_table,
-#ifndef JFNK_H2M
                        const long dof, bool messg)
     : message(messg)
-#else
-                       const long dof, bool messg)
-    : message(messg), a_pcs(NULL)
-#endif
 {
 	long i;
-/// If JFNK method.  //03.08.2010. WW
-#ifdef JFNK_H2M
-	if (dof < 0)
-	{
-		size_A = abs(dof);
-		A = NULL;
-		size_global = size_A;
-	}
-	else
-	{
-		A = new CSparseMatrix(sparse_table, dof);
-		size_A = A->Dim();
-		size_global = 0;
-	}
-#else  // ifdef JFNK_H2M
 	A = new CSparseMatrix(sparse_table, dof);
 	size_A = A->Dim();
 	size_global = 0;
-#endif
 
 	prec_M = NULL;
 
@@ -283,11 +262,6 @@ void Linear_EQS::ConfigNumerics(CNumerics* m_num, const long n)
 			precond_name = "Jacobi";
 #if defined(USE_MPI)
 			prec_M = new double[size_A];
-#else
-/// If JFNK
-#ifdef JFNK_H2M
-			if (m_num->nls_method == 2) prec_M = new double[size_A];
-#endif
 #endif
 			break;
 		case 100:
@@ -296,10 +270,8 @@ void Linear_EQS::ConfigNumerics(CNumerics* m_num, const long n)
 			// ----------------------------------------------
 			precond_name = "ILU not available. Use Jacobi";
 			precond_type = 1;
-#ifndef JFNK_H2M
 			if (m_num->nls_method == FiniteElement::NL_JFNK)
 				prec_M = new double[size_A];
-#endif
 #if defined(USE_MPI)
 			prec_M = new double[size_A];
 #endif
@@ -1413,12 +1385,6 @@ void Linear_EQS::Precond(double* vec_s, double* vec_r)
 #if defined(USE_MPI)
 			Precond_Jacobi(vec_s, vec_r);
 #else
-#ifdef JFNK_H2M
-			/// If JFNK
-			if (!A)
-				Precond_Jacobi(vec_s, vec_r);
-			else
-#endif
 				A->Precond_Jacobi(vec_s, vec_r);
 #endif
 			break;
@@ -1782,26 +1748,9 @@ int Linear_EQS::BiCGStab()
 	if (CheckNormRHS(bNorm_new)) return 0;
 //
 // Norm of M r
-#ifdef JFNK_H2M
-	if (a_pcs)  /// JFNK. 24.11.2010
-	{
-		for (i = 0; i < size; i++)
-			r0[i] = b[i];  // r = b-Ax
-		a_pcs->Jacobian_Multi_Vector_JFNK(x, s);
-		for (i = 0; i < size; i++)
-			r0[i] -= s[i];  // r = b-Ax
-	}
-	else
-	{
-		A->multiVec(x, s);  // s as buffer
-		for (i = 0; i < size; i++)
-			r0[i] = b[i] - s[i];  // r = b-Ax
-	}
-#else  // ifdef JFNK_H2M
 	A->multiVec(x, s);  // s as buffer
 	for (i = 0; i < size; i++)
 		r0[i] = b[i] - s[i];                    // r = b-Ax
-#endif
 	for (i = 0; i < size; i++)
 	{
 		r[i] = r0[i];
@@ -1833,13 +1782,7 @@ int Linear_EQS::BiCGStab()
 		}
 		// Preconditioner
 		Precond(p, p_h);
-// A M^{-1}p-->v
-#ifdef JFNK_H2M
-		if (a_pcs)  /// JFNK. 24.11.2010
-			a_pcs->Jacobian_Multi_Vector_JFNK(p_h, v);
-		else
-#endif
-			A->multiVec(p_h, v);
+		A->multiVec(p_h, v);
 		//
 		alpha = rho_1 / dot(r0, v);
 		//
@@ -1854,13 +1797,7 @@ int Linear_EQS::BiCGStab()
 		}
 		//  M^{-1}s,
 		Precond(s, s_h);
-// A* M^{-1}s
-#ifdef JFNK_H2M
-		if (a_pcs)  /// JFNK. 24.11.2010
-			a_pcs->Jacobian_Multi_Vector_JFNK(s_h, t);
-		else
-#endif
-			A->multiVec(s_h, t);
+		A->multiVec(s_h, t);
 		//
 		tt = dot(t, t);
 		if (tt > DBL_MIN)
@@ -2100,26 +2037,9 @@ int Linear_EQS::GMRES()
 	normb = Norm(r);
 
 // Norm of M r
-#ifdef JFNK_H2M
-	if (a_pcs)  /// JFNK. 20.10.2010
-	{
-		for (l = 0; l < size_A; l++)
-			r[l] = b[l];
-		a_pcs->Jacobian_Multi_Vector_JFNK(x, w);
-		for (l = 0; l < size_A; l++)
-			r[l] -= w[l];  // r = b-Ax.
-	}
-	else
-	{
-		A->multiVec(x, w);  // Ax-->w
-		for (l = 0; l < size_A; l++)
-			r[l] = b[l] - w[l];  // r = b-Ax.
-	}
-#else  // ifdef JFNK_H2M
 	A->multiVec(x, w);  // Ax-->w
 	for (l = 0; l < size_A; l++)
 		r[l] = b[l] - w[l];  // r = b-Ax.
-#endif
 
 	Precond(r, w);  // Mr-->w
 	beta = Norm(w);
@@ -2146,12 +2066,7 @@ int Linear_EQS::GMRES()
 		for (i = 0; i < m && iter <= max_iter; i++, iter++)
 		{
 			v = f_buffer[v_idx0 + i];
-#ifdef JFNK_H2M
-			if (a_pcs)  /// JFNK.
-				a_pcs->Jacobian_Multi_Vector_JFNK(v, t);
-			else
-#endif
-				A->multiVec(v, t);
+			A->multiVec(v, t);
 			Precond(t, w);
 
 			for (k = 0; k <= i; k++)
@@ -2183,20 +2098,7 @@ int Linear_EQS::GMRES()
 		}
 
 		Update(x, i - 1, H, s);
-#ifdef JFNK_H2M
-		if (a_pcs)  /// JFNK.
-		{
-			a_pcs->Jacobian_Multi_Vector_JFNK(x, t);
-			/// In exact Newton control. 26.01.2010.
-			if (a_pcs->ForceTermCriterion(t, iter))
-			{
-				Message();
-				return iter <= max_iter;
-			}
-		}
-		else
-#endif
-			A->multiVec(x, t);
+		A->multiVec(x, t);
 
 		for (l = 0; l < size_A; l++)
 			w[l] = b[l] - t[l];  // r = b-Ax.
@@ -2216,36 +2118,6 @@ int Linear_EQS::GMRES()
 //-----------------------------------------------------------------
 //#endif // USE_MPI
 #endif  // GMRES
-#ifdef JFNK_H2M
-/*! \brief Initialize the Jacobi preconditioner fot JFNK
-
-   WW  02.2011.
- */
-void Linear_EQS::Init_Precond_Jacobi_JFNK()
-{
-	for (long i = 0; i < size_global; i++)
-		prec_M[i] = 0.;
-}
-
-/*************************************************************************
-   GeoSys-Function:
-   Task: Parallel preconditioner, inverse
-   Programming:
-   02/2011 WW
- **************************************************************************/
-void Linear_EQS::Precond_Jacobi(const double* vec_s, double* vec_r)
-{
-	double val;
-
-	for (long i = 0; i < size_A; i++)
-	{
-		val = prec_M[i];
-		//  <DBL_EPSILON
-		if (fabs(val) < DBL_MIN) val = 1.0;
-		vec_r[i] = vec_s[i] / val;
-	}
-}
-#endif
 
 #endif  // If not defined USE_MPI
 #if defined(USE_MPI)
