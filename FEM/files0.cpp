@@ -377,7 +377,6 @@ void PRJRead(std::string base_file_name)
 	while (!rfd_file.eof())
 	{
 		rfd_file.getline(line, MAX_ZEILE);
-		project_title = line;
 	}  // eof
 }
 

@@ -20,12 +20,7 @@
 //#include <vector>
 //#include <string>
 
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
 #include "prototyp.h"
-#else
-// MSH
-#include "par_ddc.h"  //OK //Moved from fem_ele_std.h. WW
-#endif
 #include "MSHEnums.h"
 
 namespace Math_Group
@@ -153,9 +148,6 @@ public:
 
 protected:
 	CElem* MeshElement;
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	CPARDomain* m_dom;   // OK
-#endif
 	long* element_nodes_dom;  // Only a pointer. For domain decomposition. WW
 
 	friend class ::CRFProcess;

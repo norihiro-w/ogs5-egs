@@ -162,21 +162,22 @@
 // #error to indicate a fatal error.  Users can either #undef
 // the names before including mpi.h or include mpi.h *before* stdio.h
 // or iostream.
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || defined(USE_MPI_REGSOIL)
+#if defined(USE_MPI)
 #include <mpi.h>
 #endif
 
 /* Preprozessor-Definitionen */
 
 #include <cfloat>
-//#include <stdio.h>
+#include <cmath>
+#include <cstdlib>
 #include "femlib.h"  //CMCD 03 2004
 #include "makros.h"
 #include "memory.h"
 #include "display.h"
 #include "mathlib.h"
-// WW----------------------
-#include "par_ddc.h"
+#include "prototyp.h"
+#include "geo_mathlib.h"
 // WW----------------------
 double pai = 4.0 * atan(1.0);
 VoidFuncDXCDX ShapeFunction;

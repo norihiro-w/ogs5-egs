@@ -74,9 +74,6 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 	Tem = 273.15 + 23.0;
 	h_pcs = NULL;
 	t_pcs = NULL;
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	m_dom = NULL;
-#endif
 
 	AuxNodal2 = NULL;
 	Idx_Vel = NULL;
@@ -858,11 +855,6 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 				    (*tmp_B_matrix_T)(j, k) * (dstress[k] - stress0[k]) * fkt;
 		// TEST             (*B_matrix_T)(j,k)*dstress[k]*fkt;
 		if (PreLoad == 11) continue;
-// Local assembly of stiffness matrix, B^T C B
-#ifdef JFNK_H2M
-		/// If JFNK. 18.10.2010. WW
-		if (pcs->m_num->nls_method == 2 && (!pcs->JFNK_precond)) continue;
-#endif
 		(*tmp_AuxMatrix2) = 0.0;
 		// NW
 		tmp_B_matrix_T->multi(*p_D, *tmp_AuxMatrix2);
@@ -1004,27 +996,10 @@ void CFiniteElementVec::LocalAssembly(const int update)
 	}
 #endif
 
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	if (m_dom)
-	{                   // Moved here from GlobalAssemly. 08.2010. WW
-#if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
-// TODO
-#elif defined(NEW_EQS)
-		b_rhs = m_dom->eqsH->b;
-#else
-		b_rhs = m_dom->eqs->b;
-#endif
-	}
-	else
-#endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
 	// WW
 	{
-#if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
-                        // TODO
-#elif defined(NEW_EQS)
+#ifdef NEW_EQS
 		b_rhs = pcs->eqs_new->b;
-#else
-		b_rhs = pcs->eqs->b;
 #endif
 	}
 	(*RHS) = 0.0;
@@ -1033,17 +1008,6 @@ void CFiniteElementVec::LocalAssembly(const int update)
 	if (PressureC) (*PressureC) = 0.0;
 	if (PressureC_S) (*PressureC_S) = 0.0;
 	if (PressureC_S_dp) (*PressureC_S_dp) = 0.0;
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	if (m_dom)
-	{
-		// 06.2011. WW
-		for (size_t i = 0; i < pcs->GetPrimaryVNumber(); i++)
-			NodeShift[i] = m_dom->shift[i];
-		for (int i = 0; i < nnodesHQ; i++)
-			eqs_number[i] = element_nodes_dom[i];
-	}
-	else
-#endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
 	// WW
 	{
 		for (int i = 0; i < nnodesHQ; i++)
@@ -1315,40 +1279,11 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 	f1 = 1.0;
 	f2 = -1.0;
 
-#if defined(NEW_EQS) && defined(JFNK_H2M)
-	/// If not JFNK. 02.2011. WW
-	if (pcs->m_num->nls_method == 2)
-	{
-		if (!pcs->JFNK_precond) return;
-
-		long kk = 0;
-		// Assemble Jacobi preconditioner
-		for (size_t k = 0; k < ele_dim; k++)
-		{
-			for (size_t l = 0; l < ele_dim; l++)
-				for (i = 0; i < nnodesHQ; i++)
-				{
-					kk = eqs_number[i] + NodeShift[k];
-					for (j = 0; j < nnodesHQ; j++)
-					{
-						if (kk != eqs_number[j] + NodeShift[l]) continue;
-						pcs->eqs_new->prec_M[kk] +=
-						    (*Stiffness)(i + k * nnodesHQ, j + l * nnodesHQ);
-					}
-				}
-			// loop l
-		}  // loop k
-		return;
-	}
-#endif
 	double biot = 1.0;
 	biot = smat->biot_const;
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;
-	if (m_dom)
-		A = m_dom->eqsH->A;
-	else
-		A = pcs->eqs_new->A;
+	A = pcs->eqs_new->A;
 #endif
 
 	if (dynamic)
@@ -1526,10 +1461,7 @@ void CFiniteElementVec::GlobalAssembly_PressureCoupling(Matrix* pCMatrix,
 {
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;
-	if (m_dom)
-		A = m_dom->eqsH->A;
-	else
-		A = pcs->eqs_new->A;
+	A = pcs->eqs_new->A;
 #endif
 
 	int dim_shift = dim + phase;
@@ -2096,11 +2028,6 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 	double t1 = 0.0;
 	bool Strain_TCS = false;
 
-#ifdef JFNK_H2M
-	bool JFNK = false;
-	if (pcs->m_num->nls_method == 2)  // 10.09.2010. WW
-		JFNK = true;
-#endif
 	//
 	ThermalExpansion = 0.0;
 	// Thermal effect
@@ -2251,14 +2178,8 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 					dstress[i] += (*eleV_DM->Stress)(i, gp);
 				break;
 			case 1:  // Drucker-Prager model
-#ifdef JFNK_H2M
-				if (smat->StressIntegrationDP(gp, eleV_DM, dstress, dPhi,
-				                              update) &&
-				    !JFNK)
-#else
 				if (smat->StressIntegrationDP(gp, eleV_DM, dstress, dPhi,
 				                              update))
-#endif
 
 					// WW DevStress = smat->devS;
 					smat->ConsistentTangentialDP(ConsistDep, dPhi, ele_dim);

@@ -46,9 +46,6 @@ extern size_t max_dim;
 #include "eqlink.h"
 #endif
 
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || defined(USE_MPI_REGSOIL)
-#include "par_ddc.h"
-#endif
 #ifdef SUPERCOMPUTER
 // kg44 this is usefull for io-buffering as endl flushes the buffer
 #define endl \

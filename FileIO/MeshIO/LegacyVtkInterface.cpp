@@ -788,7 +788,7 @@ void LegacyVtkInterface::WriteVTKDataArraysPETSC(PetscViewer viewer) const
 void LegacyVtkInterface::WriteDataVTK(int number, double simulation_time,
                                       std::string baseFilename) const
 {
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || defined(USE_MPI_REGSOIL)
+#if defined(USE_MPI)
 	char tf_name[10];
 	cout << "Process " << myrank << " in WriteDataVTK"
 	     << "\n";

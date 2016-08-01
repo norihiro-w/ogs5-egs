@@ -7,93 +7,61 @@
  *
  */
 
-/**************************************************************************
-   ROCKFLOW - Object: Process PCS
-   Programing:
-   02/2003 OK Implementation
-   /2003 WW CRFProcessDeformation
-   11/2003 OK re-organized
-   07/2004 OK PCS2
-   02/2005 WW/OK Element Assemblier and output
-   12/2007 WW Classes of sparse matrix (jagged diagonal storage) and linear
-solver
-           and parellelisation of them
-   02/2008 PCH OpenMP parallelization for Lis matrix solver
-**************************************************************************/
 #include "rf_pcs.h"
 
-// C
-#ifndef __APPLE__
-#include <malloc.h>
-#endif
-
-// C++
-#include <cfloat>
-#include <iomanip>  //WW
-#include <iostream>
 #include <algorithm>
+#include <cfloat>
+#include <iomanip>
+#include <iostream>
 #include <set>
 
-/*--------------------- MPI Parallel  -------------------*/
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || defined(USE_MPI_REGSOIL)
+#if defined(USE_MPI)
 #include <mpi.h>
-#endif
-/*--------------------- MPI Parallel  -------------------*/
-
-/*--------------------- OpenMP Parallel ------------------*/
-#if defined(LIS)
-#include "lis.h"
 #endif
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-/*--------------------- OpenMP Parallel ------------------*/
+#ifdef LIS
+#include <lis.h>
+#endif
 
+// Base
 #include "makros.h"
 #include "display.h"
 #include "memory.h"
 #include "MemWatch.h"
-#include "FEMEnums.h"
-#include "Output.h"
+#include "StringTools.h"
+
+// MathLib
+#include "InterpolationAlgorithms/InverseDistanceInterpolation.h"
+#include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
 
 // GEOLib
 #include "PointWithID.h"
 
-/*------------------------------------------------------------------------*/
-/* MshLib */
-//#include "msh_elem.h"
-//#include "msh_lib.h"
-/*-----------------------------------------------------------------------*/
-/* Objects */
-#include "pcs_dm.h"
-#include "rf_st_new.h"  // ST
-//#include "rf_bc_new.h" // ST
-//#include "rf_mmp_new.h" // MAT
-#include "fem_ele_std.h"  // ELE
-#include "rf_ic_new.h"    // IC
-//#include "msh_lib.h" // ELE
-//#include "rf_tim_new.h"
-//#include "rf_out_new.h"
-#include "rfmat_cp.h"
-//#include "rf_mfp_new.h" // MFP
-//#include "rf_num_new.h"
-//#include "gs_project.h"
-#include "rf_fct.h"
-//#include "femlib.h"
+// MSH
+#include "msh_faces.h"
+
+// FEM
+#include "DistributionTools.h"
 #include "eos.h"
+#include "fct_mpi.h"
+#include "FEMEnums.h"
+#include "fem_ele_std.h"
+#include "files0.h"
+#include "mathlib.h"
+#include "Output.h"
+#include "pcs_dm.h"
+#include "problem.h"
+#include "rfmat_cp.h"
+#include "rf_ic_new.h"
+#include "rf_fct.h"
 #include "rf_msp_new.h"
 #include "rf_node.h"
-
-/*-----------------------------------------------------------------------*/
-/*-----------------------------------------------------------------------*/
-/* Tools */
-/* Tools */
-#include "mathlib.h"
-//#include "files0.h"
-//#include "par_ddc.h"
+#include "rf_pcs_TH.h"
+#include "rf_st_new.h"
 #include "tools.h"
-//#include "rf_pcs.h"
-#include "files0.h"
+
 #ifdef GEM_REACT
 // GEMS chemical solver
 #include "rf_REACT_GEM.h"
@@ -105,71 +73,27 @@ REACT_GEM* m_vec_GEM;
 REACT_BRNS* m_vec_BRNS;
 #endif
 
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
+#if defined(USE_PETSC)
 #include "PETSC/PETScLinearSolver.h"
-// New EQS
-#elif NEW_EQS
+#elif defined(NEW_EQS)
 #include "equation_class.h"
-#else
-#include "solver.h"  // ConfigRenumberProperties
-#include "matrix_routines.h"
 #endif
-//#include "geochemcalc.h"
-#include "problem.h"
-#include "msh_faces.h"
-#include "rfmat_cp.h"
 
-// MathLib
-#include "InterpolationAlgorithms/InverseDistanceInterpolation.h"
-#include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
-
-#include "StringTools.h"
-#include "DistributionTools.h"
-#include "fct_mpi.h"
-
-#include "rf_pcs_TH.h"
 
 using namespace std;
 using namespace MeshLib;
 using namespace Math_Group;
 
-/*-------------------- ITPACKV    ---------------------------*/
-extern void transM2toM6(void);
-/*-------------------- ITPACKV    ---------------------------*/
-/*-------------------- JAD    ---------------------------*/
-extern void transM2toM5(void);
-/*-------------------- JAD    ---------------------------*/
-/*-----------------------------------------------------------------------*/
-/* LOP */
-// 16.12.2008. WW #include "rf_apl.h" // Loop...
-// 16.12.2008. WW #include "loop_pcs.h"
-extern VoidFuncVoid LOPCalcSecondaryVariables_USER;
-//------------------------------------------------------------------------
-// PCS
-VoidXFuncVoidX PCSDestroyELEMatrices[PCS_NUMBER_MAX];
+template <class T>
+T* resize(T* array, size_t old_size, size_t new_size);
+
+
 //------------------------------------------------------------------------
 // Globals, to be checked
 int pcs_no_components = 0;
-bool pcs_monolithic_flow = false;
 int pcs_deformation = 0;
-int dm_number_of_primary_nvals = 2;
-bool show_onces_adp = true;
-bool show_onces_mod = true;
-bool show_onces_mod_flow = true;
-bool show_onces_density = true;
-int memory_opt = 0;
-int problem_2d_plane_dm;
-int anz_nval = 0;
-int anz_nval0 = 0;  // WW
-//
-int size_eval = 0;  // WW
-
-NvalInfo* nval_data = NULL;
-int anz_eval = 0;
-EvalInfo* eval_data = NULL;
-string project_title("New project");  // OK41
-
-bool hasAnyProcessDeactivatedSubdomains = false;  // NW
+int size_eval = 0;
+bool hasAnyProcessDeactivatedSubdomains = false;
 
 //--------------------------------------------------------
 // Coupling Flag. WW
@@ -204,18 +128,15 @@ using Math_Group::vec;
 #define noCHECK_ST_GROUP
 #define noCHECK_BC_GROUP
 
-extern size_t max_dim;  // OK411 todo
+extern size_t max_dim;
 
 //////////////////////////////////////////////////////////////////////////
 // PCS vector
 //////////////////////////////////////////////////////////////////////////
 // It is better to have space between data type and data name. WW
-vector<LINEAR_SOLVER*> PCS_Solver;  // WW
 vector<CRFProcess*> pcs_vector;
 vector<double*> ele_val_vector;  // PCH
 // vector<string> ele_val_name_vector; // PCH
-template <class T>
-T* resize(T* array, size_t old_size, size_t new_size);
 //////////////////////////////////////////////////////////////////////////
 // Construction / destruction
 //////////////////////////////////////////////////////////////////////////
@@ -237,12 +158,6 @@ CRFProcess::CRFProcess(void)
       Write_Matrix(false),
       matrix_file(NULL),
       WriteSourceNBC_RHS(0),
-#ifdef JFNK_H2M
-      JFNK_precond(false),
-      norm_u_JFNK(NULL),
-      array_u_JFNK(NULL),
-      array_Fu_JFNK(NULL),
-#endif
       ele_val_name_vector(std::vector<std::string>())
 {
 	iter_lin = 0;
@@ -534,11 +449,6 @@ CRFProcess::~CRFProcess(void)
 	DeleteArray(num_nodes_p_var);
 	// 20.08.2010. WW
 	DeleteArray(p_var_index);
-#ifdef JFNK_H2M
-	DeleteArray(array_u_JFNK);   // 13.08.2010. WW
-	DeleteArray(array_Fu_JFNK);  // 31.08.2010. WW
-	DeleteArray(norm_u_JFNK);    // 24.11.2010. WW
-#endif
 	//----------------------------------------------------------------------
 	if (this->m_num && this->m_num->fct_method > 0)  // NW
 	{
@@ -750,9 +660,6 @@ void CRFProcess::Create()
 		if (m_msh == fem_msh_vector[k]) break;
 	// WW 02.2013. Pardiso
 	int eqs_num = 3;
-#ifdef USE_MPI
-	eqs_num = 2;
-#endif
 
 	// if(type==4||type==41)
 	//   eqs_new = EQS_Vector[2*k+1];
@@ -760,10 +667,6 @@ void CRFProcess::Create()
 		eqs_new = EQS_Vector[eqs_num * k + 1];
 	else
 	{
-// eqs_new = EQS_Vector[2*k];
-#ifdef USE_MPI
-		eqs_new = EQS_Vector[eqs_num * k];
-#else
 		if (getProcessType() == FiniteElement::MULTI_PHASE_FLOW ||
 		    getProcessType() == FiniteElement::PS_GLOBAL ||
 		    getProcessType() == FiniteElement::TH_MONOLITHIC)
@@ -774,7 +677,6 @@ void CRFProcess::Create()
 		{
 			eqs_new = EQS_Vector[eqs_num * k];
 		}
-#endif
 	}  // WW 02.2013. Pardiso
 #else
 	// WW  phase=1;
@@ -1096,22 +998,8 @@ void CRFProcess::Create()
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
 	size_unknowns = m_msh->NodesNumber_Quadratic * pcs_number_of_primary_nvals;
 #elif defined(NEW_EQS)
-/// For JFNK. 01.10.2010. WW
-#ifdef JFNK_H2M
-	if (m_num->nls_method == 2)
 	{
-		size_unknowns = eqs_new->size_global;
-		array_u_JFNK = new double[eqs_new->size_global];
-		array_Fu_JFNK = new double[eqs_new->size_global];
-	}
-	else
-#endif
-	{
-#ifdef USE_MPI
-		size_unknowns = eqs_new->size_global;
-#else
 		size_unknowns = eqs_new->A->Dim();
-#endif
 	}
 #endif
 
@@ -1555,41 +1443,13 @@ void PCSDestroyAllProcesses(void)
 	long i;
 	int j;
 //----------------------------------------------------------------------
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-                         // SOLver
 #ifdef NEW_EQS           // WW
-#if defined(USE_MPI)
-	for (j = 0; j < (int)EQS_Vector.size(); j += 2)  // WW
-#else
 	for (j = 0; j < (int)EQS_Vector.size(); j++)   // WW
-#endif
 	{
 		if (EQS_Vector[j]) delete EQS_Vector[j];
 		EQS_Vector[j] = NULL;
-#if defined(USE_MPI)
-		EQS_Vector[j + 1] = NULL;
-#endif
 	}
-#else  // ifdef NEW_EQS
-	// SOLDelete()
-	LINEAR_SOLVER* eqs;
-	for (j = 0; j < (int)PCS_Solver.size(); j++)
-	{
-		eqs = PCS_Solver[j];
-		if (eqs->unknown_vector_indeces)
-			eqs->unknown_vector_indeces =
-			    (int*)Free(eqs->unknown_vector_indeces);
-		if (eqs->unknown_node_numbers)
-			eqs->unknown_node_numbers = (long*)Free(eqs->unknown_node_numbers);
-		if (eqs->unknown_update_methods)
-			eqs->unknown_update_methods =
-			    (int*)Free(eqs->unknown_update_methods);
-		eqs = DestroyLinearSolver(eqs);
-	}
-	PCS_Solver.clear();  // WW
 #endif
-//------
-#endif  //#if defined(USE_PETSC) // || defined(other parallel libs)//03.3012. WW
 
 	//----------------------------------------------------------------------
 	// PCS
@@ -1629,19 +1489,6 @@ void PCSDestroyAllProcesses(void)
 	fem_msh_vector.clear();
 //----------------------------------------------------------------------
 
-// DOM WW
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-#if defined(USE_MPI)
-	// if(myrank==0)
-	dom_vector[myrank]->PrintEQS_CPUtime();  // WW
-#endif
-	for (i = 0; i < (long)dom_vector.size(); i++)
-	{
-		if (dom_vector[i]) delete dom_vector[i];
-		dom_vector[i] = NULL;
-	}
-	dom_vector.clear();
-#endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
 	// WW
 	//----------------------------------------------------------------------
 	// ELE
@@ -2006,7 +1853,6 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 			*pcs_file >> cpl_type_name;
 			if (cpl_type_name.compare("MONOLITHIC") == 0)
 			{
-				pcs_monolithic_flow = true;
 				pcs_deformation = 11;
 			}
 			pcs_file->ignore(MAX_ZEILE, '\n');
@@ -3169,7 +3015,6 @@ void CRFProcess::ConfigDeformation()
 	// Geometry dimension
 	problem_dimension_dm =
 	    m_msh->GetMaxElementDim();  // m_msh->GetCoordinateFlag() / 10;
-	problem_2d_plane_dm = 1;
 
 	// Coupling
 	int i;
@@ -3209,10 +3054,6 @@ void CRFProcess::ConfigDeformation()
 		    problem_dimension_dm * m_msh->GetNodesNumber(true);
 		Shift[problem_dimension_dm + 1] =
 		    Shift[problem_dimension_dm] + m_msh->GetNodesNumber(false);
-
-#ifdef JFNK_H2M
-		norm_u_JFNK = new double[2];
-#endif
 	}
 
 	if (type / 10 == 4)
@@ -3233,7 +3074,6 @@ void CRFProcess::VariableStaticProblem()
 	// NOD Primary functions
 	pcs_number_of_primary_nvals =
 	    2;  // OK distinguish 2/3D problems, problem_dimension_dm;
-	dm_number_of_primary_nvals = 2;
 	pcs_number_of_evals = 0;
 	pcs_primary_function_name[0] = "DISPLACEMENT_X1";
 	pcs_primary_function_name[1] = "DISPLACEMENT_Y1";
@@ -3242,7 +3082,6 @@ void CRFProcess::VariableStaticProblem()
 	if (m_msh->GetMaxElementDim() == 3)
 	{
 		pcs_number_of_primary_nvals = 3;
-		dm_number_of_primary_nvals = 3;
 		pcs_primary_function_name[2] = "DISPLACEMENT_Z1";
 		pcs_primary_function_unit[2] = "m";
 	}
@@ -3343,7 +3182,6 @@ void CRFProcess::VariableDynamics()
 	//----------------------------------------------------------------------
 	// NOD Primary functions
 	pcs_number_of_primary_nvals = 2;
-	dm_number_of_primary_nvals = 2;
 	pcs_primary_function_name[0] = "ACCELERATION_X1";
 	pcs_primary_function_name[1] = "ACCELERATION_Y1";
 	pcs_primary_function_unit[0] = "m/s^2";
@@ -3351,7 +3189,6 @@ void CRFProcess::VariableDynamics()
 	if (max_dim == 2)
 	{
 		pcs_number_of_primary_nvals = 3;
-		dm_number_of_primary_nvals = 3;
 		pcs_primary_function_name[2] = "ACCELERATION_Z1";
 		pcs_primary_function_unit[2] = "m/s^2";
 	}
@@ -3957,149 +3794,7 @@ void CRFProcess::ConfigTH()
 	p_var_index = new int[2];
 }
 
-//////////////////////////////////////////////////////////////////////////
-// Configuration NOD
-//////////////////////////////////////////////////////////////////////////
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-//#ifndef NEW_EQS                                   //WW. 07.11.2008
-/*************************************************************************
-   ROCKFLOW - Function:
-   Task: Config node values
-   Programming: 02/2003 OK Implementation
-   04/2004   WW   Modification for 3D problems
-   last modified:
- **************************************************************************/
-void CRFProcess::ConfigNODValues1(void)
-{
-	int i;
-	int pcs_nval = 0;
-	const int DOF = GetPrimaryVNumber();
-	anz_nval0 = anz_nval;
-	number_of_nvals = 2 * DOF + pcs_number_of_secondary_nvals;
-	// NVAL
-	pcs_nval_data =
-	    (PCS_NVAL_DATA*)Malloc(number_of_nvals * sizeof(PCS_NVAL_DATA));
-	/*----------------------------------------------------------------*/
-	for (i = 0; i < DOF; i++)
-	{
-		/* Primary variable - old time */
-		// NVAL pcs_nval_data[pcs_nval] = (PCS_NVAL_DATA *)
-		// Malloc(sizeof(PCS_NVAL_DATA));
-		strcpy(pcs_nval_data[pcs_nval].name,
-		       pcs_primary_function_name[pcs_nval - i]);
-		// Change name for the previous time level
-		/*
-		   char *ch = strchr(pcs_nval_data[pcs_nval].name, '1');
-		   if( ch != NULL )
-		   {
-		   int pos = ch-pcs_nval_data[pcs_nval].name;
-		   pcs_nval_data[pcs_nval].name[pos]='0';
-		   }
-		   else
-		   strcat(pcs_nval_data[pcs_nval].name, "0");   */
-		//-------------------------------------------------------------------------------
-		strcpy(pcs_nval_data[pcs_nval].einheit,
-		       pcs_primary_function_unit[pcs_nval - i]);
-		pcs_nval_data[pcs_nval].timelevel = 0;
-		pcs_nval_data[pcs_nval].speichern = 0;  // WW
-		pcs_nval_data[pcs_nval].laden = 0;
-		pcs_nval_data[pcs_nval].restart = 1;
-		pcs_nval_data[pcs_nval].adapt_interpol = 1;
-		pcs_nval_data[pcs_nval].vorgabe = 0.0;
-#ifdef PCS_NOD
-		pcs_nval_data[pcs_nval].nval_index = pcs_nval;
-#else
-		pcs_nval_data[pcs_nval].nval_index = anz_nval + pcs_nval;
-#endif
-		pcs_nval++;
-		/* Primary variable - new time */
-		// NVAL pcs_nval_data[pcs_nval] = (PCS_NVAL_DATA *)
-		// Malloc(sizeof(PCS_NVAL_DATA));
-		strcpy(pcs_nval_data[pcs_nval].name,
-		       pcs_primary_function_name[pcs_nval - i - 1]);
-		strcpy(pcs_nval_data[pcs_nval].einheit,
-		       pcs_primary_function_unit[pcs_nval - i - 1]);
-		pcs_nval_data[pcs_nval].timelevel = 1;
-		pcs_nval_data[pcs_nval].speichern = 1;
 
-		pcs_nval_data[pcs_nval].laden = 0;
-		pcs_nval_data[pcs_nval].restart = 1;
-		pcs_nval_data[pcs_nval].adapt_interpol = 1;
-		pcs_nval_data[pcs_nval].vorgabe = 0.0;
-#ifdef PCS_NOD
-		pcs_nval_data[pcs_nval].nval_index = pcs_nval;
-#else
-		pcs_nval_data[pcs_nval].nval_index = anz_nval + pcs_nval;
-#endif
-		pcs_nval++;
-	}
-
-	/*----------------------------------------------------------------*/
-	/* Secondary variables */
-	for (i = 0; i < pcs_number_of_secondary_nvals; i++)
-	{
-		// NVAL pcs_nval_data[pcs_nval] = (PCS_NVAL_DATA *)
-		// Malloc(sizeof(PCS_NVAL_DATA));
-		strcpy(pcs_nval_data[pcs_nval].name, pcs_secondary_function_name[i]);
-		strcpy(pcs_nval_data[pcs_nval].einheit, pcs_secondary_function_unit[i]);
-		//  pcs_nval_data[i+2]->timelevel = 1; // always at new time level
-		pcs_nval_data[pcs_nval].timelevel = pcs_secondary_function_timelevel[i];
-		if (pcs_nval_data[pcs_nval].timelevel == 1)
-			pcs_nval_data[pcs_nval].speichern = 1;
-		else
-			pcs_nval_data[pcs_nval].speichern = 0;
-		pcs_nval_data[pcs_nval].laden = 0;
-		pcs_nval_data[pcs_nval].restart = 1;
-		pcs_nval_data[pcs_nval].adapt_interpol = 1;
-		pcs_nval_data[pcs_nval].vorgabe = 0.0;
-#ifdef PCS_NOD
-		pcs_nval_data[pcs_nval].nval_index = pcs_nval;
-#else
-		pcs_nval_data[pcs_nval].nval_index = anz_nval + pcs_nval;
-#endif
-		if (type == 4 || type == 41)
-			if (dm_number_of_primary_nvals == 2 ||
-			    (dm_number_of_primary_nvals == 3 && this->type == 41))
-			{
-				// Block:
-				// STRESS_ZX, STRESS_YZ, STRAIN_ZX, STRAIN_ZY and LUMPED_STRESS
-				if (i == 3 || i == 4 || i == 9 || i == 10 || i == 13)
-					pcs_nval_data[pcs_nval].speichern = 0;
-				if (!problem_2d_plane_dm)
-					//  Block STRESS_ZZ and STRAIN_ZZ
-					if (i == 5 || i == 11)
-						pcs_nval_data[pcs_nval].speichern = 0;
-				// if(!pcs_plasticity)
-				// {
-				//   if(i==12) pcs_nval_data[pcs_nval].speichern = 0;
-				//   //STRAIN_PLS
-				// }
-			}
-		pcs_nval++;
-	}
-	pcs_nval_data = pcs_nval_data;
-}
-
-/*************************************************************************
-   ROCKFLOW - Function: CRFProcess::PCSConfigNODValues
-   Task: Config node values
-   Programming: 02/2003 OK Implementation
-   last modified:
- **************************************************************************/
-void CRFProcess::ConfigNODValues2(void)
-{
-	int i;
-
-	number_of_nvals = 2 * GetPrimaryVNumber() + pcs_number_of_secondary_nvals;
-	for (i = 0; i < number_of_nvals; i++)
-		ModelsAddNodeValInfoStructure(
-		    pcs_nval_data[i].name, pcs_nval_data[i].einheit,
-		    pcs_nval_data[i].speichern, pcs_nval_data[i].laden,
-		    pcs_nval_data[i].restart, pcs_nval_data[i].adapt_interpol,
-		    pcs_nval_data[i].vorgabe);
-}
-#endif  //#ifndef NEW_EQS //WW. 07.11.2008
 /**************************************************************************
    FEMLib-Method:
    Task:
@@ -4128,51 +3823,6 @@ int PCSGetNODValueIndex(const string& name, int timelevel)
 //////////////////////////////////////////////////////////////////////////
 // Configuration ELE
 //////////////////////////////////////////////////////////////////////////
-
-/*************************************************************************
-   ROCKFLOW - Function:
-   Task: Config element values
-   Programming: 02/2003 OK Implementation
-   last modified:
-   06/2004  WW
- **************************************************************************/
-void CRFProcess::ConfigELEValues1(void)
-{
-	int i;
-	if (pcs_number_of_evals)
-		pcs_eval_data =
-		    (PCS_EVAL_DATA*)Malloc(pcs_number_of_evals * sizeof(PCS_EVAL_DATA));
-	for (i = 0; i < pcs_number_of_evals; i++)
-	{
-		// pcs_eval_data[i] = (PCS_EVAL_DATA *) Malloc(sizeof(PCS_EVAL_DATA));
-		strcpy(pcs_eval_data[i].name, pcs_eval_name[i]);
-		strcpy(pcs_eval_data[i].einheit, pcs_eval_unit[i]);
-		pcs_eval_data[i].speichern = 1;
-		pcs_eval_data[i].laden = 0;
-		pcs_eval_data[i].restart = 1;
-		pcs_eval_data[i].adapt_interpol = 1;
-		pcs_eval_data[i].vorgabe = 0.0;
-		pcs_eval_data[i].index = anz_eval + i;
-		pcs_eval_data[i].eval_index = anz_eval + i;  // SB
-	}
-}
-
-/*************************************************************************
-   ROCKFLOW - Function:
-   Task: Config element values
-   Programming: 04/2003 OK Implementation
-   last modified:
- **************************************************************************/
-void CRFProcess::ConfigELEValues2(void)
-{
-	int i;
-	for (i = 0; i < pcs_number_of_evals; i++)
-		ModelsAddElementValInfoStructure(
-		    pcs_eval_data[i].name, pcs_eval_data[i].einheit,
-		    pcs_eval_data[i].speichern, pcs_eval_data[i].laden,
-		    pcs_eval_data[i].restart, pcs_eval_data[i].adapt_interpol,
-		    pcs_eval_data[i].vorgabe);
-}
 
 /*************************************************************************
    ROCKFLOW - Function: CRFProcess::PCSGetELEValueIndex
@@ -4335,12 +3985,6 @@ double CRFProcess::Execute()
 #endif
 #endif
 
-#ifdef USE_MPI  // WW
-	long global_eqs_dim =
-	    pcs_number_of_primary_nvals * m_msh->GetNodesNumber(false);
-	CPARDomain* dom = dom_vector[myrank];
-#endif
-
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
 	eqs_new->Initialize();
 #elif NEW_EQS  // WW
@@ -4446,19 +4090,8 @@ double CRFProcess::Execute()
 	// TEST 	double x_norm = eqs_new->GetVecNormX();
 	eqs_new->MappingSolution();
 #elif defined(NEW_EQS)  // WW
-#if defined(USE_MPI)
-	// 21.12.2007
-	iter_lin = dom->eqs->Solver(eqs_new->x, global_eqs_dim);
-#else
-#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
 	bool compress_eqs = (type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
 	iter_lin = eqs_new->Solver(this->m_num, compress_eqs);  // NW
-#else
-	iter_lin = eqs_new->Solver();
-#endif
-#endif
-#else
-	iter_lin = ExecuteLinearSolver();
 #endif
 	if (iter_lin == -1)
 	{
@@ -4466,12 +4099,8 @@ double CRFProcess::Execute()
 // abort
 #ifdef NEW_EQS  // WW
 		if (!configured_in_nonlinearloop)
-#if defined(USE_MPI)
-			dom->eqs->Clean();
-#else
 			// Also allocate temporary memory for linear solver. WW
 			eqs_new->Clean();
-#endif
 #endif
 		return -1;
 	}
@@ -4525,13 +4154,7 @@ double CRFProcess::Execute()
 #else
 #ifdef NEW_EQS  // WW
 		if (!configured_in_nonlinearloop)
-#if defined(USE_MPI)
-			dom->ConfigEQS(m_num, global_eqs_dim);
-#else
 			eqs_new->Initialize();
-#endif
-#else
-		SetZeroLinearSolver(eqs);
 #endif
 #endif
 
@@ -4575,25 +4198,7 @@ double CRFProcess::Execute()
 		eqs_new->Solver();
 		eqs_new->MappingSolution();
 #else
-#ifdef NEW_EQS  // WW
-#if defined(USE_MPI)
-		// 21.12.2007
-		dom->eqs->Solver(eqs_new->x, global_eqs_dim);
-#else
-#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
 		eqs_new->Solver(this->m_num);  // NW
-#else
-		eqs_new->Solver();
-// kg44 the next lines are for debug?
-//		string fname = FileName + "_equation_results.txt";
-//		ofstream dum(fname.c_str(), ios::out | ios::trunc);
-//		eqs_new->Write(dum);
-//		exit(1);
-#endif
-#endif
-#else  // ifdef NEW_EQS
-		ExecuteLinearSolver();
-#endif
 #endif  // USE_PETSC
 	}
 	//----------------------------------------------------------------------
@@ -5295,68 +4900,8 @@ void CRFProcess::GlobalAssembly()
 #endif
 	}
 
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	// DDC
-	if (dom_vector.size() > 0)
+
 	{
-		cout << "      Domain Decomposition" << '\n';
-		CPARDomain* m_dom = NULL;
-		size_t j = 0;
-#if defined(USE_MPI)  // WW
-		j = myrank;
-#else
-		for (j = 0; j < dom_vector.size(); j++)
-		{
-#endif
-		m_dom = dom_vector[j];
-#ifdef NEW_EQS
-		m_dom->InitialEQS(this);
-#else
-			SetLinearSolver(m_dom->eqs);
-			SetZeroLinearSolver(m_dom->eqs);
-#endif
-		for (size_t i = 0; i < m_dom->elements.size(); i++)
-		{
-			elem = m_msh->ele_vector[m_dom->elements[i]];
-			if (elem->GetMark())
-			{
-				elem->SetOrder(false);
-				// WW
-				fem->SetElementNodesDomain(m_dom->element_nodes_dom[i]);
-				fem->ConfigElement(elem, Check2D3D);
-				fem->m_dom = m_dom;  // OK
-				fem->Assembly();
-			}
-		}
-		// m_dom->WriteMatrix();
-		// MXDumpGLS("rf_pcs.txt",1,m_dom->eqs->b,m_dom->eqs->x);
-		// ofstream Dum("rf_pcs.txt", ios::out); // WW
-		// m_dom->eqs->Write(Dum);
-		// Dum.close();
-		IncorporateSourceTerms(j);
-		if (m_num->nls_method != FiniteElement::NL_JFNK)  // 06.09.2010. WW
-			IncorporateBoundaryConditions(j);
-/*
-   //TEST
-   string test = "rank";
-   char stro[64];
-   sprintf(stro, "%d",j);
-   string test1 = test+(string)stro+"Assemble.txt";
-   ofstream Dum(test1.c_str(), ios::out);
-   m_dom->eqs->Write(Dum);
-   Dum.close();
-   exit(1);
- */
-#ifndef USE_MPI
-	}
-	// Assemble global system
-	DDCAssembleGlobalMatrix();
-#endif
-}
-else
-#endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
-// WW
-{  // STD
 	const size_t dn = m_msh->ele_vector.size() / 10;
 	const bool print_progress = (dn >= 100);
 	if (print_progress)
@@ -5481,11 +5026,6 @@ else
 			// IncorporateSourceTerms_GEMS();
 		}
 	}
-#endif
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && !defined(other parallel libs)//03~04.3012. WW
-	//#ifndef NEW_EQS                             //WW. 07.11.2008
-	SetCPL();  // OK
 #endif
 
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012.
@@ -5749,185 +5289,6 @@ void CRFProcess::AllocateLocalMatrixMemory()
 	}
 }
 
-/*************************************************************************
-   FEMLib function
-   Task: Assemble global system matrix
-   Programming:
-   05/2003 OK Implementation
-   ??/???? WW Moved from AssembleSystemMatrixNew
-   05/2006 WW Modified to enable dealing with the case of DOF>1
-   06/2006 WW Take the advantege of sparse matrix to enhance simulation
-   10/2007 WW Change for the new classes of sparse matrix and linear solver
- **************************************************************************/
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-void CRFProcess::DDCAssembleGlobalMatrix()
-{
-	int ii, jj, dof;
-	long i, j, j0, ig, jg, ncol;
-	CPARDomain* m_dom = NULL;
-	long* nodes2node = NULL;  // WW
-	double* rhs = NULL, * rhs_dom = NULL;
-	double a_ij;
-	double b_i = 0.0;
-	b_i = b_i;  // OK411
-	int no_domains = (int)dom_vector.size();
-	long no_dom_nodes;
-	dof = pcs_number_of_primary_nvals;  // WW
-	ncol = 0;                           // WW
-#ifndef USE_MPI
-	int k;
-	for (k = 0; k < no_domains; k++)
-	{
-		m_dom = dom_vector[k];
-#else
-		m_dom = dom_vector[myrank];
-#endif
-// RHS
-#if defined(NEW_EQS)
-		rhs = eqs_new->b;
-		if (type == 4)
-			rhs_dom = m_dom->eqsH->b;
-		else
-			rhs_dom = m_dom->eqs->b;
-#else
-		rhs = eqs->b;
-		rhs_dom = m_dom->eqs->b;
-#endif
-
-		no_dom_nodes = m_dom->nnodes_dom;                                 // WW
-		if (type == 4 || type == 41) no_dom_nodes = m_dom->nnodesHQ_dom;  // WW
-		if (type == 41) dof--;
-		for (i = 0; i < no_dom_nodes; i++)
-		{
-			//------------------------------------------
-			// Use the feature of sparse matrix of FEM
-			// WW
-			ig = m_dom->nodes[i];
-			ncol = m_dom->num_nodes2_node[i];
-			nodes2node = m_dom->node_conneted_nodes[i];
-			for (j0 = 0; j0 < ncol; j0++)
-			{
-				j = nodes2node[j0];
-				if (j >= no_dom_nodes) continue;
-				jg = m_dom->nodes[j];
-				//------------------------------------------
-				// DOF loop ---------------------------WW
-				for (ii = 0; ii < dof; ii++)
-				{
-					for (jj = 0; jj < dof; jj++)
-					{
-// get domain system matrix
-#ifdef NEW_EQS  // WW
-						if (type == 4)
-							a_ij = (*m_dom->eqsH->A)(i + no_dom_nodes * ii,
-							                         j + no_dom_nodes * jj);
-						else
-							a_ij = (*m_dom->eqs->A)(i + no_dom_nodes * ii,
-							                        j + no_dom_nodes * jj);
-						(*eqs_new->A)(ig + Shift[ii], jg + Shift[jj]) += a_ij;
-#else  // ifdef  NEW_EQS
-						SetLinearSolver(m_dom->eqs);
-						a_ij =
-						    MXGet(i + no_dom_nodes * ii, j + no_dom_nodes * jj);
-						// set global system matrix
-						SetLinearSolver(eqs);
-						MXInc(ig + Shift[ii], jg + Shift[jj], a_ij);
-#endif
-					}
-				}
-				// DOF loop ---------------------------WW
-			}
-			// set global RHS vector //OK
-			for (ii = 0; ii < dof; ii++)  // WW
-				rhs[ig + Shift[ii]] += rhs_dom[i + no_dom_nodes * ii];
-		}
-
-		// Mono HM------------------------------------WW
-		if (type != 41)
-#ifndef USE_MPI
-			continue;
-#else
-			return;
-#endif
-		no_dom_nodes = m_dom->nnodes_dom;
-		long no_dom_nodesHQ = m_dom->nnodesHQ_dom;
-		double a_ji = 0.0;
-		for (i = 0; i < no_dom_nodes; i++)
-		{
-			ig = m_dom->nodes[i];  // WW
-			ncol = m_dom->num_nodes2_node[i];
-			nodes2node = m_dom->node_conneted_nodes[i];
-			for (j0 = 0; j0 < ncol; j0++)
-			{
-				j = nodes2node[j0];
-				jg = m_dom->nodes[j];
-				for (ii = 0; ii < dof; ii++)  // ww
-				{
-#if defined(NEW_EQS)
-					// dom to global. WW
-					a_ij = (*m_dom->eqsH->A)(i + no_dom_nodesHQ * dof,
-					                         j + no_dom_nodesHQ * ii);
-					a_ji = (*m_dom->eqsH->A)(j + no_dom_nodesHQ * ii,
-					                         i + no_dom_nodesHQ * dof);
-					(*eqs_new->A)(ig + Shift[ii],
-					              jg + Shift[problem_dimension_dm]) += a_ij;
-					(*eqs_new->A)(jg + Shift[problem_dimension_dm],
-					              ig + Shift[ii]) += a_ji;
-#else  // if defined(NEW_EQS)
-					// get domain system matrix
-					SetLinearSolver(m_dom->eqs);
-					a_ij = MXGet(i + no_dom_nodesHQ * dof,
-					             j + no_dom_nodesHQ * ii);
-					a_ji = MXGet(j + no_dom_nodesHQ * ii,
-					             i + no_dom_nodesHQ * dof);
-					// set global system matrix
-					SetLinearSolver(eqs);
-					MXInc(ig + Shift[ii], jg + Shift[problem_dimension_dm],
-					      a_ij);
-					MXInc(jg + Shift[problem_dimension_dm], ig + Shift[ii],
-					      a_ji);
-#endif
-				}
-			}
-		}
-		for (i = 0; i < no_dom_nodes; i++)
-		{
-			ig = m_dom->nodes[i];
-			ncol = m_dom->num_nodes2_node[i];
-			nodes2node = m_dom->node_conneted_nodes[i];
-			for (j0 = 0; j0 < ncol; j0++)
-			{
-				j = nodes2node[j0];
-				jg = m_dom->nodes[j];
-				if (jg >= no_dom_nodes) continue;
-// get domain system matrix
-#if defined(NEW_EQS)
-				// dom to global. WW
-				a_ij = (*m_dom->eqsH->A)(i + no_dom_nodesHQ * dof,
-				                         j + no_dom_nodesHQ * dof);
-				(*eqs_new->A)(ig + Shift[problem_dimension_dm],
-				              jg + Shift[problem_dimension_dm]) += a_ij;
-#else
-				SetLinearSolver(m_dom->eqs);
-				a_ij =
-				    MXGet(i + no_dom_nodesHQ * dof, j + no_dom_nodesHQ * dof);
-				// set global system matrix
-				SetLinearSolver(eqs);
-				MXInc(ig + Shift[problem_dimension_dm],
-				      jg + Shift[problem_dimension_dm], a_ij);
-#endif
-			}
-			//
-			rhs[ig + Shift[problem_dimension_dm]] +=
-			    rhs_dom[i + no_dom_nodesHQ * dof];
-		}
-// Mono HM------------------------------------WW
-#ifndef USE_MPI
-	}
-#endif
-}
-#endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
-// WW
 
 /*************************************************************************
    ROCKFLOW - Function:
@@ -5966,231 +5327,12 @@ void CRFProcess::AssembleSystemMatrixNew(void)
 			    "specified");
 			abort();
 	}
-#ifdef PARALLEL
-	DDCAssembleGlobalMatrix();
-#else
 	IncorporateSourceTerms();
 	IncorporateBoundaryConditions();
-#endif
 	// SetLinearSolver(eqs);
 	// MXDumpGLS("global_matrix_dd.txt",1,eqs->b,eqs->x);
 }
 
-/**************************************************************************
-   FEMLib-Method: CRFProcess::IncorporateBoundaryConditions
-   Task: set PCS boundary conditions
-   Programing:
-   05/2006 WW Implementation
-**************************************************************************/
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-void CRFProcess::SetBoundaryConditionSubDomain()
-{
-	int k;
-	long i, j;
-	CPARDomain* m_dom = NULL;
-	CBoundaryConditionNode* m_bc_nv = NULL;
-	CNodeValue* m_st_nv = NULL;
-#if 0  // ndef USE_MPI
-		//
-		for(k = 0; k < (int)dom_vector.size(); k++)
-		{
-			m_dom = dom_vector[k];
-			// BC
-			for(i = 0; i < (long)bc_node_value.size(); i++)
-			{
-				m_bc_nv = bc_node_value[i];
-				for(j = 0; j < (long)m_dom->nodes.size(); j++)
-					if(m_bc_nv->geo_node_number == m_dom->nodes[j])
-					{
-						bc_node_value_in_dom.push_back(i);
-						bc_local_index_in_dom.push_back(j);
-						break;
-					}
-			}
-			rank_bc_node_value_in_dom.push_back((long)bc_node_value_in_dom.size());
-			// ST
-			for(i = 0; i < (long)st_node_value.size(); i++)
-			{
-				for(size_t ii = 0; ii < st_node_value[i].size(); ii++)
-				{
-					m_st_nv = st_node_value[i][ii];
-					for(j = 0; j < (long)m_dom->nodes.size(); j++)
-						if(m_st_nv->geo_node_number == m_dom->nodes[j])
-						{
-							st_node_value_in_dom.push_back(ii);
-							st_local_index_in_dom.push_back(j);
-							break;
-						}
-				}
-			}
-			rank_st_node_value_in_dom.push_back((long)st_node_value_in_dom.size());
-		}
-		long Size = (long)st_node_value.size();
-		long l_index;
-		for(i = 0; i < Size; i++)
-		{
-			for(size_t ii = 0; ii < st_node_value[i].size(); ii++)
-			{
-				l_index = st_node_value[i][ii]->geo_node_number;
-				st_node_value[i][ii]->node_value /= (double)node_connected_doms[l_index];
-			}
-		}
-#else
-		//
-		// m_dom = dom_vector[myrank];
-		const long n_bc_node_value = (long)bc_node_value.size();
-		std::cout << "-> n_bc_node_value = " << n_bc_node_value << "\n";
-		const long n_st_node_value = (long)st_node_value.size();
-		std::cout << "-> n_st_node_value = " << n_st_node_value << "\n";
-#ifndef USE_MPI
-		for (k = 0; k < (int)dom_vector.size(); k++)
-		{
-			m_dom = dom_vector[k];
-#else
-		m_dom = dom_vector[myrank];
-#endif
-			const long n_dom_nodes = (long)m_dom->nodes.size();
-			std::cout << "-> " << k
-			          << " th domain: n_dom_nodes = " << n_dom_nodes << "\n";
-			std::vector<long> list_sorted_dom_nodes(m_dom->nodes);
-			std::sort(list_sorted_dom_nodes.begin(),
-			          list_sorted_dom_nodes.end());
-			std::vector<long> map_sorted2original(m_dom->nodes.size());
-			for (i = 0; i < n_dom_nodes; i++)
-			{
-				std::vector<long>::iterator itr = std::lower_bound(
-				    list_sorted_dom_nodes.begin(), list_sorted_dom_nodes.end(),
-				    m_dom->nodes[i]);
-				size_t new_pos = itr - list_sorted_dom_nodes.begin();
-				map_sorted2original[new_pos] = i;
-			}
-// BC
-#ifdef USE_MPI
-			rank_bc_node_value_in_dom.resize(mysize);
-#endif
-			std::cout << "-> looking for domain BC nodes"
-			          << "\n";
-			for (i = 0; i < n_bc_node_value; i++)
-			{
-				m_bc_nv = bc_node_value[i];
-
-				std::vector<long>::iterator itr = std::lower_bound(
-				    list_sorted_dom_nodes.begin(), list_sorted_dom_nodes.end(),
-				    m_bc_nv->geo_node_number);
-				if (itr == list_sorted_dom_nodes.end() ||
-				    *itr != m_bc_nv->geo_node_number)
-					continue;
-				size_t pos_in_sorted = itr - list_sorted_dom_nodes.begin();
-				long pos_in_org = map_sorted2original[pos_in_sorted];
-				bc_node_value_in_dom.push_back(i);
-				bc_local_index_in_dom.push_back(pos_in_org);
-			}
-#ifdef USE_MPI
-			rank_bc_node_value_in_dom[myrank] =
-			    (long)bc_node_value_in_dom.size();
-#else
-		rank_bc_node_value_in_dom.push_back((long)bc_node_value_in_dom.size());
-#endif
-// ST
-#ifdef USE_MPI
-			rank_st_node_value_in_dom.resize(mysize);
-#endif
-			std::cout << "-> looking for domain ST nodes"
-			          << "\n";
-			for (i = 0; i < (long)st_node_value.size(); i++)
-			{
-				for (size_t ii = 0; ii < st_node_value[i].size(); ii++)
-				{
-					m_st_nv = st_node_value[i][ii];
-					std::vector<long>::iterator itr = std::lower_bound(
-					    list_sorted_dom_nodes.begin(),
-					    list_sorted_dom_nodes.end(), m_st_nv->geo_node_number);
-					if (itr == list_sorted_dom_nodes.end() ||
-					    *itr != m_st_nv->geo_node_number)
-						continue;
-					size_t pos_in_sorted = itr - list_sorted_dom_nodes.begin();
-					long pos_in_org = map_sorted2original[pos_in_sorted];
-					st_node_value_in_dom.push_back(i);
-					st_local_index_in_dom.push_back(pos_in_org);
-				}
-			}
-#ifdef USE_MPI
-			rank_st_node_value_in_dom[myrank] =
-			    (long)st_node_value_in_dom.size();
-#else
-		rank_st_node_value_in_dom.push_back((long)st_node_value_in_dom.size());
-#endif
-#ifndef USE_MPI
-		}
-#endif
-
-		for (i = 0; i < (long)st_node_value.size(); i++)
-		{
-			for (size_t ii = 0; ii < st_node_value[i].size(); ii++)
-			{
-				m_st_nv = st_node_value[i][ii];
-				long l_index = m_st_nv->geo_node_number;
-				m_st_nv->node_value /= (double)node_connected_doms[l_index];
-			}
-		}
-#endif
-}
-
-/**************************************************************************
-   FEMLib-Method: CRFProcess::SetSTWaterGemSubDomain
-   Task: set source/sink terms for GEMS-flow coupling
-   Programing:
-   05/2006 WW Implementation
-   03/2010 KG44 modified to GEM
-**************************************************************************/
-void CRFProcess::SetSTWaterGemSubDomain(int myrank)
-{
-	int k;
-	long i, j;  // WW, dsize=0;
-	CPARDomain* m_dom = NULL;
-	long int m_stgem_nv = -1;
-	//
-	long Size = (long)Water_ST_vec.size();
-	long l_index = -1;
-
-	//	cout << "dom_vec_size: " << dom_vector.size() << endl;
-	//	for ( k=0;k< ( int ) dom_vector.size();k++ )
-	//	{
-	k = myrank;  // do it for each domain only once!
-	m_dom = dom_vector[k];
-	// WW dsize=(long) m_dom->nodes.size();
-	// ST
-	for (i = 0; i < Size; i++)
-	{
-		m_stgem_nv = Water_ST_vec[i].index_node;
-		for (j = 0; j < (long)m_dom->nodes.size(); j++)
-			if (m_stgem_nv == m_dom->nodes[j])
-			{
-				// index for Water_ST_vec
-				stgem_node_value_in_dom.push_back(i);
-				// index for RHS
-				stgem_local_index_in_dom.push_back(j);
-				//	cout << "dom " << k <<  " i, j " << i << " " << j   << endl;
-			}
-	}
-	// only one element per domain!
-	rank_stgem_node_value_in_dom.push_back(
-	    (long)stgem_node_value_in_dom.size());
-	//	cout << "dom " << k <<  " rank_stgem_node_value_in_dom " << (long)
-	// rank_stgem_node_value_in_dom[0]  << endl;
-
-	//	}
-
-	for (i = 0; i < Size; i++)
-	{
-		l_index = Water_ST_vec[i].index_node;
-		// cout << i << " " << node_connected_doms[l_index] << " " << endl;
-		// values for shared nodes are scaled
-		Water_ST_vec[i].water_st_value /= (double)node_connected_doms[l_index];
-	}
-}
-
-#endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
 // WW
 /**************************************************************************
    FEMLib-Method: CRFProcess::IncorporateBoundaryConditions
@@ -6233,21 +5375,12 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 	vector<vector<double> > dof_node_value(this->GetPrimaryVNumber());
 #else
 	double* eqs_rhs = NULL;
-	CPARDomain* m_dom = NULL;
 #endif
 //
 #ifdef NEW_EQS
 	Linear_EQS* eqs_p = NULL;
 #endif
 //------------------------------------------------------------WW
-#ifdef JFNK_H2M
-	if (m_num->nls_method == 2 && BC_JFNK.size() > 0)  // 29.10.2010. WW
-		return;
-
-	/// For JFNK
-	bool bc_inre_flag = false;
-	double bc_init_value = 0.;
-#endif
 
 	// WW
 	double Scaling = 1.0;
@@ -6278,29 +5411,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 #endif
 #endif
 	}
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
-	else
-	{
-		m_dom = dom_vector[rank];
-#ifdef NEW_EQS
-		eqs_p = m_dom->eqs;
-		if (type == 4)  // WW
-		{
-			eqs_p = m_dom->eqsH;
-			eqs_rhs = m_dom->eqsH->b;
-		}
-		else
-			eqs_rhs = m_dom->eqs->b;
-#else
-			eqs_rhs = m_dom->eqs->b;
-#endif
-		if (rank == 0)
-			begin = 0;
-		else
-			begin = rank_bc_node_value_in_dom[rank - 1];
-		end = rank_bc_node_value_in_dom[rank];
-	}
-#endif  // END: #if !defined(USE_PETSC) // && !defined(other parallel libs)
 	size_t count_constrained_excluded = 0;
 
 	for (i = begin; i < end; i++)
@@ -6422,26 +5532,7 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 
 #else
 		shift = m_bc_node->msh_node_number - m_bc_node->geo_node_number;
-		if (rank > -1)
-		{
-			bc_msh_node = bc_local_index_in_dom[i];
-			int dim_space = 0;
-			if (shift == 0)
-				// 15.4.2008 WW
-				// if(m_msh->NodesNumber_Linear==m_msh->NodesNumber_Quadratic)
-				dim_space = 0;
-			else
-			{
-				// 02.2010. WW
-				if (type == 4 || type / 10 == 4)
-					dim_space = shift / m_msh->NodesNumber_Quadratic;
-				else
-					dim_space = shift / m_msh->NodesNumber_Linear;
-			}
-			shift = m_dom->shift[dim_space];
-		}
-		else
-			bc_msh_node = m_bc_node->geo_node_number;
+		bc_msh_node = m_bc_node->geo_node_number;
 #endif  // END: if defined(USE_PETSC) // || defined(other parallel libs
 		//------------------------------------------------------------WW
 		if (m_msh)  // OK
@@ -6567,17 +5658,9 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 						SetNodeValue(m_bc_node->geo_node_number, idx0,
 						             bc_value);
 
-#ifdef JFNK_H2M
-					bc_inre_flag = false;
-					bc_init_value = 0.;
-#endif
 				}
 				else
 				{
-#ifdef JFNK_H2M
-					bc_inre_flag = true;
-					bc_init_value = bc_value;
-#endif
 					/// if JFNK and if the first Newton step. 11.11.2010. WW
 					// if(m_num->nls_method==2&&ite_steps==1) /// JFNK
 					/// p_{n+1} = p_b,
@@ -6605,23 +5688,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 			bc_eqs_index += shift;
 #endif
 
-#ifdef JFNK_H2M
-			/// If JFNK method (09.2010. WW):
-			if (m_num->nls_method == 2)
-			{
-				bc_JFNK new_bc_entry;
-				new_bc_entry.var_idx = idx0 + 1;
-				new_bc_entry.bc_node = m_bc_node->geo_node_number;
-				new_bc_entry.bc_eqs_idx = bc_eqs_index;
-				new_bc_entry.bc_value = bc_value;
-
-				new_bc_entry.incremental = bc_inre_flag;
-				new_bc_entry.bc_value0 = bc_init_value;
-				BC_JFNK.push_back(new_bc_entry);
-			}
-			else
-			{
-#endif
 				//----------------------------------------------------------------
 				//----------------------------------------------------------------
 				/* // Make the follows as comment by WW. 04.03.2008
@@ -6673,9 +5739,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 			eqs_p->SetKnownX_i(bc_eqs_index, bc_value);
 #else
 			MXRandbed(bc_eqs_index, bc_value, eqs_rhs);
-#endif
-#ifdef JFNK_H2M
-			}
 #endif
 		}
 	}
@@ -6828,9 +5891,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, const int axis)
 	int idx0, idx1;
 	CBoundaryConditionNode* m_bc_node;  // WW
 	CBoundaryCondition* m_bc;           // WW
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	CPARDomain* m_dom = NULL;
-#endif
 
 	CFunction* m_fct = NULL;  // OK
 	bool is_valid = false;    // OK
@@ -6872,29 +5932,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, const int axis)
 #endif
 #endif
 	}
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
-	else
-	{
-		m_dom = dom_vector[rank];
-#ifdef NEW_EQS
-		eqs_p = m_dom->eqs;
-		if (type == 4)  // WW
-		{
-			eqs_p = m_dom->eqsH;
-			eqs_rhs = m_dom->eqsH->b;
-		}
-		else
-			eqs_rhs = m_dom->eqs->b;
-#else
-			eqs_rhs = m_dom->eqs->b;
-#endif
-		if (rank == 0)
-			begin = 0;
-		else
-			begin = rank_bc_node_value_in_dom[rank - 1];
-		end = rank_bc_node_value_in_dom[rank];
-	}
-#endif  // END: !defined(USE_PETSC) // && !defined(other parallel libs)/
 	for (i = begin; i < end; i++)
 	{
 		gindex = i;
@@ -6914,24 +5951,7 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, const int axis)
 
 #else
 			shift = m_bc_node->msh_node_number - m_bc_node->geo_node_number;
-			//
-			if (rank > -1)
-			{
-				bc_msh_node = bc_local_index_in_dom[i];
-				int dim_space = 0;
-				if (m_msh->NodesNumber_Linear == m_msh->NodesNumber_Quadratic)
-					dim_space = 0;
-				else
-				{
-					if (shift % m_msh->NodesNumber_Quadratic == 0)
-						dim_space = shift / m_msh->NodesNumber_Quadratic;
-					else
-						dim_space = m_msh->msh_max_dim;
-				}
-				shift = m_dom->shift[dim_space];
-			}
-			else
-				bc_msh_node = m_bc_node->geo_node_number;
+			bc_msh_node = m_bc_node->geo_node_number;
 #endif
 			//------------------------------------------------------------WW
 			if (m_msh)  // OK
@@ -7037,26 +6057,7 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, const int axis)
 		{
 			m_bc = bc_node[gindex];
 			shift = m_bc_node->msh_node_number - m_bc_node->geo_node_number;
-//
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-			if (rank > -1)
-			{
-				bc_msh_node = bc_local_index_in_dom[i];
-				int dim_space = 0;
-				if (m_msh->NodesNumber_Linear == m_msh->NodesNumber_Quadratic)
-					dim_space = 0;
-				else
-				{
-					if (shift % m_msh->NodesNumber_Quadratic == 0)
-						dim_space = shift / m_msh->NodesNumber_Quadratic;
-					else
-						dim_space = m_msh->msh_max_dim;
-				}
-				shift = m_dom->shift[dim_space];
-			}
-			else
-#endif
-				bc_msh_node = m_bc_node->geo_node_number;
+			bc_msh_node = m_bc_node->geo_node_number;
 			//------------------------------------------------------------WW
 			if (m_msh)  // OK
 				//			if(!m_msh->nod_vector[bc_msh_node]->GetMark()) //WW
@@ -7157,26 +6158,7 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, const int axis)
 		{
 			m_bc = bc_node[gindex];
 			shift = m_bc_node->msh_node_number - m_bc_node->geo_node_number;
-//
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-			if (rank > -1)
-			{
-				bc_msh_node = bc_local_index_in_dom[i];
-				int dim_space = 0;
-				if (m_msh->NodesNumber_Linear == m_msh->NodesNumber_Quadratic)
-					dim_space = 0;
-				else
-				{
-					if (shift % m_msh->NodesNumber_Quadratic == 0)
-						dim_space = shift / m_msh->NodesNumber_Quadratic;
-					else
-						dim_space = m_msh->msh_max_dim;
-				}
-				shift = m_dom->shift[dim_space];
-			}
-			else
-#endif
-				bc_msh_node = m_bc_node->geo_node_number;
+			bc_msh_node = m_bc_node->geo_node_number;
 			//------------------------------------------------------------WW
 			if (m_msh)  // OK
 				//			if(!m_msh->nod_vector[bc_msh_node]->GetMark()) //WW
@@ -7321,7 +6303,6 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 	vector<vector<int> > dof_node_id(this->GetPrimaryVNumber());
 	vector<vector<double> > dof_node_value(this->GetPrimaryVNumber());
 #else
-	CPARDomain* m_dom = NULL;
 	double* eqs_rhs = NULL;
 	long bc_eqs_index = -1;
 	int dim_space = 0;  // kg44 better define here and not in a loop!
@@ -7375,33 +6356,10 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 		{
 			begin = 0;
 			end = (long)st_node_value[is].size();
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
-#ifdef NEW_EQS           // WW
-			eqs_rhs = eqs_new->b;  // 27.11.2007 WW
-#else
-				eqs_rhs = eqs->b;
-#endif
-#endif
-		}
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
-		else
-		{
-			m_dom = dom_vector[rank];
 #ifdef NEW_EQS
-			if (type == 4)
-				eqs_rhs = m_dom->eqsH->b;
-			else
-				eqs_rhs = m_dom->eqs->b;
-#else
-				eqs_rhs = m_dom->eqs->b;
+			eqs_rhs = eqs_new->b;
 #endif
-			if (rank == 0)
-				begin = 0;
-			else
-				begin = rank_st_node_value_in_dom[rank - 1];
-			end = rank_st_node_value_in_dom[rank];
 		}
-#endif  // END: #if !defined(USE_PETSC) // && !defined(other parallel libs)
 		std::vector<bool> active_elements;
 
 		// constrain
@@ -7585,26 +6543,8 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 
 #else
 			shift = cnodev->msh_node_number - cnodev->geo_node_number;
-			if (rank > -1)
-			{
-				msh_node = st_local_index_in_dom[i];
-				dim_space = 0;
-				if (m_msh->NodesNumber_Linear == m_msh->NodesNumber_Quadratic)
-					dim_space = 0;
-				else
-				{
-					if (shift % m_msh->NodesNumber_Quadratic == 0)
-						dim_space = shift / m_msh->NodesNumber_Quadratic;
-					else
-						dim_space = m_msh->msh_max_dim;
-				}
-				shift = m_dom->shift[dim_space];
-			}
-			else
-			{
-				msh_node = cnodev->msh_node_number;
-				msh_node -= shift;
-			}
+			msh_node = cnodev->msh_node_number;
+			msh_node -= shift;
 #endif
 			value = cnodev->node_value;
 			//--------------------------------------------------------------------
@@ -7874,119 +6814,6 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 #endif
 }
 
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // || defined(other parallel libs)//03~04.3012.
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   02/2004 OK Implementation
-   11/2004 OK NUM
-   07/2006 WW Parallel BiCGStab
-   last modification:
-**************************************************************************/
-int CRFProcess::ExecuteLinearSolver(void)
-{
-	long iter_count = 0;
-	long iter_sum = 0;
-	// WW  int found = 0;
-	//-----------------------------------------------------------------------
-	// Set EQS
-	// cout << "Before SetLinearSolver(eqs) myrank = "<< myrank<< '\n';
-	SetLinearSolver(eqs);
-	//--------------------------------------------------------------------
-	// NUM
-	// WW  found = 1;
-	cg_maxiter = m_num->ls_max_iterations;  // OK lsp->maxiter;
-	cg_eps = m_num->ls_error_tolerance;     // OK lsp->eps;
-	// cg_repeat = lsp->repeat;
-	vorkond = m_num->ls_precond;                 // OK lsp->precond;
-	linear_error_type = m_num->ls_error_method;  // OK lsp->criterium;
-
-//  cout << "Before eqs->LinearSolver(eqs) myrank = "<< myrank<< '\n';
-
-#ifdef USE_MPI
-	// WW
-	long dim_eqs = 0;
-	if (type == 41 || type == 4)  // DOF >1
-	{
-		dom_vector[myrank]->quadratic = true;
-		if (type == 4)
-			dim_eqs = pcs_number_of_primary_nvals * m_msh->GetNodesNumber(true);
-		else if (type == 41)
-			dim_eqs =
-			    pcs_number_of_primary_nvals * m_msh->GetNodesNumber(true) +
-			    m_msh->GetNodesNumber(false);
-	}
-	else
-	{
-		dom_vector[myrank]->quadratic = false;
-		dim_eqs = m_msh->GetNodesNumber(false);
-	}
-	iter_count = SpBICGSTAB_Parallel(dom_vector[myrank], eqs->x, dim_eqs);
-#else  // ifdef USE_MPI
-		iter_count = eqs->LinearSolver(eqs->b, eqs->x, eqs->dim);
-#endif
-
-	eqs->master_iter = iter_count;
-	if (iter_count >= cg_maxiter)
-	{
-		cout << "Warning in CRFProcess::ExecuteLinearSolver() - Maximum "
-		        "iteration number reached" << endl;
-		return -1;
-	}
-	iter_sum += iter_count;
-	//-----------------------------------------------------------------------
-	// Clean results ?
-	/*
-	   for (i=0;i<eqs->dim;i++)
-	    if (fabs(eqs->x[i])<MKleinsteZahl)
-	      eqs->x[i] = 0.0;
-	 */
-	//-----------------------------------------------------------------------
-	return iter_sum;
-}
-#endif
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   06/2005 PCH Overriding
-   last modification:
-**************************************************************************/
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-//#ifndef NEW_EQS                                   //WW 07.11.2008
-int CRFProcess::ExecuteLinearSolver(LINEAR_SOLVER* eqs)
-{
-	long iter_count;
-	long iter_sum = 0;
-	// WW int found = 0;
-	//-----------------------------------------------------------------------
-	// Set EQS
-	SetLinearSolver(eqs);
-	//--------------------------------------------------------------------
-	// NUM
-	// WW found = 1;
-	cg_maxiter = m_num->ls_max_iterations;  // OK lsp->maxiter;
-	cg_eps = m_num->ls_error_tolerance;     // OK lsp->eps;
-	// cg_repeat = lsp->repeat;
-	vorkond = m_num->ls_precond;                 // OK lsp->precond;
-	linear_error_type = m_num->ls_error_method;  // OK lsp->criterium;
-
-	iter_count = eqs->LinearSolver(eqs->b, eqs->x, eqs->dim);
-	eqs->master_iter = iter_count;
-	if (iter_count >= cg_maxiter)
-	{
-		cout << "Warning in CRFProcess::ExecuteLinearSolver() - Maximum "
-		        "iteration number reached" << endl;
-		return -1;
-	}
-	iter_sum += iter_count;
-	//-----------------------------------------------------------------------
-	return iter_sum;
-}
-#endif
 // WW
 int CRFProcess::GetNODValueIndex(const string& name, int timelevel)
 {
@@ -8012,34 +6839,6 @@ int CRFProcess::GetNODValueIndex(const string& name, int timelevel)
    -------------------------------------------------------------------------*/
 void PCSRestart()
 {
-	/*OK411
-	   int j;
-	   CRFProcess *m_pcs = NULL;
-	   int nidx0,nidx1;
-	   int i;
-	   int no_processes =(int)pcs_vector.size();
-	   if(no_processes==0)
-	    return; //OK41
-	   int ok = 0;
-	   //----------------------------------------------------------------------
-	   string file_name_base = pcs_vector[0]->file_name_base;
-	   //OK  ok = ReadRFRRestartData(file_name_base);
-	   if(ok==0){
-	   cout << "RFR: no restart data" << endl;
-	   return;
-	   }
-	   //----------------------------------------------------------------------
-	   for(i=0;i<no_processes;i++){
-	   m_pcs = pcs_vector[i];
-	   for(j=0;j<m_pcs->GetPrimaryVNumber();j++) {
-	   // timelevel=0;
-	   nidx0 = m_pcs->GetNodeValueIndex(m_pcs->GetPrimaryVName(j));
-	   // timelevel= 1;
-	   nidx1 = nidx0+1;
-	   CopyNodeVals(nidx1,nidx0);
-	   }
-	   }
-	 */
 }
 
 /**************************************************************************
@@ -8482,40 +7281,6 @@ string GetPFNamebyCPName(string inname)
 
 //========================================================================
 // OK former model functions
-int GetRFControlGridAdapt(void)
-{
-	// OK  return (get_rfcp_adaptive_mesh_refinement_flag(rfcp));
-	if (show_onces_adp) cout << "GetRFControlGridAdapt - to be removed" << endl;
-	show_onces_adp = false;
-	return 0;
-}
-
-int GetRFControlModel(void)
-{
-	if (show_onces_mod) cout << "GetRFControlModel - to be removed" << endl;
-	show_onces_mod = false;
-	return -1;
-}
-
-int GetRFProcessChemicalModel(void)
-{
-	cout << "GetRFProcessChemicalModel - to be removed" << endl;
-	return 0;
-}
-
-int GetRFProcessFlowModel(void)
-{
-	if (show_onces_mod_flow)
-		cout << "GetRFProcessFlowModel - to be removed" << endl;
-	show_onces_mod_flow = false;
-	return 0;
-}
-
-int GetRFProcessHeatReactModel(void)
-{
-	cout << "GetRFProcessHeatReactModel - to be removed" << endl;
-	return 0;
-}
 
 int GetRFProcessNumPhases(void)
 {
@@ -8524,29 +7289,6 @@ int GetRFProcessNumPhases(void)
 	return no_phases;
 }
 
-int GetRFProcessProcessing(char* rfpp_type)
-{
-	bool pcs_flow = false;
-	bool pcs_deform = false;
-	CRFProcess* m_pcs = NULL;
-	size_t no_processes = pcs_vector.size();
-	for (size_t i = 0; i < no_processes; i++)
-	{
-		m_pcs = pcs_vector[i];
-		//		if (m_pcs->_pcs_type_name.find("DEFORMATION") != string::npos)
-		if (isDeformationProcess(m_pcs->getProcessType())) pcs_deform = true;
-		//		if (m_pcs->_pcs_type_name.find("FLOW") != string::npos)
-		if (isFlowProcess(m_pcs->getProcessType())) pcs_flow = true;
-	}
-
-	if (strcmp(rfpp_type, "SD") == 0)
-	{
-		if (pcs_flow && pcs_deform) return 1;
-	}
-	else
-		cout << "GetRFProcessProcessing - to be removed" << endl;
-	return 0;
-}
 
 long GetRFProcessNumComponents(void)
 {
@@ -8555,128 +7297,6 @@ long GetRFProcessNumComponents(void)
 	return no_components;
 }
 
-
-/**************************************************************************
-   ROCKFLOW - Funktion: ModelsAddNodeValInfoStructure
-
-   Aufgabe:
-   Fuellt die Knotendaten-Infostruktur mit den zugehoerigen Modelldaten.
-   Wird vom Modell der Reihe nach fuer jede Knotengroesse aufgerufen.
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E:char *name         :Name der Knotengroesse fuer Ergebnisdatei
-   E:char *einheit      :Name der phys. Einheit fuer Ergebnisdatei
-   E:int speichern      :Werte sollen gespeichert werden (0/1)
-   E:int laden          :Werte sollen geladen werden falls vorhanden (0/1)
-   E:int restart        :Werte sollen bei Restart geladen werden (0/1)
-   E:int adapt_interpol :Werte sollen beim verfeinern auf Kinder interpoliert
-(0/1)
-   E:double vorgabe     :Vorgabe falls keine Restartdaten oder
-Anfangsbedingungen vorhanden sind
-
-   Ergebnis:
-   Knotenindex der gerade vergeben wurde
-
-   Programmaenderungen:
-   09/2000   CT    Erste Version
-
-**************************************************************************/
-int ModelsAddNodeValInfoStructure(char* name,
-                                  char* einheit,
-                                  int speichern,
-                                  int laden,
-                                  int restart,
-                                  int adapt_interpol,
-                                  double vorgabe)
-{
-	anz_nval++;
-	nval_data = (NvalInfo*)Realloc(nval_data, anz_nval * sizeof(NvalInfo));
-
-	nval_data[anz_nval - 1].name = NULL;
-	nval_data[anz_nval - 1].einheit = NULL;
-
-	if (name)
-	{
-		nval_data[anz_nval - 1].name =
-		    (char*)Malloc(((int)strlen(name) + 1) * sizeof(char));
-		strcpy(nval_data[anz_nval - 1].name, name);
-	}
-	if (einheit)
-	{
-		nval_data[anz_nval - 1].einheit =
-		    (char*)Malloc(((int)strlen(einheit) + 1) * sizeof(char));
-		strcpy(nval_data[anz_nval - 1].einheit, einheit);
-	}
-
-	nval_data[anz_nval - 1].speichern = speichern;
-	nval_data[anz_nval - 1].laden = laden;
-	nval_data[anz_nval - 1].restart = restart;
-	nval_data[anz_nval - 1].adapt_interpol = adapt_interpol;
-	nval_data[anz_nval - 1].vorgabe = vorgabe;
-
-	return anz_nval - 1;
-}
-
-/**************************************************************************
-   ROCKFLOW - Funktion: ModelsAddElementValInfoStructure
-
-   Aufgabe:
-   Fuellt die Elementdaten-Infostruktur mit den zugehoerigen Modelldaten.
-   Wird vom Modell der Reihe nach fuer jede Elementgroesse aufgerufen.
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E:char *name         :Name der Elementgroesse fuer Ergebnisdatei
-   E:char *einheit      :Name der phys. Einheit fuer Ergebnisdatei
-   E:int speichern      :Werte sollen gespeichert werden (0/1)
-   E:int laden          :Werte sollen geladen werden falls vorhanden (0/1)
-   E:int restart        :Werte sollen bei Restart geladen werden (0/1)
-   E:int adapt_interpol :Werte sollen beim verfeinern auf Kinder interpoliert
-(0/1)
-   E:double vorgabe     :Vorgabe falls keine Restartdaten oder
-Anfangsbedingungen vorhanden sind
-
-   Ergebnis:
-   Elementindex der gerade vergeben wurde
-
-   Programmaenderungen:
-   09/2000   CT    Erste Version
-
-**************************************************************************/
-int ModelsAddElementValInfoStructure(char* name,
-                                     char* einheit,
-                                     int speichern,
-                                     int laden,
-                                     int restart,
-                                     int adapt_interpol,
-                                     double vorgabe)
-{
-	anz_eval++;
-	eval_data = (EvalInfo*)Realloc(eval_data, anz_eval * sizeof(EvalInfo));
-
-	eval_data[anz_eval - 1].name = NULL;
-	eval_data[anz_eval - 1].einheit = NULL;
-
-	if (name)
-	{
-		eval_data[anz_eval - 1].name =
-		    (char*)Malloc(((int)strlen(name) + 1) * sizeof(char));
-		strcpy(eval_data[anz_eval - 1].name, name);
-	}
-	if (einheit)
-	{
-		eval_data[anz_eval - 1].einheit =
-		    (char*)Malloc(((int)strlen(einheit) + 1) * sizeof(char));
-		strcpy(eval_data[anz_eval - 1].einheit, einheit);
-	}
-
-	eval_data[anz_eval - 1].speichern = speichern;
-	eval_data[anz_eval - 1].laden = laden;
-	eval_data[anz_eval - 1].restart = restart;
-	eval_data[anz_eval - 1].adapt_interpol = adapt_interpol;
-	eval_data[anz_eval - 1].vorgabe = vorgabe;
-
-	return anz_eval - 1;
-}
 
 /**************************************************************************
    FEMLib-Method:
@@ -8894,27 +7514,6 @@ void CRFProcess::SetIC()
 	// end of if-else
 }
 
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   03/2005 OK Implementation
-   last modified:
-**************************************************************************/
-#if !defined(NEW_EQS) && !defined(USE_PETSC)  // WW. 07.11.2008. 04.2012
-void CRFProcess::SetNODValues()
-{
-	for (long i = 0; i < (long)m_msh->nod_vector.size(); i++)
-	{
-		//    SetNODValue(i,GetNODValueIndex(_pcs_type_name),eqs->x[i]);
-		//    SetNODValue(i,GetNODValueIndex(_pcs_type_name)+1,eqs->x[i]);
-		// WW
-		SetNodeValue(m_msh->Eqs2Global_NodeIndex[i], 0, eqs->x[i]);
-		// WW
-		SetNodeValue(m_msh->Eqs2Global_NodeIndex[i], 1, eqs->x[i]);
-	}
-}
-#endif
 
 /**************************************************************************
    FEMLib-Method:
@@ -9467,15 +8066,8 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 	configured_in_nonlinearloop = true;
 // Also allocate temporary memory for linear solver. WW
 //
-#if defined(USE_MPI)
-	CPARDomain* dom = dom_vector[myrank];
-	dom->eqs->SetDOF(pcs_number_of_primary_nvals);  //_new 02/2010 WW
-	dom->ConfigEQS(m_num,
-	               pcs_number_of_primary_nvals * m_msh->GetNodesNumber(false));
-#else
 	eqs_new->SetDOF(pcs_number_of_primary_nvals);  //_new 02/2010. WW
 	eqs_new->ConfigNumerics(m_num);
-#endif
 //
 #else  // ifdef NEW_EQS
 		eqs_x = eqs->x;
@@ -10025,150 +8617,6 @@ T* resize(T* array, size_t old_size, size_t new_size)
 	return temp;
 }
 
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   11/2005 MB Implementation
-**************************************************************************/
-#if !defined(NEW_EQS) && !defined(USE_PETSC)  // WW. 07.11.2008. 04.2012
-void CRFProcess::CalcFluxesForCoupling(void)
-{
-	int i, j;
-	double flux;
-	long n_index;
-	long NodeIndex_GW;
-	long NodeIndex_OLF;
-	int no_nodes = m_msh->getNumberOfMeshLayers() + 1;
-	long no_richards_problems =
-	    (long)(m_msh->ele_vector.size() / m_msh->getNumberOfMeshLayers());
-	long IndexBottomNode;
-	long IndexTopNode;
-	int NoOfGWNodes = 0;
-	double AverageZ_GW = 0.0;
-	double AverageZ_OLF = 0.0;
-	double AverageH_GW = 0.0;
-	double AverageH_OLF = 0.0;
-	double dh;
-	int idxFLUX;
-	int idxHead_GW;
-	int idxHead_OLF;
-	MeshLib::CElem* m_ele_GW = NULL;
-	MeshLib::CElem* m_ele_OLF = NULL;
-
-	// Get processes
-	CRFProcess* m_pcs_GW(PCSGet(FiniteElement::GROUNDWATER_FLOW));
-	if (!m_pcs_GW)  // OK
-	{
-		cout << "Fatal error: no GROUNDWATER_FLOW process" << endl;
-		return;
-	}
-	CRFProcess* m_pcs_OLF(PCSGet(FiniteElement::OVERLAND_FLOW));
-	if (!m_pcs_OLF)  // OK
-	{
-		cout << "Fatal error: no OVERLAND_FLOW process" << endl;
-		return;
-	}
-
-	// Get meshes
-	CFEMesh* m_msh_GW = m_pcs_GW->m_msh;
-	CFEMesh* m_msh_OLF = m_pcs_OLF->m_msh;
-
-	// Get indeces
-	idxHead_GW = m_pcs_GW->GetNodeValueIndex("HEAD") + 1;
-	idxHead_OLF = m_pcs_OLF->GetNodeValueIndex("HEAD") + 1;
-	idxFLUX = GetNodeValueIndex("FLUX") + 1;
-
-	for (i = 0; i < no_richards_problems; i++)
-	{
-		IndexBottomNode = ((i + 1) * no_nodes) - 1;
-
-		// ToDo safe somewhere else so that this has to be done only once
-		//-----------------------------------------------------------------
-		// Get Nearest GW and OLF Element
-		GEOLIB::Point pnt(m_msh->nod_vector[IndexBottomNode]->getData());
-
-		long EleNumber = m_msh_GW->GetNearestELEOnPNT(&pnt);
-
-		// GW and OLF use the same Numbering !!!
-		m_ele_GW = m_msh_GW->ele_vector[EleNumber];
-		m_ele_OLF = m_msh_OLF->ele_vector[EleNumber];
-
-		//-----------------------------------------------------------------
-		// Get Average values for element //ToDo encapsulate //WW:
-		// CElement::elemnt_averag??e
-		NoOfGWNodes = m_ele_OLF->GetNodesNumber(m_msh_GW->getOrder());
-		for (j = 0; j < NoOfGWNodes; j++)
-		{
-			NodeIndex_GW = m_ele_GW->GetNodeIndex(j);
-			NodeIndex_OLF = m_ele_OLF->GetNodeIndex(j);
-
-			AverageZ_GW += m_pcs_GW->GetNodeValue(NodeIndex_GW, idxHead_GW);
-			AverageZ_OLF += m_msh_OLF->nod_vector[NodeIndex_OLF]->getData()[2];
-		}
-		AverageZ_GW = AverageZ_GW / NoOfGWNodes;
-		AverageZ_OLF = AverageZ_OLF / NoOfGWNodes;
-
-		//-----------------------------------------------------------------
-		// UsatZone exists -> Flux from this
-		if (AverageZ_GW < AverageZ_OLF)
-		{
-			n_index = m_msh->Eqs2Global_NodeIndex[IndexBottomNode];
-			if (m_msh->nod_vector[IndexBottomNode]->GetMark())
-			{
-				flux = eqs->b[IndexBottomNode];
-				// FLUXES IN NEW VERSION WITH VELOCITIES !!!!!
-				// WAIT FOR SEBASTIANS MASS TRANSPORT IN USAT ZONE !!!!!
-				// TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST
-				flux = 0.00001;
-				// flux = 1;
-				SetNodeValue(n_index, idxFLUX, flux);
-			}
-		}
-
-		//-----------------------------------------------------------------
-		// No UsatZone -> Calculate Flux from leakage terms
-		if (AverageZ_GW >= AverageZ_OLF)
-		{
-			// SetRichardsNodesToFullySaturated??
-			IndexTopNode =
-			    i * no_nodes;  // Top Node of Richard Column -> Flux for OLF
-			                   // Bottom Node of Richards Column -> Flux for GW
-			IndexBottomNode = ((i + 1) * no_nodes) - 1;
-			//-----------------------------------------------------------------
-			// Get Average values for element //ToDo encapsulate
-			for (j = 0; j < NoOfGWNodes; j++)
-			{
-				NodeIndex_GW = m_ele_GW->GetNodeIndex(j);
-				NodeIndex_OLF = m_ele_OLF->GetNodeIndex(j);
-				AverageH_GW += m_pcs_GW->GetNodeValue(NodeIndex_GW, idxHead_GW);
-				AverageH_OLF +=
-				    m_pcs_OLF->GetNodeValue(NodeIndex_OLF, idxHead_OLF);
-			}
-			AverageH_GW = AverageH_GW / NoOfGWNodes;
-			AverageH_OLF = AverageH_OLF / NoOfGWNodes;
-			// Calculate the vertical leakage
-			dh = AverageH_GW - AverageH_OLF;
-			// get kf fully saturated of uppermost element ?
-			// or user defined value: entry resistance / leakage factor ?
-			// flux = dh * 0.001;
-			flux = dh * 1.;
-
-			// 1. Add reacharge value to GW flow -> Add to flux off
-			// IndexBottomNode
-			// Achtung nur zum Testen Source für GW flow durchgehend !!!!!!
-			// SetNodeValue(IndexBottomNode, idxFLUX, -flux);  //H_OLF  > H_GW
-			// -> + flux_GW
-			SetNodeValue(IndexBottomNode, idxFLUX, 0.00001);
-
-			// 2. Add reacharge value to OLF -> Add to flux off IndexTopNode
-			// H_OLF  > H_GW -> - flux_OLF
-			SetNodeValue(IndexTopNode, idxFLUX, flux);
-			// 3. Set flag to set reacharge to Usat to zero ???
-		}
-	}
-}
-#endif
 /**************************************************************************
    FEMLib-Method:
    Task:
@@ -10859,59 +9307,7 @@ double PCSGetEleMeanNodeSecondary(long index, const string& pcs_name,
 	return val;
 }
 
-/*************************************************************************
-   GeoSys-FEM Function:
-   01/2006 OK Implementation
- **************************************************************************/
-#if !defined(NEW_EQS) && !defined(USE_PETSC)  // WW. 07.11.2008. 04.2012
-void CRFProcess::SetNODFlux()
-{
-	long i;
-	//----------------------------------------------------------------------
-	int nidx;
-	nidx = GetNodeValueIndex("FLUX");
-	if (nidx < 0) return;
-	double m_val;
-	for (i = 0; i < (long)m_msh->nod_vector.size(); i++)
-	{
-		m_val = eqs->b[i];  //? m_nod->eqs_index
-		SetNodeValue(i, nidx, m_val);
-	}
-	//----------------------------------------------------------------------
-}
-#endif
 
-/*************************************************************************
-   GeoSys-FEM Function:
-   01/2006 OK Implementation
- **************************************************************************/
-#if !defined(NEW_EQS) && !defined(USE_PETSC)  // WW. 07.11.2008. 04.2012
-void CRFProcess::AssembleParabolicEquationRHSVector()
-{
-	// OK  long i;
-	//----------------------------------------------------------------------
-	// Init
-	/*	PCH & WW
-	   for(i=0;i<eqs->dim;i++)
-	   {
-	    eqs->b[i] = 0.0;
-	   }
-	   //----------------------------------------------------------------------
-	   CElem* m_ele = NULL;
-	   for(i=0;i<(long)m_msh->ele_vector.size();i++)
-	   {
-	    m_ele = m_msh->ele_vector[i];
-	    if(m_ele->GetMark()) // Marked for use
-	   {
-	   fem->ConfigElement(m_ele,false);
-	   fem->AssembleParabolicEquationRHSVector();
-	   //fem->AssembleParabolicEquationLHSMatrix();
-	   }
-	   }
-	 */
-	//----------------------------------------------------------------------
-}
-#endif  //#ifndef NEW_EQS //WW. 07.11.2008
 /*************************************************************************
    GeoSys-FEM Function:
    06/2006 YD Implementation
@@ -11098,191 +9494,6 @@ double CRFProcess::GetNewTimeStepSizeTransport(double mchange)
 }
 #endif
 
-/**************************************************************************
-   FEMLib-Method:
-   11/2005 MB Implementation
-   03/2006 OK 2nd version (binary coupling)
-**************************************************************************/
-#if !defined(NEW_EQS) && !defined(USE_PETSC)  // WW. 07.11.2008. 04.2012
-void CRFProcess::SetCPL()
-{
-	int i;
-	double value = 0.0;
-	//----------------------------------------------------------------------
-	// Nothing to do
-	if ((cpl_type_name.size() == 0) ||
-	    (cpl_type_name.compare("PARTITIONED") == 0))
-		return;
-	//----------------------------------------------------------------------
-	// PCS CPL
-	CRFProcess* m_pcs_cpl = PCSGet(cpl_type_name);
-	if (!m_pcs_cpl)
-	{
-		cout << "Fatal error in CRFProcess::SetCPL: no PCS data" << endl;
-		return;
-	}
-	//----------------------------------------------------------------------
-	// MSH data for PCS CPL
-	CFEMesh* m_msh_cpl = m_pcs_cpl->m_msh;
-	if (!m_msh_cpl)
-	{
-		cout << "Fatal error in CRFProcess::SetCPL: no MSH data" << endl;
-		return;
-	}
-	//----------------------------------------------------------------------
-	// GEO data for PCS CPL
-	Surface* m_sfc = GEOGetSFCByName(m_msh_cpl->geo_name);
-	if (!m_sfc)
-	{
-		cout << "Fatal error in CRFProcess::SetCPL: no GEO data" << endl;
-		return;
-	}
-	//----------------------------------------------------------------------
-	//......................................................................
-	// MSH nodes of PCS CPL
-	cout << "      ->CPL: " << cpl_type_name << ": ";
-	vector<long> cpl_msh_nodes_vector;
-	m_msh_cpl->GetNODOnSFC(m_sfc, cpl_msh_nodes_vector);
-	if ((int)cpl_msh_nodes_vector.size() == 0)
-		cout << "Warning in CRFProcess::SetCPL: no MSH nodes found" << endl;
-	cout << "CPL nodes = " << (int)cpl_msh_nodes_vector.size() << endl;
-	//.....................................................................-
-	// MSH nodes of PCS
-	cout << "      ->CPL: "
-	     << convertProcessTypeToString(this->getProcessType()) << ": ";
-	vector<long> msh_nodes_vector;
-	m_msh->GetNODOnSFC(m_sfc, msh_nodes_vector);
-	if ((int)msh_nodes_vector.size() == 0)
-		cout << "Warning in CRFProcess::SetCPL: no MSH nodes found" << endl;
-	cout << "CPL nodes = " << (int)msh_nodes_vector.size() << endl;
-	//----------------------------------------------------------------------
-	if (m_msh_cpl->pcs_name.compare("RICHARDS_FLOW") == 0)
-	{
-		m_msh->SetNODPatchAreas();
-		int nidx = GetNodeValueIndex("WDEPTH");
-		long st_node_number;
-		double st_node_value = 0.0;
-		CNode* m_nod = NULL;
-		for (i = 0; i < (int)msh_nodes_vector.size(); i++)
-		{
-			value = -2.314e-02;
-			st_node_number = msh_nodes_vector[i];
-			m_nod = m_msh->nod_vector[st_node_number];
-			st_node_value = GetNodeValue(st_node_number, nidx);
-			st_node_value /= m_nod->patch_area;
-			value *= st_node_value;
-			// cout << "CPL value = " << value << endl;
-			eqs->b[st_node_number] += value;
-		}
-	}
-
-	//	if (_pcs_type_name.compare("RICHARDS_FLOW") == 0
-	//				&& m_msh_cpl->pcs_name.compare("OVERLAND_FLOW") == 0) { //
-	// ToDo
-	if (this->getProcessType() == FiniteElement::RICHARDS_FLOW
-	    // ToDo
-	    &&
-	    m_msh_cpl->pcs_name.compare("OVERLAND_FLOW") == 0)
-	{
-		long msh_node_number;
-		// WW long cpl_msh_nod_number;
-		long cpl_msh_ele_number;
-		value = 0.0;
-		cout << "CPL value = " << value << endl;
-		// PCS-CON
-		CRFProcess* m_pcs_cond = PCSGet(cpl_type_name);
-		// int nidx =
-		// m_pcs_cond->GetNodeValueIndex(m_pcs_cond->pcs_primary_function_name[0]);
-		int cpl_nidx = m_pcs_cond->GetNodeValueIndex("WDEPTH");
-		//----------------------------------------------------------------------
-		// ELE of PCS_CPL related to NOD of PCS
-		//  CFEMesh* m_msh_this = MSHGet("RICHARDS_FLOW_LOCAL");
-		CElem* m_ele_cnd = NULL;
-		//----------------------------------------------------------------------
-		//  CSourceTermGroup *m_st_group = NULL;
-		//  CSourceTerm *m_st = NULL;
-		//  m_st_group =
-		//  STGetGroup(_pcs_type_name,pcs_primary_function_name[0]);
-		//----------------------------------------------------------------------
-		double cpl_ele_val = 0.0;
-		size_t j;
-		CNodeValue* cnodev = NULL;
-		//  for(i=0;i<(int)m_st_group->group_vector.size();i++)
-		//  ofstream st_out_file("st_out_file.txt",ios::app);
-		for (i = 0; i < (int)st_node_value.size(); i++)
-		{
-			for (size_t ii = 0; ii < st_node_value[i].size(); ii++)
-			{
-				cnodev = st_node_value[i][ii];
-				// MSH-PCS
-				// m_nod =
-				// m_msh_this->nod_vector[m_st_group->group_vector[i]->msh_node_number];
-				// m_st_group->group_vector[i]->msh_node_number; //0
-				msh_node_number = cnodev->msh_node_number;
-				// MSH-PCS-CPL
-				// WW cpl_msh_nod_number = msh_node_number;
-				cpl_msh_ele_number = pcs_number;  // OK:TODO
-				m_ele_cnd = m_pcs_cond->m_msh->ele_vector[cpl_msh_ele_number];
-				for (j = 0; j < m_ele_cnd->GetNodesNumber(false); j++)
-					cpl_ele_val += m_pcs_cond->GetNodeValue(
-					    m_ele_cnd->nodes_index[j], cpl_nidx);
-				cpl_ele_val /= m_ele_cnd->GetNodesNumber(false);
-				// VAL-CON
-				value = 2.314e-02 * cpl_ele_val * 1e-2;
-				//    st_out_file << value << endl;
-				// EQS-RHS
-				eqs->b[msh_node_number] += value;
-			}
-		}
-		//----------------------------------------------------------------------
-		/*
-		   CNodeValue* m_node_value = NULL;
-		   m_node_value = new CNodeValue();
-		   m_node_value->msh_node_number = msh_node_number;
-		   m_node_value->geo_node_number = m_pnt->id;
-		   m_node_value->node_value = value;
-		   CSourceTermGroup *m_st_group = NULL;
-		   m_st_group = STGetGroup(_pcs_type_name,pcs_primary_function_name[0]);
-		   m_st_group->group_vector.push_back(m_node_value);
-		   m_st_group->st_group_vector.push_back(m_st); //OK
-		 */
-	}
-
-	//	if (_pcs_type_name.compare("GROUNDWATER_FLOW") == 0
-	//				&& m_msh_cpl->pcs_name.compare("OVERLAND_FLOW") == 0) { //
-	// ToDo
-	if (this->getProcessType() == FiniteElement::GROUNDWATER_FLOW
-	    // ToDo
-	    &&
-	    m_msh_cpl->pcs_name.compare("OVERLAND_FLOW") == 0)
-	{
-		long ie = (long)msh_nodes_vector.size() /
-		          (m_msh->getNumberOfMeshLayers() + 1);
-		long of_node_number, gf_node_number;
-		double of_node_value, gf_node_value;
-		//  CNode* m_nod = NULL;
-		int of_nidx = GetNodeValueIndex("WDEPTH");
-
-		for (i = 0; i < ie; i++)
-		{
-			of_node_number = msh_nodes_vector[i];  // ToDo
-			of_node_value = m_pcs_cpl->GetNodeValue(of_node_number, of_nidx);
-			// m_nod = m_msh->nod_vector[gf_node_number];
-			// st_node_value /= m_nod->patch_area;
-			gf_node_value = of_node_value * 2e-11;
-			if (gf_node_value > 1e-13)
-				cout << "CPL value = " << gf_node_value << endl;
-			gf_node_number = msh_nodes_vector[i];
-			eqs->b[gf_node_number] += gf_node_value;
-		}
-	}
-
-	int idx = GetNodeValueIndex("FLUX") + 1;
-	// for(i=0;i<(int)msh_nodes_vector.size();i++)
-	for (i = 0; i < 1; i++)
-		SetNodeValue(msh_nodes_vector[i], idx, value);
-}
-#endif
 
 /**************************************************************************
    PCSLib-Method:
@@ -12319,174 +10530,7 @@ void CRFProcess::Calc2DElementGradient(MeshLib::CElem* m_ele,
 		        "concentration gradient!" << endl;
 }
 
-/*************************************************************************
-   GeoSys-FEM Function:
-   08/2006 OK Implementation
- **************************************************************************/
-#if !defined(NEW_EQS) && !defined(USE_PETSC)  // WW. 07.11.2008. 04.2012
-//(vector<long>&ele_number_vector)
-void CRFProcess::AssembleParabolicEquationRHSVector(CNode* m_nod)
-{
-	// cout << "CRFProcess::AssembleParabolicEquationRHSVector" << endl;
-	// int i;
-	// WW long ldummy;
-	// WW double ddummy;
-	//----------------------------------------------------------------------
-	// Init
-	for (size_t i = 0; i < m_nod->getConnectedElementIDs().size(); i++)
-		eqs->b[m_nod->getConnectedElementIDs()[i]] = 0.0;
-	//----------------------------------------------------------------------
-	CElem* m_ele = NULL;
-	CEdge* m_edg = NULL;
-	double edg_normal_vector[3];
-	double edge_mid_point[3];
-	vec<CEdge*> ele_edges_vector(15);
-	int j;
-	double aux_vector[3];
-	double check_sign;
-	//----------------------------------------------------------------------
-	// Element velocity
-	int v_eidx[3];
-	// kg44  v_eidx[0] = GetElementValueIndex("VELOCITY1_X");
-	// kg44  v_eidx[1] = GetElementValueIndex("VELOCITY1_Y");
-	// kg44  v_eidx[2] = GetElementValueIndex("VELOCITY1_Z");
-	CRFProcess* m_pcs_flow = NULL;
-	//  if(_pcs_type_name.find("FLOW")!=string::npos) {
-	if (isFlowProcess(this->getProcessType()))
-		m_pcs_flow = this;
-	else
-		m_pcs_flow = PCSGet(FiniteElement::GROUNDWATER_FLOW);
-	v_eidx[0] = m_pcs_flow->GetElementValueIndex("VELOCITY1_X");
-	v_eidx[1] = m_pcs_flow->GetElementValueIndex("VELOCITY1_Y");
-	v_eidx[2] = m_pcs_flow->GetElementValueIndex("VELOCITY1_Z");
-	for (size_t i = 0; i < 3; i++)
-		if (v_eidx[i] < 0)
-		{
-			cout << v_eidx[i] << i << " Warning in "
-			                          "CRFProcess::"
-			                          "AssembleParabolicEquationRHSVector - no "
-			                          "PCS-VEL data" << endl;
-			return;
-		}
-	double v[3];
-	//======================================================================
-	// Topology
-	for (size_t i = 0; i < m_nod->getConnectedElementIDs().size(); i++)
-	{
-		m_ele = m_msh->ele_vector[m_nod->getConnectedElementIDs()[i]];
-		m_ele->SetNormalVector();  // OK_BUGFIX
-		v[0] = m_pcs_flow->GetElementValue(m_ele->GetIndex(), v_eidx[0]);
-		v[1] = m_pcs_flow->GetElementValue(m_ele->GetIndex(), v_eidx[1]);
-		v[2] = m_pcs_flow->GetElementValue(m_ele->GetIndex(), v_eidx[2]);
-		m_ele->SetMark(false);
-		switch (m_ele->GetElementType())
-		{
-			//------------------------------------------------------------------
-			// line elements
-			case MshElemType::LINE:
-			{
-				v[1] = GetElementValue(m_ele->GetIndex(), v_eidx[0]);
-				v[0] = GetElementValue(m_ele->GetIndex(), v_eidx[1]);
-				if (m_nod->getConnectedElementIDs().size() == 1)
-				{
-					m_ele->SetMark(true);
-					break;
-				}
-				double const* gravity_center(m_ele->GetGravityCenter());
-				double const* const pnt(m_nod->getData());
-				aux_vector[0] = gravity_center[0] - pnt[0];
-				aux_vector[1] = gravity_center[1] - pnt[1];
-				aux_vector[2] = gravity_center[2] - pnt[2];
-				check_sign = MSkalarprodukt(v, aux_vector, 3);
-				if (check_sign < 0.0) m_ele->SetMark(true);
-				break;
-			}
-			//------------------------------------------------------------------
-			// tri elements
-			case MshElemType::TRIANGLE:
-				m_ele->GetEdges(ele_edges_vector);
-				for (j = 0; j < (int)m_ele->GetEdgesNumber(); j++)
-				{
-					m_edg = ele_edges_vector[j];
-					if (m_edg->GetMark())
-					{
-						m_edg->SetNormalVector(m_ele->normal_vector,
-						                       edg_normal_vector);
-						break;
-						/*
-						            m_edg->GetEdgeMidPoint(edge_mid_point);
-						           gravity_center = m_ele->GetGravityCenter();
-						           aux_vector[0] = gravity_center[0] -
-						   edge_mid_point[0];
-						           aux_vector[1] = gravity_center[1] -
-						   edge_mid_point[1];
-						           aux_vector[2] = gravity_center[2] -
-						   edge_mid_point[2];
-						           check_sign =
-						   MSkalarprodukt(edg_normal_vector,aux_vector,3);
-						           if(check_sign<0.0) break;
-						 */
-					}
-				}
-				if (m_edg->GetMark()) break;
-			//----------------------------------------------------------------
-			// ToDo
-			default:
-				cout << "Warning in "
-				        "CRFProcess::AssembleParabolicEquationRHSVector - not "
-				        "implemented for this element type" << endl;
-				break;
-		}  // switch
-	}
-	//======================================================================
-	for (size_t i = 0; i < m_nod->getConnectedElementIDs().size(); i++)
-	{
-		m_ele = m_msh->ele_vector[m_nod->getConnectedElementIDs()[i]];
-		switch (m_ele->GetElementType())
-		{
-			//------------------------------------------------------------------
-			// line elements
-			case MshElemType::LINE:
-				if (m_ele->GetMark())
-				{
-					cout << m_ele->GetIndex() << endl;
-					// WW ldummy = m_nod->GetIndex();
-					// WW ddummy = eqs->b[m_nod->GetIndex()];
-					fem->ConfigElement(m_ele, false);
-					fem->AssembleParabolicEquationRHSVector();
-					// WW ddummy = eqs->b[m_nod->GetIndex()];
-				}
-				break;
-			//------------------------------------------------------------------
-			// tri elements
-			case MshElemType::TRIANGLE:
-			{
-				m_edg->GetEdgeMidPoint(edge_mid_point);
-				double const* gravity_center(m_ele->GetGravityCenter());
-				aux_vector[0] = gravity_center[0] - edge_mid_point[0];
-				aux_vector[1] = gravity_center[1] - edge_mid_point[1];
-				aux_vector[2] = gravity_center[2] - edge_mid_point[2];
-				check_sign = MSkalarprodukt(edg_normal_vector, aux_vector, 3);
-				if (check_sign < 0.0) continue;
-				{
-					// cout << m_ele->GetIndex() << endl;
-					fem->ConfigElement(m_ele, false);
-					fem->AssembleParabolicEquationRHSVector();
-				}
-				break;
-			}
-			//----------------------------------------------------------------
-			// ToDo
-			default:
-				cout << "Warning in "
-				        "CRFProcess::AssembleParabolicEquationRHSVector - not "
-				        "implemented for this element type" << endl;
-				break;
-		}  // switch
-	}
-	//======================================================================
-}
-#endif
+
 
 /**************************************************************************
 PCSLib-Method:
@@ -13424,119 +11468,6 @@ bool CRFProcess::ELERelations()
    PCSLib-Method:
    07/2007 OK Implementation
 **************************************************************************/
-#if !defined(NEW_EQS) && !defined(USE_PETSC)  // WW. 07.11.2008. 04.2012
-bool CRFProcess::CreateEQS()
-{
-	if (!m_num) return false;  // OK46
-	bool succeed = true;
-	//----------------------------------------------------------------------------
-	if (eqs) return false;
-	//----------------------------------------------------------------------------
-	int DOF = GetPrimaryVNumber();  // OK should be PCS member variable
-	//----------------------------------------------------------------------------
-	// EQS - create equation system
-	cout << "->Create EQS" << '\n';
-	//----------------------------------------------------------------------------
-	if (type == 4)
-	{
-		eqs = CreateLinearSolverDim(m_num->ls_storage_method, DOF,
-		                            DOF * m_msh->GetNodesNumber(true));
-		InitializeLinearSolver(eqs, m_num);
-		PCS_Solver.push_back(eqs);  // WW
-	}
-	//----------------------------------------------------------------------------
-	else if (type == 41)
-	{
-		if (num_type_name.find("EXCAVATION") != string::npos)
-			eqs = CreateLinearSolverDim(m_num->ls_storage_method,
-			                            DOF - 1,
-			                            DOF * m_msh->GetNodesNumber(true));
-		else
-			eqs =
-			    CreateLinearSolverDim(m_num->ls_storage_method, DOF,
-			                          (DOF - 1) * m_msh->GetNodesNumber(true) +
-			                              m_msh->GetNodesNumber(false));
-		InitializeLinearSolver(eqs, m_num);
-		PCS_Solver.push_back(eqs);  // WW
-	}
-	//----------------------------------------------------------------------------
-	else
-	{
-		/*
-		    // If there is a solver exsiting. WW
-		    CRFProcess* m_pcs = NULL;
-		    for(int i=0; i<(int)pcs_vector.size(); i++)
-		   {
-		      m_pcs = pcs_vector[i];
-		      if(m_pcs&&m_pcs->eqs)
-		     {
-		        if(m_pcs->_pcs_type_name.find("DEFORMATION")==string::npos)
-		          break;
-		     }
-		   }
-		   // If unique mesh
-		   if(m_pcs&&m_pcs->eqs&&(fem_msh_vector.size()==1))
-		   eqs = m_pcs->eqs;
-		   //
-		   else
-		   {
-		 */
-		eqs = CreateLinearSolver(m_num->ls_storage_method,
-		                         m_msh->GetNodesNumber(false));
-		InitializeLinearSolver(eqs, m_num);
-		PCS_Solver.push_back(eqs);
-		//}
-	}
-	//----------------------------------------------------------------------------
-	std::string pcs_type_name(
-	    convertProcessTypeToString(this->getProcessType()));
-	strcpy(eqs->pcs_type_name, pcs_type_name.data());
-	//----------------------------------------------------------------------------
-	if ((int)PCS_Solver.size() == 0) succeed = false;
-	//----------------------------------------------------------------------------
-	return succeed;
-}
-#endif
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-//#ifndef NEW_EQS                                   //WW. 07.11.2008
-void PCSCreateNew()
-{
-	int i;
-	CRFProcess* m_pcs = NULL;
-	//----------------------------------------------------------------------
-	for (i = 0; i < (int)pcs_vector.size(); i++)
-	{
-		m_pcs = pcs_vector[i];
-		m_pcs->CreateNew();
-		//----------------------------------------------------------------------
-	}
-}
-
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-void CRFProcess::CreateNew()
-{
-	pcs_type_number = (int)pcs_vector.size();
-	Config();
-	m_bCheckOBJ = OBJRelations();
-	m_bCheckEQS = CreateEQS();
-	m_bCheckNOD = NODRelations();
-	m_bCheckELE = ELERelations();
-	MMP2PCSRelation(this);
-	ConfigureCouplingForLocalAssemblier();
-}
-#endif
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
 bool CRFProcess::Check()
 {
 	// MMP
@@ -13565,36 +11496,6 @@ bool PCSCheck()
 	return true;
 }
 
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-#if !defined(NEW_EQS) && !defined(USE_PETSC)  // WW. 07.11.2008. 04.2012
-void EQSDelete()
-{
-	LINEAR_SOLVER* eqs = NULL;
-	CRFProcess* m_pcs = NULL;
-	//----------------------------------------------------------------------
-	for (size_t i = 0; i < PCS_Solver.size(); i++)
-	{
-		eqs = PCS_Solver[i];
-		FiniteElement::ProcessType pcs_type(
-		    FiniteElement::convertProcessType(eqs->pcs_type_name));
-		m_pcs = PCSGet(pcs_type);
-		if (eqs->unknown_vector_indeces)
-			eqs->unknown_vector_indeces =
-			    (int*)Free(eqs->unknown_vector_indeces);
-		if (eqs->unknown_node_numbers)
-			eqs->unknown_node_numbers = (long*)Free(eqs->unknown_node_numbers);
-		if (eqs->unknown_update_methods)
-			eqs->unknown_update_methods =
-			    (int*)Free(eqs->unknown_update_methods);
-		eqs = DestroyLinearSolver(eqs);
-		PCS_Solver.erase((PCS_Solver.begin() + i));
-	}
-	// PCS_Solver.clear();
-}
-#endif
 /**************************************************************************
    PCSLib-Method:
    07/2007 OK Implementation
@@ -13723,56 +11624,13 @@ void CRFProcess::Delete()
 	//----------------------------------------------------------------------------
 	ELERelationsDelete();
 	NODRelationsDelete();
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-	//#ifndef NEW_EQS                                //WW. 07.11.2008
-	EQSDelete();
-#endif
 	OBJRelationsDelete();
 	// MMP2PCSRelation(this);
 	// ConfigureCouplingForLocalAssemblier();
 	//----------------------------------------------------------------------------
 }
 
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-//#ifndef NEW_EQS                                   //WW 07.11.2008
-void CRFProcess::EQSDelete()
-{
-	std::string pcs_type_name(
-	    convertProcessTypeToString(this->getProcessType()));
-	LINEAR_SOLVER* eqs = NULL;
-	for (size_t i = 0; i < PCS_Solver.size(); i++)
-	{
-		eqs = PCS_Solver[i];
-		if (pcs_type_name.compare(eqs->pcs_type_name) == 0)
-		{
-			if (eqs->unknown_vector_indeces)
-				eqs->unknown_vector_indeces =
-				    (int*)Free(eqs->unknown_vector_indeces);
-			if (eqs->unknown_node_numbers)
-				eqs->unknown_node_numbers =
-				    (long*)Free(eqs->unknown_node_numbers);
-			if (eqs->unknown_update_methods)
-				eqs->unknown_update_methods =
-				    (int*)Free(eqs->unknown_update_methods);
-			eqs = DestroyLinearSolver(eqs);
-			eqs = NULL;
-		}
-	}
 
-	for (size_t i = 0; i < PCS_Solver.size(); i++)
-	{
-		eqs = PCS_Solver[i];
-		if (pcs_type_name.compare(eqs->pcs_type_name) == 0)
-			PCS_Solver.erase((PCS_Solver.begin() + i));
-	}
-}
-#endif
 
 /*************************************************************************
    ROCKFLOW - Function: CRFProcess::

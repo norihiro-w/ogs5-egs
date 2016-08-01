@@ -37,9 +37,6 @@ protected:
 	double ExecuteNonlinearWithPETsc();
 #endif
 	void UpdateIterativeStep(const double damp);
-#if !defined(NEW_EQS) && !defined(USE_PETSC)
-	double NormOfUnkonwn_orRHS(bool isUnknowns = true);
-#endif
 private:
 	double error_k0;
 	std::vector<int> vec_pos;

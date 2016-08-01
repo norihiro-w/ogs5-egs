@@ -56,10 +56,6 @@ extern int ReadData(char*,
 #include "rf_pcs.h"
 // 16.12.2008.WW #include "rf_apl.h"
 
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-#include "par_ddc.h"
-#endif
-
 #include "rf_react.h"
 #include "rf_st_new.h"
 #include "rf_tim_new.h"
@@ -106,9 +102,7 @@ using process::CRFProcessDeformation;
 std::string FileName;  // WW
 std::string FilePath;  // 23.02.2009. WW
 
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) ||      \
-    defined(USE_MPI_REGSOIL) || defined(USE_MPI_GEMS) || \
-    defined(USE_MPI_BRNS) || defined(USE_PETSC)
+#if defined(USE_MPI) || defined(USE_PETSC)
 int mysize;  // NW
 int myrank;
 #endif
@@ -136,18 +130,10 @@ Problem::Problem(char* filename)
 	{
 		// read data
 		ReadData(filename, *_geo_obj, _geo_name);
-#if !defined(USE_PETSC)  // &&  !defined(other parallel libs)//03~04.3012. WW
-		DOMRead(filename);
-#endif
 #if defined(USE_MPI) || defined(USE_PETSC)
 		MPI_Barrier(MPI_COMM_WORLD);
 #endif
 	}
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-	//#ifndef NEW_EQS
-	ConfigSolverProperties();  //_new. 19.10.2008. WW
-#endif
 
 	// set the link to Problem instance in CRFProcess objects
 	for (size_t i = 0; i < pcs_vector.size(); i++)
@@ -351,44 +337,6 @@ Problem::Problem(char* filename)
 	// DDC
 	size_t no_processes = pcs_vector.size();
 	CRFProcess* m_pcs = NULL;
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	//----------------------------------------------------------------------
-	// DDC
-	if (dom_vector.size() > 0)
-	{
-		DOMCreate();
-		//
-		for (size_t i = 0; i < no_processes; i++)
-		{
-			m_pcs = pcs_vector[i];
-			m_pcs->CheckMarkedElement();
-			CountDoms2Nodes(m_pcs);
-			// Config boundary conditions for domain decomposition
-			m_pcs->SetBoundaryConditionSubDomain();  // WW
-		}
-		//
-		node_connected_doms.clear();
-// Release some memory. WW
-#if defined(USE_MPI)  // TEST_MPI WW
-		// Release memory of other domains. WW
-		for (size_t i = 0; i < dom_vector.size(); i++)
-		{
-			if (i != myrank)
-			{
-// If shared memory, skip the following line
-#if defined(NEW_BREDUCE2)
-				dom_vector[i]->ReleaseMemory();
-#else
-				// If MPI__Allreduce is used for all data conlection, activate
-				// following
-				delete dom_vector[i];
-				dom_vector[i] = NULL;
-#endif
-			}
-		}
-#endif
-	}
-#endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
 	// WW
 	//----------------------------------------------------------------------
 	PCSRestart();                        // SB
@@ -1660,13 +1608,6 @@ void Problem::PostCouplingLoop()
 			}
 		}
 	}
-// WW
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-	//#ifndef NEW_EQS                                //WW. 07.11.2008
-	if (total_processes[1])
-		total_processes[1]->AssembleParabolicEquationRHSVector();
-#endif
 	LOPCalcELEResultants();
 }
 
@@ -1912,19 +1853,6 @@ inline double Problem::GroundWaterFlow()
 		    true;  // WW Do not extropolate Gauss velocity
 
 	}
-// ELE values
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-	//#ifndef NEW_EQS                                //WW. 07.11.2008
-	if (m_pcs->tim_type == FiniteElement::TIM_STEADY)  // CMCD 05/2006
-	{
-		// std::cout << "      Calculation of secondary ELE values" << "\n";
-		m_pcs->AssembleParabolicEquationRHSVector();  // WW
-		                                              // LOPCalcNODResultants();
-		m_pcs->CalcELEVelocities();
-		m_pcs->selected = false;
-	}
-#endif
 	return error;
 }
 
