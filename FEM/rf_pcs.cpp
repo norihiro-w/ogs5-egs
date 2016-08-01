@@ -66,9 +66,6 @@ solver
 /*-----------------------------------------------------------------------*/
 /* Objects */
 #include "pcs_dm.h"
-#ifndef NEW_EQS      // WW. 07.11.2008
-#include "solver.h"  // ConfigRenumberProperties
-#endif
 #include "rf_st_new.h"  // ST
 //#include "rf_bc_new.h" // ST
 //#include "rf_mmp_new.h" // MAT
@@ -90,12 +87,6 @@ solver
 /*-----------------------------------------------------------------------*/
 /*-----------------------------------------------------------------------*/
 /* Tools */
-#ifndef NEW_EQS  // WW. 06.11.2008
-#include "matrix_routines.h"
-#endif
-#ifdef MFC  // WW
-#include "rf_fluid_momentum.h"
-#endif
 /* Tools */
 #include "mathlib.h"
 //#include "files0.h"

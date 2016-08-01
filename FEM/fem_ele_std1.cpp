@@ -24,10 +24,6 @@
 #include "pcs_dm.h"
 #include "rfmat_cp.h"
 
-#ifndef NEW_EQS
-#include "matrix_routines.h"
-#endif
-
 // Solver
 #ifdef NEW_EQS
 #include "equation_class.h"
