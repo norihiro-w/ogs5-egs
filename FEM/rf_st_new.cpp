@@ -33,7 +33,6 @@
 #include "files0.h"
 #include "mathlib.h"
 
-#include "MshEditor.h"    //NB
 #include "PointWithID.h"  // NB
 
 // GeoSys-GeoLib
