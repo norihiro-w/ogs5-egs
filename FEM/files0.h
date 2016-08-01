@@ -10,10 +10,6 @@
 #ifndef strings_INC
 #define strings_INC
 
-#define FORMAT_DOUBLE
-#define FPD_GESAMT 4
-#define FPD_NACHKOMMA 14
-
 /* Andere oeffentlich benutzte Module */
 #include "Configure.h"
 #include <cstdio>
