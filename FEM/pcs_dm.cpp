@@ -31,11 +31,6 @@
 #include "rf_pcs.h"  //OK_MOD"
 #include "tools.h"
 //
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-//#ifndef NEW_EQS                                   //WW. 06.11.2008
-#include "matrix_routines.h"
-#endif
 #include "fem_ele_vec.h"
 #include "rf_msp_new.h"
 #include "rf_tim_new.h"
@@ -1302,63 +1297,7 @@ double CRFProcessDeformation::NormOfDisp()
 	return Norm1;
 }
 
-/**************************************************************************
-   ROCKFLOW - Funktion: NormOfUnkonwn
 
-   Aufgabe:
-   Compute the norm of unkowns of a linear equation
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E: LINEAR_SOLVER * ls: linear solver
-
-   Ergebnis:
-   - double - Eucleadian Norm
-
-   Programmaenderungen:
-   10/2002   WW   Erste Version
-   07/2011   WW
-
-**************************************************************************/
-#if !defined(NEW_EQS) && !defined(USE_PETSC)
-double CRFProcessDeformation::NormOfUnkonwn_orRHS(bool isUnknowns)
-{
-	int i, j;
-	long number_of_nodes;
-	long v_shift = 0;
-	double NormW = 0.0;
-	double val;
-
-#ifdef G_DEBUG
-	if (!eqs)
-	{
-		printf(" \n Warning: solver not defined, exit from loop_ww.cc");
-		exit(1);
-	}
-#endif
-
-	double* vec = NULL;
-	if (isUnknowns)
-		vec = eqs->x;
-	else
-		vec = eqs->b;
-
-	int end = pcs_number_of_primary_nvals;
-	if (fem_dm->dynamic) end = problem_dimension_dm;
-
-	for (i = 0; i < end; i++)
-	{
-		number_of_nodes = num_nodes_p_var[i];
-		for (j = 0; j < number_of_nodes; j++)
-		{
-			val = vec[v_shift + j];
-			NormW += val * val;
-		}
-
-		v_shift += number_of_nodes;
-	}
-	return sqrt(NormW);
-}
-#endif
 /**************************************************************************
    ROCKFLOW - Funktion: MaxiumLoadRatio
 
@@ -2360,10 +2299,6 @@ void CRFProcessDeformation::ReleaseLoadingByExcavation()
 	}
 // 2. Compute the released node loading
 
-#if !defined(NEW_EQS) && !defined(USE_PETSC)  // WW. 06.11.2008, 04.2012
-	SetLinearSolver(eqs);
-	SetZeroLinearSolver(eqs);
-#endif
 	for (i = 0; i < 4; i++)  // In case the domain decomposition is employed
 		fem_dm->NodeShift[i] = Shift[i];
 	//

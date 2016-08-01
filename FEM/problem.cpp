@@ -134,11 +134,6 @@ Problem::Problem(char* filename)
 		MPI_Barrier(MPI_COMM_WORLD);
 #endif
 	}
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-	//#ifndef NEW_EQS
-	ConfigSolverProperties();  //_new. 19.10.2008. WW
-#endif
 
 	// set the link to Problem instance in CRFProcess objects
 	for (size_t i = 0; i < pcs_vector.size(); i++)
@@ -1613,13 +1608,6 @@ void Problem::PostCouplingLoop()
 			}
 		}
 	}
-// WW
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-	//#ifndef NEW_EQS                                //WW. 07.11.2008
-	if (total_processes[1])
-		total_processes[1]->AssembleParabolicEquationRHSVector();
-#endif
 	LOPCalcELEResultants();
 }
 
@@ -1865,19 +1853,6 @@ inline double Problem::GroundWaterFlow()
 		    true;  // WW Do not extropolate Gauss velocity
 
 	}
-// ELE values
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-	//#ifndef NEW_EQS                                //WW. 07.11.2008
-	if (m_pcs->tim_type == FiniteElement::TIM_STEADY)  // CMCD 05/2006
-	{
-		// std::cout << "      Calculation of secondary ELE values" << "\n";
-		m_pcs->AssembleParabolicEquationRHSVector();  // WW
-		                                              // LOPCalcNODResultants();
-		m_pcs->CalcELEVelocities();
-		m_pcs->selected = false;
-	}
-#endif
 	return error;
 }
 
