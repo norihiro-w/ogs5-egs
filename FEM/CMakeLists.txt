@@ -39,7 +39,6 @@ set( HEADERS
 	rf_st_new.h
 	rf_tim_new.h
 	rfmat_cp.h
-	solver.h
 	SourceTerm.h
 	SparseMatrixDOK.h
 	Stiff_Bulirsch-Stoer.h
@@ -96,10 +95,8 @@ IF(OGS_FEM_PETSC)
 ELSE(OGS_FEM_PETSC)
 	SET( SOURCES ${SOURCES} par_ddc.h par_ddc.cpp)
 	## New sparse class. WW
-	IF(OGS_FEM_MKL OR OGS_FEM_LIS)
+	IF(OGS_FEM_MKL OR OGS_FEM_LIS OR OGS_FEM_Paralution)
 		SET( SOURCES ${SOURCES} equation_class.h equation_class.cpp )
-	ELSE()
-		SET( SOURCES ${SOURCES} solver.h solver.cpp matrix_routines.h matrix_routines.cpp)
 	ENDIF()
 ENDIF()
 
@@ -143,32 +140,17 @@ target_link_libraries(FEM
 	MSH
 )
 
-
-if (WIN32)
-	if (LIS)
-		target_link_libraries( FEM ${LIS_LIBRARIES} ) 
+if (LIS)
+	target_link_libraries( FEM ${LIS_LIBRARIES} )
+	if (WIN32)
 		set_target_properties( FEM PROPERTIES LINK_FLAGS "/NODEFAULTLIB:libcmt" )
-	endif (LIS)
-	if (MKL)
-		target_link_libraries( FEM ${MKL_LIBRARIES} )
-	endif (MKL)
-	if (PARALLEL_USE_MPI)
-		SET( CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${MPI_COMPILE_FLAGS} )
-		target_link_libraries( FEM ${MPI_LIBRARIES} )
-	endif (PARALLEL_USE_MPI)
-endif (WIN32)
+	endif()
+endif()
 
-if (UNIX)
-	if (LIS)
-		target_link_libraries( FEM ${LIS_LIBRARIES} )
-	endif (LIS)
+if (MKL)
+	target_link_libraries( FEM ${MKL_LIBRARIES} )
+endif ()
 
-	if (MKL)
-		target_link_libraries( FEM ${MKL_LIBRARIES} )
-	endif (MKL)
-	if (PARALLEL_USE_MPI)
-#		SET( CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${MPI_COMPILE_FLAGS} )
-		target_link_libraries( FEM ${MPI_LIBRARIES} )
-	endif (PARALLEL_USE_MPI)
-endif (UNIX)
-
+if (PARALLEL_USE_MPI)
+	target_link_libraries( FEM ${MPI_LIBRARIES} )
+endif ()

@@ -185,10 +185,10 @@ void PETScLinearSolver::Init(const int* sparse_index)
 */
 void PETScLinearSolver::Config(const PetscReal tol, const PetscInt maxits,
                                const KSPType lsol, const PCType prec_type,
-                               const std::string& misc_setting)
+                               const std::string& misc_setting, const std::string& prefix)
 {
 	KSPCreate(PETSC_COMM_WORLD, &lsolver);
-	ConfigLinear(tol, maxits, lsol, prec_type, misc_setting);
+	ConfigLinear(tol, maxits, lsol, prec_type, misc_setting, prefix);
 	KSPSetFromOptions(lsolver);
 }
 
@@ -196,16 +196,16 @@ void PETScLinearSolver::ConfigWithNonlinear(const PetscReal tol,
                                             const PetscInt maxits,
                                             const KSPType lsol,
                                             const PCType prec_type,
-                                            const std::string& misc_setting)
+                                            const std::string& misc_setting, const std::string& prefix)
 {
 	SNESCreate(PETSC_COMM_WORLD, &snes);
 	SNESGetKSP(snes, &lsolver);
-	ConfigLinear(tol, maxits, lsol, prec_type, misc_setting);
+	ConfigLinear(tol, maxits, lsol, prec_type, misc_setting, prefix);
 }
 
 void PETScLinearSolver::ConfigLinear(const PetscReal tol, const PetscInt maxits,
                                      const KSPType lsol, const PCType prec_type,
-                                     const std::string& misc_setting)
+                                     const std::string& misc_setting, const std::string& prefix)
 {
 	if (lsolver == NULL) return;
 
@@ -228,7 +228,7 @@ void PETScLinearSolver::ConfigLinear(const PetscReal tol, const PetscInt maxits,
 	if (vec_subA.size() > 0)
 	{
 		PCSetType(prec, PCFIELDSPLIT);
-		for (int i = 0; i < vec_isg.size(); i++)
+		for (size_t i = 0; i < vec_isg.size(); i++)
 		{
 			PCFieldSplitSetIS(prec, number2str(i).c_str(), vec_isg[i]);
 		}
@@ -236,6 +236,11 @@ void PETScLinearSolver::ConfigLinear(const PetscReal tol, const PetscInt maxits,
 	else
 	{
 		PCSetType(prec, prec_type);  //  PCJACOBI); //PCNONE);
+	}
+	if (!prefix.empty())
+	{
+		KSPSetOptionsPrefix(lsolver, prefix.c_str());
+		PCSetOptionsPrefix(prec, prefix.c_str());
 	}
 
 #if 1
@@ -251,18 +256,23 @@ void PETScLinearSolver::ConfigLinear(const PetscReal tol, const PetscInt maxits,
 			{
 				// key-value or only key
 				std::string& str1 = *itr;
-				if (str1.find('-') == std::string::npos) continue;
-				++itr;
-				if (itr == lst.end()) break;
 				std::string val = "";
-				std::string& str2 = *itr;
-				if (str2.find('-') == std::string::npos)
-					val = str2;
-				else
-					--itr;
-				vec_para.push_back(std::make_pair(str1, val));
-				PetscPrintf(PETSC_COMM_WORLD, "\t %s = %s\n", str1.c_str(),
+				if (str1.length() < 2 || str1.find('-') == std::string::npos) continue;
+				++itr;
+				if (itr != lst.end())
+				{
+					std::string& str2 = *itr;
+					if (str2[0] != '-')
+						val = str2;
+					else
+						--itr;
+				}
+				std::string key = "-" + prefix + str1.substr(1);
+				vec_para.push_back(std::make_pair(key, val));
+				PetscPrintf(PETSC_COMM_WORLD, "\t %s = %s\n", key.c_str(),
 				            val.c_str());
+				if (itr == lst.end())
+					break;
 			}
 		}
 		for (std::vector<Para>::iterator itr = vec_para.begin();
@@ -283,6 +293,7 @@ void PETScLinearSolver::ConfigLinear(const PetscReal tol, const PetscInt maxits,
 	   PetscOptionsSetValue(itr->first.c_str(),"");
    }
 #endif
+
 }
 
 //-----------------------------------------------------------------
@@ -421,16 +432,19 @@ int PETScLinearSolver::Solver()
 	KSPGetTolerances(lsolver, &rtol, &abstol, &dtol, &maxits);
 	PetscReal r_norm = .0;
 	KSPGetResidualNorm(lsolver, &r_norm);
-	PetscReal b_norm = .0;
-	VecNorm(b, NORM_2, &b_norm);
-	PetscReal error_r = r_norm / b_norm;
+//	PetscReal b_norm = .0;
+//	VecNorm(b, NORM_2, &b_norm);
+//	PetscReal error_r = r_norm / b_norm;
 
 	PetscPrintf(PETSC_COMM_WORLD, "solver    : %s\n", slv_type);
 	PetscPrintf(PETSC_COMM_WORLD, "precon    : %s\n", prc_type);
 	PetscPrintf(PETSC_COMM_WORLD, "iteration : %d/%d\n", its, maxits);
+//	PetscPrintf(PETSC_COMM_WORLD, "||b||     : %e\n", b_norm);
 	PetscPrintf(PETSC_COMM_WORLD,
-	            "residual  : ||r||=%e, ||r||/||b||=%e(approx.), rtol=%e\n",
-	            r_norm, error_r, rtol);
+	            "residual  : ||r||=%e, rel. tol=%e\n", r_norm, rtol);
+//	PetscPrintf(PETSC_COMM_WORLD,
+//	            "residual  : ||r||=%e, ||r||/||b||=%e(approx.), rtol=%e\n",
+//	            r_norm, error_r, rtol);
 	if (reason >= 0)
 	{
 		PetscPrintf(PETSC_COMM_WORLD, "status    : Converged (reason=%d)\n",

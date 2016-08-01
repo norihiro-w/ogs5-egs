@@ -17,6 +17,7 @@
 
 #include <mpi.h>
 
+#include "makros.h"
 #include "readNonBlankLineFromInputStream.h"
 
 namespace FCT_MPI

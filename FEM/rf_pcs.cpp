@@ -66,9 +66,6 @@ solver
 /*-----------------------------------------------------------------------*/
 /* Objects */
 #include "pcs_dm.h"
-#ifndef NEW_EQS      // WW. 07.11.2008
-#include "solver.h"  // ConfigRenumberProperties
-#endif
 #include "rf_st_new.h"  // ST
 //#include "rf_bc_new.h" // ST
 //#include "rf_mmp_new.h" // MAT
@@ -90,12 +87,6 @@ solver
 /*-----------------------------------------------------------------------*/
 /*-----------------------------------------------------------------------*/
 /* Tools */
-#ifndef NEW_EQS  // WW. 06.11.2008
-#include "matrix_routines.h"
-#endif
-#ifdef MFC  // WW
-#include "rf_fluid_momentum.h"
-#endif
 /* Tools */
 #include "mathlib.h"
 //#include "files0.h"
@@ -328,8 +319,6 @@ CRFProcess::CRFProcess(void)
 	//----------------------------------------------------------------------
 	// ELE
 	pcs_number_of_evals = 0;
-	NumDeactivated_SubDomains = 0;
-	Deactivated_SubDomain = NULL;
 	//----------------------------------------------------------------------
 	//
 	mobile_nodes_flag = -1;
@@ -541,7 +530,6 @@ CRFProcess::~CRFProcess(void)
 		delete[] ele_val_vector[i];
 	ele_val_vector.clear();
 	//----------------------------------------------------------------------
-	DeleteArray(Deactivated_SubDomain);  // 05.09.2007 WW
 	// 11.08.2010. WW
 	DeleteArray(num_nodes_p_var);
 	// 20.08.2010. WW
@@ -1789,7 +1777,6 @@ CRFProcess* CRFProcess::CopyPCStoDM_PCS()
 	dm_pcs->WriteSourceNBC_RHS = WriteSourceNBC_RHS;
 	dm_pcs->num_type_name = num_type_name;
 	dm_pcs->Memory_Type = Memory_Type;
-	dm_pcs->NumDeactivated_SubDomains = NumDeactivated_SubDomains;
 	dm_pcs->reload = reload;
 	dm_pcs->nwrite_restart = nwrite_restart;
 	dm_pcs->isPCSDeformation = true;
@@ -1797,10 +1784,7 @@ CRFProcess* CRFProcess::CopyPCStoDM_PCS()
 	dm_pcs->isPCSMultiFlow = this->isPCSMultiFlow;  // JT
 	// WW
 	dm_pcs->write_boundary_condition = write_boundary_condition;
-	if (!dm_pcs->Deactivated_SubDomain)
-		dm_pcs->Deactivated_SubDomain = new int[NumDeactivated_SubDomains];
-	for (int i = 0; i < NumDeactivated_SubDomains; i++)
-		dm_pcs->Deactivated_SubDomain[i] = Deactivated_SubDomain[i];
+	dm_pcs->Deactivated_SubDomain = Deactivated_SubDomain;
 	pcs_deformation = 1;
 	// WX:01.2011 for coupled excavation
 	if (ExcavMaterialGroup >= 0)
@@ -1828,7 +1812,6 @@ CRFProcess* CRFProcess::CopyPCStoTH_PCS()
 	dm_pcs->WriteSourceNBC_RHS = WriteSourceNBC_RHS;
 	dm_pcs->num_type_name = num_type_name;
 	dm_pcs->Memory_Type = Memory_Type;
-	dm_pcs->NumDeactivated_SubDomains = NumDeactivated_SubDomains;
 	dm_pcs->reload = reload;
 	dm_pcs->nwrite_restart = nwrite_restart;
 	dm_pcs->isPCSDeformation = false;
@@ -1836,10 +1819,7 @@ CRFProcess* CRFProcess::CopyPCStoTH_PCS()
 	dm_pcs->isPCSMultiFlow = this->isPCSMultiFlow;  // JT
 	// WW
 	dm_pcs->write_boundary_condition = write_boundary_condition;
-	if (!dm_pcs->Deactivated_SubDomain)
-		dm_pcs->Deactivated_SubDomain = new int[NumDeactivated_SubDomains];
-	for (int i = 0; i < NumDeactivated_SubDomains; i++)
-		dm_pcs->Deactivated_SubDomain[i] = Deactivated_SubDomain[i];
+	dm_pcs->Deactivated_SubDomain = Deactivated_SubDomain;
 	pcs_deformation = 1;
 	// WX:01.2011 for coupled excavation
 	if (ExcavMaterialGroup >= 0)
@@ -2119,11 +2099,20 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 		// subkeyword found
 		if (line_string.find("$DEACTIVATED_SUBDOMAIN") != string::npos)
 		{
-			// WW
-			*pcs_file >> NumDeactivated_SubDomains >> ws;
-			Deactivated_SubDomain = new int[NumDeactivated_SubDomains];
-			for (int i = 0; i < NumDeactivated_SubDomains; i++)
-				*pcs_file >> Deactivated_SubDomain[i] >> ws;
+			int NumDeactivated_SubDomains = 0;
+			*pcs_file >> NumDeactivated_SubDomains;
+			pcs_file->ignore(MAX_ZEILE, '\n');
+
+			if (NumDeactivated_SubDomains > 0) {
+				Deactivated_SubDomain.resize(NumDeactivated_SubDomains);
+				std::stringstream ss;
+				for (int i = 0; i < NumDeactivated_SubDomains; i++) {
+					*pcs_file >> Deactivated_SubDomain[i] >> ws;
+					ss << Deactivated_SubDomain[i] << " ";
+				}
+				ScreenMessage("-> Deactivate subdomain(s) : %s\n", ss.str().c_str());
+			}
+
 			continue;
 		}
 		//....................................................................
@@ -4232,7 +4221,7 @@ void CRFProcess::CheckMarkedElement()
 	{
 		elem = m_msh->ele_vector[l];
 		done = false;
-		for (i = 0; i < (size_t)NumDeactivated_SubDomains; i++)
+		for (i = 0; i < Deactivated_SubDomain.size(); i++)
 			if (elem->GetPatchIndex() ==
 			    static_cast<size_t>(Deactivated_SubDomain[i]))
 			{
@@ -4461,8 +4450,8 @@ double CRFProcess::Execute()
 	// 21.12.2007
 	iter_lin = dom->eqs->Solver(eqs_new->x, global_eqs_dim);
 #else
-#ifdef LIS
-	bool compress_eqs = (type / 10 == 4 || this->NumDeactivated_SubDomains > 0);
+#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
+	bool compress_eqs = (type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
 	iter_lin = eqs_new->Solver(this->m_num, compress_eqs);  // NW
 #else
 	iter_lin = eqs_new->Solver();
@@ -4471,6 +4460,21 @@ double CRFProcess::Execute()
 #else
 	iter_lin = ExecuteLinearSolver();
 #endif
+	if (iter_lin == -1)
+	{
+		ScreenMessage("*** Linear solve failed\n");
+// abort
+#ifdef NEW_EQS  // WW
+		if (!configured_in_nonlinearloop)
+#if defined(USE_MPI)
+			dom->eqs->Clean();
+#else
+			// Also allocate temporary memory for linear solver. WW
+			eqs_new->Clean();
+#endif
+#endif
+		return -1;
+	}
 	iter_lin_max = std::max(iter_lin_max, iter_lin);
 
 	//----------------------------------------------------------------------
@@ -4576,7 +4580,7 @@ double CRFProcess::Execute()
 		// 21.12.2007
 		dom->eqs->Solver(eqs_new->x, global_eqs_dim);
 #else
-#ifdef LIS
+#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
 		eqs_new->Solver(this->m_num);  // NW
 #else
 		eqs_new->Solver();
@@ -8544,12 +8548,6 @@ int GetRFProcessProcessing(char* rfpp_type)
 	return 0;
 }
 
-int GetRFProcessProcessingAndActivation(const char*)
-{
-	ScreenMessage("GetRFProcessProcessingAndActivation - to be removed\n");
-	return 0;
-}
-
 long GetRFProcessNumComponents(void)
 {
 	// DisplayMsgLn("GetRFProcessNumComponents - to be removed");
@@ -8557,43 +8555,6 @@ long GetRFProcessNumComponents(void)
 	return no_components;
 }
 
-int GetRFControlModex(void)
-{
-	cout << "GetRFControlModex - to be removed" << endl;
-	return 0;
-}
-
-int GetRFProcessDensityFlow(void)
-{
-	if (show_onces_density)
-		cout << "GetRFProcessDensityFlow - to be removed" << endl;
-	show_onces_density = false;
-	return 0;
-}
-
-int GetRFProcessNumContinua(void)
-{
-	cout << "GetRFProcessNumContinua - to be removed" << endl;
-	return 0;
-}
-
-int GetRFProcessNumElectricFields(void)
-{
-	cout << "GetRFProcessNumElectricFields - to be removed" << endl;
-	return 0;
-}
-
-int GetRFProcessNumTemperatures(void)
-{
-	cout << "GetRFProcessNumTemperatures - to be removed" << endl;
-	return -1;
-}
-
-int GetRFProcessSimulation(void)
-{
-	cout << "GetRFProcessSimulation - to be removed" << endl;
-	return -1;
-}
 
 /**************************************************************************
    ROCKFLOW - Funktion: ModelsAddNodeValInfoStructure
@@ -8981,16 +8942,21 @@ double CRFProcess::CalcNodeValueChanges(int ii)
 		current_norm += u1 * u1;
 	}
 
-	diff_norm = sqrt(diff_norm);
-	current_norm = sqrt(current_norm);
-	double changes = diff_norm / (current_norm + DBL_EPSILON);
 #ifdef USE_PETSC
-	double changes_global = 0;
-	MPI_Allreduce(&changes, &changes_global, 1, MPI_DOUBLE, MPI_MAX,
+	double diff_norm_global = 0;
+	MPI_Allreduce(&diff_norm, &diff_norm_global, 1, MPI_DOUBLE, MPI_SUM,
 	              MPI_COMM_WORLD);
-	changes = changes_global;
+	diff_norm = std::sqrt(diff_norm_global);
+	double current_norm_global = 0;
+	MPI_Allreduce(&current_norm, &current_norm_global, 1, MPI_DOUBLE, MPI_SUM,
+	              MPI_COMM_WORLD);
+	current_norm = std::sqrt(current_norm_global);
+#else
+	diff_norm = std::sqrt(diff_norm);
+	current_norm = std::sqrt(current_norm);
 #endif
-	return changes;
+
+	return diff_norm / (current_norm + DBL_EPSILON);
 }
 
 /**************************************************************************
@@ -9018,16 +8984,21 @@ double CRFProcess::CalcVelocityChanges()
 			}
 		}
 	}
+#ifdef USE_PETSC
+	double diff_norm_global = 0;
+	MPI_Allreduce(&diff_norm, &diff_norm_global, 1, MPI_DOUBLE, MPI_SUM,
+	              MPI_COMM_WORLD);
+	diff_norm = std::sqrt(diff_norm_global);
+	double current_norm_global = 0;
+	MPI_Allreduce(&current_norm, &current_norm_global, 1, MPI_DOUBLE, MPI_SUM,
+	              MPI_COMM_WORLD);
+	current_norm = std::sqrt(current_norm_global);
+#else
 	diff_norm = std::sqrt(diff_norm);
 	current_norm = std::sqrt(current_norm);
-	double changes = diff_norm / (current_norm + DBL_EPSILON);
-#ifdef USE_PETSC
-	double changes_global = 0;
-	MPI_Allreduce(&changes, &changes_global, 1, MPI_DOUBLE, MPI_MAX,
-	              MPI_COMM_WORLD);
-	changes = changes_global;
 #endif
-	return changes;
+
+	return diff_norm / (current_norm + DBL_EPSILON);
 }
 
 /**************************************************************************
@@ -9560,13 +9531,20 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 	for (iter_nlin = 0; iter_nlin < m_num->nls_max_iterations; iter_nlin++)
 	{
 		nl_itr_err = Execute();
+		if (nl_itr_err == -1.)  // linear solve broken
+		{
+			ScreenMessage("*** Nonlinear solve failed\n");
+			accepted = false;
+			Tim->last_dt_accepted = false;
+			break;
+		}
 		//
 		// ---------------------------------------------------
 		// LINEAR SOLUTION
 		// ---------------------------------------------------
 		if (m_num->nls_method == FiniteElement::INVALID_NL_TYPE)
 		{
-			PrintStandardIterationInformation(true);
+			PrintStandardIterationInformation(true, nl_itr_err);
 			converged = true;
 		}
 		else
@@ -9580,7 +9558,7 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 			{
 				// For most error methods (also works for Newton)
 				default:
-					PrintStandardIterationInformation(true);
+					PrintStandardIterationInformation(true, nl_itr_err);
 					if (iter_nlin == 0)
 						percent_difference = .0;
 					else
@@ -9630,7 +9608,7 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 
 				// For (OGS) classic Newton error control
 				case FiniteElement::BNORM:
-					PrintStandardIterationInformation(false);
+					PrintStandardIterationInformation(false, nl_itr_err);
 //
 #if defined(USE_PETSC)  // || defined(other parallel libs)//06.3012. WW
 					norm_x = eqs_new->GetVecNormX();
@@ -9863,7 +9841,8 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
    Programing:
    3/2012  JT
 **************************************************************************/
-void CRFProcess::PrintStandardIterationInformation(bool write_std_errors)
+void CRFProcess::PrintStandardIterationInformation(bool write_std_errors,
+                                                   double nl_error)
 {
 	int ii;
 	//
@@ -9884,8 +9863,8 @@ void CRFProcess::PrintStandardIterationInformation(bool write_std_errors)
 	//
 	// NON-LINEAR METHODS
 	if (m_num->nls_method == FiniteElement::NL_PICARD)
-		ScreenMessage("-->End of PICARD iteration: %d/%d \n", iter_nlin,
-		              m_num->nls_max_iterations);
+		ScreenMessage("-->End of PICARD iteration: %d/%d, error=%g \n",
+		              iter_nlin, m_num->nls_max_iterations, nl_error);
 	else
 		ScreenMessage("-->End of NEWTON-RAPHSON iteration: %d/%d \n", iter_nlin,
 		              m_num->nls_max_iterations);

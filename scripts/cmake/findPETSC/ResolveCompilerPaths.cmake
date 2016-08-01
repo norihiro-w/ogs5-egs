@@ -38,10 +38,9 @@
 #
 #  assuming both directories exist.
 #  Note: as currently implemented, the -I/string will be picked up mistakenly (cry, cry)
-include (CorrectWindowsPaths)
 
 macro (RESOLVE_LIBRARIES LIBS LINK_LINE)
-  string (REGEX MATCHALL "((-L|-l|-Wl)([^\" ]+|\"[^\"]+\")|[^\" ]+\\.(a|so|dll|lib))" _all_tokens "${LINK_LINE}")
+  string (REGEX MATCHALL "((-L|-l|-Wl)([^\" ]+|\"[^\"]+\")|/[^\" ]+(a|so|dll))" _all_tokens "${LINK_LINE}")
   set (_libs_found)
   set (_directory_list)
   foreach (token ${_all_tokens})
@@ -49,28 +48,18 @@ macro (RESOLVE_LIBRARIES LIBS LINK_LINE)
       # If it's a library path, add it to the list
       string (REGEX REPLACE "^-L" "" token ${token})
       string (REGEX REPLACE "//" "/" token ${token})
-      convert_cygwin_path(token)
       list (APPEND _directory_list ${token})
-    elseif (token MATCHES "^(-l([^\" ]+|\"[^\"]+\")|[^\" ]+\\.(a|so|dll|lib))")
+    elseif (token MATCHES "^(-l([^\" ]+|\"[^\"]+\")|/[^\" ]+(a|so|dll))")
       # It's a library, resolve the path by looking in the list and then (by default) in system directories
-      if (WIN32) #windows expects "libfoo", linux expects "foo"
-        string (REGEX REPLACE "^-l" "lib" token ${token})
-      else ()
-        string (REGEX REPLACE "^-l" "" token ${token})
-      endif ()
+      string (REGEX REPLACE "^-l" "" token ${token})
       set (_root)
-      if (token MATCHES "^/") # We have an absolute path
-        #separate into a path and a library name:
-        string (REGEX MATCH "[^/]*\\.(a|so|dll|lib)$" libname ${token})
-        string (REGEX MATCH ".*[^${libname}$]" libpath ${token})
-        convert_cygwin_path(libpath)
-        set (_directory_list ${_directory_list} ${libpath})
-        set (token ${libname})
+      if (token MATCHES "^/")	# We have an absolute path, add root to the search path
+	set (_root "/")
       endif ()
       set (_lib "NOTFOUND" CACHE FILEPATH "Cleared" FORCE)
       find_library (_lib ${token} HINTS ${_directory_list} ${_root})
       if (_lib)
-  string (REPLACE "//" "/" _lib ${_lib})
+	string (REPLACE "//" "/" _lib ${_lib})
         list (APPEND _libs_found ${_lib})
       else ()
         message (STATUS "Unable to find library ${token}")
@@ -93,7 +82,6 @@ macro (RESOLVE_INCLUDES INCS COMPILE_LINE)
   foreach (token ${_all_tokens})
     string (REGEX REPLACE "^-I" "" token ${token})
     string (REGEX REPLACE "//" "/" token ${token})
-    convert_cygwin_path(token)
     if (EXISTS ${token})
       list (APPEND _incs_found ${token})
     else ()
@@ -103,3 +91,5 @@ macro (RESOLVE_INCLUDES INCS COMPILE_LINE)
   list (REMOVE_DUPLICATES _incs_found)
   set (${INCS} "${_incs_found}")
 endmacro ()
+
+

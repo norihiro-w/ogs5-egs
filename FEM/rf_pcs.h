@@ -273,8 +273,7 @@ protected:  // WW
 	void CopyU_n();            // 29.08.2008. WW
 	// Time unit factor
 	double time_unit_factor;
-	int NumDeactivated_SubDomains;
-	int* Deactivated_SubDomain;
+	std::vector<int> Deactivated_SubDomain;
 // New equation and solver objects WW
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
 public:
@@ -284,7 +283,7 @@ protected:
 	int mysize;
 	int myrank;
 #elif defined(NEW_EQS)
-#ifdef LIS
+#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
 public:
 	Linear_EQS* eqs_new;
 #else
@@ -755,7 +754,7 @@ public:
 	//---
 	double Execute();
 	double ExecuteNonLinear(int loop_process_number, bool print_pcs = true);
-	void PrintStandardIterationInformation(bool write_std_errors = true);
+	void PrintStandardIterationInformation(bool write_std_errors, double nl_error);
 
 	virtual void CalculateElementMatrices(void);
 #if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
@@ -1104,7 +1103,6 @@ extern int GetRFProcessFlowModel(void);
 extern int GetRFProcessHeatReactModel(void);
 extern int GetRFProcessNumPhases(void);
 extern int GetRFProcessProcessing(char*);
-extern int GetRFProcessProcessingAndActivation(const char*);
 extern long GetRFProcessNumComponents(void);
 extern int GetRFControlModex(void);
 extern int GetRFProcessDensityFlow(void);

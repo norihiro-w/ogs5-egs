@@ -27,6 +27,10 @@
 #include "lis.h"
 #endif
 
+#ifdef USE_PARALUTION
+#include <paralution.hpp>
+#endif
+
 #include "Configure.h"
 #include "matrix_class.h"
 
@@ -97,7 +101,7 @@ public:
 	int CGS(double* xg, const long n);
 	double GetCPUtime() const { return cpu_time; }
 #else
-#ifdef LIS  // NW
+#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
 	int Solver(CNumerics* num = NULL, bool compress = false);
 #else
 	int Solver();
@@ -129,8 +133,10 @@ public:
 	void SetKnownX_i(const long i, const double x_i);
 	double X(const long i) const { return x[i]; }
 	const double* getX() const { return x; }
+	const double* getRHS() const { return b; }
 	double RHS(const long i) const { return b[i]; }
 	double NormX();
+	double ComputeNormRHS() { return Norm(b); }
 	double NormRHS() { return bNorm; }
 #if defined(USE_MPI)
 	int DOF() { return A->Dof(); }
@@ -154,6 +160,11 @@ private:  // Dot not remove this!
 	LIS_MATRIX AA;
 	LIS_VECTOR bb, xx;
 	LIS_SOLVER solver;
+#endif
+#ifdef USE_PARALUTION
+	paralution::LocalMatrix<double> AA;
+	paralution::LocalVector<double> bb;
+	paralution::LocalVector<double> xx;
 #endif
 #if defined(USE_MPI)
 	CPARDomain* dom;
@@ -203,7 +214,10 @@ private:  // Dot not remove this!
 #ifdef LIS
 	int solveWithLIS(CNumerics* num, bool compress);
 #endif
-#if defined(LIS) || defined(MKL)
+#ifdef USE_PARALUTION
+	int solveWithParalution(CNumerics* num, bool compress);
+#endif
+#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
 	IndexType searcgNonZeroEntries(IndexType nrows, IndexType* ptr,
 	                               double* value,
 	                               std::vector<IndexType>& vec_nz_rows,

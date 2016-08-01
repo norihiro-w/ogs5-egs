@@ -22,9 +22,6 @@
 //#include "rf_vel_new.h"
 #include "fem_ele.h"
 #include "fem_ele_std.h"
-#ifndef NEW_EQS  // WW. 06.11.2008
-#include "matrix_routines.h"
-#endif
 #include "mathlib.h"
 
 class PlaneSet
