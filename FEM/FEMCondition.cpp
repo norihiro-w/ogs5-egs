@@ -13,7 +13,6 @@
 #include "ProcessInfo.h"
 
 #include "GEOObjects.h"  //for SourceTerm
-#include "GridAdapter.h"
 
 FEMCondition::FEMCondition(const std::string& geometry_name, CondType t)
     : _type(t), _geoName("[unspecified]"), _associated_geometry(geometry_name)

@@ -38,18 +38,6 @@ struct MshElemType
 	};
 };
 
-struct MshQualityType
-{
-	enum type
-	{
-		INVALID = 0,
-		AREA,
-		VOLUME,
-		EDGERATIO,
-		EQUIANGLESKEW
-	};
-};
-
 /// Given a MshElemType this returns the appropriate string.
 const std::string MshElemType2String(const MshElemType::type t);
 
@@ -57,6 +45,5 @@ const std::string MshElemType2String(const MshElemType::type t);
 /// MshElemType.
 MshElemType::type String2MshElemType(const std::string& s);
 
-const std::string MshQualityType2String(const MshQualityType::type t);
 
 #endif  // MSHENUMS_H
