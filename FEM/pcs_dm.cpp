@@ -310,7 +310,7 @@ double CRFProcessDeformation::getNormOfDisplacements()
 	double norm_u_k1 = eqs_new->GetVecNormX();
 #else
 	const int g_nnodes = m_msh->GetNodesNumber(true);
-	const int size = g_nnodes * pcs_number_of_primary_nvals;
+	//const int size = g_nnodes * pcs_number_of_primary_nvals;
 	double val = .0;
 	for (int i = 0; i < pcs_number_of_primary_nvals; i++)
 	{
