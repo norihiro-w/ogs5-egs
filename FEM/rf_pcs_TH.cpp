@@ -99,17 +99,8 @@ double CRFProcessTH::Execute(int loop_process_number)
 #endif
 #if defined(NEW_EQS)  // WW
 //
-#if defined(USE_MPI)
-	CPARDomain* dom = dom_vector[myrank];
-	long global_eqs_dim =
-	    pcs_number_of_primary_nvals * m_msh->GetNodesNumber(true);
-	dom->ConfigEQS(m_num, global_eqs_dim, true);
-#else
 	eqs_new->ConfigNumerics(m_num);  // 27.11.2007 WW
-#endif
 //
-#elif !defined(USE_PETSC)
-	SetZeroLinearSolver(eqs);
 #endif
 
 	// Begin Newton-Raphson steps

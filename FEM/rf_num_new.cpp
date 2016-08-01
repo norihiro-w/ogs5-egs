@@ -26,7 +26,6 @@
 // or iostream.
 #ifdef USE_MPI  // WW
 #include "mpi.h"
-#include "par_ddc.h"
 //#undef SEEK_SET
 //#undef SEEK_END
 //#undef SEEK_CUR

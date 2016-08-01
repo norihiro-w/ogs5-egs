@@ -852,19 +852,6 @@ void CRFProcessDeformation::CreateInitialState4Excavation()
 	for (i = 0; i < m_msh->GetNodesNumber(false); i++)
 		for (j = 0; j < NS + 1; j++)
 			SetNodeValue(i, Idx_Strain[j], 0.0);
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	if (dom_vector.size() > 0)
-	{
-		bc_node_value_in_dom.clear();
-		bc_local_index_in_dom.clear();
-		rank_bc_node_value_in_dom.clear();
-		st_node_value_in_dom.clear();
-		st_local_index_in_dom.clear();
-		rank_st_node_value_in_dom.clear();
-		CountDoms2Nodes(this);
-		SetBoundaryConditionSubDomain();
-	}
-#endif
 
 	if (reload == -1000) reload = 1;
 }
@@ -2009,143 +1996,12 @@ long CRFProcessDeformation::MarkBifurcatedNeighbor(const int PathIndex)
 
 /**************************************************************************
    FEMLib-Method:
-   Task: Assembly in the sense of sub-domains
-   Programing:
-   04/2006 WW
-**************************************************************************/
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-void CRFProcessDeformation::DomainAssembly(CPARDomain* m_dom)
-{
-	long i;
-	MeshLib::CElem* elem = NULL;
-#ifdef NEW_EQS
-	m_dom->InitialEQS(this);
-#else
-	SetLinearSolver(m_dom->eqs);
-	SetZeroLinearSolver(m_dom->eqs);
-#endif
-	for (i = 0; i < (long)m_dom->elements.size(); i++)
-	{
-		elem = m_msh->ele_vector[m_dom->elements[i]];
-		if (elem->GetMark())  // Marked for use
-		{
-			elem->SetOrder(true);
-			// WW
-			fem_dm->SetElementNodesDomain(m_dom->element_nodes_dom[i]);
-			fem_dm->ConfigElement(elem);
-			fem_dm->m_dom = m_dom;
-			fem_dm->LocalAssembly(0);
-		}
-	}
-	if (type == 41)  // p-u monolithic scheme
-	{
-		if (!fem_dm->dynamic) RecoverSolution(1);  // p_i-->p_0
-		// 2.
-		// Assemble pressure eqs
-		for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
-		{
-			elem = m_msh->ele_vector[m_dom->elements[i]];
-			if (elem->GetMark())  // Marked for use
-			{
-				elem->SetOrder(false);
-				// WW
-				fem->SetElementNodesDomain(m_dom->element_nodes_dom[i]);
-				fem->ConfigElement(elem);
-				fem->m_dom = m_dom;
-				fem->Assembly();
-			}
-		}
-		if (!fem_dm->dynamic) RecoverSolution(2);  // p_i-->p_0
-	}
-
-	/*
-
-	   //TEST
-	   string test = "rank";
-	   char stro[1028];
-	   sprintf(stro, "%d",myrank);
-	   string test1 = test+(string)stro+"dom_eqs.txt";
-
-	   ofstream Dum(test1.c_str(), ios::out);
-	   m_dom->eqsH->Write(Dum);
-	   Dum.close();
-	   exit(1);
-
-	 */
-}
-#endif
-/**************************************************************************
-   FEMLib-Method:
    Task: Assemble local matrices and RHS for each element
    Programing:
    02/2005 WW
 **************************************************************************/
 void CRFProcessDeformation::GlobalAssembly()
 {
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//10.3012. WW
-#ifdef USE_MPI
-	if (dom_vector.size() > 0)
-	{
-		std::cout << "      Domain Decomposition " << myrank << '\n';
-
-		CPARDomain* m_dom = NULL;
-		m_dom = dom_vector[myrank];
-		DomainAssembly(m_dom);
-
-		/*
-		   //TEST
-		   string test = "rank";
-		   char stro[64];
-		   sprintf(stro, "%d",myrank);
-		   string test1 = test+(string)stro+"dom_eqs.txt";
-
-		   ofstream Dum(test1.c_str(), ios::out);
-		   m_dom->eqsH->Write(Dum);
-		   Dum.close();
-		   exit(1);
-		 */
-
-		// Apply Neumann BC
-		IncorporateSourceTerms(myrank);
-		// Apply Dirchlete bounday condition
-		IncorporateBoundaryConditions(myrank);
-		//....................................................................
-
-		// Assemble global system
-		// DDCAssembleGlobalMatrix();
-		// MXDumpGLS("rf_pcs.txt",1,eqs->b,eqs->x);
-	}
-#else  // ifdef USE_MPI
-	//----------------------------------------------------------------------
-	// DDC
-	if (dom_vector.size() > 0)
-	{
-		cout << "      Domain Decomposition" << '\n';
-		CPARDomain* m_dom = NULL;
-		for (int j = 0; j < (int)dom_vector.size(); j++)
-		{
-			m_dom = dom_vector[j];
-			DomainAssembly(m_dom);
-			// Apply Neumann BC
-			IncorporateSourceTerms(j);
-			// Apply Dirchlete bounday condition
-			IncorporateBoundaryConditions(j);
-		}
-		//....................................................................
-		// Assemble global system
-		DDCAssembleGlobalMatrix();
-
-		//      ofstream Dum("rf_pcs.txt", ios::out); // WW
-		//  eqs_new->Write(Dum);
-		//  Dum.close();
-
-		// MXDumpGLS("rf_pcs1.txt",1,eqs->b,eqs->x); abort();
-	}
-#endif
-	//----------------------------------------------------------------------
-	// STD
-	else
-#endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//10.3012.
 	// WW
 	{
 		GlobalAssembly_DM();
@@ -2292,48 +2148,12 @@ void CRFProcessDeformation::UpdateStress()
 {
 	long i;
 	MeshLib::CElem* elem = NULL;
-	/*
-	   long j, irank;
-	   j = 0;
-	   if(dom_vector.size()>0)
-	   {
-	   CPARDomain* m_dom = NULL;
-	   #ifdef USE_MPI
-	      irank = myrank;
-	   #else
-	   for(int j=0;j<(int)dom_vector.size();j++)
-	   {
-	   irank = j;
-	   #endif
-	   m_dom = dom_vector[irank];
-	   for (i = 0; i < (long)m_dom->elements.size(); i++)
-	   {
-	   elem = m_msh->ele_vector[m_dom->elements[i]];
-	   if (elem->GetMark()) // Marked for use
-	   {
-	   elem->SetOrder(true);
-	   fem_dm->SetElementNodesDomain(m_dom->element_nodes_dom[i]); //WW
-	   fem_dm->ConfigElement(elem);
-	   fem_dm->m_dom = m_dom;
-	   fem_dm->LocalAssembly(1);
-	   }
-	   }
-	   #ifndef USE_MPI
-	   }
-	   #endif
-	   }
-	   else
-	   {
-	 */
 	for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
 	{
 		elem = m_msh->ele_vector[i];
 		if (elem->GetMark())  // Marked for use
 		{
 			elem->SetOrder(true);
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-			fem_dm->m_dom = NULL;
-#endif
 			fem_dm->ConfigElement(elem);
 			fem_dm->LocalAssembly(1);
 		}

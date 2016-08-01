@@ -27,9 +27,7 @@
 #include <cstdio>
 #include "Configure.h"
 #include "makros.h"
-//#if defined(USE_MPI) // JT
-//#include "par_ddc.h"
-//#endif
+
 extern FILE* OpenMsgFile(void);
 extern void CloseMsgFile(FILE*);
 

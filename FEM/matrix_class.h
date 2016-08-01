@@ -26,15 +26,11 @@
 #include <map>
 #include <vector>
 #include <cassert>
-#ifdef NEW_EQS
+
 namespace MeshLib
 {
 class CFEMesh;
 }
-// 08.2007 WW
-class CPARDomain;
-#endif
-//#define OverLoadNEW_DELETE
 
 namespace Math_Group
 {
@@ -265,7 +261,6 @@ public:
 	            bool quadratic,
 	            bool symm = false,
 	            StorageType stype = JDS);
-	SparseTable(CPARDomain& m_dom, bool quadratic, bool symm = false);
 	~SparseTable();
 	void Write(std::ostream& os = std::cout);
 

@@ -65,10 +65,6 @@ extern size_t max_dim;  // OK411 todo
 #include "eqlink.h"
 #endif
 #include "vtk.h"
-// MPI Parallel
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || defined(USE_MPI_REGSOIL)
-#include "par_ddc.h"
-#endif
 
 #if defined(USE_PETSC) || defined(USE_MPI) || defined(USE_MPI_PARPROC) || \
     defined(USE_MPI_REGSOIL)  //|| defined(other parallel libs)//03.3012. WW
