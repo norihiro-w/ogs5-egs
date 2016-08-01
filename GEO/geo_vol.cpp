@@ -424,7 +424,7 @@ void GEOWriteVolumes2TecplotV1(std::string file_base_name)
 		//--------------------------------------------------------------------
 		// file handling
 		std::string vol_file_name =
-		    "VOL_" + m_volume->name + TEC_FILE_EXTENSIONS;
+			"VOL_" + m_volume->name + TEC_FILE_EXTENSION;
 		std::fstream vol_file(vol_file_name.data(),
 		                      std::ios::trunc | std::ios::out);
 		vol_file.setf(std::ios::scientific, std::ios::floatfield);
