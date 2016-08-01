@@ -19,10 +19,7 @@
 #include <cmath>
 #include <limits>
 
-#define MKleinsteZahlen std::numeric_limits<double>::min()
-#define MAX_ZEILEN 2048  // 256 //2048 OK
-#define CSV_FILE_EXTENSIONS ".csv"
-#define TEC_FILE_EXTENSIONS ".tec"
+#include "makros.h"
 
 extern double EuklVek3dDist(double* x, double* y);
 extern double EuklVek3dDistCoor(

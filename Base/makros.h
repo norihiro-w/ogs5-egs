@@ -21,14 +21,12 @@
 #ifndef makros_INC
 #define makros_INC
 
+#include <cfloat>
+#include <limits>
+#include <string>
+
 #include "BuildInfo.h"
 #include "Configure.h"
-
-/* Global benoetigte Header */
-//#include <stdlib.h>
-/* Speicherverwaltung */
-//#include <string.h>
-#include <string>
 
 /* Zeichenketten */
 //#include <float.h>
@@ -279,6 +277,7 @@
 /* Feste Zahlen fuer Genauigkeitspruefungen etc. */
 #define Mdrittel (1.0 / 3.0)
 #define MKleinsteZahl DBL_EPSILON
+#define MKleinsteZahlen MKleinsteZahl
 #define MFastNull DBL_MIN
 #define MSqrt2Over3 sqrt(2.0 / 3.0)
 
@@ -323,6 +322,7 @@
    #endif
  */
 #define MAX_ZEILE 2048
+#define MAX_ZEILEN MAX_ZEILE
 /* max. Laenge einer UCD-Zeile; bei Leseproblemen vergroessern */
 
 // enum DIS_TYPES {CONSTANT,LINEAR};
