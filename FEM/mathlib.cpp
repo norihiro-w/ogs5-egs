@@ -3345,49 +3345,6 @@ int MAddSkalVektoren(double* v1, double m1, double* v2, double m2, double* vout,
 #endif  //   05.03.2010. WW
         ////
         //#ifndef NON_GEO //   05.03.2010. WW
-/**************************************************************************
-   ROCKFLOW - Funktion: MMultVecVec
-   Aufgabe:
-           Multiplikation Vektor mit Vektor (zeilenweise)
-
-                  xxxxxx <- vec1
-                x oooooo
-        vec1 -> x oooooo <- mato
-                x oooooo
-                x oooooo
-
-   Formalparameter:
-   E: *vec1 *vec2
-   E: gv1, gv2
-   A: *mato, m (Zeilen) ,n (Spalten)
-   Ergebnis:
-   Matrix
-   Aenderungen/Korrekturen:
-   08/1994     hh        Erste Version
-   11/1999     C.Thorenz Register-Variablen
-**************************************************************************/
-
-int MMultVecVec(double* vec1, long gv1, double* vec2, long gv2, double* mato,
-                long mo, long no)
-{
-	register long i, j;
-
-#ifdef ERROR_CONTROL
-	if (gv1 != mo)
-		DisplayErrorMsg(
-		    "MMultVecVec: Groesse von Matrix und Vektor 1 passen nicht");
-	if (gv2 != no)
-		DisplayErrorMsg(
-		    "MMultVecVec: Groesse von Matrix und Vektor 2 passen nicht");
-#endif
-
-	mo = gv1;
-	no = gv2;
-	for (i = 0; i < gv1; i++)
-		for (j = 0; j < gv2; j++)
-			mato[i * gv2 + j] = vec1[i] * vec2[j];
-	return 1;
-} /* MMultVecVec */
 
 /**************************************************************************
    ROCKFLOW - Funktion: MMultVecMat
@@ -3420,8 +3377,8 @@ int MMultVecVec(double* vec1, long gv1, double* vec2, long gv2, double* mato,
 int MMultVecMat(double* restrict vec, long gv, double* restrict mat, long m,
                 long n, double* restrict veco, long go)
 #else
-int MMultVecMat(double* vec, long gv, double* mat, long m, long n, double* veco,
-                long go)
+int MMultVecMat(double* vec, long /*gv*/, double* mat, long m, long n, double* veco,
+				long /*go*/)
 #endif
 {
 	register long i, j;
@@ -3435,8 +3392,6 @@ int MMultVecMat(double* vec, long gv, double* mat, long m, long n, double* veco,
 		    "MMultVecMat: Groesse von Ergebnis-Vektor stimmt nicht");
 #endif
 
-	gv = m;
-	go = n;
 	MNulleVec(veco, n); /* cb: Nullen nicht vergessen ! */
 	for (i = 0; i < m; i++)
 #ifdef SX
@@ -3480,7 +3435,7 @@ int MMultMatVec(/* Matrix */
                 /* Veltor fuer das Produkt */
                 double* vec, long g,
                 /* Vektor fuer das Ergebnis */
-                double* veco, long r)
+				double* veco, long /*r*/)
 {
 	register long i, k;
 
@@ -3492,7 +3447,6 @@ int MMultMatVec(/* Matrix */
 		DisplayErrorMsg(
 		    "MMultMatVec: Groesse von Ergebnis-Vektor stimmt nicht");
 #endif
-	r = m;
 	for (k = 0; k < m; k++)
 	{
 		veco[k] = 0.0; /* cb: Nullen nicht vergessen ! */

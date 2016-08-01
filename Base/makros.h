@@ -23,12 +23,12 @@
 /**********************************************************************/
 /* Speicher */
 
-#ifndef NO_ERROR_CONTROL /* Wird ggf. im Makefile gesetzt */
-#define ERROR_CONTROL
+//#ifndef NO_ERROR_CONTROL /* Wird ggf. im Makefile gesetzt */
+//#define ERROR_CONTROL
 /* Fehlertests (Feldgrenzen, Existenz o.ae.), die bei sauberen Netzen und
    einwandfrei funktionierendem Programm nichts bringen und nur Laufzeit
    kosten */
-#endif
+//#endif
 
 #define MEMORY_MANAGEMENT_NOT_ANSI_COMPLIANT
 /*  Bei einigen Compilern werden

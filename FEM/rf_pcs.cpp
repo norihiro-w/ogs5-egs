@@ -3963,11 +3963,6 @@ void CRFProcess::CheckExcavedElement()
  **************************************************************************/
 double CRFProcess::Execute()
 {
-#ifndef USE_PETSC
-	int ii;
-	double val_n;
-	long nshift;
-#endif
 	int nidx1;
 	double pcs_error, nl_theta;
 	long j, k, g_nnodes;  // 07.01.07 WW
@@ -3980,23 +3975,13 @@ double CRFProcess::Execute()
 	double implicit_lim = 1.0 - DBL_EPSILON;
 #ifdef NEW_EQS
 	eqs_x = eqs_new->x;
-#else
-	eqs_x = eqs->x;
 #endif
 #endif
 
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
 	eqs_new->Initialize();
-#elif NEW_EQS  // WW
+#elif defined(NEW_EQS)
 	if (!configured_in_nonlinearloop)
-#if defined(USE_MPI)
-	{
-		// 02.2010.  WW
-		dom->eqs->SetDOF(pcs_number_of_primary_nvals);
-		dom->ConfigEQS(m_num, global_eqs_dim);
-	}
-// TEST eqs_new->Initialize();
-#else
 	// Also allocate temporary memory for linear solver. WW
 	{
 		//_new 02/2010. WW
@@ -4004,10 +3989,6 @@ double CRFProcess::Execute()
 		eqs_new->ConfigNumerics(m_num);
 	}
 	eqs_new->Initialize();
-#endif
-#else
-	SetLinearSolverType(eqs, m_num);  // WW
-	SetZeroLinearSolver(eqs);
 #endif
 	/*
 	   //TEST_MPI
@@ -4538,12 +4519,16 @@ void CRFProcess::AddFCT_CorrectionVector()
 	// constructed.
 	for (size_t i = 0; i < node_size; i++)
 	{
+#ifdef USE_PETSC
 		const size_t i_global = FCT_GLOB_ADDRESS(i);
+#endif
 		col = &fct_f[i];
 		for (jj = col->begin(); jj != col->end(); jj++)
 		{
 			const size_t j = (*jj).first;
+#ifdef USE_PETSC
 			const size_t j_global = FCT_GLOB_ADDRESS(j);
+#endif
 			if (i > j || i == j)
 				continue;  // do below only for upper triangle due to symmetric
 
@@ -4633,13 +4618,8 @@ void CRFProcess::AddFCT_CorrectionVector()
 	Math_Group::Vec* V = this->Gl_Vec;
 	(*V1) = 0.0;
 	(*V) = 0.0;
-#if !defined(USE_PETSC)
-	double* eqs_rhs;
 #ifdef NEW_EQS
-	eqs_rhs = eqs_new->b;
-#else
-	eqs_rhs = eqs->b;
-#endif
+	double* eqs_rhs = eqs_new->b;
 #endif
 	// b = [-(1-theta) * L] u^n
 	if (1.0 - theta > .0)
@@ -4650,19 +4630,17 @@ void CRFProcess::AddFCT_CorrectionVector()
 		// L*u^n
 		for (size_t i = 0; i < node_size; i++)
 		{
+#ifdef USE_PETSC
 			const size_t i_global = FCT_GLOB_ADDRESS(i);
+#endif
 			for (size_t j = 0; j < node_size; j++)
 			{
-				const size_t j_global = FCT_GLOB_ADDRESS(j);
 #ifdef USE_PETSC
+				const size_t j_global = FCT_GLOB_ADDRESS(j);
 				// b+=-(1-theta)*D*u^n
 				(*V)(i) += (*FCT_d)(i_global, j_global) * (*V1)(j);
 #else
-#ifdef NEW_EQS
 				(*V)(i) += (*A)(i, j) * (*V1)(j);
-#else
-				(*V)(i) += MXGet(i, j) * (*V1)(j);
-#endif
 #endif
 			}
 		}
@@ -4691,11 +4669,6 @@ void CRFProcess::AddFCT_CorrectionVector()
 	{
 #ifdef NEW_EQS
 		(*A) = 0.0;
-#else
-		for (size_t i = 0; i < node_size; i++)
-			for (size_t j = 0; j < node_size; j++)
-				MXSet(i, j, 0.0);
-
 #endif
 	}
 	else if (theta == 1.0)
@@ -4706,11 +4679,6 @@ void CRFProcess::AddFCT_CorrectionVector()
 	{
 #ifdef NEW_EQS
 		(*A) *= theta;
-#else
-		for (size_t i = 0; i < node_size; i++)
-			for (size_t j = 0; j < node_size; j++)
-				MXMul(i, j, theta);
-
 #endif
 	}
 	// A matrix: += 1/dt * ML
@@ -4719,8 +4687,6 @@ void CRFProcess::AddFCT_CorrectionVector()
 		double v = 1.0 / dt * (*ML)(i);
 #ifdef NEW_EQS
 		(*A)(i, i) += v;
-#else
-		MXInc(i, i, v);
 #endif
 	}
 #endif
@@ -5373,8 +5339,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 	vector<double> bc_eqs_value;
 	vector<vector<int> > dof_node_id(this->GetPrimaryVNumber());
 	vector<vector<double> > dof_node_value(this->GetPrimaryVNumber());
-#else
-	double* eqs_rhs = NULL;
 #endif
 //
 #ifdef NEW_EQS
@@ -5401,14 +5365,8 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 	{
 		begin = 0;
 		end = (long)bc_node_value.size();
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
-// TODO
 #ifdef NEW_EQS  // WW
 		eqs_p = eqs_new;
-		eqs_rhs = eqs_new->b;  // 27.11.2007 WW
-#else
-			eqs_rhs = eqs->b;
-#endif
 #endif
 	}
 	size_t count_constrained_excluded = 0;
@@ -5897,8 +5855,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, const int axis)
 #if defined(USE_PETSC)        // || defined(other parallel libs)//03~04.3012. WW
 	vector<int> bc_eqs_id;
 	vector<double> bc_eqs_value;
-#else
-	double* eqs_rhs = NULL;
 #endif
 #ifdef NEW_EQS
 	Linear_EQS* eqs_p = NULL;
@@ -5923,13 +5879,8 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, const int axis)
 	{
 		begin = 0;
 		end = (long)bc_node_value.size();
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
 #ifdef NEW_EQS           // WW
 		eqs_p = eqs_new;
-		eqs_rhs = eqs_new->b;  // 27.11.2007 WW
-#else
-			eqs_rhs = eqs->b;
-#endif
 #endif
 	}
 	for (i = begin; i < end; i++)
@@ -6305,12 +6256,10 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 #else
 	double* eqs_rhs = NULL;
 	long bc_eqs_index = -1;
-	int dim_space = 0;  // kg44 better define here and not in a loop!
 #endif
 	double vel[3];
 	bool is_valid;            // YD
 	CFunction* m_fct = NULL;  // YD
-	long i;                   //, group_vector_length;
 
 	double Scaling = 1.0;
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
@@ -11638,9 +11587,7 @@ void CRFProcess::Delete()
    Programming:
    09/2007 WW Implementation
  **************************************************************************/
-#if defined(USE_PETSC)  // WW. 07.11.2008. 04.2012
-// New solvers WW
-#elif defined(NEW_EQS)  // 1.09.2007 WW
+#if defined(NEW_EQS)  // 1.09.2007 WW
 
 void CreateEQS_LinearSolver()
 {
@@ -11648,7 +11595,7 @@ void CreateEQS_LinearSolver()
 	// CB_merge_0513
 	// int dof_DM = 1;
 	int dof_DM = 0;    // WW 02.2023. Pardiso
-	int DM_type = -1;  // 03.08.2010. WW
+	//int DM_type = -1;  // 03.08.2010. WW
 	CRFProcess* m_pcs = NULL;
 	CFEMesh* a_msh = NULL;
 	SparseTable* sp = NULL;
@@ -11659,7 +11606,7 @@ void CreateEQS_LinearSolver()
 
 	bool need_eqs = false;      // WW 02.2023. Pardiso
 	bool need_eqs_dof = false;  // WW 02.2023. Pardiso
-	int dof = 1;
+	//int dof = 1;
 	//
 	// size_t dof_nonDM (1);     //WW 02.2023. Pardiso
 	size_t dof_nonDM(0);
@@ -11671,14 +11618,14 @@ void CreateEQS_LinearSolver()
 		    1212)  // Important for parallel computing. 24.1.2011 WW
 		{
 			dof_nonDM = m_pcs->GetPrimaryVNumber();
-			dof = dof_nonDM;
+			//dof = dof_nonDM;
 		}
 		if (m_pcs->type == 4 || m_pcs->type / 10 == 4)  // Deformation
 		{
 			dof_DM = m_pcs->GetPrimaryVNumber();
-			dof = dof_DM;
-			DM_type = m_pcs->type;  // 03.08.2010. WW
-			if (m_pcs->type == 42) dof = m_pcs->m_msh->GetMaxElementDim();
+			//dof = dof_DM;
+			//DM_type = m_pcs->type;  // 03.08.2010. WW
+			//if (m_pcs->type == 42) dof = m_pcs->m_msh->GetMaxElementDim();
 		}
 		else  // Monolithic scheme for the process with linear elements
 		{
@@ -11701,12 +11648,12 @@ void CreateEQS_LinearSolver()
 			if (m_pcs->GetPrimaryVNumber() > 1)
 			{
 				dof_nonDM = m_pcs->GetPrimaryVNumber();
-				dof = dof_nonDM;
+				//dof = dof_nonDM;
 				need_eqs_dof = true;
 			}
 			else
 			{
-				dof = 1;
+				//dof = 1;
 				need_eqs = true;
 			}  // WW 02.2023. Pardiso
 		}
@@ -11732,11 +11679,6 @@ void CreateEQS_LinearSolver()
 	for (i = 0; i < fem_msh_vector.size(); i++)
 	{
 		a_msh = fem_msh_vector[i];
-#if defined(USE_MPI)
-		eqs = new Linear_EQS(a_msh->GetNodesNumber(true) * dof);
-		EQS_Vector.push_back(eqs);
-		EQS_Vector.push_back(eqs);
-#else
 		a_msh->CreateSparseTable();
 		// sparse pattern with linear elements exists
 		sp = a_msh->GetSparseTable();
@@ -11763,43 +11705,42 @@ void CreateEQS_LinearSolver()
 		EQS_Vector.push_back(eqs);
 		EQS_Vector.push_back(eqsH);
 		EQS_Vector.push_back(eqs_dof);  // WW 02.2023. Pardiso
-#endif
 	}
 }
 
 #else  // NEW_EQS
-/*************************************************************************
-   ROCKFLOW - Function: CRFProcess::
-   Task:
-   Programming:
-   09/2007 WW Implementation
- **************************************************************************/
-#include <iomanip>
-void CRFProcess::DumpEqs(string file_name)
-{
-	fstream eqs_out;
-	eqs_out.open(file_name.c_str(), ios::out);
-	eqs_out.setf(ios::scientific, ios::floatfield);
-	setw(14);
-	eqs_out.precision(14);
-	//
-	long nnode = eqs->dim / eqs->unknown_vector_dimension;
-	for (long i = 0; i < eqs->dim; i++)
-	{
-		CNode const* const node(m_msh->nod_vector[i % nnode]);
-		std::vector<size_t> const& connected_nodes(node->getConnectedNodes());
-		const size_t n_connected_nodes(connected_nodes.size());
-		for (int ii = 0; ii < eqs->unknown_vector_dimension; ii++)
-			for (size_t j = 0; j < n_connected_nodes; j++)
-			{
-				const long k = ii * nnode + connected_nodes[j];
-				if (k >= eqs->dim) continue;
-				eqs_out << i << "  " << k << "  " << MXGet(i, k) << endl;
-			}
-		eqs_out << i << "  " << eqs->b[i] << "  " << eqs->x[i] << endl;
-	}
-	eqs_out.close();
-}
+///*************************************************************************
+//   ROCKFLOW - Function: CRFProcess::
+//   Task:
+//   Programming:
+//   09/2007 WW Implementation
+// **************************************************************************/
+//#include <iomanip>
+//void CRFProcess::DumpEqs(string file_name)
+//{
+//	fstream eqs_out;
+//	eqs_out.open(file_name.c_str(), ios::out);
+//	eqs_out.setf(ios::scientific, ios::floatfield);
+//	setw(14);
+//	eqs_out.precision(14);
+//	//
+//	long nnode = eqs->dim / eqs->unknown_vector_dimension;
+//	for (long i = 0; i < eqs->dim; i++)
+//	{
+//		CNode const* const node(m_msh->nod_vector[i % nnode]);
+//		std::vector<size_t> const& connected_nodes(node->getConnectedNodes());
+//		const size_t n_connected_nodes(connected_nodes.size());
+//		for (int ii = 0; ii < eqs->unknown_vector_dimension; ii++)
+//			for (size_t j = 0; j < n_connected_nodes; j++)
+//			{
+//				const long k = ii * nnode + connected_nodes[j];
+//				if (k >= eqs->dim) continue;
+//				eqs_out << i << "  " << k << "  " << MXGet(i, k) << endl;
+//			}
+//		eqs_out << i << "  " << eqs->b[i] << "  " << eqs->x[i] << endl;
+//	}
+//	eqs_out.close();
+//}
 #endif  // ifdef NEW_QES
 
 /*************************************************************************

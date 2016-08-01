@@ -220,9 +220,6 @@ extern int MAddSkalVektoren(double* v1, double m1, double* v2, double m2,
 #endif  ///////////////////////////
 
 // WW: Only unsed in a member function of CFiniteElementStd implementated by MB
-/*   MMultVecVec           - Multiplikation Vektor mit Vektor */
-extern int MMultVecVec(double* vec1, long gv1, double* vec2, long gv2,
-                       double* mato, long mo, long no);
 /*   MMultVecMat           - Multiplikation Vektor mit Matrix */
 extern int MMultVecMat(double* vec, long gv, double* mat, long m, long n,
                        double* veco, long go);
