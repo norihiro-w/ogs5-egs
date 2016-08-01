@@ -154,11 +154,16 @@ FUNCTION (ADD_BENCHMARK authorName benchmarkName ogsConfiguration numProcesses)
 
 	# Delete output files on testing
 	FOREACH (entry ${ARGN})
-	SET (FILES_TO_DELETE "${FILES_TO_DELETE} ${entry}")
+		SET (FILES_TO_DELETE "${FILES_TO_DELETE} ${entry}")
 	ENDFOREACH (entry ${ARGN})
 	IF(OGS_PROFILE)
 		SET (FILES_TO_DELETE "${FILES_TO_DELETE} gmon.out")
 	ENDIF()
+
+	find_program(NUMDIFF_TOOL_PATH numdiff)
+	FOREACH (entry ${ARGN})
+		LIST (APPEND OUTPUT_FILES ${entry})
+	ENDFOREACH (entry ${ARGN})
 
 	# Adds a benchmark run. This calls AddTest.cmake to execute several steps.
 	ADD_TEST (
@@ -180,23 +185,45 @@ FUNCTION (ADD_BENCHMARK authorName benchmarkName ogsConfiguration numProcesses)
 		-P ${PROJECT_SOURCE_DIR}/scripts/CMakeConfiguration/AddBenchmark.cmake
 	)
 
+	ADD_TEST (
+		${authorName}_FILECOMPARE_${benchmarkName}
+		${CMAKE_COMMAND}
+		-DPROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+		-DEXECUTABLE_OUTPUT_PATH=${EXECUTABLE_OUTPUT_PATH}
+		-DbenchmarkStrippedName=${benchmarkStrippedName}
+		-DbenchmarkDir=${benchmarkDir}
+		-DFILES_TO_DELETE=${FILES_TO_DELETE}
+		-DOGS_PROFILE=${OGS_PROFILE}
+		-DOGS_OUTPUT_PROFILE=${OGS_OUTPUT_PROFILE}
+		-DGPROF_PATH=${GPROF_PATH}
+		-DDOT_TOOL_PATH=${DOT_TOOL_PATH}
+		-DBENCHMARK_TIMEOUT=${THIS_BENCHMARK_TIMEOUT}
+		-DOGS_FEM_CONFIG=${ogsConfiguration}
+		-DNUM_PROCESSES=${numProcesses}
+		-DBENCHMARK_DIR_FOUND=${BENCHMARK_DIR_FOUND}
+		-DNUMDIFF_TOOL_PATH=${NUMDIFF_TOOL_PATH}
+		-DOUTPUT_FILES=${OUTPUT_FILES}
+		-DBENCHMARK_REF_DIR=${BENCHMARK_REF_DIR_FOUND}
+		-P ${PROJECT_SOURCE_DIR}/scripts/CMakeConfiguration/CompareBenchmark.cmake
+	)
+
 	# compare file differences with python script
-	IF (PYTHONINTERP_FOUND)
-		FILE (REMOVE ${BENCHMARK_DIR_FOUND}/results/temp/temp_${benchmarkNameUnderscore}.txt)
-		FOREACH (entry ${ARGN})
-			FILE (APPEND ${BENCHMARK_DIR_FOUND}/results/temp/temp_${benchmarkNameUnderscore}.txt "${entry}\n")
-		ENDFOREACH (entry ${ARGN})
-		ADD_TEST (
-			${authorName}_FILECOMPARE_${benchmarkName}
-			${CMAKE_COMMAND} -E chdir ${BENCHMARK_DIR_FOUND}/results
-			${PYTHON_EXECUTABLE}
-			${PROJECT_SOURCE_DIR}/scripts/compare.py
-			temp/temp_${benchmarkNameUnderscore}.txt
-			${BENCHMARK_REF_DIR_FOUND}
-			${authorName}_${benchmarkNameUnderscore}.html
-			../
-		)
-	ENDIF (PYTHONINTERP_FOUND)
+#	IF (PYTHONINTERP_FOUND)
+#		FILE (REMOVE ${BENCHMARK_DIR_FOUND}/results/temp/temp_${benchmarkNameUnderscore}.txt)
+#		FOREACH (entry ${ARGN})
+#			FILE (APPEND ${BENCHMARK_DIR_FOUND}/results/temp/temp_${benchmarkNameUnderscore}.txt "${entry}\n")
+#		ENDFOREACH (entry ${ARGN})
+#		ADD_TEST (
+#			${authorName}_FILECOMPARE_${benchmarkName}
+#			${CMAKE_COMMAND} -E chdir ${BENCHMARK_DIR_FOUND}/results
+#			${PYTHON_EXECUTABLE}
+#			${PROJECT_SOURCE_DIR}/scripts/compare.py
+#			temp/temp_${benchmarkNameUnderscore}.txt
+#			${BENCHMARK_REF_DIR_FOUND}
+#			${authorName}_${benchmarkNameUnderscore}.html
+#			../
+#		)
+#	ENDIF (PYTHONINTERP_FOUND)
 
   # copy benchmark output files to reference directory
   IF (COPY_BENCHMARKS_TO_REF)
