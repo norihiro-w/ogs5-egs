@@ -7,6 +7,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8.3)
 PROJECT(OGS5-EGS)
 
 ### CMake setup ###
+INCLUDE(scripts/cmake/Functions.cmake)
 INCLUDE(scripts/CMakeConfiguration/CMakeSetup.cmake)
 
 ### Compiler setup ###
