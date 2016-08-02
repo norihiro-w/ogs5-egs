@@ -20,11 +20,9 @@
 #include <iostream>
 #include <string>
 
-// MSHLib
 #include "MSHEnums.h"
 #include "msh_edge.h"
 
-// PCSLib
 namespace process
 {
 class CRFProcessDeformation;
@@ -33,8 +31,15 @@ namespace Math_Group
 {
 class Matrix;
 }
-
 class CRFProcess;
+namespace FiniteElement
+{
+class CElement;
+class CFiniteElementStd;
+class CFiniteElementVec;
+class ElementMatrix;
+class ElementMatrix_DM;
+}
 
 namespace MeshLib
 {

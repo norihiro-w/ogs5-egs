@@ -21,38 +21,30 @@
 #ifndef msh_mesh_INC
 #define msh_mesh_INC
 
-// C++
 #include <algorithm>
 #include <string>
 
-/** depreciated includes of GEOLib */
 #include "geo_lib.h"
-//#include "geo_pnt.h"
 #include "geo_sfc.h"
 #include "geo_vol.h"
-
-// GEOLIB
 #include "GEOObjects.h"
 #include "Point.h"
 #include "Polyline.h"
 #include "Surface.h"
 #include "Grid.h"
 
-// MSHLib
-#include "MSHEnums.h"  // KR 2010/11/15
+#include "MSHEnums.h"
 #include "MeshNodesAlongPolyline.h"
 
-// FileIO
 #include "MeshIO/OGSMeshIO.h"
 
 #include "msh_elem.h"
 
 class RandomWalk;
 class CFluidMomentum;
-
 class Problem;
 
-#ifdef NEW_EQS  // 1.11.2007 WW
+#ifdef NEW_EQS
 namespace Math_Group
 {
 class SparseTable;
@@ -63,35 +55,8 @@ using Math_Group::SparseTable;
 //------------------------------------------------------------------------
 namespace MeshLib
 {
-#ifndef NON_GEO
-/*!
-   Class to handle topologic relationship among grids
-   Designed by WW
-   First version:    13.05.2009
- */
-class GridsTopo
-{
-private:
-	long* local_indices;  // of border nodes in local node array of a grid
-	// double *comm_data;   // data for communication
-	std::string neighbor_name;
-	long bnodes;
-	friend class CFEMesh;
-	friend class ::CRFProcess;
 
-public:
-	GridsTopo(std::istream& in, std::string sec_name);
-	std::string getNeighbor_Name() const { return neighbor_name; }
-	long* getBorderNodeIndicies() const { return local_indices; }
-	long getBorderNodeNumber() const { return bnodes; }
-
-	// void Write(std::ostream &os=cout);
-	~GridsTopo();
-};
-#endif  //#ifndef NON_GEO
-
-/// For parallel computing. 03.2012. WW
-#if defined(USE_PETSC)  // || defined(using other parallel scheme)
+#if defined(USE_PETSC)
 typedef struct
 {
 	int index;
@@ -617,8 +582,6 @@ private:
 	                                    std::string const& ofname,
 	                                    double ratio = 0.8);
 #ifndef NON_GEO  //  WW
-	/// Store border nodes among different grids.
-	std::vector<GridsTopo*> grid_neighbors;
 	friend class ::Problem;
 #endif  // #ifndef NON_GEO
         //

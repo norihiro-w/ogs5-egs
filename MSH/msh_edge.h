@@ -7,22 +7,14 @@
  *
  */
 
-/**************************************************************************
-   MSHLib - Object:
-   Task:
-   Programing:
-   08/2005 WW/OK Encapsulation from rf_ele_msh
-   last modified
-   03/2010 TF added documentation, changed some int, long to size_t
-**************************************************************************/
 #ifndef msh_edge_INC
 #define msh_edge_INC
 
-// MSHLib
 #include "msh_node.h"
-//------------------------------------------------------------------------
+
 namespace MeshLib
 {
+
 /**
  * \brief Class CEdge represent an edge of a finite element mesh.
  *
