@@ -10,6 +10,9 @@ dist: trusty
 language: cpp
 compiler: gcc
 
+git:
+  depth: 3
+
 # workaround to exclude the default job
 env:
   matrix:
@@ -28,16 +31,9 @@ matrix:
             - numdiff
     - env: CASE=PETSC CMAKE_ARGS="-DOGS_FEM_PETSC=ON -DPETSC_DIR=/usr/lib/petscdir/3.4.2/"
 
-#env:
-#  - CASE=LIS CMAKE_ARGS="-DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=$TRAVIS_BUILD_DIR/lis-cmake-master/include  -DLIS_LIBRARIES=$TRAVIS_BUILD_DIR/lis-cmake-master/build/lib/liblis.a"
-#  - CASE=PETSC CMAKE_ARGS="-DOGS_FEM_PETSC=ON -DPETSC_DIR=/usr/lib/petscdir/3.4.2/"
-
 before_install:
   - openssl aes-256-cbc -K $encrypted_fc068b29a656_key -iv $encrypted_fc068b29a656_iv -in .dropbox_uploader.enc -out .dropbox_uploader -d
   - cp .dropbox_uploader $HOME/
-#  - if [[ "$CASE" == "PETSC" ]]; then sudo add-apt-repository --yes ppa:feelpp/petsc; fi
-#  - if [[ "$CASE" == "LIS" ]]; then sudo apt-get install gfortran numdiff; fi
- # - travis_retry sudo apt-get update -qq;
 
 install:
   # PetSc
@@ -51,13 +47,13 @@ install:
   - if [[ "$CASE" == "LIS" ]]; then pwd && ls -l; fi
   - export bench_input=`pwd`/benchmarks/input_files
   - export bench_ref=`pwd`/benchmarks/ref_files
-
-script:
   - mkdir build
   - cd build
   - if [[ "$CASE" == "LIS" ]]; then export CMAKE_ARGS="${CMAKE_ARGS} -DBENCHMARK_DIR=${bench_input} -DBENCHMARK_REF_DIR=${bench_ref}"; fi
   - cmake $CMAKE_ARGS ..
   - make -j4
+
+script:
   - if [[ "$CASE" == "LIS" ]]; then ctest -E 'Tests|FILE|EXCEED'; fi
   - if [[ "$CASE" == "LIS" ]]; then ctest -R 'FILECOMPARE' -E 'EXCEED'; fi
 
