@@ -6,21 +6,6 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8.3)
 # Project name
 PROJECT(OGS5-EGS)
 
-### CMake setup ###
-INCLUDE(scripts/cmake/Functions.cmake)
-INCLUDE(scripts/CMakeConfiguration/CMakeSetup.cmake)
-
-### Compiler setup ###
-INCLUDE(scripts/CMakeConfiguration/CompilerSetup.cmake)
-
-### Find directories and libraries ###
-IF(NOT OGS_NO_EXTERNAL_LIBS)
-	INCLUDE (scripts/CMakeConfiguration/Find.cmake)
-ENDIF() # NOT OGS_NO_EXTERNAL_LIBS
-
-### General project setup ###
-INCLUDE(scripts/CMakeConfiguration/GeneralProjectSetup.cmake)
-
 ###############
 ### Options ###
 ###############
@@ -41,7 +26,7 @@ IF (NOT OGS_FEM_LIS AND NOT OGS_FEM_MKL AND NOT OGS_FEM_PETSC)
 ENDIF ()
 
 # Check if a valid OGS configuration is given (see Macros.cmake)
-CHECK_CONFIG()
+#CHECK_CONFIG()
 
 # Additional options
 OPTION(OGS_CMAKE_DEBUG "Show additional cmake debug information" OFF)
@@ -63,6 +48,39 @@ OFF)
 OPTION (OGS_DELETE_EDGES_AFTER_INIT "Delete mesh edges after initialization if possible" OFF)
 
 MARK_AS_ADVANCED(FORCE OGS_CMAKE_DEBUG OGS_BUILD_INFO CMAKE_CMD_ARGS)
+
+IF(OGS_FEM_LIS)
+	SET(LIS ON CACHE BOOL "Use Library of Iterative Solvers")
+	SET(PARALLEL_USE_OPENMP ON CACHE BOOL "Use Library of Iterative Solvers")
+	MARK_AS_ADVANCED(LIS, PARALLEL_USE_OPENMP)
+ENDIF()
+
+IF(OGS_FEM_MKL)
+	SET(PARALLEL_USE_OPENMP ON CACHE BOOL "Use Library of Iterative Solvers")
+	SET(LIS ON CACHE BOOL "Use Library of Iterative Solvers")
+	SET(MKL ON CACHE BOOL "Use Math Kernel Library")
+	MARK_AS_ADVANCED(PARALLEL_USE_OPENMP LIS MKL)
+ENDIF(OGS_FEM_MKL)
+
+IF(OGS_FEM_Paralution)
+	SET(PARALLEL_USE_OPENMP ON CACHE BOOL "Use Library of Iterative Solvers")
+	MARK_AS_ADVANCED(PARALLEL_USE_OPENMP)
+ENDIF()
+
+
+#########################
+### Finding libraries ###
+#########################
+
+INCLUDE(scripts/cmake/Functions.cmake)
+INCLUDE(scripts/CMakeConfiguration/CMakeSetup.cmake)
+INCLUDE(scripts/CMakeConfiguration/CompilerSetup.cmake)
+IF(NOT OGS_NO_EXTERNAL_LIBS)
+	INCLUDE (scripts/CMakeConfiguration/Find.cmake)
+ENDIF() # NOT OGS_NO_EXTERNAL_LIBS
+INCLUDE(scripts/CMakeConfiguration/GeneralProjectSetup.cmake)
+
+
 
 ###########################################################################
 ### OGS version information. Adjust these if you release a new version. ###
@@ -86,7 +104,7 @@ ELSE()
 ENDIF() # PROCESSOR_COUNT
 
 IF(OGS_ONLY_TH)
-    ADD_DEFINITIONS(-DOGS_ONLY_TH)
+	ADD_DEFINITIONS(-DOGS_ONLY_TH)
 ENDIF()
 
 IF(OGS_FEM_PETSC)
@@ -103,29 +121,14 @@ IF(OGS_FEM_PETSC)
 	INCLUDE_DIRECTORIES( ${PETSC_INCLUDES} )
 	FIND_PACKAGE(MPI)
 	IF(MPI_FOUND)
-	  SET(CMAKE_C_COMPILER ${MPI_COMPILER})
-	  SET(CMAKE_CXX_COMPILER ${MPI_COMPILER})
+		SET(CMAKE_C_COMPILER ${MPI_COMPILER})
+		SET(CMAKE_CXX_COMPILER ${MPI_COMPILER})
 	ELSE(MPI_FOUND)
-	  MESSAGE (FATAL_ERROR "Aborting: MPI implementation is not found!")
+		MESSAGE (FATAL_ERROR "Aborting: MPI implementation is not found!")
 	ENDIF(MPI_FOUND)
 ENDIF(OGS_FEM_PETSC)
 
-IF(OGS_FEM_LIS)
-	SET(LIS ON CACHE BOOL "Use Library of Iterative Solvers")
-	SET(PARALLEL_USE_OPENMP ON CACHE BOOL "Use Library of Iterative Solvers")
-	MARK_AS_ADVANCED(LIS, PARALLEL_USE_OPENMP)
-ENDIF()
-
-IF(OGS_FEM_MKL)
-	SET(PARALLEL_USE_OPENMP ON CACHE BOOL "Use Library of Iterative Solvers")
-	SET(LIS ON CACHE BOOL "Use Library of Iterative Solvers")
-	SET(MKL ON CACHE BOOL "Use Math Kernel Library")
-	MARK_AS_ADVANCED(PARALLEL_USE_OPENMP LIS MKL)
-ENDIF(OGS_FEM_MKL)
-
 IF(OGS_FEM_Paralution)
-	SET(PARALLEL_USE_OPENMP ON CACHE BOOL "Use Library of Iterative Solvers")
-	MARK_AS_ADVANCED(PARALLEL_USE_OPENMP)
 	set(NEW_EQS ON)
 	ADD_DEFINITIONS(-DNEW_EQS -DUSE_PARALUTION)
 	INCLUDE_DIRECTORIES (${Paralution_INCLUDE})
