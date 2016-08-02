@@ -1,3 +1,8 @@
+branches:
+  only:
+  - master
+  - develop
+
 # Ubuntu 14.04 Trusty support
 sudo: required
 dist: trusty
@@ -20,6 +25,7 @@ matrix:
         apt:
           packages:
             - gfortran
+            - numdiff
     - env: CASE=PETSC CMAKE_ARGS="-DOGS_FEM_PETSC=ON -DPETSC_DIR=/usr/lib/petscdir/3.4.2/"
 
 #env:
@@ -30,8 +36,8 @@ before_install:
   - openssl aes-256-cbc -K $encrypted_fc068b29a656_key -iv $encrypted_fc068b29a656_iv -in .dropbox_uploader.enc -out .dropbox_uploader -d
   - cp .dropbox_uploader $HOME/
 #  - if [[ "$CASE" == "PETSC" ]]; then sudo add-apt-repository --yes ppa:feelpp/petsc; fi
-  - if [[ "$CASE" == "LIS" ]]; then sudo apt-get install gfortran numdiff; fi
-  - travis_retry sudo apt-get update -qq;
+#  - if [[ "$CASE" == "LIS" ]]; then sudo apt-get install gfortran numdiff; fi
+ # - travis_retry sudo apt-get update -qq;
 
 install:
   # PetSc
