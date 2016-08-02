@@ -1,15 +1,26 @@
+# Ubuntu 14.04 Trusty support
+sudo: required
+dist: trusty
+
 language: cpp
-#dist: trusty
-branches:
-  only:
-  - master
-  - develop
-compiler:
-  - gcc
-os:
-- linux
-cache:
-  - apt
+compiler: gcc
+
+# workaround to exclude the default job
+env:
+  matrix:
+    - TRAVIS_EMPTY_JOB_WORKAROUND=true 
+
+matrix:
+  exclude:
+    - env: TRAVIS_EMPTY_JOB_WORKAROUND=true
+
+  include:
+    - env: CASE=LIS CMAKE_ARGS="-DLIS_INCLUDE_DIR=$TRAVIS_BUILD_DIR/lis-cmake-master/include -DLIS_LIBRARIES=$TRAVIS_BUILD_DIR/lis-cmake-master/build/lib/liblis.a"
+      addons:
+        apt:
+          packages:
+            - gfortran
+    - env: CASE=PETSC CMAKE_ARGS="-DPETSC_DIR=/usr/lib/petscdir/3.4.2/"
 
 env:
   - CASE=LIS CMAKE_ARGS="-DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=$TRAVIS_BUILD_DIR/lis-cmake-master/include  -DLIS_LIBRARIES=$TRAVIS_BUILD_DIR/lis-cmake-master/build/lib/liblis.a"
@@ -18,7 +29,7 @@ env:
 before_install:
   - openssl aes-256-cbc -K $encrypted_fc068b29a656_key -iv $encrypted_fc068b29a656_iv -in .dropbox_uploader.enc -out .dropbox_uploader -d
   - cp .dropbox_uploader $HOME/
-  - if [[ "$CASE" == "PETSC" ]]; then sudo add-apt-repository --yes ppa:feelpp/petsc; fi
+#  - if [[ "$CASE" == "PETSC" ]]; then sudo add-apt-repository --yes ppa:feelpp/petsc; fi
   - if [[ "$CASE" == "LIS" ]]; then sudo apt-get install gfortran numdiff; fi
   - travis_retry sudo apt-get update -qq;
 
