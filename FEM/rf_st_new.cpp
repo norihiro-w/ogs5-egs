@@ -15,69 +15,45 @@
  last modified
  **************************************************************************/
 
-#include "makros.h"
-// C++ STL
-//#include <fstream>
+#include "rf_st_new.h"
+
+#include <algorithm>
 #include <cfloat>
 #include <iostream>
 #include <set>
-#include <algorithm>
 
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
+#include "makros.h"
 #include "display.h"
-
-#include "MemWatch.h"
-#include "files0.h"
-#include "mathlib.h"
-
-#include "PointWithID.h"  // NB
-
-// GeoSys-GeoLib
-#include "GEOObjects.h"
-
-// GeoSys-MshLib
-#include "fem_ele.h"
-
-#include "tools.h"  //GetLineFromFile
-
-// GeoSys-FEMLib
-// OK_IC #include "rfsousin.h"
-#include "rf_st_new.h"
-#include "rf_tim_new.h"
-
-// Math
-#include "matrix_class.h"
-
-// BaseLib
+#include "FileToolsRF.h"
 #include "FileTools.h"
-
-//#include "pcs_dm.h"
-
-// FEM
-//#include "problem.h"
-// For analytical source terms
-#include "rf_mfp_new.h"
-#include "rf_node.h"
-#include "rfmat_cp.h"
-
-// Base
+#include "MemWatch.h"
 #include "quicksort.h"
 
-// MathLib
 #include "InterpolationAlgorithms/InverseDistanceInterpolation.h"
 #include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
 
-// FileIO
+#include "PointWithID.h"
+#include "GEOObjects.h"
+
 #include "FEMIO/GeoIO.h"
 #include "FEMIO/ProcessIO.h"
 #include "readNonBlankLineFromInputStream.h"
 
-#include "SourceTerm.h"
-
 #include "DistributionTools.h"
+#include "fem_ele.h"
+#include "mathlib.h"
+#include "matrix_class.h"
+#include "rfmat_cp.h"
+#include "rf_mfp_new.h"
+#include "rf_node.h"
+#include "rf_tim_new.h"
+#include "SourceTerm.h"
+#include "tools.h"
+
 
 using FiniteElement::CElement;
 using MeshLib::CElem;

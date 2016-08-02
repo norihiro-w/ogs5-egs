@@ -18,27 +18,23 @@
 
 #include "rf_ic_new.h"
 
-// C++ STL
 #include <iostream>
 #include <list>
-// FEM-Makros
-//#include "files0.h"
+
 #include "makros.h"
 #include "display.h"
-#include "files0.h"
-#include "mathlib.h"
-// Base
-//#include "StringTools.h"
-// GEOLIB
+#include "FileToolsRF.h"
+
 #include "GEOObjects.h"
-// MSHLib
+
 #include "msh_lib.h"
-// FEMLib
+
+#include "InitialCondition.h"
+#include "mathlib.h"
+#include "rfmat_cp.h"
 #include "rf_node.h"
 #include "rf_pcs.h"
-#include "rfmat_cp.h"
 #include "tools.h"
-#include "InitialCondition.h"
 
 //==========================================================================
 using namespace std;

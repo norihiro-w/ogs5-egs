@@ -2277,7 +2277,7 @@ void CFEMesh::GetNODOnSFC_Vertical(Surface* m_sfc,
 	{
 		// OK41 nodes_array = m_polyline->MSHGetNodesCloseXY(&no_nodes);
 		// CC 10/05
-		nodes_array = MSHGetNodesClose(&no_nodes, *p_ply);
+		//nodes_array = MSHGetNodesClose(&no_nodes, *p_ply);
 		break;
 	}
 

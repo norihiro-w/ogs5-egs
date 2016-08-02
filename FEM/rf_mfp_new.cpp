@@ -17,28 +17,16 @@
 
 #include "rf_mfp_new.h"
 
-// C++ STL
-//#include <math.h>
-//#include <fstream>
-//#include <iostream>
 #include <cfloat>
 
 #include "makros.h"
 #include "display.h"
-// FEM-Makros
-//#include "mathlib.h"
-#include "eos.h"  //NB
-// GeoSys-GeoLib
-#include "files0.h"
-// GeoSys-FEMLib
+#include "FileToolsRF.h"
+
+#include "eos.h"
 #include "fem_ele_std.h"
-//
-//#include "rf_mmp_new.h"
-extern double InterpolValue(long number, int ndx, double r, double s, double t);
-//#include "rf_pcs.h"
 #include "rfmat_cp.h"
-extern double GetCurveValue(int, int, double, int*);
-#include "tools.h"  //GetLineFromFile
+#include "tools.h"
 
 using namespace std;
 

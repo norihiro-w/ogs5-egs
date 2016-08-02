@@ -14,6 +14,7 @@
 #include "BruteForceClosestPair.h"
 #include "PointVec.h"
 #include "PointWithID.h"
+#include "geo_mathlib.h"
 
 // MathLib
 #include "MathTools.h"
@@ -32,7 +33,7 @@ PointVec::PointVec(const std::string& name, std::vector<Point*>* points,
 
 	calculateAxisAlignedBoundingBox();
 	rel_eps *=
-	    sqrt(MathLib::sqrDist(&(_aabb.getMinPoint()), &(_aabb.getMaxPoint())));
+		sqrt(sqrDist(&(_aabb.getMinPoint()), &(_aabb.getMaxPoint())));
 	makePntsUnique(_data_vec, _pnt_id_map, rel_eps);
 
 	if (number_of_all_input_pnts - _data_vec->size() > 0)
@@ -92,7 +93,7 @@ size_t PointVec::uniqueInsert(Point* pnt)
 		// update shortest distance
 		for (size_t i(0); i < n; i++)
 		{
-			double sqr_dist(MathLib::sqrDist((*_data_vec)[i], (*_data_vec)[n]));
+			double sqr_dist(sqrDist((*_data_vec)[i], (*_data_vec)[n]));
 			if (sqr_dist < _sqr_shortest_dist) _sqr_shortest_dist = sqr_dist;
 		}
 		return n;
@@ -215,7 +216,7 @@ void PointVec::calculateShortestDistance()
 {
 	size_t i, j;
 	BruteForceClosestPair(*_data_vec, i, j);
-	_sqr_shortest_dist = MathLib::sqrDist((*_data_vec)[i], (*_data_vec)[j]);
+	_sqr_shortest_dist = sqrDist((*_data_vec)[i], (*_data_vec)[j]);
 }
 
 void PointVec::calculateAxisAlignedBoundingBox()

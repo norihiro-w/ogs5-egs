@@ -17,8 +17,8 @@
 #ifndef MATHTOOLS_H_
 #define MATHTOOLS_H_
 
-#include "Point.h"
 #include <cmath>
+#include <cstddef>
 #include <limits>
 #include <vector>
 
@@ -62,23 +62,6 @@ void crossProd(const double u[3], const double v[3], double r[3]);
 double calcProjPntToLineAndDists(const double p[3], const double a[3],
                                  const double b[3], double& lambda, double& d0);
 
-/**
- * Checks if two points are within a given distance of each other
- * @param p0 The first point
- * @param p1 the second point
- * @param squaredDistance The square of the distance within which the two points
- * should be
- * @return true if p1 and p2 are within the given distance of each other, false
- * otherwise
- */
-bool checkDistance(GEOLIB::Point const& p0, GEOLIB::Point const& p1,
-                   double squaredDistance);
-
-/** squared euklid norm of the vector p0 */
-double sqrNrm2(const GEOLIB::Point* const p0);
-
-/** squared dist between GEOLIB::Points p0 and p1 */
-double sqrDist(const GEOLIB::Point* p0, const GEOLIB::Point* p1);
 
 /** squared dist between double arrays p0 and p1 (size of arrays is 3) */
 inline double sqrDist(double const* p0, double const* p1)

@@ -17,11 +17,12 @@
 #ifndef rf_st_new_INC
 #define rf_st_new_INC
 
-// FEM
-#include "DistributionInfo.h"    // TF
-#include "GeoInfo.h"             // TF
-#include "LinearFunctionData.h"  // TF
-#include "ProcessInfo.h"         // TF
+#include "GEOObjects.h"
+
+#include "DistributionInfo.h"
+#include "GeoInfo.h"
+#include "LinearFunctionData.h"
+#include "ProcessInfo.h"
 
 class CNodeValue;
 class CGLPolyline;

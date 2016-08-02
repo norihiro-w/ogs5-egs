@@ -17,33 +17,31 @@
    10/2004   SB  First Implemented
  */
 /**************************************************************************/
-#ifdef WINDOWS
-#pragma warning(disable : 4786) /*Visual C++ 6.0*/
-#endif
-// C
-#include <math.h>
-// C++
+
+#include "rfmat_cp.h"
+
 #include <cfloat>
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
 
-#include "files0.h"
-#include "makros.h"
 #include "display.h"
+#include "FileToolsRF.h"
+#include "makros.h"
+
 #include "rf_mfp_new.h"
 #include "rf_mmp_new.h"
 #include "rf_msp_new.h"
 #include "rf_pcs.h"
-#include "rf_pcs.h"  //OK_MOD" //GetRFProcess..()
 #include "rf_tim_new.h"
-#include "rfmat_cp.h"
 #include "tools.h"
 #ifdef GEM_REACT
 #include "rf_REACT_GEM.h"
 #endif
+
 using SolidProp::CSolidProperties;
 using namespace std;
 /* Vector auf CompProperties , globale Zugriffe */

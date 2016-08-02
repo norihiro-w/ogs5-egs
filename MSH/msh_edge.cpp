@@ -15,11 +15,10 @@
    last modified
 **************************************************************************/
 
-// C++
-#include <cmath>
-// MSHLib
-#include "mathlib.h"  //OK
 #include "msh_edge.h"
+
+#include <cmath>
+#include "mathlib.h"
 
 //========================================================================
 namespace MeshLib

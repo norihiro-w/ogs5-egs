@@ -16,7 +16,6 @@
 **************************************************************************/
 #include "rf_bc_new.h"
 
-// C++ STL
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
@@ -25,64 +24,23 @@
 #include "makros.h"
 #include "display.h"
 #include "memory.h"
+#include "FileToolsRF.h"
 
-// FileIO
+#include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
+
+#include "GEOObjects.h"
+
 #include "BoundaryConditionIO.h"
 #include "GeoIO.h"
 #include "ProcessIO.h"
 #include "readNonBlankLineFromInputStream.h"
-#include "files0.h"
-
-// GEOLib
-//#include "geo_lib.h"
-//#include "geo_sfc.h"
-
-// GEOLIB
-#include "GEOObjects.h"
-
-// MSHLib
-//#include "mshlib.h"
-// FEMLib
-extern void remove_white_space(std::string*);
-//#include "problem.h"
-#include "tools.h"
-//#include "rf_node.h"
-//#include "rf_pcs.h"
-//#include "rf_fct.h"
-#include "rfmat_cp.h"
-//#include "geo_ply.h"
-// MathLib
-#include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
-#include "mathlib.h"
 
 #include "BoundaryCondition.h"
-
 #include "DistributionTools.h"
+#include "mathlib.h"
+#include "rfmat_cp.h"
+#include "tools.h"
 
-#ifndef _WIN32
-#include <cstdio>
-#include <cstdlib>
-#include <sys/resource.h>
-#include <sys/time.h>
-#include <unistd.h>
-
-double cputime(double x)
-{
-	struct rusage rsrc;
-	double usr, sys;
-
-	if (getrusage(RUSAGE_SELF, &rsrc) == -1)
-	{
-		perror("times");
-		exit(1);
-	}
-
-	usr = rsrc.ru_utime.tv_sec + 1.0e-6 * rsrc.ru_utime.tv_usec;
-	sys = rsrc.ru_stime.tv_sec + 1.0e-6 * rsrc.ru_stime.tv_usec;
-
-	return usr + sys - x;
-}
-#endif
 
 CBoundaryConditionNode::CBoundaryConditionNode()
 {

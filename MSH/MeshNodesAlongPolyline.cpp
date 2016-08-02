@@ -52,7 +52,7 @@ MeshNodesAlongPolyline::MeshNodesAlongPolyline(
 		{
 			double act_length_of_ply(ply->getLength(k));
 			double seg_length(sqrt(
-			    MathLib::sqrDist(_ply->getPoint(k), _ply->getPoint(k + 1))));
+				sqrDist(_ply->getPoint(k), _ply->getPoint(k + 1))));
 			double lower_lambda(-epsilon_radius / seg_length);
 			double upper_lambda(1 + epsilon_radius / seg_length);
 
