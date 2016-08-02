@@ -17,16 +17,16 @@
 
 #include "geo_vol.h"
 
-#include <stdlib.h>
-// GEOLib
-#include "files0.h"
+#include <cstdlib>
+
+#include "FileToolsRF.h"
 #include "geo_lib.h"
 #include "geo_pnt.h"
 #include "geo_sfc.h"
 
-using namespace std;  // 11.08.2011. WW
+using namespace std;
 //------------------------------------------------------------------------
-std::vector<CGLVolume*> volume_vector;  // CC
+std::vector<CGLVolume*> volume_vector;
 //////////////////////////////////////////////////////////////////////////
 // Construction
 CGLVolume::CGLVolume(void)

@@ -22,17 +22,16 @@
 
 #include "geo_sfc.h"
 
-// MFC
 #include <cstdlib>
-// GEOLib
-#include "files0.h"
+
+#include "FileToolsRF.h"
+#include "makros.h"
+
 #include "geo_lib.h"
 #include "geo_mathlib.h"
 #include "geo_ply.h"
 #include "geo_pnt.h"
 
-// File path. 11.08.2011 WW
-#include "makros.h"
 
 using namespace std;
 

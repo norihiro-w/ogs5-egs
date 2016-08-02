@@ -13,6 +13,7 @@
 
 #define reactions_INC
 
+#include <string>
 #include <vector>
 
 /* Structure for exchange of reaction rates */

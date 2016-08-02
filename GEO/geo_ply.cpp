@@ -9,16 +9,15 @@
 
 #include "geo_ply.h"
 
-#include <stdlib.h>
-/* Objects */
-#include "files0.h"
+#include <cstdlib>
+
+#include "FileToolsRF.h"
+#include "InterpolationAlgorithms/CubicSpline.h"
 #include "geo_lib.h"
 #include "geo_mathlib.h"
 #include "geo_pnt.h"
 #include "geo_sfc.h"
 
-// MathLib
-#include "InterpolationAlgorithms/CubicSpline.h"
 
 using namespace std;
 

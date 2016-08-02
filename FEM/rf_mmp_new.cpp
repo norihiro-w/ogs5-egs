@@ -16,37 +16,21 @@
 
 #include "rf_mmp_new.h"
 
-//#include "makros.h"
-// C++ STL
-//#include <iostream>
 #include <cfloat>
 #include <algorithm>
 
 #include "display.h"
+#include "FileToolsRF.h"
 
-// FEMLib
-#include "tools.h"
-//#include "rf_pcs.h"
-//#include "femlib.h"
-extern double* GEOGetELEJacobianMatrix(long number, double* detjac);
 #include "mathlib.h"
-//#include "rf_mfp_new.h"
-#include "rf_msp_new.h"
-//#include "material.h"
-#include "rf_tim_new.h"
-#include "rfmat_cp.h"
-extern double gravity_constant;
-// using SolidProp::CSolidProperties;
-// LIB
-#include "files0.h"
-// this
-//#include "rf_react.h"
-// Gauss point veclocity
 #include "fem_ele_std.h"
 #include "fem_ele_vec.h"
-// MSHLib
-//#include "msh_lib.h"
-#include "pcs_dm.h"  //WX
+#include "pcs_dm.h"
+#include "rfmat_cp.h"
+#include "rf_msp_new.h"
+#include "rf_tim_new.h"
+#include "tools.h"
+
 using namespace std;
 
 // MAT-MP data base lists
@@ -57,6 +41,8 @@ list<CMediumProperties*> db_mat_mp_list;
 // MAT-MP list
 vector<CMediumProperties*> mmp_vector;
 list<CMediumPropertiesGroup*> mmp_group_list;
+
+extern double gravity_constant;
 
 using FiniteElement::CElement;
 using FiniteElement::ElementValue;

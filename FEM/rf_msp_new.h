@@ -375,10 +375,6 @@ extern std::vector<SolidProp::CSolidProperties*> msp_vector;
 extern bool MSPRead(std::string file_base_name);
 extern void MSPWrite(std::string);
 extern void MSPDelete();
-// OK
-extern std::vector<std::string> msp_key_word_vector;
-extern void MSPStandardKeywords();  // OK
-// OK
 extern SolidProp::CSolidProperties* MSPGet(std::string);
 
 extern double StressNorm(const double* s, const int Dim);

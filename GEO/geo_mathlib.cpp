@@ -15,9 +15,11 @@
 **************************************************************************/
 
 #include "geo_mathlib.h"
-#include "mathlib.h"  //WW
+
 #include <cstdio>
-#include <stdlib.h>
+#include <cstdlib>
+
+#include "mathlib.h"
 
 /**************************************************************************/
 /* GEO MathLib - Funktion: EuklVek3dDist

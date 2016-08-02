@@ -15,37 +15,27 @@
    last modified:
 **************************************************************************/
 
-// C++ STL
-//#include <math.h>
-//#include <string>
-//#include <fstream>
-//#include <iostream>
-//#include <sstream>
 #include <cfloat>
 
-// FEM-Makros
 #include "makros.h"
 #include "display.h"
-#include "rf_pcs.h"
+#include "FileToolsRF.h"
+#include "StringTools.h"
 
-// Time
 #include "fem_ele_std.h"
 #include "fem_ele_vec.h"
-#include "rf_msp_new.h"
-#include "rf_tim_new.h"
-//#include "rf_mmp_new.h"
 #include "pcs_dm.h"
-
-#include "StringTools.h"
-#include "files0.h"  // GetLineFromFile1
-#include "tools.h"   // GetLineFromFile
+#include "rf_msp_new.h"
+#include "rf_pcs.h"
+#include "rf_tim_new.h"
+#include "tools.h"
 
 using namespace std;
 
 vector<SolidProp::CSolidProperties*> msp_vector;
-vector<string> msp_key_word_vector;  // OK
 
 using FiniteElement::ElementValue_DM;
+
 namespace SolidProp
 {
 /**************************************************************************
@@ -6728,20 +6718,6 @@ void MSPWrite(std::string base_file_name)
 	msp_file << "#STOP";
 	msp_file.close();
 	//----------------------------------------------------------------------
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-void MSPStandardKeywords()
-{
-	msp_key_word_vector.clear();
-	string in;
-	in = "POISSON_RATIO";
-	msp_key_word_vector.push_back(in);
-	in = "YOUNGS_MODULUS";
-	msp_key_word_vector.push_back(in);
 }
 
 /**************************************************************************

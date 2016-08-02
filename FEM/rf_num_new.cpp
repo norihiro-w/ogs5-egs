@@ -16,7 +16,6 @@
 **************************************************************************/
 #include "rf_num_new.h"
 
-// C++ STL
 #include <cfloat>
 #include <cmath>
 #include <fstream>
@@ -27,22 +26,18 @@
 #include "makros.h"
 #include "memory.h"
 #include "display.h"
-// FEM-Makros
-#include "files0.h"
-#include "makros.h"
-// GeoSys-GeoLib
-// GeoSys-FEMLib
+#include "FileToolsRF.h"
 #include "StringTools.h"
+
 #include "mathlib.h"
 #include "rf_pcs.h"
 #include "tools.h"
-// GeoSys-MSHLib
 
 using namespace std;
 
 extern std::ios::pos_type GetNextSubKeyword(ifstream* file, string* line,
                                             bool* keyword);
-extern size_t max_dim;  // OK411 todo
+extern size_t max_dim;
 
 //==========================================================================
 vector<CNumerics*> num_vector;

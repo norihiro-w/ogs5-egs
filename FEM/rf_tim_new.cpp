@@ -16,32 +16,25 @@
 **************************************************************************/
 #include "rf_tim_new.h"
 
-// C++ STL
-//#include <math.h>
-//#include <iostream>
 #include <cfloat>
-// FEM-Makros
-#include "makros.h"
+
 #include "display.h"
-// GeoSys-GeoLib
-#include "files0.h"
-// GeoSys-FEMLib
-//#include "rf_pcs.h"
-#include "Output.h"
+#include "FileToolsRF.h"
+#include "makros.h"
+
 #include "fem_ele_std.h"
 #include "mathlib.h"
-#include "rf_mmp_new.h"
-// kg44 not found #include "elements.h"
+#include "Output.h"
 #include "rfmat_cp.h"
+#include "rf_mmp_new.h"
 #include "tools.h"
-// WW #include "elements.h" //set functions for stability criteria
-// ToDo
+
 double aktuelle_zeit;
 size_t aktueller_zeitschritt = 0;
 double dt = 0.0;
-int rwpt_numsplits = -1;  // JT 2010
-//==========================================================================
+int rwpt_numsplits = -1;
 std::vector<CTimeDiscretization*> time_vector;
+
 /**************************************************************************
    FEMLib-Method:
    Task: OBJ constructor

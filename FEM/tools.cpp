@@ -32,23 +32,22 @@
 #include "tools.h"
 
 #include <cfloat>
-#define noTESTTOOLS
-/* Header / Andere intern benutzte Module */
-#include "makros.h"
-#include "display.h"
-#include "memory.h"
-#include "femlib.h"
 
+#include "display.h"
+#include "FileToolsRF.h"
+#include "makros.h"
+#include "memory.h"
+
+#include "msh_elem.h"
+#include "msh_lib.h"
+
+#include "femlib.h"
 #include "mathlib.h"
-#include "rf_fct.h"  //NB
+#include "rf_fct.h"
 #include "rf_mmp_new.h"
 #include "rf_num_new.h"
 #include "rf_tim_new.h"
-// GEOLib
-#include "files0.h"
-// MSHLib
-#include "msh_elem.h"
-#include "msh_lib.h"
+
 using namespace std;
 
 Kurven* kurven = NULL;
