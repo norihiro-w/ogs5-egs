@@ -4,6 +4,24 @@ INCLUDE(DisableCompilerFlag)
 SET_DEFAULT_BUILD_TYPE(Release)
 INCLUDE(MSVCMultipleProcessCompile) # /MP Switch for VS
 
+# Set compiler helper variables
+
+if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
+    set(COMPILER_IS_CLANG TRUE CACHE INTERNAL "")
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+    set(COMPILER_IS_GCC TRUE CACHE INTERNAL "")
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
+    set(COMPILER_IS_INTEL TRUE CACHE INTERNAL "")
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
+    set(COMPILER_IS_MSVC TRUE CACHE INTERNAL "")
+endif() # CMAKE_CXX_COMPILER_ID
+
+# Better Clang warning suppression, see http://www.openwalnut.org/issues/230
+if(NOT COMPILER_IS_MSVC)
+    set( CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem" CACHE STRING "" FORCE )
+endif()
+
+
 IF (WIN32)
 	## For Visual Studio compiler
 	IF (MSVC)
@@ -41,7 +59,7 @@ IF(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_GNUCC)
 		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG")
 	ENDIF()
 	# -g
-	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated -Wall -Wextra -fno-nonansi-builtins -Wwrite-strings")
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-deprecated -Wall -Wextra -fno-nonansi-builtins -Wwrite-strings")
 
 	IF (NOT (GCC_VERSION VERSION_LESS 4.8) ) 
 	  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-local-typedefs") # suppress warnings in Eigen
@@ -68,6 +86,10 @@ IF(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_GNUCC)
 	
 ENDIF() # CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_GNUCC
 
+IF(COMPILER_IS_CLANG)
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wno-self-assign -Wno-deprecated-register")
+ENDIF()
+
 IF(OGS_COVERAGE)
-  INCLUDE(CodeCoverage)
+	INCLUDE(CodeCoverage)
 ENDIF()
