@@ -19,7 +19,8 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "mathlib.h"
+#include "makros.h"
+#include "MathTools.h"
 
 /**************************************************************************/
 /* GEO MathLib - Funktion: EuklVek3dDist
@@ -617,3 +618,185 @@ bool LineSegmentIntersection(vector<double> xline1, vector<double> yline1,
 	return crosses;
 }
 #endif
+
+
+double sqrNrm2(const GEOLIB::Point* p0)
+{
+	return MathLib::scpr(p0->getData(), p0->getData(), 3);
+}
+
+double sqrDist(const GEOLIB::Point* p0, const GEOLIB::Point* p1)
+{
+	const double v[3] = {(*p1)[0] - (*p0)[0], (*p1)[1] - (*p0)[1],
+						 (*p1)[2] - (*p0)[2]};
+	return MathLib::scpr(v, v, 3);
+}
+
+bool checkDistance(GEOLIB::Point const& p0, GEOLIB::Point const& p1,
+				   double squaredDistance)
+{
+	return sqrDist(&p0, &p1) < squaredDistance;
+}
+
+/***************************************************************************
+   ROCKFLOW - Funktion: MCalcDistancePointToLine
+
+   Aufgabe:
+		   Abstand Punkt - Linie im R3
+
+   Formalparameter:
+		   E: *pt  - Punktkoordinaten
+		   E: *l1  - Punktkoordinaten fuer ersten Punkt auf Linie
+		   E: *l2  - Punktkoordinaten fuer zweiten Punkt auf Linie
+
+   Ergebnis:
+   Abstand
+
+   Aenderungen/Korrekturen:
+   02/2000   C. Thorenz      Erste Version
+
+ **************************************************************************/
+double MCalcDistancePointToLine(double* pt, double* l1, double* l2)
+{
+	int i;
+	double vec1[3], vec2[3], erg_vec[3], l;
+
+	/* Vektor Linienpunkt zu Punkt */
+	for (i = 0; i < 3; i++)
+		vec1[i] = pt[i] - l1[i];
+
+	/* Vektor Linienpunkt zu Linienpunkt */
+	for (i = 0; i < 3; i++)
+		vec2[i] = l2[i] - l1[i];
+
+	/* Normieren */
+	l = MBtrgVec(vec2, 3);
+#ifdef ERROR_CONTROL
+	if (l < MKleinsteZahl)
+	{
+		printf("\n FEHLER IN CalcDistancePointToLine: Laenge ist Null !!!");
+		exit(1);
+	}
+#endif
+
+	for (i = 0; i < 3; i++)
+		vec2[i] /= (l + MKleinsteZahl);
+
+	M3KreuzProdukt(vec1, vec2, erg_vec);
+
+	return MBtrgVec(erg_vec, 3);
+}
+
+/***************************************************************************
+   ROCKFLOW - Funktion:  MCalcProjectionOfPointOnLine
+
+   Aufgabe:
+		   Ermittelt den Projektionspunkt eines Punktes auf eine Linie
+ (Lotpunkt)
+
+   Formalparameter:
+		   E: *pt   - Punktkoordinaten
+		   E: *l1   - Punktkoordinaten fuer ersten Punkt auf Linie
+		   E: *l2   - Punktkoordinaten fuer zweiten Punkt auf Linie
+		   R: *proj   - Punktkoordinaten fuer Projektionspunkt auf Linie
+   Ergebnis:
+   Abstand Punkt-Linie
+
+   Aenderungen/Korrekturen:
+   02/2000   C. Thorenz      Erste Version
+
+ **************************************************************************/
+double MCalcProjectionOfPointOnLine(double* pt, double* l1, double* l2,
+									double* proj)
+{
+	int i;
+	double vec1[3], vec2[3], l, projektionslaenge, abstand;
+
+	/* Vektor Linienpunkt zu Punkt */
+	for (i = 0; i < 3; i++)
+		vec1[i] = pt[i] - l1[i];
+
+	/* Vektor Linienpunkt zu Linienpunkt */
+	for (i = 0; i < 3; i++)
+		vec2[i] = l2[i] - l1[i];
+
+	/* Normieren */
+	l = MBtrgVec(vec2, 3);
+#ifdef ERROR_CONTROL
+	if (l < MKleinsteZahl)
+	{
+		printf(
+			"\n Fehler in MCalcProjectionOfPointOnLine: Laenge ist Null !!!");
+		exit(1);
+	}
+#endif
+	for (i = 0; i < 3; i++)
+		vec2[i] /= (l + MKleinsteZahl);
+
+	projektionslaenge = MSkalarprodukt(vec1, vec2, 3);
+
+	/* Punkt bestimmen */
+	for (i = 0; i < 3; i++)
+		proj[i] = l1[i] + projektionslaenge * vec2[i];
+
+	abstand = MCalcDistancePointToPoint(proj, pt);
+
+	return abstand;
+}
+
+/***************************************************************************
+   ROCKFLOW - Funktion: MCalcDistancePointToPlane
+
+   Aufgabe:
+		   Abstand Punkt - Ebene im R3
+
+   Formalparameter:
+		   E: *pt  - Punktkoordinaten
+		   E: *e1  - Punktkoordinaten fuer ersten Punkt auf Ebene
+		   E: *e2  - Punktkoordinaten fuer zweiten Punkt auf Ebene
+		   E: *e3  - Punktkoordinaten fuer dritten Punkt auf Ebene
+
+   Ergebnis:
+   Abstand-Flaeche   (Kann negativ sein, je nach Lage des Punkts zur Ebene)
+
+   Aenderungen/Korrekturen:
+   02/2000   C. Thorenz      Erste Version
+
+ **************************************************************************/
+double MCalcDistancePointToPlane(double const* const pt, double* e1, double* e2,
+								 double* e3)
+{
+	int i;
+	double vec1[3], vec2[3], vec3[3], normal[3], volume, area;
+
+	/* 1. Ebenen-Vektor  */
+	for (i = 0; i < 3; i++)
+		vec1[i] = e2[i] - e1[i];
+
+	/* 2. Ebenen-Vektor  */
+	for (i = 0; i < 3; i++)
+		vec2[i] = e3[i] - e1[i];
+
+	/* Ebene-Punkt-Vektor  */
+	for (i = 0; i < 3; i++)
+		vec3[i] = pt[i] - e1[i];
+
+	/* Normalenvektor */
+	M3KreuzProdukt(vec1, vec2, normal);
+
+	/* Volumen des Spats */
+	volume = MSkalarprodukt(normal, vec3, 3);
+
+	/* Flaeche auf der Ebene */
+	area = MBtrgVec(normal, 3);
+
+#ifdef ERROR_CONTROL
+	if (area < MKleinsteZahl)
+	{
+		printf("\n FEHLER IN CalcDistancePointToPlane: Flaeche ist Null !!!");
+		exit(1);
+	}
+#endif
+
+	return volume / (area + MKleinsteZahl);
+}

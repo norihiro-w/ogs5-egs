@@ -10,14 +10,12 @@
  *              http://www.opengeosys.org/project/license
  */
 
-// Base
-#include "swap.h"
-
-// GEOLIB
 #include "Polyline.h"
 
-// MathLib
+#include "swap.h"
 #include "AnalyticalGeometry.h"
+#include "geo_mathlib.h"
+
 
 namespace GEOLIB
 {
@@ -52,7 +50,7 @@ void Polyline::addPoint(size_t pnt_id)
 
 	if (n_pnts > 0)
 	{
-		double act_dist(sqrt(MathLib::sqrDist(
+		double act_dist(sqrt(sqrDist(
 		    _ply_pnts[_ply_pnt_ids[n_pnts - 1]], _ply_pnts[pnt_id])));
 		double dist_until_now(0.0);
 		if (n_pnts > 1) dist_until_now = _length[n_pnts - 1];
@@ -75,7 +73,7 @@ void Polyline::insertPoint(size_t pos, size_t pnt_id)
 		if (pos == 0)
 		{
 			// insert at first position
-			double act_dist(sqrt(MathLib::sqrDist(_ply_pnts[_ply_pnt_ids[1]],
+			double act_dist(sqrt(sqrDist(_ply_pnts[_ply_pnt_ids[1]],
 			                                      _ply_pnts[pnt_id])));
 			_length.insert(_length.begin(), act_dist);
 			const size_t s(_length.size());
@@ -89,7 +87,7 @@ void Polyline::insertPoint(size_t pos, size_t pnt_id)
 			if (pos == _ply_pnt_ids.size() - 1)
 			{
 				// insert at last position
-				double act_dist(sqrt(MathLib::sqrDist(
+				double act_dist(sqrt(sqrDist(
 				    _ply_pnts[_ply_pnt_ids[_ply_pnt_ids.size() - 2]],
 				    _ply_pnts[pnt_id])));
 				double dist_until_now(0.0);
@@ -107,9 +105,9 @@ void Polyline::insertPoint(size_t pos, size_t pnt_id)
 				{
 					dist_until_now = _length[pos - 2];
 				}
-				double len_seg0(sqrt(MathLib::sqrDist(
+				double len_seg0(sqrt(sqrDist(
 				    _ply_pnts[_ply_pnt_ids[pos - 1]], _ply_pnts[pnt_id])));
-				double len_seg1(sqrt(MathLib::sqrDist(
+				double len_seg1(sqrt(sqrDist(
 				    _ply_pnts[_ply_pnt_ids[pos + 1]], _ply_pnts[pnt_id])));
 				_length[pos - 1] = dist_until_now + len_seg0;
 				std::vector<double>::iterator it(_length.begin() + pos);
@@ -294,7 +292,7 @@ bool Polyline::pointsAreIdentical(const std::vector<Point*>& pnt_vec,
                                   double prox)
 {
 	if (i == j) return true;
-	return MathLib::checkDistance(*pnt_vec[i], *pnt_vec[j], prox);
+	return checkDistance(*pnt_vec[i], *pnt_vec[j], prox);
 }
 
 Polyline* Polyline::closePolyline(const Polyline& ply)
@@ -330,10 +328,10 @@ Location::type Polyline::getLocationOfPoint(size_t k,
 	if (a[0] * b[0] < 0.0 || a[1] * b[1] < 0.0) return Location::BEHIND;
 	if (a[0] * a[0] + a[1] * a[1] < b[0] * b[0] + b[1] * b[1])
 		return Location::BEYOND;
-	if (MathLib::sqrDist(&pnt, _ply_pnts[_ply_pnt_ids[k]]) <
+	if (sqrDist(&pnt, _ply_pnts[_ply_pnt_ids[k]]) <
 	    sqrt(std::numeric_limits<double>::min()))
 		return Location::SOURCE;
-	if (MathLib::sqrDist(&pnt, _ply_pnts[_ply_pnt_ids[k + 1]]) <
+	if (sqrDist(&pnt, _ply_pnts[_ply_pnt_ids[k + 1]]) <
 	    sqrt(std::numeric_limits<double>::min()))
 		return Location::DESTINATION;
 	return Location::BETWEEN;

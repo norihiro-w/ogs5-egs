@@ -20,8 +20,8 @@
 #include "geo_pnt.h"
 
 #include <cstdlib>
-// GeoLib
-#include "mathlib.h"
+
+#include "geo_mathlib.h"
 
 using namespace std;
 
