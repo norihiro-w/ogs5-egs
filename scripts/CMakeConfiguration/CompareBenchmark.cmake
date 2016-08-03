@@ -2,7 +2,7 @@
 # file comparison with numdiff or cmake
 if(NUMDIFF_TOOL_PATH)
 	set(TESTER_COMMAND ${NUMDIFF_TOOL_PATH})
-	set(TESTER_ARGS --absolute-tolerance=1e-5 --relative-tolerance=1e-4)
+	set(TESTER_ARGS --absolute-tolerance=1e-5 --relative-tolerance=1e-4 "-s'\n, '")
 	message("Using numdiff")
 else()
 	set(TESTER_COMMAND ${CMAKE_COMMAND} -E compare_files)
