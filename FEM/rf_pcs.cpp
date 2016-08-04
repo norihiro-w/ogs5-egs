@@ -10493,7 +10493,7 @@ void MMPCalcSecondaryVariablesNew(CRFProcess* m_pcs, bool NAPLdiss)
 bool CRFProcess::Check()
 {
 	// MMP
-	MSHTestMATGroups();
+	MSHTestMATGroups(mmp_vector.size());
 	return true;
 }
 

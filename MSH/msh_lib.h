@@ -46,7 +46,7 @@ extern void CompleteMesh();
 extern void FEMDeleteAll();
 
 extern int MSHSetMaxMMPGroups();
-extern bool MSHTestMATGroups();
+extern bool MSHTestMATGroups(size_t mmp_vector_size);
 
 extern void GEOGetNodesInMaterialDomain(MeshLib::CFEMesh const* const,
 										int,
