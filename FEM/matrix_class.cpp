@@ -171,7 +171,7 @@ void Matrix::operator-=(const Matrix& m)
 			data[i * ncols + j] -= m(i, j);
 }
 //
-void Matrix::GetTranspose(Matrix& m)
+void Matrix::GetTranspose(Matrix& m) const
 {
 #ifdef gDEBUG
 	if (ncols != m.Rows() && nrows != m.Cols())

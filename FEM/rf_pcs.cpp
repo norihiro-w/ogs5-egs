@@ -9070,10 +9070,10 @@ void CRFProcess::CalcSaturationRichards(int timelevel, bool update)
 				elem = m_msh->ele_vector[m_msh->nod_vector[i]
 				                             ->getConnectedElementIDs()[j]];
 				m_mmp = mmp_vector[elem->GetPatchIndex()];
-				volume_sum += elem->volume;
+				volume_sum += elem->GetVolume();
 				saturation +=
 				    m_mmp->SaturationCapillaryPressureFunction(p_cap) *
-				    elem->volume;
+				    elem->GetVolume();
 			}
 			saturation /= volume_sum;
 			SetNodeValue(i, idxS, saturation);
@@ -11783,7 +11783,6 @@ void CRFProcess::UpdateTransientBC()
 			int node_xmin, node_xmax, node_ymin, node_ymax;
 			long m, n, mm, nn, l;
 			CElem* elem;
-			double* cent;
 			double vel_av[3], x1[3], x2[3], x3[3], sub_area[3], area, tol_a;
 
 			double x_min, y_min, x_max, y_max;
@@ -11830,14 +11829,15 @@ void CRFProcess::UpdateTransientBC()
 
 				//// In element
 				nnodes = elem->GetNodesNumber(false);
-				cent = elem->gravity_center;
+				const double* elegc = elem->GetGravityCenter();
+				double cent[3];
 
 				/// Find the range of this element
 				x_min = y_min = 1.e+20;
 				x_max = y_max = -1.e+20;
 				for (k = 0; k < nnodes; k++)
 				{
-					double const* const pnt(elem->nodes[k]->getData());
+					double const* const pnt(elem->GetNode(k)->getData());
 					if (pnt[0] < x_min)
 					{
 						x_min = pnt[0];
@@ -11866,13 +11866,13 @@ void CRFProcess::UpdateTransientBC()
 				col_max = (long)((x_max - g_para[2]) / g_para[4]);
 				row_max = nrow - (long)((y_min - g_para[3]) / g_para[4]);
 
-				double const* const pnt1(elem->nodes[0]->getData());
+				double const* const pnt1(elem->GetNode(0)->getData());
 				x1[0] = pnt1[0];
 				x1[1] = pnt1[1];
-				double const* const pnt2(elem->nodes[1]->getData());
+				double const* const pnt2(elem->GetNode(1)->getData());
 				x2[0] = pnt2[0];
 				x2[1] = pnt2[1];
-				double const* const pnt3(elem->nodes[2]->getData());
+				double const* const pnt3(elem->GetNode(2)->getData());
 				x3[0] = pnt3[0];
 				x3[1] = pnt3[1];
 
@@ -11896,28 +11896,28 @@ void CRFProcess::UpdateTransientBC()
 						if (cent[0] < x_min)
 						{
 							double const* const pnt(
-							    elem->nodes[node_xmin]->getData());
+							    elem->GetNode(node_xmin)->getData());
 							cent[0] = pnt[0];
 							cent[1] = pnt[1];
 						}
 						if (cent[0] > x_max)
 						{
 							double const* const pnt(
-							    elem->nodes[node_xmax]->getData());
+							    elem->GetNode(node_xmax)->getData());
 							cent[0] = pnt[0];
 							cent[1] = pnt[1];
 						}
 						if (cent[1] < y_min)
 						{
 							double const* const pnt(
-							    elem->nodes[node_ymin]->getData());
+							    elem->GetNode(node_ymin)->getData());
 							cent[0] = pnt[0];
 							cent[1] = pnt[1];
 						}
 						if (cent[1] < y_max)
 						{
 							double const* const pnt(
-							    elem->nodes[node_ymax]->getData());
+							    elem->GetNode(node_ymax)->getData());
 							cent[0] = pnt[0];
 							cent[1] = pnt[1];
 						}
@@ -11954,13 +11954,14 @@ void CRFProcess::UpdateTransientBC()
 									    sub_area[j] *
 									    GetNodeValue(n_idx, vel_idx[k]);
 							}
+							auto &tensor = *elem->getTransformTensor();
 							cell_data_v[l] =
 							    1000.0 *
-							    (vel_av[0] * (*elem->transform_tensor)(0, 2) +
-							     vel_av[1] * (*elem->transform_tensor)(1, 2)
+							    (vel_av[0] * tensor(0, 2) +
+							     vel_av[1] * tensor(1, 2)
 							     // 1000*:  m-->mm
 							     +
-							     vel_av[2] * (*elem->transform_tensor)(2, 2));
+							     vel_av[2] * tensor(2, 2));
 						}
 					}
 				}

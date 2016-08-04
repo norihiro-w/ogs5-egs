@@ -43,6 +43,7 @@
 class RandomWalk;
 class CFluidMomentum;
 class Problem;
+class CRFProcess;
 
 #ifdef NEW_EQS
 namespace Math_Group

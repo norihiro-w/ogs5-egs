@@ -55,7 +55,7 @@ public:
 	void operator+=(const Matrix& m);
 	void operator-=(const Matrix& m);
 
-	void GetTranspose(Matrix& m);
+	void GetTranspose(Matrix& m) const;
 
 	double* getEntryArray() { return data; }
 
