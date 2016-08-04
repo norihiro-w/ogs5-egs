@@ -101,4 +101,11 @@ inline T fastpow(T base, size_t exp)
 }
 }  // namespace
 
+double ComputeDetTri(const double* x1, const double* x2, const double* x3);
+double ComputeDetTex(const double* x1, const double* x2, const double* x3,
+                     const double* x4);
+void CrossProduction(const double* x, const double* y, double* z);
+double NormalizeVector(double* x, size_t n);
+
+
 #endif /* MATHTOOLS_H_ */

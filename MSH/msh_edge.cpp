@@ -18,7 +18,8 @@
 #include "msh_edge.h"
 
 #include <cmath>
-#include "mathlib.h"
+
+#include "MathTools.h"
 
 //========================================================================
 namespace MeshLib

@@ -5179,96 +5179,6 @@ void GradShapeFunctionPyraHQ13(double* dN, const double* x)
 	dN[37] = -0.5 * (1.0 + r) * (1.0 + s) * t;
 	dN[38] = -0.5 * (1.0 - r) * (1.0 + s) * t;
 }
-/***************************************************************************
-   GeoSys - Funktion:
-           CElement::ComputeDetTri(const *double x1, const *double x2,
-                                 const *double x3)
-   Aufgabe:
-         Compute the vulume of a triangle
-   Formalparameter:
-           E:
-             const *double x1    : Vertex 1
-             const *double x2    : Vertex 2
-             const *double x3    : Vertex 3
-   Programming:
-   09/2004     WW        Erste Version
- **************************************************************************/
-double ComputeDetTri(const double* x1, const double* x2, const double* x3)
-{
-	static double u[3], v[3], z[3];
-
-	u[0] = x3[0] - x1[0];
-	u[1] = x3[1] - x1[1];
-	u[2] = x3[2] - x1[2];
-
-	v[0] = x2[0] - x1[0];
-	v[1] = x2[1] - x1[1];
-	v[2] = x2[2] - x1[2];
-
-	z[0] = u[1] * v[2] - u[2] * v[1];
-	z[1] = u[2] * v[0] - u[0] * v[2];
-	z[2] = u[0] * v[1] - u[1] * v[0];
-
-	return 0.5 * sqrt(z[0] * z[0] + z[1] * z[1] + z[2] * z[2]);
-}
-
-/***************************************************************************
-   GeoSys - Funktion:
-           CElem::ComputeDetTet(const *double x1, const *double x2,
-                                 const *double x3, const *double x4)
-   Aufgabe:
-         Compute the vulume of a tedrahedra
-   Formalparameter:
-           E:
-             const *double x1    : Vertex 1
-             const *double x2    : Vertex 2
-             const *double x3    : Vertex 3
-   const *double x4    : Vertex 4
-   Programming:
-   09/2004     WW        Erste Version
- **************************************************************************/
-double ComputeDetTex(const double* x1, const double* x2, const double* x3,
-                     const double* x4)
-{
-	return fabs((x1[0] - x4[0]) * ((x2[1] - x4[1]) * (x3[2] - x4[2]) -
-	                               (x2[2] - x4[2]) * (x3[1] - x4[1])) -
-	            (x1[1] - x4[1]) * ((x2[0] - x4[0]) * (x3[2] - x4[2]) -
-	                               (x2[2] - x4[2]) * (x3[0] - x4[0])) +
-	            (x1[2] - x4[2]) * ((x2[0] - x4[0]) * (x3[1] - x4[1]) -
-	                               (x2[1] - x4[1]) * (x3[0] - x4[0]))) /
-	       6.0;
-}
-
-/**************************************************************************
-   MSHLib-Method:
-   Task:
-   Programing:
-   09/2005 WW Implementation
-   12/2010 TF
-**************************************************************************/
-double NormalizeVector(double* x, size_t n)
-{
-	double nrm(x[0] * x[0]);
-	for (size_t i = 1; i < n; i++)
-		nrm += x[i] * x[i];
-	double sqrt_nrm(sqrt(nrm));
-	for (size_t i = 0; i < n; i++)
-		x[i] /= sqrt_nrm;
-	return sqrt_nrm;
-}
-
-/**************************************************************************
-   MSHLib-Method:
-   Task:         dim == 3
-   Programing:
-   09/2005 WW Implementation
-**************************************************************************/
-void CrossProduction(const double* x, const double* y, double* z)
-{
-	z[0] = x[1] * y[2] - x[2] * y[1];
-	z[1] = x[2] * y[0] - x[0] * y[2];
-	z[2] = x[0] * y[1] - x[1] * y[0];
-}
 
 /**************************************************************************
    MSHLib-Method:
@@ -5284,6 +5194,7 @@ double PointProduction(double* x, double* y)
 		nrm += x[i] * y[i];
 	return nrm;
 }
+
 
 /**************************************************************************
    MSHLib-Method:
