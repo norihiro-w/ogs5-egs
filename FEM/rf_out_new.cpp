@@ -34,6 +34,7 @@
 
 #include "msh_lib.h"
 
+#include "CSVOutput.h"
 #ifdef CHEMAPP
 #include "eqlink.h"
 #endif
@@ -245,8 +246,7 @@ void OUTData(double time_current, int time_step_number, bool force_output)
 		// TECPLOT
 		if (m_out->dat_type_name.compare("TECPLOT") == 0 ||
 		    m_out->dat_type_name.compare("MATLAB")  == 0 ||
-		    m_out->dat_type_name.compare("GNUPLOT") == 0 ||
-		    m_out->dat_type_name.compare("CSV") == 0)
+		    m_out->dat_type_name.compare("GNUPLOT") == 0)
 		{
 
 			switch (m_out->getGeoType())
@@ -306,6 +306,35 @@ void OUTData(double time_current, int time_step_number, bool force_output)
 					//..............................................................
 					break;
 				default:
+					break;
+			}
+		}
+		//--------------------------------------------------------------------
+		// CSV
+		else if (m_out->dat_type_name.compare("CSV") == 0)
+		{
+			switch (m_out->getGeoType())
+			{
+				case GEOLIB::GEODOMAIN:
+				{
+					ScreenMessage("-> Data output: Domain");
+					CSVOutput::writeDomain(m_out, time_step_number, m_out->_time, m_out->file_base_name);
+					break;
+				}
+				case GEOLIB::POINT:
+				{
+					ScreenMessage("-> Data output: Breakthrough curves - %s\n", m_out->getGeoName().c_str());
+					m_out->NODWritePNTDataTEC(time_current, time_step_number);
+					break;
+				}
+				case GEOLIB::POLYLINE:
+				{
+					ScreenMessage("-> Data output: Polyline profile - %s\n", m_out->getGeoName().c_str());
+					m_out->NODWritePLYDataTEC(time_step_number);
+					break;
+				}
+				default:
+					ScreenMessage("Warning - the given GEO_TYPE is not supported in CSV output\n");
 					break;
 			}
 		}
