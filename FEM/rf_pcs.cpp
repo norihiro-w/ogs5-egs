@@ -10468,7 +10468,7 @@ PCSLib-Method:
 **************************************************************************/
 CRFProcess* PCSGetDeformation()
 {
-	if (pcs_number_deformation >= 0) return pcs_vector[pcs_number_deformation];
+	if (pcs_number_deformation >= 0) return pcs_vector[pcs_number_deformation-1];
 	return NULL;
 }
 
