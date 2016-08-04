@@ -325,12 +325,16 @@ void OUTData(double time_current, int time_step_number, bool force_output)
 				{
 					ScreenMessage("-> Data output: Point - %s\n", m_out->getGeoName().c_str());
 					m_out->NODWritePNTDataTEC(time_current, time_step_number);
+					if (!m_out->_new_file_opened)
+						m_out->_new_file_opened = true;
 					break;
 				}
 				case GEOLIB::POLYLINE:
 				{
 					ScreenMessage("-> Data output: Polyline - %s\n", m_out->getGeoName().c_str());
 					m_out->NODWritePLYDataTEC(time_step_number);
+					if (!m_out->_new_file_opened)
+						m_out->_new_file_opened = true;
 					break;
 				}
 				default:
