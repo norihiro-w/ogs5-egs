@@ -366,7 +366,6 @@ public:
 	// WW
 	std::vector<long> bc_transient_index;  // WW/CB
 	std::vector<long> st_transient_index;  // WW/CB...BG
-	void UpdateTransientBC();              // WW/CB
 	void UpdateTransientST();              // WW/CB...BG
 	//....................................................................
 	// 6-ST

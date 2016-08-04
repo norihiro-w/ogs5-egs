@@ -1203,9 +1203,6 @@ bool Problem::CouplingLoop()
 	//
 	print_result = false;
 	int acounter = 0;
-	//
-	for (i = 0; i < (int)pcs_vector.size(); i++)
-		pcs_vector[i]->UpdateTransientBC();
 
 	for (i = 0; i < (int)total_processes.size(); i++)
 	{
@@ -2022,12 +2019,8 @@ inline double Problem::FluidMomentum()
 	//
 	if (!m_pcs->selected) return error;  // 12.12.2008 WW
 
-	CFluidMomentum* fm_pcs = NULL;  // by PCH
-	//
-	CFEMesh* m_msh =
-	    fem_msh_vector[0];  // Something must be done later on here.
+	CFluidMomentum* fm_pcs = (CFluidMomentum*)m_pcs;
 
-	fm_pcs = m_msh->fm_pcs;
 	fm_pcs->Execute(loop_process_number);
 
 	// Switch off rechard flow if
@@ -2103,8 +2096,7 @@ inline double Problem::RandomWalker()
 				m_msh = FEMGet("GROUNDWATER_FLOW");
 		}
 
-		RandomWalk* rw_pcs = NULL;  // By PCH
-		rw_pcs = m_msh->PT;
+		RandomWalk* rw_pcs = (RandomWalk*)m_pcs;
 
 // Do I need velocity fileds solved by the FEM?
 #if 0

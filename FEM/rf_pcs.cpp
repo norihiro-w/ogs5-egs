@@ -803,7 +803,7 @@ void CRFProcess::Create()
 		// new time
 		nod_val_name_vector.push_back(pcs_secondary_function_name[i]);
 	//
-	long m_msh_nod_vector_size = m_msh->NodesNumber_Quadratic;
+	long m_msh_nod_vector_size = m_msh->GetNodesNumber(true);
 	for (long j = 0; j < number_of_nvals;
 	     j++)  // Swap number_of_nvals and mesh size. WW 19.12.2012
 	{
@@ -978,7 +978,7 @@ void CRFProcess::Create()
 	// Initialize the system equations
 	if (PCSSetIC_USER) PCSSetIC_USER(pcs_type_number);
 
-	if (compute_domain_face_normal)  // WW
+	if (compute_domain_face_normal)
 		m_msh->FaceNormal();
 	/// Variable index for equation. 20.08.2010. WW
 	if (p_var_index)
@@ -987,7 +987,7 @@ void CRFProcess::Create()
 			    GetNodeValueIndex(pcs_primary_function_name[i]) + 1;
 
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
-	size_unknowns = m_msh->NodesNumber_Quadratic * pcs_number_of_primary_nvals;
+	size_unknowns = m_msh->GetNodesNumber(true) * pcs_number_of_primary_nvals;
 #elif defined(NEW_EQS)
 	{
 		size_unknowns = eqs_new->A->Dim();
@@ -5464,18 +5464,18 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 		}
 
 		int dof_per_node = 0;
-		if (m_msh->NodesNumber_Linear == m_msh->NodesNumber_Quadratic)
+		if (m_msh->GetNodesNumber(false) == m_msh->GetNodesNumber(true))
 		{
 			dof_per_node = pcs_number_of_primary_nvals;
-			shift = m_bc_node->msh_node_number / m_msh->NodesNumber_Linear;
+			shift = m_bc_node->msh_node_number / m_msh->GetNodesNumber(false);
 		}
 		else
 		{
-			if (bc_msh_node < static_cast<long>(m_msh->NodesNumber_Linear))
+			if (bc_msh_node < static_cast<long>(m_msh->GetNodesNumber(false)))
 				dof_per_node = pcs_number_of_primary_nvals;
 			else
 				dof_per_node = m_msh->GetMaxElementDim();
-			shift = m_bc_node->msh_node_number / m_msh->NodesNumber_Quadratic;
+			shift = m_bc_node->msh_node_number / m_msh->GetNodesNumber(true);
 		}
 
 #else
@@ -6466,18 +6466,18 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 			}
 
 			int dof_per_node = 0;
-			if (m_msh->NodesNumber_Linear == m_msh->NodesNumber_Quadratic)
+			if (m_msh->GetNodesNumber(false) == m_msh->GetNodesNumber(true))
 			{
 				dof_per_node = pcs_number_of_primary_nvals;
-				shift = cnodev->msh_node_number / m_msh->NodesNumber_Linear;
+				shift = cnodev->msh_node_number / m_msh->GetNodesNumber(false);
 			}
 			else
 			{
-				if (msh_node < static_cast<long>(m_msh->NodesNumber_Linear))
+				if (msh_node < static_cast<long>(m_msh->GetNodesNumber(false)))
 					dof_per_node = pcs_number_of_primary_nvals;
 				else
 					dof_per_node = m_msh->GetMaxElementDim();
-				shift = cnodev->msh_node_number / m_msh->NodesNumber_Quadratic;
+				shift = cnodev->msh_node_number / m_msh->GetNodesNumber(true);
 			}
 
 #else
@@ -10510,9 +10510,6 @@ bool PCSCheck()
 		m_pcs = pcs_vector[i];
 		// if(m_pcs->m_bCheck)
 		if (!m_pcs->Check()) return false;
-#ifdef MFC
-		FMRead();  // WW
-#endif
 	}
 
 	return true;
@@ -10530,31 +10527,13 @@ bool PCSCheck()
 
 void CreateEQS_LinearSolver()
 {
-	size_t i;
-	// CB_merge_0513
-	// int dof_DM = 1;
-	int dof_DM = 0;    // WW 02.2023. Pardiso
-	//int DM_type = -1;  // 03.08.2010. WW
-	CRFProcess* m_pcs = NULL;
-	CFEMesh* a_msh = NULL;
-	SparseTable* sp = NULL;
-	SparseTable* spH = NULL;
-	Linear_EQS* eqs = NULL;
-	Linear_EQS* eqs_dof = NULL;  // WW 02.2023. Pardiso
-	Linear_EQS* eqsH = NULL;
-
-	bool need_eqs = false;      // WW 02.2023. Pardiso
-	bool need_eqs_dof = false;  // WW 02.2023. Pardiso
-	//int dof = 1;
-	//
-	// size_t dof_nonDM (1);     //WW 02.2023. Pardiso
+	int dof_DM = 0;
 	size_t dof_nonDM(0);
-
-	for (i = 0; i < pcs_vector.size(); i++)
+	bool need_eqs = false;
+	bool need_eqs_dof = false;
+	for (auto m_pcs : pcs_vector)
 	{
-		m_pcs = pcs_vector[i];
-		if (m_pcs->type ==
-		    1212)  // Important for parallel computing. 24.1.2011 WW
+		if (m_pcs->type == 1212)  // Important for parallel computing.
 		{
 			dof_nonDM = m_pcs->GetPrimaryVNumber();
 			//dof = dof_nonDM;
@@ -10597,40 +10576,24 @@ void CreateEQS_LinearSolver()
 			}  // WW 02.2023. Pardiso
 		}
 	}
-	// Check whether the JFNK method is employed for deformation problem
-	// 04.08.2010 WW
-	CNumerics* num = NULL;
-	for (i = 0; i < num_vector.size(); i++)
-	{
-		num = num_vector[i];
-		if (num->nls_method == 2)
-		{
-			// Stiffness matrix of lower order grid may be used by more than one
-			// processes.
-			// Therefore, memo allocation is performed for it.
-			// Indicator: Not allocate memo for stiffness matrix for deformation
-			dof_DM *= -1;
-			break;
-		}
-	}
 
 	//
-	for (i = 0; i < fem_msh_vector.size(); i++)
+	for (auto a_msh : fem_msh_vector)
 	{
-		a_msh = fem_msh_vector[i];
-		a_msh->CreateSparseTable();
-		// sparse pattern with linear elements exists
-		sp = a_msh->GetSparseTable();
-		// sparse pattern with quadratic elements exists
-		spH = a_msh->GetSparseTable(true);
+		SparseTable* sp = nullptr, *spH = nullptr;
+		CreateSparseTable(a_msh, sp, spH);
+		if (sp)
+			SparseTable_Vector.push_back(sp);
+		if (spH)
+			SparseTable_Vector.push_back(spH);
+
 		//
-		eqs = NULL;
-		eqsH = NULL;
-		// CB_merge_0513
-		eqs_dof = NULL;  // WW 02.2023. Pardiso
-		if (sp)          // WW 02.2023. Pardiso
+		Linear_EQS* eqs = NULL;
+		Linear_EQS* eqsH = NULL;
+		Linear_EQS* eqs_dof = NULL;
+		if (sp)
 		{
-			if (need_eqs)  // 02.2013. WW
+			if (need_eqs)
 			{
 				// eqs = new Linear_EQS(*sp, dof_nonDM);//WW 02.2023. Pardiso
 				eqs = new Linear_EQS(*sp, 1);
@@ -10639,47 +10602,14 @@ void CreateEQS_LinearSolver()
 			{
 				eqs_dof = new Linear_EQS(*sp, dof_nonDM);
 			}
-		}  // WW 02.2023. Pardiso
+		}
 		if (spH) eqsH = new Linear_EQS(*spH, dof_DM);
 		EQS_Vector.push_back(eqs);
 		EQS_Vector.push_back(eqsH);
-		EQS_Vector.push_back(eqs_dof);  // WW 02.2023. Pardiso
+		EQS_Vector.push_back(eqs_dof);
 	}
 }
 
-#else  // NEW_EQS
-///*************************************************************************
-//   ROCKFLOW - Function: CRFProcess::
-//   Task:
-//   Programming:
-//   09/2007 WW Implementation
-// **************************************************************************/
-//#include <iomanip>
-//void CRFProcess::DumpEqs(string file_name)
-//{
-//	fstream eqs_out;
-//	eqs_out.open(file_name.c_str(), ios::out);
-//	eqs_out.setf(ios::scientific, ios::floatfield);
-//	setw(14);
-//	eqs_out.precision(14);
-//	//
-//	long nnode = eqs->dim / eqs->unknown_vector_dimension;
-//	for (long i = 0; i < eqs->dim; i++)
-//	{
-//		CNode const* const node(m_msh->nod_vector[i % nnode]);
-//		std::vector<size_t> const& connected_nodes(node->getConnectedNodes());
-//		const size_t n_connected_nodes(connected_nodes.size());
-//		for (int ii = 0; ii < eqs->unknown_vector_dimension; ii++)
-//			for (size_t j = 0; j < n_connected_nodes; j++)
-//			{
-//				const long k = ii * nnode + connected_nodes[j];
-//				if (k >= eqs->dim) continue;
-//				eqs_out << i << "  " << k << "  " << MXGet(i, k) << endl;
-//			}
-//		eqs_out << i << "  " << eqs->b[i] << "  " << eqs->x[i] << endl;
-//	}
-//	eqs_out.close();
-//}
 #endif  // ifdef NEW_QES
 
 /*************************************************************************
@@ -11119,353 +11049,7 @@ void CRFProcess::IncorporateSourceTerms_GEMS(void)
 	}
 }
 #endif
-/*************************************************************************
-   ROCKFLOW - Function: CRFProcess::
-   Task:
-   Programming:
-   10/2008 //WW/CB Implementation
-   07/2010 TF substituted GEOGetPLYByName
-   03/2010  WW Read binary file of precipitation
-   06/2010  WW Output top surface flux and head to a raster file
- **************************************************************************/
-void CRFProcess::UpdateTransientBC()
-{
-	//--------------- 24.03.2010. WW
-	long i;
-	CSourceTerm* precip;
-	CSourceTerm* a_st;
-	precip = NULL;
 
-	for (i = 0; i < (long)st_vector.size(); i++)
-	{
-		a_st = st_vector[i];
-		if (a_st->getProcessDistributionType() ==
-		        FiniteElement::PRECIPITATION &&
-		    a_st->getProcessType() == getProcessType())
-		{
-			precip = a_st;
-			if (!m_msh->top_surface_checked)  // 07.06--19.08.2010. WW
-			{
-				if (m_msh->GetCoordinateFlag() / 10 == 3)
-					m_msh->MarkInterface_mHM_Hydro_3D();
-				m_msh->top_surface_checked = true;
-			}
-			break;
-		}
-	}
-	if (precip)  // 08-07.06.2010.  WW
-	{
-		string ofile_name;
-		ofile_name = precip->DirectAssign_Precipitation(aktuelle_zeit);
-
-		if (m_msh->GetCoordinateFlag() / 10 == 3)  // 19.08.2010. WW
-		{
-			/// Remove .bin from the file name
-			i = (int)ofile_name.find_last_of(".");
-			if (i > 0)
-				ofile_name.erase(ofile_name.begin() + i, ofile_name.end());
-			i = (int)ofile_name.find_last_of(".");
-			if (i > 0)
-				ofile_name.erase(ofile_name.begin() + i, ofile_name.end());
-			string of_name = ofile_name + ".flx.asc";
-			ofstream of_flux(of_name.c_str(), ios::trunc | ios::out);
-
-			of_name = ofile_name + ".pri.asc";
-			ofstream of_primary(of_name.c_str(), ios::trunc | ios::out);
-
-			/// GIS_shape_head[0]:  ncols
-			/// GIS_shape_head[1]:  nrows
-			/// GIS_shape_head[2]:  xllcorner
-			/// GIS_shape_head[3]:  yllcorner
-			/// GIS_shape_head[4]:  cellsize
-			/// GIS_shape_head[5]:  NONDATA_value
-			double* g_para = precip->GIS_shape_head;
-			long size = (long)(g_para[0] * g_para[1]);
-			vector<double> cell_data_p(size);
-			vector<double> cell_data_v(size);
-			for (i = 0; i < size; i++)
-			{
-				cell_data_p[i] = g_para[5];
-				cell_data_v[i] = g_para[5];
-			}
-
-			int j, k, nnodes;
-			int node_xmin, node_xmax, node_ymin, node_ymax;
-			long m, n, mm, nn, l;
-			CElem* elem;
-			double vel_av[3], x1[3], x2[3], x3[3], sub_area[3], area, tol_a;
-
-			double x_min, y_min, x_max, y_max;
-			long row_min, col_min, row_max, col_max;
-
-			int* vel_idx;
-			int idx = fem->idx0 + 1;
-			vel_idx = fem->idx_vel;
-
-			long n_idx, irow, icol, nrow, ncol;
-			nrow = (long)g_para[1];
-			ncol = (long)g_para[0];
-
-			node_xmin = node_xmax = node_ymin = node_ymax = 0;
-
-			tol_a = 1.e-8;
-
-			of_flux.setf(ios::fixed, ios::floatfield);
-			of_primary.setf(ios::fixed, ios::floatfield);
-			of_flux.precision(1);
-			of_primary.precision(1);
-
-			of_flux << "ncols" << setw(19) << ncol << endl;
-			of_flux << "nrows" << setw(19) << nrow << endl;
-			of_flux << "xllcorner" << setw(15) << g_para[2] << endl;
-			of_flux << "yllcorner" << setw(15) << g_para[3] << endl;
-			of_flux << "cellsize" << setw(16) << (long)g_para[4] << endl;
-			of_flux << "NODATA_value" << setw(11) << (long)g_para[5] << endl;
-
-			of_primary << "ncols" << setw(19) << ncol << endl;
-			of_primary << "nrows" << setw(19) << nrow << endl;
-			of_primary << "xllcorner" << setw(15) << g_para[2] << endl;
-			of_primary << "yllcorner" << setw(15) << g_para[3] << endl;
-			of_primary << "cellsize" << setw(16) << (long)g_para[4] << endl;
-			of_primary << "NODATA_value" << setw(11) << (long)g_para[5] << endl;
-
-			for (i = 0; i < (long)m_msh->face_vector.size(); i++)
-			{
-				elem = m_msh->face_vector[i];
-				if (!elem->GetMark()) continue;
-
-				if (elem->GetElementType() != 4)  /// If not triangle
-					continue;
-
-				//// In element
-				nnodes = elem->GetNodesNumber(false);
-				const double* elegc = elem->GetGravityCenter();
-				double cent[3];
-
-				/// Find the range of this element
-				x_min = y_min = 1.e+20;
-				x_max = y_max = -1.e+20;
-				for (k = 0; k < nnodes; k++)
-				{
-					double const* const pnt(elem->GetNode(k)->getData());
-					if (pnt[0] < x_min)
-					{
-						x_min = pnt[0];
-						node_xmin = k;
-					}
-					if (pnt[0] > x_max)
-					{
-						x_max = pnt[0];
-						node_xmax = k;
-					}
-					if (pnt[1] < y_min)
-					{
-						y_min = pnt[1];
-						node_ymin = k;
-					}
-					if (pnt[1] > y_max)
-					{
-						y_max = pnt[1];
-						node_ymax = k;
-					}
-				}
-
-				/// Determine the cells that this element covers. 05.10. 2010
-				col_min = (long)((x_min - g_para[2]) / g_para[4]);
-				row_min = nrow - (long)((y_max - g_para[3]) / g_para[4]);
-				col_max = (long)((x_max - g_para[2]) / g_para[4]);
-				row_max = nrow - (long)((y_min - g_para[3]) / g_para[4]);
-
-				double const* const pnt1(elem->GetNode(0)->getData());
-				x1[0] = pnt1[0];
-				x1[1] = pnt1[1];
-				double const* const pnt2(elem->GetNode(1)->getData());
-				x2[0] = pnt2[0];
-				x2[1] = pnt2[1];
-				double const* const pnt3(elem->GetNode(2)->getData());
-				x3[0] = pnt3[0];
-				x3[1] = pnt3[1];
-
-				x3[2] = x2[2] = x1[2] = 0.;
-				cent[2] = 0.;
-
-				for (m = col_min; m <= col_max; m++)
-				{
-					mm = m;
-					if (m > ncol - 1) mm = ncol - 1;
-					if (m < 0) mm = 0;
-					cent[0] = g_para[2] + g_para[4] * (mm + 0.5);
-
-					for (n = row_min; n <= row_max; n++)
-					{
-						nn = n;
-						if (n > nrow - 1) nn = nrow - 1;
-						if (nn < 0) nn = 0;
-						cent[1] = g_para[3] + g_para[4] * (nrow - nn + 0.5);
-
-						if (cent[0] < x_min)
-						{
-							double const* const pnt(
-							    elem->GetNode(node_xmin)->getData());
-							cent[0] = pnt[0];
-							cent[1] = pnt[1];
-						}
-						if (cent[0] > x_max)
-						{
-							double const* const pnt(
-							    elem->GetNode(node_xmax)->getData());
-							cent[0] = pnt[0];
-							cent[1] = pnt[1];
-						}
-						if (cent[1] < y_min)
-						{
-							double const* const pnt(
-							    elem->GetNode(node_ymin)->getData());
-							cent[0] = pnt[0];
-							cent[1] = pnt[1];
-						}
-						if (cent[1] < y_max)
-						{
-							double const* const pnt(
-							    elem->GetNode(node_ymax)->getData());
-							cent[0] = pnt[0];
-							cent[1] = pnt[1];
-						}
-
-						/// Check whether this point is in this element.
-						sub_area[0] = ComputeDetTri(cent, x2, x3);
-						sub_area[1] = ComputeDetTri(cent, x3, x1);
-						sub_area[2] = ComputeDetTri(cent, x1, x2);
-						area = ComputeDetTri(x1, x2, x3);
-
-						/// This point locates within the element
-						if (fabs(area - sub_area[0] - sub_area[1] -
-						         sub_area[2]) < tol_a)
-						{
-							/// Use sub_area[k] as shape function
-							for (k = 0; k < 3; k++)
-								sub_area[k] /= area;
-
-							l = nn * ncol + mm;
-							cell_data_p[l] = 0.0;
-
-							for (k = 0; k < 3; k++)
-								vel_av[k] = 0.;
-
-							for (j = 0; j < nnodes; j++)
-							{
-								n_idx = elem->GetNodeIndex(j);
-
-								cell_data_p[l] +=
-								    sub_area[j] * GetNodeValue(n_idx, idx);
-
-								for (k = 0; k < 3; k++)
-									vel_av[k] +=
-									    sub_area[j] *
-									    GetNodeValue(n_idx, vel_idx[k]);
-							}
-							auto &tensor = *elem->getTransformTensor();
-							cell_data_v[l] =
-							    1000.0 *
-							    (vel_av[0] * tensor(0, 2) +
-							     vel_av[1] * tensor(1, 2)
-							     // 1000*:  m-->mm
-							     +
-							     vel_av[2] * tensor(2, 2));
-						}
-					}
-				}
-			}
-
-			of_flux.precision(4);
-			// of_flux.setf(ios::scientific, ios::floatfield);
-			of_primary.precision(2);
-			for (irow = 0; irow < nrow; irow++)
-			{
-				for (icol = 0; icol < ncol; icol++)
-				{
-					m = irow * ncol + icol;
-					of_flux << " " << setw(9) << cell_data_v[m];
-					of_primary << setw(11) << cell_data_p[m];
-				}
-				of_flux << endl;
-				of_primary << endl;
-			}
-
-			cell_data_p.clear();
-			cell_data_v.clear();
-			of_flux.close();
-			of_primary.close();
-		}
-	}
-
-	// transient boundary condition
-	if (bc_transient_index.size() == 0) return;
-
-	bool valid = false;
-	long end_i = 0;
-	double t_fac = 0.;
-	std::vector<double> node_value;
-
-	for (size_t i = 0; i < bc_transient_index.size(); i++)
-	{
-		std::vector<double> interpolation_points;
-		std::vector<double> interpolation_values;
-
-		CBoundaryCondition* bc = bc_node[bc_transient_index[i]];
-		long start_i = bc_transient_index[i];
-		if (i == bc_transient_index.size() - 1)
-			end_i = (long)bc_node.size();
-		else
-			end_i = bc_transient_index[i + 1];
-
-		// fetch points (representing mesh nodes) along polyline for
-		// interpolation
-		std::vector<double> nodes_as_interpol_points;
-		GEOLIB::Polyline const* ply(
-		    static_cast<GEOLIB::Polyline const*>(bc->getGeoObj()));
-		m_msh->getPointsForInterpolationAlongPolyline(ply,
-		                                              nodes_as_interpol_points);
-
-		valid = false;
-		t_fac = 0.0;
-		// Piecewise linear distributed.
-		for (size_t i(0); i < bc->getDistribedBC().size(); i++)
-		{
-			for (size_t j = 0; j < ply->getNumberOfPoints(); j++)
-				if (bc->getPointsWithDistribedBC()[i] ==
-				    (int)ply->getPointID(j))
-				{
-					if (fabs(bc->getDistribedBC()[i]) < MKleinsteZahl)
-						bc->getDistribedBC()[i] = 1.0e-20;
-					interpolation_points.push_back(ply->getLength(j));
-					interpolation_values.push_back(bc->getDistribedBC()[i]);
-
-					CFunction* fct(FCTGet(bc->getPointsFCTNames()[i]));
-					if (fct)
-						t_fac = fct->GetValue(aktuelle_zeit, &valid);
-					else
-						std::cout << "Warning in CBoundaryConditionsGroup - no "
-						             "FCT data"
-						          << "\n";
-
-					if (valid)
-						interpolation_values[interpolation_values.size() - 1] *=
-						    t_fac;
-
-					break;
-				}
-		}
-		std::vector<double> interpol_res;
-		MathLib::PiecewiseLinearInterpolation(interpolation_points,
-		                                      interpolation_values,
-		                                      nodes_as_interpol_points,
-		                                      interpol_res);
-
-		for (long k = start_i; k < end_i; k++)
-			bc_node_value[k]->node_value = interpol_res[k - start_i];
-	}
-}
 
 /*************************************************************************
    ROCKFLOW - Function: CRFProcess::Add_GEMS_Water_ST

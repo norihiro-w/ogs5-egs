@@ -23,7 +23,7 @@
 #endif
 
 #include "Configure.h"
-#include "matrix_class.h"
+#include "sparse_table.h"
 
 class CNumerics;
 class CRFProcess;
@@ -144,5 +144,6 @@ private:
 
 using Math_Group::Linear_EQS;
 extern std::vector<Math_Group::Linear_EQS*> EQS_Vector;
+extern std::vector<Math_Group::SparseTable*> SparseTable_Vector;
 
 #endif // eqs_class_INC

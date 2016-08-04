@@ -1772,7 +1772,10 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 	//......................................................................
 	// NOD values
 	if (getProcessType() == FiniteElement::RANDOM_WALK)
-		tec_file << m_msh->PT->leavingParticles << " ";
+	{
+		RandomWalk* PT = (RandomWalk*)PCSGet(FiniteElement::RANDOM_WALK);
+		tec_file << PT->leavingParticles << " ";
+	}
 	int timelevel;
 	CRFProcess* m_pcs_out = NULL;
 

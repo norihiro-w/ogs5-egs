@@ -14,7 +14,6 @@
 #include <string>
 #include <vector>
 
-#include "matrix_class.h"
 #include "msh_core.h"
 
 namespace MeshLib
