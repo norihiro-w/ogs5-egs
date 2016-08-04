@@ -36,7 +36,7 @@
 #include "MSHEnums.h"
 #include "MeshNodesAlongPolyline.h"
 
-#include "MeshIO/OGSMeshIO.h"
+#include "OGSMeshIO.h"
 
 #include "msh_elem.h"
 

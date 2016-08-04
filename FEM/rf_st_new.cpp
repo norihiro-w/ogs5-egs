@@ -39,8 +39,8 @@
 #include "PointWithID.h"
 #include "GEOObjects.h"
 
-#include "FEMIO/GeoIO.h"
-#include "FEMIO/ProcessIO.h"
+#include "GeoIO.h"
+#include "ProcessIO.h"
 #include "readNonBlankLineFromInputStream.h"
 
 #include "DistributionTools.h"

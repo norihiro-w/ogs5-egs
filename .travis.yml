@@ -56,6 +56,7 @@ install:
 script:
   - if [[ "$CASE" == "LIS" ]]; then ctest -E 'Tests|FILE|EXCEED'; fi
   - if [[ "$CASE" == "LIS" ]]; then ctest -R 'FILECOMPARE' -E 'EXCEED'; fi
+  - if [[ "$CASE" == "LIS" ]]; then find ${bench_input}/results/ -iname '*.numdiff' -exec echo -e "\n\n=======================\n{}" \;  -exec head -n 5000 {} \; || true ; fi
 
 #after_failure:
 #  - '[ -f ~/.dropbox_uploader ] && ./dropbox_uploader.sh upload t/results/ travis-artifacts/$TRAVIS_JOB_NUMBER/'

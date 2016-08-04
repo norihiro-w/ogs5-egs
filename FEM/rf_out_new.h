@@ -7,15 +7,11 @@
  *
  */
 
-/**************************************************************************
-   FEMLib - Object: OUT
-   Task: class implementation
-   Programing:
-   06/2004 OK Implementation
-   last modified:
-**************************************************************************/
 #ifndef rf_out_new_INC
 #define rf_out_new_INC
+
+#include <string>
+#include <vector>
 
 class COutput;
 namespace GEOLIB
@@ -37,10 +33,10 @@ bool OUTRead(const std::string& file_base_name,
              const std::string& unique_name);
 
 extern void OUTWrite(std::string);
-#define OUT_FILE_EXTENSION ".out"
 extern void OUTData(double, const int step, bool force_output);
 extern void OUTDelete();
 extern COutput* OUTGet(const std::string&);
 extern void OUTCheck(void);                      // new SB
 extern COutput* OUTGetRWPT(const std::string&);  // JT
-#endif
+
+#endif // rf_out_new_INC
