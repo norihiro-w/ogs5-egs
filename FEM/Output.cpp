@@ -1360,17 +1360,9 @@ void COutput::WriteELEValuesTECData(fstream& tec_file)
 **************************************************************************/
 double COutput::NODWritePLYDataTEC(int number)
 {
-	// WW  int nidx;
-	long gnode;
-	bool bdummy = false;
-	int stress_i[6], strain_i[6];
-	double ss[6];
-	double val_n = 0.;  // WW
-	// OK4704
-	if ((_nod_value_vector.size() == 0) && (mfp_value_vector.size() == 0))
+	if (_nod_value_vector.empty() && mfp_value_vector.empty())
 		return 0.0;
 
-	// TF
 	GEOLIB::Polyline const* const ply(
 	    dynamic_cast<GEOLIB::Polyline const* const>(this->getGeoObj()));
 	if (this->getGeoType() != GEOLIB::POLYLINE || ply == NULL)
@@ -1381,21 +1373,29 @@ double COutput::NODWritePLYDataTEC(int number)
 		return 0.0;
 	}
 
+	long gnode;
+	bool bdummy = false;
+	int stress_i[6], strain_i[6];
+	double ss[6];
+	double val_n = 0.;
+
+
 	// File handling
 	std::string tec_file_name = file_base_name + "_ply_" + geo_name + "_t" +
-	                            number2str<size_t>(_id);  // OK4709
+	                            number2str<size_t>(_id);
 	if (getProcessType() != FiniteElement::INVALID_PROCESS)
 		tec_file_name += "_" + convertProcessTypeToString(getProcessType());
 	if (msh_type_name.size() > 0) tec_file_name += "_" + msh_type_name;
 	tec_file_name += TEC_FILE_EXTENSION;
-	if (!_new_file_opened) remove(tec_file_name.c_str());  // WW
 
-	// WW
+	if (!_new_file_opened)
+		remove(tec_file_name.c_str());
+
 	fstream tec_file(tec_file_name.data(), ios::app | ios::out);
+	if (!tec_file.good()) return 0.0;
 
 	tec_file.setf(ios::scientific, ios::floatfield);
 	tec_file.precision(12);
-	if (!tec_file.good()) return 0.0;
 	tec_file.seekg(0L, ios::beg);
 #ifdef SUPERCOMPUTER
 	// kg44 buffer the output
@@ -1403,80 +1403,18 @@ double COutput::NODWritePLYDataTEC(int number)
 	tec_file.rdbuf()->pubsetbuf(mybuffer, MY_IO_BUFSIZE * MY_IO_BUFSIZE);
 //
 #endif
-	//----------------------------------------------------------------------
-	// Tests
-	//......................................................................
-	// GEO
-	//   CGLPolyline* m_ply = GEOGetPLYByName(geo_name);//CC
-	//   if (!m_ply)
-	//   {
-	//      cout << "Warning in COutput::NODWritePLYDataTEC - no GEO data" <<
-	//      endl;
-	//      tec_file << "Warning in COutput::NODWritePLYDataTEC - no GEO data: "
-	//         << geo_name << endl;
-	//      tec_file.close();
-	//      return 0.0;
-	//   }
-
-	// MSH
-	//	CFEMesh* m_msh = GetMSH();
-	//	m_msh = GetMSH();
 	if (!m_msh)
 		cout << "Warning in COutput::NODWritePLYDataTEC - no MSH data" << endl;
-	// OKtec_file << "Warning in COutput::NODWritePLYDataTEC - no MSH data: " <<
-	// geo_name << endl;
-	// OKtec_file.close();
-	// OKToDo return;
 	else
-		m_msh->SwitchOnQuadraticNodes(false);  // WW
+		m_msh->SwitchOnQuadraticNodes(false);
 
-	// PCS
 	if (getProcessType() == FiniteElement::INVALID_PROCESS)
 		m_pcs = NULL;
 	else
 		m_pcs = PCSGet(getProcessType());
 
-	CRFProcess* dm_pcs = NULL;  // WW
-	for (size_t i = 0; i < pcs_vector.size(); i++)
-		if (isDeformationProcess(pcs_vector[i]->getProcessType()))
-		{
-			dm_pcs = pcs_vector[i];
-			break;
-		}
+	CRFProcess* dm_pcs = PCSGetDeformation();
 
-	/* //WW
-	   // VEL
-	   int v_eidx[3];
-	   CRFProcess* m_pcs_flow (PCSGetFlow());
-	   //m_pcs_flow = PCSGet("GROUNDWATER_FLOW"); //OKToDo
-	   if (!m_pcs_flow)
-	   {
-	   //WW cout << "Warning in COutput::NODWritePLYDataTEC() - no PCS flow
-	   data" << endl;
-	   //tec_file << "Warning in COutput::NODWritePLYDataTEC() - no PCS flow
-	   data " << endl;
-	   //tec_file.close();
-	   //return 0.0;
-	   }
-	   else
-	   {
-	   v_eidx[0] = m_pcs_flow->GetElementValueIndex("VELOCITY1_X");
-	   v_eidx[1] = m_pcs_flow->GetElementValueIndex("VELOCITY1_Y");
-	   v_eidx[2] = m_pcs_flow->GetElementValueIndex("VELOCITY1_Z");
-	   }
-	 */
-
-	//   for (size_t i = 0; i < 3; i++)
-	//   {
-	//      if (v_eidx[i] < 0)
-	//      {
-	//         //WW cout << "Warning in COutput::NODWritePLYDataTEC() - no PCS
-	//         flow data" << endl;
-	//         //tec_file << "Warning in COutput::NODWritePLYDataTEC() - no PCS
-	//         flow data " << endl;
-	//         //tec_file.close();
-	//      }
-	//   }
 	//--------------------------------------------------------------------
 	// NIDX for output variables
 	size_t no_variables(_nod_value_vector.size());
@@ -1484,7 +1422,7 @@ double COutput::NODWritePLYDataTEC(int number)
 	GetNodeIndexVector(NodeIndex);
 	//--------------------------------------------------------------------
 	// Write header
-	if (number == 0 || number == 1)  // WW if(number==1)
+	if (!_new_file_opened)
 	{
 		// project_title;
 		std::string project_title_string = "Profiles along polylines";
