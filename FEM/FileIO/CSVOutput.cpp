@@ -40,6 +40,7 @@ void writeLine(std::ostream &os, std::vector<T> const& vec, std::string const& d
 	++itr;
 	for (;itr!=vec.end(); ++itr)
 		os << delim << *itr;
+	os << "\n";
 }
 
 void writeNodeData(COutput* output, std::string const& filename)
@@ -92,7 +93,7 @@ void writeNodeData(COutput* output, std::string const& filename)
 #else
 		os << node->GetIndex() << delim;
 #endif
-		for (size_t j=0; j<n_nodal_values; j++)
+		for (size_t j=0; j<vec_pcs_value_index.size(); j++)
 		{
 			auto pcs = vec_pcs[j];
 			tmp_values[j] = pcs->GetNodeValue(i, vec_pcs_value_index[j]);

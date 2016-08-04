@@ -317,19 +317,19 @@ void OUTData(double time_current, int time_step_number, bool force_output)
 			{
 				case GEOLIB::GEODOMAIN:
 				{
-					ScreenMessage("-> Data output: Domain");
+					ScreenMessage("-> Data output: Domain - CSV\n");
 					CSVOutput::writeDomain(m_out, time_step_number, m_out->_time, m_out->file_base_name);
 					break;
 				}
 				case GEOLIB::POINT:
 				{
-					ScreenMessage("-> Data output: Breakthrough curves - %s\n", m_out->getGeoName().c_str());
+					ScreenMessage("-> Data output: Point - %s\n", m_out->getGeoName().c_str());
 					m_out->NODWritePNTDataTEC(time_current, time_step_number);
 					break;
 				}
 				case GEOLIB::POLYLINE:
 				{
-					ScreenMessage("-> Data output: Polyline profile - %s\n", m_out->getGeoName().c_str());
+					ScreenMessage("-> Data output: Polyline - %s\n", m_out->getGeoName().c_str());
 					m_out->NODWritePLYDataTEC(time_step_number);
 					break;
 				}
