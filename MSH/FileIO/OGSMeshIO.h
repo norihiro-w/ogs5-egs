@@ -8,11 +8,11 @@
 #ifndef OGSMESHIO_H_
 #define OGSMESHIO_H_
 
-#include "Writer.h"
-
 #include <sstream>
 #include <iostream>
 #include <vector>
+
+#include "Writer.h"
 
 namespace MeshLib
 {

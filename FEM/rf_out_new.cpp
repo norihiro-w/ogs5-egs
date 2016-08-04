@@ -52,7 +52,7 @@
 #include "msh_lib.h"
 
 // FileIO/FEMIO
-#include "FEMIO/GeoIO.h"
+#include "GeoIO.h"
 
 #include "problem.h"
 
@@ -274,14 +274,6 @@ void OUTData(double time_current, int time_step_number, bool force_output)
 		    m_out->dat_type_name.compare("GNUPLOT") == 0 ||
 		    m_out->dat_type_name.compare("CSV") == 0)
 		{
-			//			m_out->matlab_delim = " ";
-			//			if (m_out->dat_type_name.compare("MATLAB") == 0) // JT,
-			//just
-			// for commenting header for matlab
-			//			if (m_out->dat_type_name.compare("GNUPLOT") == 0) //
-			//JOD,
-			// just for commenting header for gnupl
-			//				m_out->matlab_delim = "%";
 
 			switch (m_out->getGeoType())
 			{
@@ -377,10 +369,6 @@ void OUTData(double time_current, int time_step_number, bool force_output)
 				//------------------------------------------------------------------
 				case GEOLIB::SURFACE:  // profiles at surfaces
 					ScreenMessage("-> Data output: Surface profile\n");
-					//..............................................................
-					//				if (m_out->_dis_type_name.compare("AVERAGE") ==
-					//0)
-					//{
 					if (m_out->getProcessDistributionType() ==
 					    FiniteElement::AVERAGE)
 					{
@@ -390,7 +378,6 @@ void OUTData(double time_current, int time_step_number, bool force_output)
 							                                 time_step_number);
 							OutputBySteps = false;
 							if (!m_out->_new_file_opened)
-								// WW
 								m_out->_new_file_opened = true;
 						}
 					}
@@ -402,7 +389,6 @@ void OUTData(double time_current, int time_step_number, bool force_output)
 							m_out->NODWriteSFCDataTEC(time_step_number);
 							OutputBySteps = false;
 							if (!m_out->_new_file_opened)
-								// WW
 								m_out->_new_file_opened = true;
 						}
 						else
@@ -429,31 +415,6 @@ void OUTData(double time_current, int time_step_number, bool force_output)
 						m_out->ELEWriteSFC_TEC();
 					//..............................................................
 					break;
-
-				//			case 'Y': // Layer
-				//				cout << "Data output: Layer" << endl;
-				//				if (OutputBySteps) {
-				//					m_out->NODWriteLAYDataTEC(time_step_number);
-				//					OutputBySteps = false;
-				//				} else {
-				//					for (j = 0; j < no_times; j++) {
-				//						if ((time_current > m_out->time_vector[j])
-				//||
-				// fabs(
-				//								time_current -
-				// m_out->time_vector[j])
-				//								<MKleinsteZahl) {
-				//							m_out->NODWriteLAYDataTEC(j);
-				//							m_out->time_vector.erase(m_out->time_vector.begin()
-				//									+ j);
-				//							break;
-				//						}
-				//					}
-				//				}
-				//
-				//				break;
-				//------------------------------------------------------------------
-
 				default:
 					break;
 			}

@@ -21,7 +21,7 @@
 #include "display.h"
 #include "FileToolsRF.h"
 
-#include "FEMIO/GeoIO.h"
+#include "GeoIO.h"
 #include "GEOObjects.h"
 #include "StringTools.h"
 #include "fem_ele_std.h"
