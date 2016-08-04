@@ -42,7 +42,7 @@ IF (PARALLEL_USE_MPI)
 ENDIF (PARALLEL_USE_MPI)
 
 # Create the library
-add_library( FEM STATIC ${HEADERS} ${SOURCES} )
+add_library( FEM ${HEADERS} ${SOURCES} )
 
 target_link_libraries(FEM
 	Base
