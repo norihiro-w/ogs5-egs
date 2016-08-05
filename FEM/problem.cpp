@@ -135,11 +135,6 @@ Problem::Problem(char* filename)
 	// JT: Certain restrictions might be made if an external simulator is being
 	// used
 	external_coupling_exists = false;
-	for (size_t i = 0; i < pcs_vector.size(); i++)
-	{
-		if (pcs_vector[i]->simulator.compare("GEOSYS") != 0)
-			external_coupling_exists = true;
-	}
 #ifdef GEM_REACT
 	external_coupling_exists = true;
 #endif
@@ -488,14 +483,12 @@ Problem::~Problem()
    -------------------------------------------------------------------------*/
 inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 {
-	//	if (m_pcs->pcs_type_name.compare("LIQUID_FLOW") == 0) {
 	if (m_pcs->getProcessType() == FiniteElement::LIQUID_FLOW)
 	{
 		if (!activefunc) return 0;
 		total_processes[0] = m_pcs;
 		active_processes[0] = &Problem::LiquidFlow;
 		return 0;
-		//	} else if (m_pcs->pcs_type_name.compare("GROUNDWATER_FLOW") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
 	{
@@ -503,7 +496,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[1] = m_pcs;
 		active_processes[1] = &Problem::GroundWaterFlow;
 		return 1;
-		//	} else if (m_pcs->pcs_type_name.compare("RICHARDS_FLOW") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::RICHARDS_FLOW)
 	{
@@ -511,7 +503,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[2] = m_pcs;
 		active_processes[2] = &Problem::RichardsFlow;
 		return 2;
-		//	} else if (m_pcs->pcs_type_name.compare("TWO_PHASE_FLOW") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::TWO_PHASE_FLOW)
 	{
@@ -519,7 +510,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[3] = m_pcs;
 		active_processes[3] = &Problem::TwoPhaseFlow;
 		return 3;
-		//	} else if (m_pcs->pcs_type_name.compare("MULTI_PHASE_FLOW") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)
 	{
@@ -527,22 +517,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[4] = m_pcs;
 		active_processes[4] = &Problem::MultiPhaseFlow;
 		return 4;
-		//	} else if (m_pcs->pcs_type_name.compare("COMPONENTAL_FLOW") == 0) {
-		//	} else if (m_pcs->getProcessType() == COMPONENTAL_FLOW) {
-		//		if (!activefunc)
-		//			return 5;
-		//		total_processes[5] = m_pcs;
-		//		active_processes[5] = &Problem::ComponentalFlow;
-		//		return 5;
-		//	} else if (m_pcs->pcs_type_name.compare("OVERLAND_FLOW") == 0) {
-	}
-	else if (m_pcs->getProcessType() == FiniteElement::OVERLAND_FLOW)
-	{
-		if (!activefunc) return 6;
-		total_processes[6] = m_pcs;
-		active_processes[6] = &Problem::OverlandFlow;
-		return 6;
-		//	} else if (m_pcs->pcs_type_name.compare("AIR_FLOW") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::AIR_FLOW)
 	{
@@ -550,7 +524,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[7] = m_pcs;
 		active_processes[7] = &Problem::AirFlow;
 		return 7;
-		//	} else if (m_pcs->pcs_type_name.compare("HEAT_TRANSPORT") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::HEAT_TRANSPORT)
 	{
@@ -558,7 +531,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[8] = m_pcs;
 		active_processes[8] = &Problem::HeatTransport;
 		return 8;
-		//	} else if (m_pcs->pcs_type_name.compare("FLUID_MOMENTUM") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::FLUID_MOMENTUM)
 	{
@@ -566,7 +538,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[9] = m_pcs;
 		active_processes[9] = &Problem::FluidMomentum;
 		return 9;
-		//	} else if (m_pcs->pcs_type_name.compare("RANDOM_WALK") == 0) {
 	}
 #ifndef OGS_ONLY_TH
 	else if (m_pcs->getProcessType() == FiniteElement::RANDOM_WALK)
@@ -575,7 +546,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[10] = m_pcs;
 		active_processes[10] = &Problem::RandomWalker;
 		return 10;
-		//	} else if (m_pcs->pcs_type_name.compare("MASS_TRANSPORT") == 0) {
 	}
 #endif
 	else if (m_pcs->getProcessType() == FiniteElement::MASS_TRANSPORT)
@@ -584,8 +554,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[11] = m_pcs;
 		active_processes[11] = &Problem::MassTrasport;
 		return 11;
-		//	} else if (m_pcs->pcs_type_name.find("DEFORMATION") != string::npos)
-		//{
 	}
 	else if (isDeformationProcess(m_pcs->getProcessType()))
 	{
@@ -593,11 +561,9 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[12] = m_pcs;
 		active_processes[12] = &Problem::Deformation;
 		return 12;
-		//	} else if (m_pcs->pcs_type_name.find("PS_GLOBAL") != string::npos) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::PS_GLOBAL)
 	{
-		//    if(!activefunc) return 13;
 		if (!activefunc) return 3;
 		total_processes[3] = m_pcs;
 		active_processes[3] = &Problem::PS_Global;
@@ -1546,11 +1512,6 @@ void Problem::PostCouplingLoop()
 		m_pcs->Extropolation_MatValue();         // WW
 		if (m_pcs->cal_integration_point_value)  // WW
 			m_pcs->Extropolation_GaussValue();
-		// BG
-		if ((m_pcs->simulator == "ECLIPSE") || (m_pcs->simulator == "DUMUX"))
-		{
-			m_pcs->Extropolation_GaussValue();
-		}
 		// JT: Now done in PreCouplingLoop() // m_pcs->CopyTimestepNODValues();
 		// //MB
 		if (force_post_node_copy)
@@ -1595,17 +1556,9 @@ inline double Problem::LiquidFlow()
 		m_pcs->selected = false;
 	if (!m_pcs->selected) return error;
 	//  error = m_pcs->Execute();
-	// Cases: decide, weather to use GEOSYS, ECLIPSE or DuMux; BG 10/2010
-	if ((m_pcs->simulator.compare("GEOSYS") ==
-	     0))  //         ||(m_pcs->simulator.compare("ECLIPSE")==0)){ //
-	          //         standard: use GeoSys
-	{
-		error = m_pcs->ExecuteNonLinear(loop_process_number);
-#ifdef RESET_4410
-		PCSCalcSecondaryVariables();  // PCS member function
-#endif
-		m_pcs->CalIntegrationPointValue();  // WW
-	}
+	error = m_pcs->ExecuteNonLinear(loop_process_number);
+	PCSCalcSecondaryVariables();
+	m_pcs->CalIntegrationPointValue();
 
 	return error;
 }
@@ -1698,20 +1651,11 @@ inline double Problem::MultiPhaseFlow()
 
 	// m_pcs->CalculateFluidDensitiesAndViscositiesAtNodes(m_pcs);
 
-	// Cases: decide, weather to use GEOSYS, ECLIPSE or DuMux; BG 10/2010
-	if ((m_pcs->simulator.compare("GEOSYS") ==
-	     0))  // ||(m_pcs->simulator.compare("ECLIPSE")==0)){ // standard: use
-	          // GeoSys
-	{
-		// if((m_pcs->simulator.compare("GEOSYS")==0)
-		// ||(m_pcs->simulator.compare("ECLIPSE")==0)){ // standard: use GeoSys
-		error = m_pcs->ExecuteNonLinear(loop_process_number);
-		if (m_pcs->TimeStepAccept()) m_pcs->CalIntegrationPointValue();  // WW
-	}
+	error = m_pcs->ExecuteNonLinear(loop_process_number);
+	if (m_pcs->TimeStepAccept()) m_pcs->CalIntegrationPointValue();
 
 	// CO2-Phase_Transition BG, NB
-	if ((m_pcs->Phase_Transition_Model == 1) &&
-	    ((m_pcs->simulator.compare("GEOSYS") == 0)))
+	if (m_pcs->Phase_Transition_Model == 1)
 	{
 		// check if mfp-model for density and viscosity is 18
 		if (m_pcs->Tim->step_current == 1)
@@ -1801,9 +1745,7 @@ inline double Problem::GroundWaterFlow()
 	// std::cout << "      Calculation of secondary NOD values" << "\n";
 	if (m_pcs->TimeStepAccept())
 	{
-#ifdef RESET_4410
 		PCSCalcSecondaryVariables();  // PCS member function
-#endif
 		// std::cout << "      Calculation of secondary GP values" << "\n";
 		m_pcs->CalIntegrationPointValue();  // WW
 		m_pcs->cal_integration_point_value =
@@ -1829,25 +1771,6 @@ inline double Problem::ComponentalFlow()
 	//
 	error = m_pcs->ExecuteNonLinear(loop_process_number);
 	m_pcs->CalIntegrationPointValue();  // WW
-	return error;
-}
-
-/*-------------------------------------------------------------------------
-   GeoSys - Function: OverlandFlow()
-   Task:
-   Return: error
-   Programming:
-   07/2008 WW Extract from LOPTimeLoop_PCS();
-   Modification:
-   -------------------------------------------------------------------------*/
-inline double Problem::OverlandFlow()
-{
-	double error = 1.e8;
-	CRFProcess* m_pcs = total_processes[6];
-	if (!m_pcs->selected) return error;  // 12.12.2008 WW
-
-	error = m_pcs->ExecuteNonLinear(loop_process_number);
-	if (m_pcs->TimeStepAccept()) PCSCalcSecondaryVariables();
 	return error;
 }
 
@@ -2269,44 +2192,19 @@ void Problem::LOPCalcELEResultants()
 	for (size_t p = 0; p < no_processes; p++)
 	{
 		m_pcs = pcs_vector[p];
-		if (!m_pcs->selected)  // OK4108
+		if (!m_pcs->selected)
 			continue;
-		// cout << "LOPCalcELEResultants: " << m_pcs->pcs_type_name << endl;
-		// TF
 		std::string pcs_type_name(
 		    convertProcessTypeToString(m_pcs->getProcessType()));
-		//		switch (m_pcs->pcs_type_name[0]) {
 		switch (pcs_type_name[0])
 		{
-			default:
-				break;
 			case 'L':  // Liquid flow
-				m_pcs->CalcELEVelocities();
-				break;
 			case 'G':  // Groundwater flow
-				m_pcs->CalcELEVelocities();
-				break;
 			case 'A':  // Gas flow
-				m_pcs->CalcELEVelocities();
-				// m_pcs->CalcELEMassFluxes();			// BG
-				break;
-			case 'T':  // Two-phase flow
-				break;
-			case 'C':  // Componental flow
-				break;
-			case 'H':  // Heat transport
-				break;
-			case 'M':  // Mass transport
-				break;
-			case 'D':  // Deformation
-				break;
-			case 'O':  // Overland flow
-				m_pcs->CalcELEVelocities();
-				break;
 			case 'R':  // Richards flow
 				m_pcs->CalcELEVelocities();
 				break;
-			case 'F':  // Fluid Momentum
+			default:
 				break;
 		}
 	}

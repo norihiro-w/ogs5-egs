@@ -69,7 +69,8 @@ std::vector<CSourceTerm*> st_vector;
 std::list<CSourceTermGroup*> st_group_list;
 std::vector<std::string> analytical_processes;
 std::vector<std::string> analytical_processes_polylines;
-std::vector<NODE_HISTORY*> node_history_vector;  // CMCD
+std::vector<NODE_HISTORY*> node_history_vector;
+
 /**************************************************************************
  FEMLib-Method:
  Task: ST constructor
@@ -2199,34 +2200,6 @@ void STGroupsDelete()
  Programing:
  03/2005 OK Implementation
  last modification:
- **************************************************************************/
-// 05/2010 TF not needed for compilation
-// void STCreateFromLIN(vector<CGLLine*>lin_properties_vector)
-//{
-//  long i;
-//  CSourceTerm *m_st = NULL;
-//  CGLLine *m_lin = NULL;
-//  long lin_properties_vector_size = (long)lin_properties_vector.size();
-//  for(i=0;i<lin_properties_vector_size;i++){
-//    m_st = new CSourceTerm();
-//    m_lin = lin_properties_vector[i];
-//    m_st->pcs_pv_name = "PRESSURE1"; // ToDo
-//    m_st->geo_type_name = "LINE";
-//    m_st->setGeoName (m_lin->name);
-//    m_st->geo_id = m_lin->gli_line_id;
-//    m_st->dis_type_name = "CONSTANT_NEUMANN";
-//    m_st->geo_node_value = m_lin->value;
-//    m_st->tim_type_name = m_lin->name;
-//    st_vector.push_back(m_st);
-//  }
-//}
-
-/**************************************************************************
- FEMLib-Method:
- Task:
- Programing:
- 03/2005 OK Implementation
- last modification:
  05/2010 TF restructured a little bit
  **************************************************************************/
 CSourceTerm* STGet(std::string geo_name)
@@ -2389,21 +2362,8 @@ double GetRelativeCouplingPermeability(const CRFProcess* pcs, double head,
 	double relPerm;
 	double z = pcs->m_msh->nod_vector[msh_node]->getData()[2];
 
-	//	if (pcs->pcs_type_name == "OVERLAND_FLOW") {
-	if (pcs->getProcessType() == FiniteElement::OVERLAND_FLOW)
-	{
-		double sat = (head - z) / std::max(1.e-6, source_term->rill_height);
-		if (sat > 1)
-			relPerm = 1;
-		else if (sat < 0)
-			relPerm = 0;
-		else
-			relPerm = pow(sat, 2 * (1 - sat));
-	}
-	//	else if( pcs->pcs_type_name == "GROUNDWATER_FLOW")
-	else if (pcs->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
+	if (pcs->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
 		relPerm = 1;
-	//	else if( pcs->pcs_type_name == "RICHARDS_FLOW") {
 	else if (pcs->getProcessType() == FiniteElement::RICHARDS_FLOW)
 	{
 		/*CElem *m_ele = NULL;
@@ -2798,23 +2758,6 @@ void CSourceTerm::SetNOD()
 	              ShiftInNodeVector);
 }
 
-/**************************************************************************
- MSHLib-Method:
- Task:
- Programing:
- 11/2007 JOD
- last modification:
- **************************************************************************/
-// void CSourceTermGroup::SetPolylineNodeVector(CGLPolyline* m_ply,
-// std::vector<long>&ply_nod_vector)
-//{
-//   if (m_ply->getType() == 100)                   // WW
-//      m_msh->GetNodesOnArc(m_ply, ply_nod_vector);
-//   else if (m_ply->getType() == 3)                // JOD
-//      m_msh->GetNODOnPLY_XY(m_ply, ply_nod_vector);
-//   else
-//      m_msh->GetNODOnPLY(m_ply, ply_nod_vector);
-//}
 
 /**************************************************************************
  MSHLib-Method:
@@ -2859,8 +2802,7 @@ void CSourceTermGroup::SetPolylineNodeVectorConditional(
 				for (size_t i = 0; i < number_of_nodes; i++)
 					ply_nod_vector[i] = assembled_mesh_node;
 			}  // end richards
-			else if (pcs_type_name == "OVERLAND_FLOW" ||
-			         pcs_type_name == "GROUNDWATER_FLOW")  // JOD 4.10.01
+			else if (pcs_type_name == "GROUNDWATER_FLOW")  // JOD 4.10.01
 			{
 				number_of_nodes = ply_nod_vector.size();
 				//				m_msh_cond->GetNODOnPLY(m_ply,
@@ -2893,53 +2835,6 @@ void CSourceTermGroup::SetPolylineNodeVectorConditional(
 	}  // end !area_assembly
 }
 
-#if 0
-// 09/2010 TF
-void CSourceTermGroup::SetPolylineNodeVectorConditional(CSourceTerm* st,
-		std::vector<size_t>& ply_nod_vector,
-		std::vector<size_t>& ply_nod_vector_cond)
-{
-	size_t assembled_mesh_node, number_of_nodes;
-
-	if (st->node_averaging) {
-		if (m_msh_cond) {
-			if (pcs_type_name == "RICHARDS_FLOW") {
-				m_msh_cond->GetNODOnPLY(
-						static_cast<const GEOLIB::Polyline*> (st->getGeoObj()),
-						ply_nod_vector_cond);
-				number_of_nodes = ply_nod_vector_cond.size();
-				assembled_mesh_node = ply_nod_vector[0];
-				ply_nod_vector.resize(number_of_nodes);
-				for (size_t i = 0; i < number_of_nodes; i++)
-					ply_nod_vector[i] = assembled_mesh_node;
-			} // end richards
-			else if (pcs_type_name == "OVERLAND_FLOW"
-			// JOD 4.10.01
-					|| pcs_type_name == "GROUNDWATER_FLOW") {
-				number_of_nodes = ply_nod_vector.size();
-				m_msh_cond->GetNODOnPLY(
-						static_cast<const GEOLIB::Polyline*> (st->getGeoObj()),
-						ply_nod_vector_cond);
-				assembled_mesh_node = ply_nod_vector_cond[0];
-				ply_nod_vector_cond.resize(number_of_nodes);
-				for (size_t i = 0; i < number_of_nodes; i++)
-					ply_nod_vector_cond[i] = assembled_mesh_node;
-			} // end overland, groundwater
-			else std::cout
-					<< "Warning in CSourceTermGroup::SetPolylineNodeVectorConditional - no area assembly for this process"
-					<< "\n";
-		} // end mesh_cond
-		else std::cout
-				<< "Warning in CSourceTermGroup::SetPLY - no MSH_COND data"
-				<< "\n";
-	} // end area_assembly
-	else {
-		number_of_nodes = ply_nod_vector.size();
-		ply_nod_vector_cond.resize(number_of_nodes);
-		st->SetNOD2MSHNOD(ply_nod_vector, ply_nod_vector_cond);
-	} // end !area_assembly
-}
-#endif
 
 /**************************************************************************
  MSHLib-Method:
@@ -3319,8 +3214,7 @@ void CSourceTerm::SetNodeValues(const std::vector<long>& nodes,
 		{
 			m_nod_val->msh_node_number_conditional = nodes_cond[i];
 			// JOD 4.10.01
-			if ((getProcessType() == FiniteElement::OVERLAND_FLOW ||
-			     getProcessType() == FiniteElement::GROUNDWATER_FLOW) &&
+			if (getProcessType() == FiniteElement::GROUNDWATER_FLOW &&
 			    node_averaging)
 			{
 				double weights = 0;
@@ -3359,96 +3253,6 @@ void CSourceTerm::SetNodeValues(const std::vector<long>& nodes,
 	}                                                     // end nodes
 }
 
-// 09/2010 TF
-// void CSourceTerm::SetNodeValues(const std::vector<size_t>& nodes, const
-// std::vector<size_t>& nodes_cond,
-//		const std::vector<double>& node_values, int ShiftInNodeVector)
-//{
-//   size_t number_of_nodes (nodes.size());
-//
-//   for (size_t i = 0; i < number_of_nodes; i++)
-//   {
-//      CNodeValue *m_nod_val = new CNodeValue();
-//      m_nod_val->msh_node_number = nodes[i] + ShiftInNodeVector;
-//      m_nod_val->geo_node_number = nodes[i];
-//      m_nod_val->setProcessDistributionType (getProcessDistributionType());
-//      m_nod_val->node_value = node_values[i];
-//      m_nod_val->CurveIndex = CurveIndex;
-//
-//      if (_coupled)                               // JOD 4.7.10
-//      {
-//         m_nod_val->msh_node_number_conditional = nodes_cond[i];
-//         if ((getProcessType() == OVERLAND_FLOW
-//            || getProcessType() == GROUNDWATER_FLOW)
-//            && node_averaging)                    // JOD 4.10.01
-//         {
-//            double weights = 0;
-//            for (size_t j = 0; j < number_of_nodes; j++)
-//            {
-//               m_nod_val->msh_node_numbers_averaging.push_back(nodes[j]);
-//               m_nod_val->msh_node_weights_averaging.push_back(
-//                  node_values[j]);
-//               weights += node_values[j];
-//            }
-//            for (size_t j = 0; j < number_of_nodes; j++)
-//               m_nod_val->msh_node_weights_averaging[j] /= weights;
-//         }
-//      }
-//
-//      //		if (getProcessDistributionType() == RIVER) {
-//      //			m_nod_val->node_value = node_value_vectorArea[i];
-//      //			m_nod_val->node_parameterA = node_value_vectorA[i];
-//      //			m_nod_val->node_parameterB = node_value_vectorB[i];
-//      //			m_nod_val->node_parameterC = node_value_vectorC[i];
-//      //			m_nod_val->node_parameterD = node_value_vectorD[i];
-//      //			m_nod_val->node_parameterE = node_value_vectorE[i];
-//      //		}
-//      if (getProcessDistributionType() == FiniteElement::CRITICALDEPTH
-//         || getProcessDistributionType() == FiniteElement::NORMALDEPTH
-//         || getProcessDistributionType() == FiniteElement::ANALYTICAL)
-//      {
-//         m_nod_val->node_value = node_value_vectorArea[i];
-//                                                  //CMCD bugfix on 4.9.06
-//         m_nod_val->node_area = node_value_vectorArea[i];
-//      }
-//      _pcs->st_node_value.push_back(m_nod_val);   //WW
-//      _pcs->st_node.push_back(this);              //WW
-//   }                                              // end nodes
-//}
-
-/**************************************************************************
- MSHLib-Method:
- Task:
- Programing:
- 11/2005 MB
- last modification:
- **************************************************************************/
-// void CSourceTerm::SetNOD2MSHNOD(vector<long>&nodes,
-//		vector<long>&conditional_nodes)
-//{
-//	CGLPoint* m_pnt = NULL;
-//	long number;
-//	CFEMesh* m_msh_cond = NULL;
-//	CFEMesh* m_msh_this = NULL;
-//
-//	m_msh_cond = FEMGet(pcs_type_name_cond);
-//	m_msh_this = FEMGet(convertProcessTypeToString(m_st->getProcessType()));
-//	m_pnt = new CGLPoint;
-//
-//	for (long i = 0; i < (long) nodes.size(); i++) {
-//		m_pnt->x = m_msh_this->nod_vector[nodes[i]]->X();
-//		m_pnt->y = m_msh_this->nod_vector[nodes[i]]->Y();
-//		m_pnt->z = m_msh_this->nod_vector[nodes[i]]->Z();
-//
-//		number = m_msh_cond->GetNODOnPNT(m_pnt);
-//		conditional_nodes[i] = number;
-//
-//	}
-//
-//	delete m_pnt;
-//
-//}
-
 void CSourceTerm::SetNOD2MSHNOD(std::vector<long>& nodes,
                                 std::vector<long>& conditional_nodes)
 {
@@ -3458,9 +3262,6 @@ void CSourceTerm::SetNOD2MSHNOD(std::vector<long>& nodes,
 	for (size_t i = 0; i < nodes.size(); i++)
 	{
 		const GEOLIB::Point pnt(m_msh_this->nod_vector[nodes[i]]->getData());
-		//      pnt[0] = m_msh_this->nod_vector[nodes[i]]->X();
-		//      pnt[1] = m_msh_this->nod_vector[nodes[i]]->Y();
-		//      pnt[2] = m_msh_this->nod_vector[nodes[i]]->Z();
 
 		conditional_nodes[i] = m_msh_cond->GetNODOnPNT(&pnt);
 	}
@@ -3475,9 +3276,6 @@ void CSourceTerm::SetNOD2MSHNOD(const std::vector<size_t>& nodes,
 	for (size_t i = 0; i < nodes.size(); i++)
 	{
 		const GEOLIB::Point pnt(m_msh_this->nod_vector[nodes[i]]->getData());
-		//		pnt[0] = m_msh_this->nod_vector[nodes[i]]->X();
-		//		pnt[1] = m_msh_this->nod_vector[nodes[i]]->Y();
-		//		pnt[2] = m_msh_this->nod_vector[nodes[i]]->Z();
 
 		conditional_nodes[i] = m_msh_cond->GetNODOnPNT(&pnt);
 	}
@@ -4004,151 +3802,5 @@ void CSourceTerm::DeleteHistoryNodeMemory()
 			delete node_history_vector[j]->value_store;
 		}
 		node_history_vector.clear();
-	}
-}
-
-///**************************************************************************
-// FEMLib-Method:
-// 07/2007 OK Implementation
-// modifications:
-// 05/2010 TF restructured a little bit
-//**************************************************************************/
-// CSourceTerm* STGet(const std::string& pcs_name, const std::string&
-// geo_type_name, const std::string& geo_name)
-//{
-//  for(size_t i=0;i<st_vector.size();i++) {
-//    if((st_vector[i]->pcs_type_name.compare(pcs_name)==0) &&
-//       (st_vector[i]->geo_type_name.compare(geo_type_name)==0) &&
-//       (st_vector[i]->getGeoName().compare(geo_name)==0))
-//      return st_vector[i];
-//
-////    if((st_vector[i]->pcs_type_name.compare(pcs_name)==0) &&
-////    		(st_vector[i]->geo_type_name.compare(geo_type_name)==0) &&
-////    		geo_type_name.compare ("POINT") == 0 &&
-////    		(st_vector[i]->getGeoObjIdx() == compare(geo_name)==0))
-////    	return st_vector[i];
-//  }
-//  return NULL;
-//}
-
-/**************************************************************************
- FEMLib-Method: 4.7.10 shift and average field variables
- 10/2008 JOD Implementation
- **************************************************************************/
-void GetCouplingFieldVariables(double* h_this, double* h_cond,
-                               double* h_shifted, double* h_averaged,
-                               double* z_this, double* z_cond,
-                               CSourceTerm* m_st, CNodeValue* cnodev)
-{
-	int nidx, nidx_cond;
-	double gamma;
-	CRFProcess* m_pcs_this = NULL;
-	CRFProcess* m_pcs_cond = NULL;
-
-	m_pcs_this = PCSGet(convertProcessTypeToString(m_st->getProcessType()));
-	m_pcs_cond = PCSGet(m_st->pcs_type_name_cond);
-	// only one phase
-	gamma = mfp_vector[0]->Density() * GRAVITY_CONSTANT;
-	*z_this =
-	    m_pcs_this->m_msh->nod_vector[cnodev->msh_node_number]->getData()[2];
-	*z_cond = m_pcs_cond->m_msh->nod_vector[cnodev->msh_node_number_conditional]
-	              ->getData()[2];
-	nidx = m_pcs_this->GetNodeValueIndex(convertPrimaryVariableToString(
-	           m_st->getProcessPrimaryVariable())) +
-	       1;
-	nidx_cond = m_pcs_cond->GetNodeValueIndex(m_st->pcs_pv_name_cond) + 1;
-	*h_this = m_pcs_this->GetNodeValue(cnodev->msh_node_number, nidx);
-	*h_cond = m_pcs_cond->GetNodeValue(cnodev->msh_node_number_conditional,
-	                                   nidx_cond);
-
-	if (m_st->getProcessType() == FiniteElement::OVERLAND_FLOW)
-	{
-		if (m_st->node_averaging)  // shift overland node on soil column top,
-		                           // averaging over nodes
-		{
-			*h_shifted = *h_this - *z_this + *z_cond;
-			*h_averaged = 0;
-			for (long i = 0;
-			     i < (long)cnodev->msh_node_numbers_averaging.size();
-			     i++)
-				*h_averaged +=
-				    cnodev->msh_node_weights_averaging[i] *
-				    (m_pcs_this->GetNodeValue(
-				         cnodev->msh_node_numbers_averaging[i], nidx) -
-				     m_pcs_this->m_msh
-				         ->nod_vector[cnodev->msh_node_numbers_averaging[i]]
-				         ->getData()[2]);
-
-			*h_averaged += *z_cond;
-			*z_this = *z_cond;
-		}     // end averaging
-		else  // no averaging
-		{
-			*h_shifted = *h_this;
-			*h_averaged = *h_this;
-		}  // end no averaging
-
-		if (m_st->pcs_pv_name_cond == "PRESSURE1")
-		{
-			*h_cond /= gamma;
-			*h_cond += *z_cond;
-		}
-		if (m_st->pcs_type_name_cond == "GROUNDWATER_FLOW")
-			h_cond = std::max(h_cond, z_this);  // groundwater level might not
-		                                        // reach overland flow bottom,
-		                                        // than only hydrostatic
-		                                        // overland pressure
-	}                                           // end overland flow
-	else                                        // richards & groundwater flow
-	{
-		if (m_st->pcs_pv_name_cond == "PRESSURE1")  // JOD 4.10.01
-		{
-			*h_cond /= gamma;
-			*h_cond += *z_cond;
-		}
-		if (m_st->node_averaging)  // shift overland/groundwater node on soil
-		                           // column top, averaging over nodes
-		{
-			*h_shifted = *h_cond - *z_cond;
-			*h_shifted += *z_this;
-			*z_cond = *z_this;
-		}  // end averaging
-		else
-			*h_shifted = *h_cond;
-
-		if (m_st->getProcessPrimaryVariable() == FiniteElement::PRESSURE)
-		{
-			*h_this /= gamma;
-			*h_this += *z_this;
-		}
-	}  // end richards & groundwater flow
-}
-
-/**************************************************************************
- FEMLib-Method: 4.7.10
- 10/2008 JOD Implementation
- **************************************************************************/
-double CalcCouplingValue(double factor, double h_this, double h_cond,
-                         double z_cond, CSourceTerm* m_st)
-{
-	if (m_st->getProcessType() == FiniteElement::OVERLAND_FLOW)
-	{
-		if (m_st->no_surface_water_pressure)  // 4.10.01
-			return factor * (h_cond - z_cond);
-		else
-			return factor * (h_cond - h_this);
-	}  // richards & groundwater flow
-	else
-	{
-		if (m_st->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
-		{
-			if (h_this < z_cond && m_st->pcs_type_name_cond == "OVERLAND_FLOW")
-				return factor * (h_cond - z_cond);
-			else
-				return factor * h_cond;
-		}
-		else
-			// richards flow
-			return factor * (h_cond - z_cond);
 	}
 }

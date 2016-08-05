@@ -286,51 +286,17 @@ public:
 class CSourceTermGroup
 {
 public:
-	CSourceTermGroup()  // WW
+	CSourceTermGroup()
 	{
 	}
 	void Set(CRFProcess* m_pcs, const int ShiftInNodeVector,
 	         std::string this_pv_name = "");
-	// WW    std::vector<CNodeValue*>group_vector;
-	/**
-	 * \brief process type for the physical process
-	 * possible values are
-	 * <table>
-	 * <tr><td>LIQUID_FLOW</td> <td>H process (incompressible flow)</td></tr>
-	 * <tr><td>GROUNDWATER_FLOW</td> <td>H process (incompressible
-	 * flow)</td></tr>
-	 * <tr><td>RIVER_FLOW</td> <td>H process (incompressible flow)</td></tr>
-	 * <tr><td>RICHARDS_FLOW</td> <td>H process (incompressible flow)</td></tr>
-	 * <tr><td>OVERLAND_FLOW</td> <td>process (incompressible flow)</td></tr>
-	 * <tr><td>GAS_FLOW</td> <td>H process (compressible flow)</td></tr>
-	 * <tr><td>TWO_PHASE_FLOW</td> <td>H2 process (incompressible/compressible
-	 * flow)</td></tr>
-	 * <tr><td>COMPONENTAL_FLOW</td> <td>H2 process (incompressible/compressible
-	 * flow)</td></tr>
-	 * <tr><td>HEAT_TRANSPORT</td> <td>T process (single/multi-phase
-	 * flow)</td></tr>
-	 * <tr><td>DEFORMATION</td> <td>M process (single/multi-phase
-	 * flow)</td></tr>
-	 * <tr><td>MASS_TRANSPORT</td> <td>C process (single/multi-phase
-	 * flow)</td></tr>
-	 * </table>
-	 */
 	std::string pcs_name;
-	std::string pcs_type_name;  // OK
-	std::string pcs_pv_name;    // OK
+	std::string pcs_type_name;
+	std::string pcs_pv_name;
 	MeshLib::CFEMesh* m_msh;
 	MeshLib::CFEMesh* m_msh_cond;
-	// WW    std::vector<CSourceTerm*>st_group_vector; //OK
-	// WW double GetConditionalNODValue(int,CSourceTerm*); //OK
-	// WW double GetRiverNODValue(int,CSourceTerm*, long msh_node); //MB
-	// WW double GetCriticalDepthNODValue(int,CSourceTerm*, long msh_node); //MB
-	// WW double GetNormalDepthNODValue(int,CSourceTerm*, long msh_node); //MB
-	// JOD
-	// WW Changed from the above
-	//    double GetAnalyticalSolution(CSourceTerm *m_st,long node_number,
-	//    std::string process);//CMCD
-	// TRANSFER OF DUAL RICHARDS
-	std::string fct_name;  // YD
+	std::string fct_name;
 private:
 	// JOD
 	void SetPNT(CRFProcess* m_pcs, CSourceTerm* m_st,

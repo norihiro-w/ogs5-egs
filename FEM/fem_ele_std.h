@@ -36,7 +36,6 @@
 // C: Componental flow
 // H: heat transport
 // M: Mass transport
-// O: Overland flow
 // R: Richards flow
 // F: Fluid momentum
 // A: Gas flow
@@ -147,20 +146,6 @@ public:
 	                        // element center of gravity
 	void Cal_GP_Velocity_FM(int* i_ind);  // SB 4900 interpolate node velocities
 	                                      // to Gauss point velocities
-	// BG
-	std::string Cal_GP_Velocity_ECLIPSE(std::string tempstring,
-	                                    bool output_average,
-	                                    int phase_index,
-	                                    std::string phase);
-	// BG coupling to DuMux
-	std::string Cal_GP_Velocity_DuMux(int* i_ind,
-	                                  CRFProcess* m_pcs,
-	                                  int phase_index);
-	// BG, 04/2012: Provides the average element velocity over all gauss points
-	double Get_Element_Velocity(int Index,
-	                            CRFProcess* m_pcs,
-	                            int phase_index,
-	                            int dimension);
 	// necessary for using precalculated density and viscosity BG, 11/2010
 	double InterpolatePropertyToGausspoint(int GPIndex,
 	                                       CRFProcess* m_pcs,

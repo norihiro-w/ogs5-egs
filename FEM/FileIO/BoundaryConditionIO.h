@@ -1,8 +1,10 @@
-/*
- * BoundaryConditionIO.h
+/**
+ * \copyright
+ * Copyright (c) 2015, OpenGeoSys Community (http://www.opengeosys.org)
+ *            Distributed under a Modified BSD License.
+ *              See accompanying file LICENSE.txt or
+ *              http://www.opengeosys.org/project/license
  *
- *  Created on: Apr 19, 2011
- *      Author: TF
  */
 
 #ifndef BOUNDARYCONDITIONIO_H_

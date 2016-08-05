@@ -1,8 +1,4 @@
 /**
- * \file LegacyVtkInterface.cpp
- * 05/04/2011 LB Initial implementation
- *
- * Implementation of LegacyVtkInterface class
  * \copyright
  * Copyright (c) 2015, OpenGeoSys Community (http://www.opengeosys.org)
  *            Distributed under a Modified BSD License.

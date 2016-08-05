@@ -1830,9 +1830,7 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 		for (size_t i = 0; i < _nod_value_vector.size(); i++)
 		{
 			// PCS
-			if (!(_nod_value_vector[i].compare("FLUX") == 0) ||
-			    getProcessType() ==
-			        FiniteElement::OVERLAND_FLOW)  // JOD separate infiltration
+			if (!(_nod_value_vector[i].compare("FLUX") == 0))  // JOD separate infiltration
 				                                   // flux output in overland
 				                                   // flow
 
@@ -1850,9 +1848,7 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 			}
 			//..................................................................
 			// PCS
-			if (!(_nod_value_vector[i].compare("FLUX") == 0) ||
-			    getProcessType() ==
-			        FiniteElement::OVERLAND_FLOW)  // JOD separate infiltration
+			if (!(_nod_value_vector[i].compare("FLUX") == 0))  // JOD separate infiltration
 			                                       // flux output in overland
 			                                       // flow
 			{

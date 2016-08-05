@@ -116,10 +116,9 @@ private:
 	inline double RichardsFlow();
 	inline double TwoPhaseFlow();
 	inline double MultiPhaseFlow();
-	inline double PS_Global();  // 03 2009 PCH
+	inline double PS_Global();
 	inline double GroundWaterFlow();
 	inline double ComponentalFlow();
-	inline double OverlandFlow();
 	inline double AirFlow();
 	inline double HeatTransport();
 	inline double FluidMomentum();
@@ -128,17 +127,9 @@ private:
 	inline double Deformation();
 	inline double TH_Monolithic();
 	// Accessory
-	void LOPExecuteRegionalRichardsFlow(CRFProcess* m_pcs_global,
-	                                    int loop_process_number);
 	void LOPCalcELEResultants();
-	inline void ASMCalcNodeWDepth(CRFProcess* m_pcs);
 	void PCSCalcSecondaryVariables();
-	bool Check();                               // OK
-	void TestOutputEclipse(CRFProcess* m_pcs);  // BG
-	void TestOutputDuMux(CRFProcess* m_pcs);    // BG
-	void OutputMassOfComponentInModel(std::vector<CRFProcess*> flow_pcs,
-	                                  CRFProcess* transport_pcs);  // BG
-	void OutputMassOfGasInModel(CRFProcess* m_pcs);                // BG
+	bool Check();
 
 	/**
 	 * pointer to an instance of class GEOObjects,

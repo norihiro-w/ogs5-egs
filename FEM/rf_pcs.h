@@ -80,10 +80,7 @@ public:
 class CSourceTermGroup;
 class CSourceTerm;
 class CNodeValue;
-class Problem;         // WW
-class CECLIPSEData;    // BG Coupling to Eclipse
-class CDUMUXData;      // BG Coupling to DuMux
-class CPlaneEquation;  // BG Calculating Plane Equation
+class Problem;
 using FiniteElement::CFiniteElementStd;
 using FiniteElement::CFiniteElementVec;
 using FiniteElement::ElementMatrix;
@@ -215,8 +212,6 @@ protected:  // WW
 	friend class FiniteElement::ElementValue;
 	friend class ::CSourceTermGroup;
 	friend class ::Problem;
-	friend class CECLIPSEData;  // BG
-	friend class CDUMUXData;    // SBG
 	/// Number of nodes to a primary variable. 11.08.2010. WW
 	int* p_var_index;
 	long* num_nodes_p_var;
@@ -468,22 +463,6 @@ public:
 
 	void Clean_Water_ST_vec(void);
 	void Add_GEMS_Water_ST(long idx, double val);
-	// ECLIPSE interface:
-	CDUMUXData* DuMuxData;      // SBG
-	CECLIPSEData* EclipseData;  // BG
-	void CalGPVelocitiesfromECLIPSE(std::string path,
-	                                int timestep,
-	                                int phase_index,
-	                                std::string phase);
-	std::string
-	    simulator;  // which solver to use, i.e. GeoSys, ECLIPSE or DuMux
-	std::string simulator_path;  // path for executable of external simulator
-	std::string simulator_model_path;  // path to exclipse input data file
-	                                   // (*.data), with extension
-	bool PrecalculatedFiles;  // defines if Eclipse or dumux is calculated or if
-	                          // precalculated files are used
-	std::string
-	    simulator_well_path;  // path to well schedule ( *.well), with extension
 	//....................................................................
 	// Construction / destruction
 	char pcs_name[MAX_ZEILE];  // string pcs_name;
@@ -801,26 +780,7 @@ public:
 	bool adaption;
 	void PrimaryVariableReloadTransport();   // kg44
 	void PrimaryVariableStorageTransport();  // kg44
-	// double GetNewTimeStepSizeTransport(double mchange); //kg44
-	// FLX
 
-	/**
-	 * modified 05/2012 by BG
-	 * @param ply
-	 * @param result
-	 */
-	void CalcELEFluxes(const GEOLIB::Polyline* const ply, double* result);
-	/**
-	 * Necessary for the output of mass fluxes over polylines, BG 08/2011
-	 * @param ply a pointer to a GEOLIB::Polyline
-	 * @param NameofPolyline the name of the polyline
-	 * @param result
-	 */
-	void CalcELEMassFluxes(const GEOLIB::Polyline* const ply,
-	                       std::string const& NameofPolyline,
-	                       double* result);
-	double TotalMass[10];  // Necessary for the output of mass fluxes over
-	                       // polylines, BG 08/2011
 	std::vector<std::string> PolylinesforOutput;  // Necessary for the output of
 	                                              // mass fluxes over polylines,
 	                                              // BG 08/2011
@@ -950,7 +910,6 @@ extern double PCSGetELEValue(long index,
                              const std::string& nod_fct_name);
 // Specials
 extern void PCSRestart();
-extern std::string PCSProblemType();
 // PCS global variables
 extern int pcs_no_components;
 extern int pcs_deformation;

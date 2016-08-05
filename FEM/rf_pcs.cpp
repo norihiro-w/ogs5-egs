@@ -244,8 +244,6 @@ CRFProcess::CRFProcess(void)
 	timebuffer = 1.0e-5;  // WW
 	//_pcs_type_name.empty();
 	adaption = false;          // HS 03.2008
-	this->EclipseData = NULL;  // BG 09/2009, coupling to Eclipse
-	this->DuMuxData = NULL;    // SBG 09/2009, coupling to DuMux
 	cpl_overlord = NULL;
 	cpl_underling = NULL;
 	pcs_is_cpl_overlord = false;
@@ -271,13 +269,6 @@ CRFProcess::CRFProcess(void)
 	//
 	additioanl2ndvar_print = -1;  // WW
 	flow_pcs_type = 0;            // CB default: liquid flow, Sat = 1
-	this->simulator = "GEOSYS";   // BG, 09/2009
-	this->simulator_model_path =
-	    "";  // BG, 09/2009, folder with the Eclipse or DuMux files
-	this->simulator_path = "";         // BG, 09/2009, Eclipse or Dumux
-	this->simulator_well_path = "";    // KB 02/2011, Eclipse
-	this->PrecalculatedFiles = false;  // BG, 01/2011, flag for using already
-	                                   // calculated files from Eclipse or DuMux
 	this->Phase_Transition_Model = 0;  // BG, 11/2010, flag for using CO2 Phase
 	                                   // transition (0...not used, 1...used)
 	//----------------------------------------------------------------------
@@ -2007,38 +1998,6 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 				use_velocities_for_transport = true;
 			continue;
 		}
-		// Interface to Eclipse and Dumux, BG, 09/2010
-		//	if(line_string.find("$SIMULATOR")!=string::npos) { //OK
-		if (line_string.compare("$SIMULATOR") ==
-		    0)  // BG, 09/2010, coupling to Eclipse and DuMux
-		{
-			*pcs_file >> this->simulator;
-			continue;
-		}
-		if (line_string.find("$SIMULATOR_PATH") ==
-		    0)  // BG, 09/2010, coupling to Eclipse and DuMux
-		{
-			*pcs_file >> this->simulator_path;
-			continue;
-		}
-		// BG, 09/2010, coupling to Eclipse and DuMux
-		if (line_string.find("$SIMULATOR_MODEL_PATH") == 0)
-		{
-			*pcs_file >> this->simulator_model_path;
-			continue;
-		}
-		// BG, 09/2010, coupling to Eclipse and DuMux
-		if (line_string.find("$USE_PRECALCULATED_FILES") == 0)
-		{
-			this->PrecalculatedFiles = true;
-			continue;
-		}
-		// KB, 02/2011, coupling to Eclipse and DuMux
-		if (line_string.find("$SIMULATOR_WELL_PATH") == 0)
-		{
-			*pcs_file >> this->simulator_well_path;
-			continue;
-		}
 		// BG, NB 11/2010, calculating phase transition for CO2
 		if (line_string.find("$PHASE_TRANSITION") == 0)
 		{
@@ -2303,33 +2262,27 @@ void CRFProcess::Config(void)
 {
 	std::string pcs_type_name(
 	    convertProcessTypeToString(this->getProcessType()));
-	// Set mesh pointer to corresponding mesh
 	m_msh = FEMGet(pcs_type_name);
 	if (!m_msh)
 	{
 		cout << "Error in CRFProcess::Config - no MSH data" << endl;
 		return;
 	}
-	CheckMarkedElement();  // WW
+	CheckMarkedElement();
 
-	if (continuum_vector.size() == 0)  // YD
+	if (continuum_vector.empty())
 		continuum_vector.push_back(1.0);
 
-	//	if (_pcs_type_name.compare("LIQUID_FLOW") == 0) {
-	if (this->getProcessType() == FiniteElement::LIQUID_FLOW ||
-	    this->getProcessType() == FiniteElement::FLUID_FLOW)
+	if (this->getProcessType() == FiniteElement::LIQUID_FLOW)
 	{
-		//		ScreenMessage2("CRFProcess::Config LIQUID_FLOW\n");
 		type = 1;
 		ConfigLiquidFlow();
 	}
-	//	if (_pcs_type_name.compare("GROUNDWATER_FLOW") == 0) {
 	if (this->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
 	{
 		type = 1;
 		ConfigGroundwaterFlow();
 	}
-	//	if (_pcs_type_name.compare("RICHARDS_FLOW") == 0) {
 	if (this->getProcessType() == FiniteElement::RICHARDS_FLOW)
 	{
 		if (continuum_vector.size() > 1)
@@ -2341,15 +2294,7 @@ void CRFProcess::Config(void)
 			type = 14;
 		ConfigUnsaturatedFlow();
 	}
-	//	if (_pcs_type_name.compare("OVERLAND_FLOW") == 0) {
-	if (this->getProcessType() == FiniteElement::OVERLAND_FLOW)
-	{
-		type = 66;
-		max_dim = 1;
-		ConfigGroundwaterFlow();
-	}
-	//	if (_pcs_type_name.compare("AIR_FLOW") == 0) { //OK
-	if (this->getProcessType() == FiniteElement::AIR_FLOW)  // OK
+	if (this->getProcessType() == FiniteElement::AIR_FLOW)
 	{
 		type = 5;
 		ConfigGasFlow();
@@ -6808,262 +6753,12 @@ void RelocateDeformationProcess(CRFProcess* m_pcs)
    FEMLib-Method:
    Task:
    Programing:
-   09/2004 OK Implementation
-   10/2004 OK 2nd version
-**************************************************************************/
-std::string PCSProblemType()
-{
-	std::string pcs_problem_type;
-	size_t no_processes(pcs_vector.size());
-
-	for (size_t i = 0; i < no_processes; i++)
-	{
-		switch (pcs_vector[i]->getProcessType())
-		{
-			case FiniteElement::LIQUID_FLOW:
-				pcs_problem_type = "LIQUID_FLOW";
-				break;
-			case FiniteElement::OVERLAND_FLOW:
-				pcs_problem_type = "OVERLAND_FLOW";
-				break;
-			case FiniteElement::GROUNDWATER_FLOW:
-				pcs_problem_type = "GROUNDWATER_FLOW";
-				break;
-			case FiniteElement::TWO_PHASE_FLOW:
-				pcs_problem_type = "TWO_PHASE_FLOW";
-				break;
-			case FiniteElement::RICHARDS_FLOW:  // MX test 04.2005
-				pcs_problem_type = "RICHARDS_FLOW";
-				break;
-			case FiniteElement::DEFORMATION:
-				if (pcs_problem_type.empty())
-					pcs_problem_type = "DEFORMATION";
-				else
-					pcs_problem_type += "+DEFORMATION";
-				break;
-			case FiniteElement::DEFORMATION_FLOW:
-				if (pcs_problem_type.empty())
-					pcs_problem_type = "DEFORMATION";
-				else
-					pcs_problem_type += "+DEFORMATION";
-				break;
-			case FiniteElement::HEAT_TRANSPORT:
-				if (pcs_problem_type.empty())
-					pcs_problem_type = "HEAT_TRANSPORT";
-				else
-					pcs_problem_type += "+HEAT_TRANSPORT";
-				break;
-			case FiniteElement::MASS_TRANSPORT:
-				if (pcs_problem_type.empty())
-					pcs_problem_type = "MASS_TRANSPORT";
-				else
-					pcs_problem_type += "+MASS_TRANSPORT";
-				break;
-			case FiniteElement::FLUID_MOMENTUM:
-				if (pcs_problem_type.empty())
-					pcs_problem_type = "FLUID_MOMENTUM";
-				else
-					pcs_problem_type += "+FLUID_MOMENTUM";
-				break;
-			case FiniteElement::RANDOM_WALK:
-				if (pcs_problem_type.empty())
-					pcs_problem_type = "RANDOM_WALK";
-				else
-					pcs_problem_type += "+RANDOM_WALK";
-				break;
-			default:
-				pcs_problem_type = "";
-		}
-	}
-
-	//	//----------------------------------------------------------------------
-	//	CRFProcess* m_pcs = NULL;
-	//	// H process
-	//	for (i = 0; i < no_processes; i++) {
-	//		m_pcs = pcs_vector[i];
-	//		switch (m_pcs->pcs_type_name[0]) {
-	//		case 'L':
-	//			pcs_problem_type = "LIQUID_FLOW";
-	//			break;
-	//			// case 'U':
-	//			//  pcs_problem_type = "UNCONFINED_FLOW";
-	//			//  break;
-	//		case 'O':
-	//			pcs_problem_type = "OVERLAND_FLOW";
-	//			break;
-	//		case 'G':
-	//			pcs_problem_type = "GROUNDWATER_FLOW";
-	//			break;
-	//		case 'T':
-	//			pcs_problem_type = "TWO_PHASE_FLOW";
-	//			break;
-	//		case 'C':
-	//			pcs_problem_type = "COMPONENTAL_FLOW";
-	//			break;
-	//		case 'R': //MX test 04.2005
-	//			pcs_problem_type = "RICHARDS_FLOW";
-	//			break;
-	//		}
-	//	}
-	//	//----------------------------------------------------------------------
-	//	// M process
-	//	for (i = 0; i < no_processes; i++) {
-	//		m_pcs = pcs_vector[i];
-	//		switch (m_pcs->pcs_type_name[0]) {
-	//		case 'D':
-	//			if (pcs_problem_type.empty())
-	//				pcs_problem_type = "DEFORMATION";
-	//			else
-	//				pcs_problem_type += "+DEFORMATION";
-	//			break;
-	//		}
-	//	}
-	//	//----------------------------------------------------------------------
-	//	// T process
-	//	for (i = 0; i < no_processes; i++) {
-	//		m_pcs = pcs_vector[i];
-	//		switch (m_pcs->pcs_type_name[0]) {
-	//		case 'H':
-	//			if (pcs_problem_type.empty())
-	//				pcs_problem_type = "HEAT_TRANSPORT";
-	//			else
-	//				pcs_problem_type += "+HEAT_TRANSPORT";
-	//			break;
-	//		}
-	//	}
-	//	//----------------------------------------------------------------------
-	//	// CB process
-	//	for (i = 0; i < no_processes; i++) {
-	//		m_pcs = pcs_vector[i];
-	//		switch (m_pcs->pcs_type_name[0]) {
-	//		case 'M':
-	//			if (pcs_problem_type.empty())
-	//				pcs_problem_type = "MASS_TRANSPORT";
-	//			else
-	//				pcs_problem_type += "+MASS_TRANSPORT";
-	//			break;
-	//		}
-	//	}
-	//	//----------------------------------------------------------------------
-	//	//----------------------------------------------------------------------
-	//	// FM process
-	//	for (i = 0; i < no_processes; i++) {
-	//		m_pcs = pcs_vector[i];
-	//		switch (m_pcs->pcs_type_name[0]) {
-	//		case 'F':
-	//			if (pcs_problem_type.empty())
-	//				pcs_problem_type = "FLUID_MOMENTUM";
-	//			else
-	//				pcs_problem_type += "+FLUID_MOMENTUM";
-	//			break;
-	//		}
-	//	}
-	//	//----------------------------------------------------------------------
-	//	for (i = 0; i < no_processes; i++) {
-	//		m_pcs = pcs_vector[i];
-	//		switch (m_pcs->pcs_type_name[7]) { // _pcs_type_name[7] should be
-	//'W'
-	// because 'R' is reserved for Richard Flow.
-	//		case 'W':
-	//			if (pcs_problem_type.empty())
-	//				pcs_problem_type = "RANDOM_WALK";
-	//			else
-	//				pcs_problem_type += "+RANDOM_WALK";
-	//			break;
-	//		}
-	//	}
-
-	return pcs_problem_type;
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   11/2004 OK Implementation
-**************************************************************************/
-// void CRFProcess::CalcELEMassFluxes(void)
-//{
-/*OK411
-   int i;
-   double e_value = -1.0;
-   string e_value_name;
-   double geo_factor, density;
-   double velocity = 0.0;
-   int e_idx;
-   int phase = 0;
-   long e;
-   CMediumProperties* m_mmp = NULL;
-   CFluidProperties* m_mfp = NULL;
-   m_mfp = mfp_vector[phase]; //OK ToDo
-   //======================================================================
-   for(e=0;e<ElementListLength;e++){
-   m_mmp = mmp_vector[ElGetElementGroupNumber(e)];
-   geo_factor = m_mmp->geo_area;
-   density = m_mfp->Density();
-   for(i=0;i<pcs_number_of_evals;i++){
-   e_value_name = pcs_eval_data[i].name;
-   e_idx = PCSGetELEValueIndex(pcs_eval_data[i].name);
-   if(e_value_name.find("MASS_FLUX1_X")!=string::npos){
-   velocity = ElGetElementVal(e,PCSGetELEValueIndex("VELOCITY1_X"));
-   e_value = geo_factor * density * velocity;
-   ElSetElementVal(e,e_idx,e_value);
-   }
-   if(e_value_name.find("MASS_FLUX1_Y")!=string::npos){
-   velocity = ElGetElementVal(e,PCSGetELEValueIndex("VELOCITY1_Y"));
-   e_value = geo_factor * density * velocity;
-   ElSetElementVal(e,e_idx,e_value);
-   }
-   if(e_value_name.find("MASS_FLUX1_Z")!=string::npos){
-   velocity = ElGetElementVal(e,PCSGetELEValueIndex("VELOCITY1_Z"));
-   e_value = geo_factor * density * velocity;
-   ElSetElementVal(e,e_idx,e_value);
-   }
-   }
-   }
-   //======================================================================
- */
-//}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
    02/2005 OK Implementation
    02/2006 YD Dual Richards
    02/2007 WW General function for all unsaturated flow
 **************************************************************************/
 void CRFProcess::CalcSecondaryVariables(bool initial)
 {
-	//  char pcsT;
-	//  pcsT = _pcs_type_name[0];
-	//  if(type==1212) pcsT = 'V'; //WW
-	//  switch(pcsT){
-	//    case 'L':
-	//      break;
-	//    case 'U':
-	//      break;
-	//    case 'G':
-	//      break;
-	//    case 'T':
-	//      break;
-	//    case 'C':
-	//      break;
-	//    case 'R': // Richards flow
-	//	  if(_pcs_type_name[1] == 'I')	// PCH To make a distinction with RANDOM
-	// WALK.
-	//        CalcSecondaryVariablesUnsaturatedFlow(initial); // WW
-	//      break;
-	//    case 'D':
-	//      break;
-	//    case 'V':
-	//      CalcSecondaryVariablesUnsaturatedFlow(initial); //WW
-	//      break;
-	//	case 'P':
-	//      CalcSecondaryVariablesPSGLOBAL(); //WW
-	//      break;
-	//  }
-
 	switch (getProcessType())
 	{
 		case FiniteElement::LIQUID_FLOW:
@@ -9485,288 +9180,6 @@ void CRFProcess::CreateSTGroup()
 	}
 }
 
-/**************************************************************************
-    PCSLib-Method:
-    08/2006 OK Implementation
-    04/2012 BG Extension to 2 Phases
-**************************************************************************/
-void CRFProcess::CalcELEFluxes(const GEOLIB::Polyline* const ply,
-                               double* result)
-{
-	int coordinateflag, dimension = 0, axis = 0;
-	bool Edge_already_used;
-	// bool Node_already_used;
-	bool Use_Element;
-	vector<size_t> vecConsideredEdges;
-	vector<CNode*> vec_nodes_edge;
-	bool Edge_on_Geo = false, Point_on_Geo = false;
-	std::vector<size_t> nod_vector_at_geo;
-	CElem* m_ele = NULL;
-	CEdge* m_edg = NULL;
-	vec<CEdge*> ele_edges_vector(15);
-	double edg_normal_vector[3];
-	double vn;
-	double edg_length = 0.0;
-	double vn_vec[3];
-	double edge_vector[3];
-	double f_n_sum = 0.0;
-	vec<long> element_nodes(20);
-	double f[3], v[3];
-	double v_2[3], f_2[3];
-	double f_n_sum_2 = 0.0;
-
-	result[0] = result[1] = 0;
-	FiniteElement::ProcessType pcs_type(getProcessType());
-
-	CRFProcess* m_pcs_flow = NULL;
-	//	if (_pcs_type_name.find("FLOW") != string::npos) {
-	if (isFlowProcess(this->getProcessType()))
-		m_pcs_flow = this;
-	else
-		m_pcs_flow = PCSGet(FiniteElement::GROUNDWATER_FLOW);
-
-	// calculates element velocity based on 1 GP
-	// CalcELEVelocities();
-
-	int v_eidx[3];
-	int v_eidx_2[3];
-	v_eidx[0] = m_pcs_flow->GetElementValueIndex("VELOCITY1_X");
-	v_eidx[1] = m_pcs_flow->GetElementValueIndex("VELOCITY1_Y");
-	v_eidx[2] = m_pcs_flow->GetElementValueIndex("VELOCITY1_Z");
-
-	if (pcs_type == FiniteElement::MULTI_PHASE_FLOW)
-	{
-		v_eidx_2[0] = m_pcs_flow->GetElementValueIndex("VELOCITY2_X");
-		v_eidx_2[1] = m_pcs_flow->GetElementValueIndex("VELOCITY2_Y");
-		v_eidx_2[2] = m_pcs_flow->GetElementValueIndex("VELOCITY2_Z");
-	}
-
-	for (size_t i = 0; i < 3; i++)
-		if (v_eidx[i] < 0)
-		{
-			std::cout << i << " " << v_eidx[i]
-			          << "Velocity output is not specified"
-			          << "\n";
-			exit(0);  // return 0.0;
-		}
-	if (pcs_type == FiniteElement::MULTI_PHASE_FLOW)
-		for (size_t i = 0; i < 3; i++)
-			if (v_eidx_2[i] < 0)
-			{
-				std::cout << i << " " << v_eidx[i]
-				          << "Velocity output is not specified"
-				          << "\n";
-				exit(0);  // return 0.0;
-			}
-
-	// determine the dimension and the orientation of the mesh
-	coordinateflag = m_msh->GetCoordinateFlag();
-	if (coordinateflag == 10)
-	{
-		dimension = 1;
-		axis = 0;
-	}  // x only
-	else if (coordinateflag == 11)
-	{
-		dimension = 1;
-		axis = 1;
-	}  // y only
-	else if (coordinateflag == 12)
-	{
-		dimension = 1;
-		axis = 2;
-	}  // z only
-	else if (coordinateflag == 21)
-	{
-		dimension = 2;
-		axis = 1;
-	}  // x, y only
-	else if (coordinateflag == 22)
-	{
-		dimension = 2;
-		axis = 2;
-	}  // x, z only
-	else if (coordinateflag == 32)
-	{
-		dimension = 3;
-		axis = 3;
-	}  // x, y, z only
-
-	// Get elements at GEO
-	std::vector<size_t> ele_vector_at_geo;
-	m_msh->GetELEOnPLY(ply, ele_vector_at_geo, true);
-	// BG: 04/2011 nodes are needed to provide the correct edge
-	m_msh->GetNODOnPLY(ply, nod_vector_at_geo);
-
-	for (size_t i = 0; i < ele_vector_at_geo.size(); i++)
-	{
-		m_ele = m_msh->ele_vector[ele_vector_at_geo[i]];
-		m_ele->SetNormalVector();
-		m_ele->GetNodeIndeces(element_nodes);
-		Use_Element = true;
-
-		// Configure Element for interpolation of node velocities to GP
-		// velocities
-		fem->ConfigElement(m_ele);
-		// velocity vector
-		for (size_t j = 0; j < 3; j++)
-		{
-			// v[j] = m_pcs_flow->GetElementValue(m_ele->GetIndex(), v_eidx[j]);
-			// Calculate Element velocity
-			v[j] =
-			    fem->Get_Element_Velocity(m_ele->GetIndex(), m_pcs_flow, 0, j);
-		}
-		// Test mit Knotengeschwindigkeiten
-		// double temp_v[3];
-		// temp_v[0] = temp_v[1] = temp_v[2] = 0.0;
-		// int variable_index[3];
-		// variable_index[0] = m_pcs_flow->GetNodeValueIndex("VELOCITY_X1");
-		// variable_index[1] = m_pcs_flow->GetNodeValueIndex("VELOCITY_Y1");
-		// variable_index[2] = m_pcs_flow->GetNodeValueIndex("VELOCITY_Z1");
-		//
-		// for (size_t j = 0; j < 3; j++)
-		//{
-		//	for (size_t k = 0; k < m_ele->GetNodesNumber(false); k++)
-		//	{
-		//		temp_v[j] += m_pcs_flow->GetNodeValue(element_nodes[k],
-		// variable_index[j]);
-		//	}
-		//	temp_v[j] /=  m_ele->GetNodesNumber(false);
-		//	v[j] = temp_v[j];
-		//}
-
-		// BG 04/2011: MassFlux Calculation is not working correctly if it is a
-		// 2D mesh in x-z-direction
-		// z-velocity is stored a y-position -> this is corrected here
-		if ((dimension == 2) && (axis == 2))
-		{
-			v[2] = v[1];
-			v[1] = 0;
-		}
-		// edge projection // edge marked
-		m_ele->GetEdges(ele_edges_vector);
-		// cout << "Element: " << endl;
-		edg_length = 0;
-		// loop over the edges of the element to find the edge at the polyline
-		for (size_t j = 0; j < static_cast<size_t>(m_ele->GetEdgesNumber());
-		     j++)
-		{
-			m_edg = ele_edges_vector[j];
-			// check if edge was already used
-			Edge_already_used = false;
-			for (size_t k = 0; k < vecConsideredEdges.size(); k++)
-				if (m_edg->GetIndex() == vecConsideredEdges[k])
-					Edge_already_used = true;
-			if (Edge_already_used == true)
-			{
-				Edge_on_Geo = false;
-				Use_Element = false;
-			}
-			else
-			{
-				vec_nodes_edge.clear();
-				// BG 04/2011: check if edge is completely on the polyline
-				Edge_on_Geo = true;
-				vec_nodes_edge.push_back(m_edg->GetNode(0));
-				vec_nodes_edge.push_back(m_edg->GetNode(1));
-				// loop over the nodes of the edge to check if all of them are
-				// on the polyline
-				for (int k = 0; k < int(vec_nodes_edge.size()); k++)
-				{
-					Point_on_Geo = false;
-					for (int l = 0; l < int(nod_vector_at_geo.size()); l++)
-					{
-						if (vec_nodes_edge[k]->GetIndex() ==
-						    nod_vector_at_geo[l])
-						{
-							Point_on_Geo = true;
-							l = nod_vector_at_geo.size();
-						}
-					}
-					// cout << "     Node: " << vec_nodes_edge[k]->GetIndex() <<
-					// " " << Point_on_Geo << endl;
-					if (Point_on_Geo == false) Edge_on_Geo = false;
-				}
-				if (Edge_on_Geo == true) j = m_ele->GetEdgesNumber();
-			}
-		}
-		if ((m_edg->GetMark()) && (Use_Element == true) &&
-		    (Edge_on_Geo == true))
-		{
-			vecConsideredEdges.push_back(m_edg->GetIndex());  // all edges that
-			                                                  // were already
-			                                                  // used are stored
-			m_edg->SetNormalVector(m_ele->normal_vector, edg_normal_vector);
-			edg_length = m_edg->getLength();
-			// cout << "Element: " << m_ele->GetIndex() << " LÃ¤nge: " <<
-			// edg_length << " Normalvektor: x=" << edg_normal_vector[0] << "
-			// y=" << edg_normal_vector[1] << " z=" << edg_normal_vector[2] <<
-			// endl;
-			m_edg->GetEdgeVector(edge_vector);
-
-			vn = MSkalarprodukt(v, edg_normal_vector, 3);
-			for (size_t j = 0; j < 3; j++)
-				vn_vec[j] = vn * edg_normal_vector[j];
-
-			for (size_t j = 0; j < 3; j++)
-				f[j] = vn_vec[j] * edg_length * m_ele->GetFluxArea();
-
-			f_n_sum += MBtrgVec(f, 3);
-
-			if (pcs_type == FiniteElement::MULTI_PHASE_FLOW)  // BG, 04/2012
-			{
-				// velocity vector
-				for (size_t j = 0; j < 3; j++)
-				{
-					// v_2[j] = m_pcs_flow->GetElementValue(m_ele->GetIndex(),
-					// v_eidx_2[j]);
-					// Calculate Element velocity
-					v_2[j] = fem->Get_Element_Velocity(m_ele->GetIndex(),
-					                                   m_pcs_flow, 1, j);
-				}
-
-				// variable_index[0] =
-				// m_pcs_flow->GetNodeValueIndex("VELOCITY_X2");
-				// variable_index[1] =
-				// m_pcs_flow->GetNodeValueIndex("VELOCITY_Y2");
-				// variable_index[2] =
-				// m_pcs_flow->GetNodeValueIndex("VELOCITY_Z2");
-				//
-				// for (size_t j = 0; j < 3; j++)
-				//{
-				//	for (size_t k = 0; k < m_ele->GetNodesNumber(false); k++)
-				//	{
-				//		temp_v[j] += m_pcs_flow->GetNodeValue(element_nodes[k],
-				// variable_index[j]);
-				//	}
-				//	temp_v[j] /=  m_ele->GetNodesNumber(false);
-				//	v_2[j] = temp_v[j];
-				//}
-
-				// BG 04/2011: MassFlux Calculation is not working correctly if
-				// it is a 2D mesh in x-z-direction
-				// z-velocity is stored a y-position -> this is corrected here
-				if ((dimension == 2) && (axis == 2))
-				{
-					v_2[2] = v_2[1];
-					v_2[1] = 0;
-				}
-
-				vn = MSkalarprodukt(v_2, edg_normal_vector, 3);
-				for (size_t j = 0; j < 3; j++)
-					vn_vec[j] = vn * edg_normal_vector[j];
-
-				for (size_t j = 0; j < 3; j++)
-					f_2[j] = vn_vec[j] * edg_length * m_ele->GetFluxArea();
-
-				f_n_sum_2 += MBtrgVec(f_2, 3);
-			}
-		}
-	}
-	result[0] = f_n_sum;
-	result[1] = f_n_sum_2;
-	ele_vector_at_geo.clear();
-}
 
 /**************************************************************************
    FEMLib-Method:
