@@ -12,13 +12,11 @@ include_directories(
 	${CMAKE_SOURCE_DIR}/Base
 	${CMAKE_SOURCE_DIR}/GEO
 	${CMAKE_SOURCE_DIR}/Math
-	${CMAKE_SOURCE_DIR}/FEM
 )
 
 # Create the library
 add_library(MSH  ${SOURCES})
 
 target_link_libraries( MSH
-	FEM
 	GEO
 )

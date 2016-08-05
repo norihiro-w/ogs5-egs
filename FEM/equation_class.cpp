@@ -60,6 +60,7 @@ extern int PARDISO(int*, int*, int*, int*, int*, int*, double*, int*, int*,
 #include "rf_pcs.h"
 
 std::vector<Math_Group::Linear_EQS*> EQS_Vector;
+std::vector<Math_Group::SparseTable*> SparseTable_Vector;
 using namespace std;
 
 //

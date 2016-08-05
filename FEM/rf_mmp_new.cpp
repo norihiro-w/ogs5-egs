@@ -504,23 +504,6 @@ std::ios::pos_type CMediumProperties::Read(std::ifstream* mmp_file)
 					in >> porosity_model_values[4];  // solid thermal expansion
 					                                 // coefficient
 					break;
-#ifdef GEM_REACT
-				case 15:
-					in >> porosity_model_values[0];  // set a default value for
-					                                 // GEMS calculation
-					                                 // save this seperately;
-					KC_porosity_initial = porosity_model_values[0];
-
-					// KG44: TODO!!!!!!!!!!!!! check the above  ***************
-
-					break;
-#endif
-#ifdef BRNS
-				case 16:
-					in >> porosity_model_values[0];  // set a default value for
-					                                 // BRNS calculation
-					break;
-#endif
 				default:
 					std::cerr << "Error in MMPRead: no valid porosity model"
 					          << "\n";
@@ -3789,9 +3772,6 @@ double CMediumProperties::Porosity(long number, double theta)
 	static int nidx0, nidx1;
 	double primary_variable[PCS_NUMBER_MAX];
 	int gueltig;
-#ifdef GEM_REACT
-	int idx;
-#endif
 	double porosity_sw;
 	CFiniteElementStd* assem = m_pcs->GetAssember();
 	string str;
@@ -3937,57 +3917,7 @@ double CMediumProperties::Porosity(long number, double theta)
 			    porosity_model_values[2], porosity_model_values[3],
 			    porosity_model_values[4], assem);  // AJ: 09.2014
 			break;
-#ifdef GEM_REACT
-		case 15:
-			porosity = porosity_model_values[0];  // default value as backup
 
-			for (size_t i = 0; i < pcs_vector.size(); i++)
-				//		if ((pcs_vector[i]->pcs_type_name.find("FLOW") !=
-				// string::npos)) {
-				if (isFlowProcess(pcs_vector[i]->getProcessType()))
-				{
-					idx = pcs_vector[i]->GetElementValueIndex("POROSITY");
-					porosity = pcs_vector[i]->GetElementValue(
-					    number, idx + 1);  // always return new/actual value
-					if (porosity < 0.0 || porosity > 1.0)
-					{
-						cout << "Porosity: error getting porosity for model "
-						        "15. porosity: " << porosity << " at node "
-						     << number << endl;
-						porosity = porosity_model_values[0];
-					}
-				}
-
-			break;
-#endif
-#ifdef BRNS
-		case 16:
-			porosity = porosity_model_values[0];  // default value as backup
-			if (aktueller_zeitschritt > 1)
-				for (size_t i = 0; i < pcs_vector.size(); i++)
-				{
-					pcs_temp = pcs_vector[i];
-					//	            if (
-					// pcs_temp->pcs_type_name.compare("GROUNDWATER_FLOW") == 0
-					//||
-					//                     pcs_temp->pcs_type_name.compare("LIQUID_FLOW")
-					//                     == 0         ) {
-					if (pcs_temp->getProcessType() ==
-					        FiniteElement::GROUNDWATER_FLOW ||
-					    pcs_temp->getProcessType() ==
-					        FiniteElement::LIQUID_FLOW)
-					{
-						int idx;
-						idx = pcs_temp->GetElementValueIndex("POROSITY");
-
-						porosity = pcs_temp->GetElementValue(number, idx);
-						if (porosity < 1.e-6)
-							cout << "error for porosity1 " << porosity
-							     << " node " << number << endl;
-					}
-				}
-			break;
-#endif
 		default:
 			cout << "Unknown porosity model!" << endl;
 			break;
@@ -4121,41 +4051,6 @@ double CMediumProperties::Porosity(CElement* assem)
 			    porosity_model_values[2], porosity_model_values[3],
 			    porosity_model_values[4], assem_tmp);  // AJ: 09.2014
 			break;
-#ifdef GEM_REACT
-		case 15:
-
-			porosity = porosity_model_values[0];  // default value as backup
-
-			//                CRFProcess* mf_pcs = NULL;
-			for (size_t i = 0; i < pcs_vector.size(); i++)
-			{
-				pcs_temp = pcs_vector[i];
-				//			if
-				//((pcs_temp->pcs_type_name.compare("GROUNDWATER_FLOW")
-				//== 0) || (pcs_temp->pcs_type_name.compare("RICHARDS_FLOW") ==
-				// 0)||(pcs_temp->pcs_type_name.compare("MULTI_PHASE_FLOW") ==
-				// 0))
-				if ((pcs_temp->getProcessType() ==
-				     FiniteElement::GROUNDWATER_FLOW) ||
-				    (pcs_temp->getProcessType() == FiniteElement::RICHARDS_FLOW)
-				    // TF
-				    ||
-				    (pcs_temp->getProcessType() ==
-				     FiniteElement::MULTI_PHASE_FLOW))
-				{
-					int idx = pcs_temp->GetElementValueIndex("POROSITY");
-					porosity = pcs_temp->GetElementValue(number, idx);
-					if (porosity < 1.e-6 || porosity > 1.0)
-					{
-						std::cout << " error getting porosity model 15 "
-						          << porosity << " node " << number << endl;
-						porosity = porosity_model_values[0];
-					}
-				}
-			}
-			// KG44: TODO!!!!!!!!!!!!! check the above  ***************
-			break;
-#endif
 
 		default:
 			DisplayMsgLn("Unknown porosity model!");

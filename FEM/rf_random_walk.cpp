@@ -686,17 +686,17 @@ void RandomWalk::InterpolateVelocityOfTheParticleByInverseDistance(Particle* A)
 	{
 		w[i] = 1.0 / (d[i] * SumOfdInverse);
 
-		m_pcs = PCSGet("FLUID_MOMENTUM");
+		CFluidMomentum* m_pcs = (CFluidMomentum*)PCSGet("FLUID_MOMENTUM");
 		double vx = 0.0, vy = 0.0, vz = 0.0;
 		// If this node is crossroad,
 		if (m_msh->nod_vector[m_ele->GetNodeIndex(i)]->crossroad)
 		{
 			// Get the velocity contributed in this element
 			CrossRoad* crossroad = NULL;
-			for (int j = 0; j < (int)(m_msh->fm_pcs->crossroads.size()); ++j)
-				if ((size_t)m_msh->fm_pcs->crossroads[j]->Index ==
+			for (int j = 0; j < (int)(m_pcs->crossroads.size()); ++j)
+				if ((size_t)m_pcs->crossroads[j]->Index ==
 				    m_msh->nod_vector[m_ele->GetNodeIndex(i)]->GetIndex())
-					crossroad = m_msh->fm_pcs->crossroads[j];
+					crossroad = m_pcs->crossroads[j];
 
 			if (crossroad)
 			{
@@ -4638,12 +4638,14 @@ void RandomWalk::DoJointEffectOfElementInitially(void)
 	//			m_msh = FEMGet("GROUNDWATER_FLOW");
 	//	}
 
+	CFluidMomentum* fm_pcs = (CFluidMomentum*)PCSGet("FLUID_MOMENTUM");
+
 	// Looping all over the particles to have a choice which plane to go.
 	// Because all of the particles are on the joint initially.
-	for (int p = 0; p < m_msh->PT->numOfParticles; ++p)
+	for (int p = 0; p < this->numOfParticles; ++p)
 	{
 		// Mount the element fromthe first particle from particles initially
-		int eleIdx = m_msh->PT->X[p].Now.elementIndex;
+		int eleIdx = this->X[p].Now.elementIndex;
 		MeshLib::CElem* theEle = m_msh->ele_vector[eleIdx];
 		// Let's get the number of edges in the element and mount them
 		int numOfEdgeIntheElement = theEle->GetEdgesNumber();
@@ -4665,10 +4667,10 @@ void RandomWalk::DoJointEffectOfElementInitially(void)
 		MeshLib::CNode* crossnode = theNodes[0];
 		// Let's mount the crossroad class
 		CrossRoad* crossroad = NULL;
-		for (int i = 0; i < (int)(m_msh->fm_pcs->crossroads.size()); ++i)
-			if ((size_t)m_msh->fm_pcs->crossroads[i]->Index ==
+		for (int i = 0; i < (int)(fm_pcs->crossroads.size()); ++i)
+			if ((size_t)fm_pcs->crossroads[i]->Index ==
 			    crossnode->GetIndex())
-				crossroad = m_msh->fm_pcs->crossroads[i];
+				crossroad = fm_pcs->crossroads[i];
 		// Let's get the contribution of each connected plane.
 		double chances[100];  // I just set 100 as a maximum number of
 		// connected planes.
@@ -4678,7 +4680,7 @@ void RandomWalk::DoJointEffectOfElementInitially(void)
 		// 3. Roulette Wheel Selection
 		int whichWay =
 		    RouletteWheelSelection(chances, crossroad->numOfThePlanes);
-		m_msh->PT->X[p].Now.elementIndex = m_msh->PT->X[p].Past.elementIndex =
+		this->X[p].Now.elementIndex = this->X[p].Past.elementIndex =
 		    crossroad->plane[whichWay].eleIndex;
 	}
 }
@@ -5336,9 +5338,7 @@ void PCTRead(string file_base_name)
 
 	int End = 1;
 	string strbuffer;
-	RandomWalk* RW = NULL;
-	m_msh->PT = new RandomWalk(srand_seed);  // PCH
-	RW = m_msh->PT;
+	RandomWalk* RW = new RandomWalk(srand_seed);
 
 	// Create pathline
 	RandomWalk::Pathline path;
@@ -5395,7 +5395,7 @@ void PCTRead(string file_base_name)
 void DATWriteParticleFile(int current_time_step)
 {
 	CFEMesh* m_msh = NULL;
-	RandomWalk* RW = NULL;
+	RandomWalk* RW = (RandomWalk*)PCSGet(FiniteElement::RANDOM_WALK);
 
 	// Gather the momentum mesh
 	size_t pcs_vector_size(pcs_vector.size());
@@ -5424,7 +5424,6 @@ void DATWriteParticleFile(int current_time_step)
 		}
 	}
 
-	RW = m_msh->PT;
 	int np = RW->numOfParticles;
 
 	// file naming

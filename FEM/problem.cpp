@@ -37,20 +37,16 @@
 #include "rfmat_cp.h"
 #include "rf_bc_new.h"
 #include "rf_fluid_momentum.h"
+#include "rf_kinreact.h"
 #include "rf_node.h"
 #include "rf_out_new.h"
 #include "rf_pcs.h"
+#include "rf_pcs_TH.h"
 #include "rf_random_walk.h"
 #include "rf_react.h"
 #include "rf_st_new.h"
 #include "rf_tim_new.h"
 #include "tools.h"
-
-#ifdef GEM_REACT
-#include "rf_REACT_GEM.h"
-#endif
-#include "rf_kinreact.h"
-#include "rf_pcs_TH.h"
 
 
 namespace process
@@ -135,21 +131,7 @@ Problem::Problem(char* filename)
 	// JT: Certain restrictions might be made if an external simulator is being
 	// used
 	external_coupling_exists = false;
-	for (size_t i = 0; i < pcs_vector.size(); i++)
-	{
-		if (pcs_vector[i]->simulator.compare("GEOSYS") != 0)
-			external_coupling_exists = true;
-	}
-#ifdef GEM_REACT
-	external_coupling_exists = true;
-#endif
 #ifdef LIBPHREEQC
-	external_coupling_exists = true;
-#endif
-#ifdef BRNS
-	external_coupling_exists = true;
-#endif
-#ifdef CHEMAPP
 	external_coupling_exists = true;
 #endif
 	//
@@ -185,60 +167,11 @@ Problem::Problem(char* filename)
 		if (total_processes[3])  // 3: TWO_PHASE_FLOW. 12.12.2008. WW
 			PCSCalcSecondaryVariables();
 	}
-//----------------------------------------------------------------------
-// REACTIONS
-// Initialization of REACT structure for rate exchange between MTM2 and
-// Reactions
-
-//--------------------------------------------------
-// HB, for the GEM chemical reaction engine 05.2007
-//--------------------------------------------------
-#ifdef GEM_REACT
-	m_vec_GEM = new REACT_GEM();
-	GEMRead(FileName, m_vec_GEM);
-
-	string path = "";  // to get the path of the file;
-	path = FileName;   // first get full path and project name;
-	int pos, npos;
-	pos = 0;
-	npos = (int)path.size();
-
-// Get path
-#ifdef _WIN32
-	pos = (int)path.rfind("\\");  // HS keep this on windows
-#else
-	pos = (int)path.rfind("/");  // HS keep this on linux
-#endif  // _WIN32
-	if (pos < npos) path = path.substr(0, pos + 1);
-
-	// now start initialization of GEMS
-	if (m_vec_GEM->Init_Nodes(path) == 0)
-	{
-		if (m_vec_GEM->Init_RUN(path) == 0)
-		{
-			m_vec_GEM->initialized_flag = 1;
-		}
-		else  // something is wrong and we stop execution
-		{
-			cout << " GEMS: Error in Init_Nodes..check input " << endl;
-#if defined(USE_MPI_GEMS) || defined(USE_PETSC)
-			MPI_Finalize();  // make sure MPI exits
-#endif
-
-			exit(1);
-		}
-	}
-	else  // something is wrong and we stop execution
-	{
-		cout << " GEMS: Error in Init_RUN..check input " << endl;
-#if defined(USE_MPI_GEMS) || defined(USE_PETSC)
-		MPI_Finalize();  // make sure MPI exits
-#endif
-
-		exit(1);
-	}
-#else  // GEM_REACT
-	//---------------------------------------------------
+	//----------------------------------------------------------------------
+	// REACTIONS
+	// Initialization of REACT structure for rate exchange between MTM2 and
+	// Reactions
+	//----------------------------------------------------------------------
 	REACT* rc = NULL;  // SB
 	//  rc->TestPHREEQC(); // Test if *.pqc file is present
 	rc = rc->GetREACT();
@@ -272,25 +205,8 @@ Problem::Problem(char* filename)
 		}
 		//  delete rc;
 	}
-#endif  // GEM_REACT
 
-#ifdef BRNS
-	// Here to test BRNS; HB 02.11.2007
-	// REACT_BRNS* pBRNS;
-	// pBRNS = new REACT_BRNS();
-	m_vec_BRNS = new REACT_BRNS();
-	m_vec_BRNS->InitBRNS(this);
-#endif
 
-#ifdef CHEMAPP
-	CEqlink* eq = NULL;
-	eq = eq->GetREACTION();
-	if (cp_vec.size() > 0 && eq)  // MX
-	{
-		eq->TestCHEMAPPParameterFile(pcs_vector[0]->file_name_base);
-		if (eq->flag_chemapp) eq->callCHEMAPP(pcs_vector[0]->file_name_base);
-	}
-#endif
 	//  delete rc;
 
 	//----------------------------------------------------------------------
@@ -448,25 +364,6 @@ Problem::~Problem()
 	for (size_t i = 0; i < out_vector.size(); i++)
 		delete out_vector[i];
 	out_vector.clear();
-//
-#ifdef CHEMAPP
-	if (Eqlink_vec.size() > 0)
-	{
-		Eqlink_vec[0]->DestroyMemory();
-		Eqlink_vec.clear();
-	}
-#endif
-// WW ClockTimeVec[0]->PrintTimes();
-#ifdef GEM_REACT
-	// HS:
-	delete m_vec_GEM;
-#endif
-
-#ifdef BRNS
-	// Here to delete BRNS instance; HB 12.11.2007
-	// delete m_vec_BRNS.at(0);
-	delete m_vec_BRNS;
-#endif
 
 	ScreenMessage("\nYour simulation is terminated normally\n");
 }
@@ -488,14 +385,12 @@ Problem::~Problem()
    -------------------------------------------------------------------------*/
 inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 {
-	//	if (m_pcs->pcs_type_name.compare("LIQUID_FLOW") == 0) {
 	if (m_pcs->getProcessType() == FiniteElement::LIQUID_FLOW)
 	{
 		if (!activefunc) return 0;
 		total_processes[0] = m_pcs;
 		active_processes[0] = &Problem::LiquidFlow;
 		return 0;
-		//	} else if (m_pcs->pcs_type_name.compare("GROUNDWATER_FLOW") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
 	{
@@ -503,7 +398,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[1] = m_pcs;
 		active_processes[1] = &Problem::GroundWaterFlow;
 		return 1;
-		//	} else if (m_pcs->pcs_type_name.compare("RICHARDS_FLOW") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::RICHARDS_FLOW)
 	{
@@ -511,7 +405,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[2] = m_pcs;
 		active_processes[2] = &Problem::RichardsFlow;
 		return 2;
-		//	} else if (m_pcs->pcs_type_name.compare("TWO_PHASE_FLOW") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::TWO_PHASE_FLOW)
 	{
@@ -519,7 +412,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[3] = m_pcs;
 		active_processes[3] = &Problem::TwoPhaseFlow;
 		return 3;
-		//	} else if (m_pcs->pcs_type_name.compare("MULTI_PHASE_FLOW") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)
 	{
@@ -527,22 +419,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[4] = m_pcs;
 		active_processes[4] = &Problem::MultiPhaseFlow;
 		return 4;
-		//	} else if (m_pcs->pcs_type_name.compare("COMPONENTAL_FLOW") == 0) {
-		//	} else if (m_pcs->getProcessType() == COMPONENTAL_FLOW) {
-		//		if (!activefunc)
-		//			return 5;
-		//		total_processes[5] = m_pcs;
-		//		active_processes[5] = &Problem::ComponentalFlow;
-		//		return 5;
-		//	} else if (m_pcs->pcs_type_name.compare("OVERLAND_FLOW") == 0) {
-	}
-	else if (m_pcs->getProcessType() == FiniteElement::OVERLAND_FLOW)
-	{
-		if (!activefunc) return 6;
-		total_processes[6] = m_pcs;
-		active_processes[6] = &Problem::OverlandFlow;
-		return 6;
-		//	} else if (m_pcs->pcs_type_name.compare("AIR_FLOW") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::AIR_FLOW)
 	{
@@ -550,7 +426,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[7] = m_pcs;
 		active_processes[7] = &Problem::AirFlow;
 		return 7;
-		//	} else if (m_pcs->pcs_type_name.compare("HEAT_TRANSPORT") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::HEAT_TRANSPORT)
 	{
@@ -558,7 +433,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[8] = m_pcs;
 		active_processes[8] = &Problem::HeatTransport;
 		return 8;
-		//	} else if (m_pcs->pcs_type_name.compare("FLUID_MOMENTUM") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::FLUID_MOMENTUM)
 	{
@@ -566,7 +440,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[9] = m_pcs;
 		active_processes[9] = &Problem::FluidMomentum;
 		return 9;
-		//	} else if (m_pcs->pcs_type_name.compare("RANDOM_WALK") == 0) {
 	}
 #ifndef OGS_ONLY_TH
 	else if (m_pcs->getProcessType() == FiniteElement::RANDOM_WALK)
@@ -575,7 +448,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[10] = m_pcs;
 		active_processes[10] = &Problem::RandomWalker;
 		return 10;
-		//	} else if (m_pcs->pcs_type_name.compare("MASS_TRANSPORT") == 0) {
 	}
 #endif
 	else if (m_pcs->getProcessType() == FiniteElement::MASS_TRANSPORT)
@@ -584,8 +456,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[11] = m_pcs;
 		active_processes[11] = &Problem::MassTrasport;
 		return 11;
-		//	} else if (m_pcs->pcs_type_name.find("DEFORMATION") != string::npos)
-		//{
 	}
 	else if (isDeformationProcess(m_pcs->getProcessType()))
 	{
@@ -593,11 +463,9 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[12] = m_pcs;
 		active_processes[12] = &Problem::Deformation;
 		return 12;
-		//	} else if (m_pcs->pcs_type_name.find("PS_GLOBAL") != string::npos) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::PS_GLOBAL)
 	{
-		//    if(!activefunc) return 13;
 		if (!activefunc) return 3;
 		total_processes[3] = m_pcs;
 		active_processes[3] = &Problem::PS_Global;
@@ -1203,9 +1071,6 @@ bool Problem::CouplingLoop()
 	//
 	print_result = false;
 	int acounter = 0;
-	//
-	for (i = 0; i < (int)pcs_vector.size(); i++)
-		pcs_vector[i]->UpdateTransientBC();
 
 	for (i = 0; i < (int)total_processes.size(); i++)
 	{
@@ -1528,20 +1393,6 @@ void Problem::PostCouplingLoop()
 		{
 #endif
 			m_pcs->WriteSolution();  // WW
-#ifdef GEM_REACT
-			if (i == 0)  // for GEM_REACT we also need information on porosity
-				         // (node porosity internally stored in Gems
-				         // process)!....do it only once and it does not matter
-				         // for which process ! ....we assume that the first pcs
-				         // process is the flow process...if reload not defined
-				         // for every process, restarting with gems will not
-				         // work in any case
-
-				if ((m_pcs->reload == 1 || m_pcs->reload == 3) &&
-				    !((aktueller_zeitschritt % m_pcs->nwrite_restart) > 0))
-					m_vec_GEM->WriteReloadGem();
-
-#endif
 #if defined(USE_MPI)  // 18.10.2007 WW
 		}
 #endif
@@ -1549,11 +1400,6 @@ void Problem::PostCouplingLoop()
 		m_pcs->Extropolation_MatValue();         // WW
 		if (m_pcs->cal_integration_point_value)  // WW
 			m_pcs->Extropolation_GaussValue();
-		// BG
-		if ((m_pcs->simulator == "ECLIPSE") || (m_pcs->simulator == "DUMUX"))
-		{
-			m_pcs->Extropolation_GaussValue();
-		}
 		// JT: Now done in PreCouplingLoop() // m_pcs->CopyTimestepNODValues();
 		// //MB
 		if (force_post_node_copy)
@@ -1598,17 +1444,9 @@ inline double Problem::LiquidFlow()
 		m_pcs->selected = false;
 	if (!m_pcs->selected) return error;
 	//  error = m_pcs->Execute();
-	// Cases: decide, weather to use GEOSYS, ECLIPSE or DuMux; BG 10/2010
-	if ((m_pcs->simulator.compare("GEOSYS") ==
-	     0))  //         ||(m_pcs->simulator.compare("ECLIPSE")==0)){ //
-	          //         standard: use GeoSys
-	{
-		error = m_pcs->ExecuteNonLinear(loop_process_number);
-#ifdef RESET_4410
-		PCSCalcSecondaryVariables();  // PCS member function
-#endif
-		m_pcs->CalIntegrationPointValue();  // WW
-	}
+	error = m_pcs->ExecuteNonLinear(loop_process_number);
+	PCSCalcSecondaryVariables();
+	m_pcs->CalIntegrationPointValue();
 
 	return error;
 }
@@ -1701,20 +1539,11 @@ inline double Problem::MultiPhaseFlow()
 
 	// m_pcs->CalculateFluidDensitiesAndViscositiesAtNodes(m_pcs);
 
-	// Cases: decide, weather to use GEOSYS, ECLIPSE or DuMux; BG 10/2010
-	if ((m_pcs->simulator.compare("GEOSYS") ==
-	     0))  // ||(m_pcs->simulator.compare("ECLIPSE")==0)){ // standard: use
-	          // GeoSys
-	{
-		// if((m_pcs->simulator.compare("GEOSYS")==0)
-		// ||(m_pcs->simulator.compare("ECLIPSE")==0)){ // standard: use GeoSys
-		error = m_pcs->ExecuteNonLinear(loop_process_number);
-		if (m_pcs->TimeStepAccept()) m_pcs->CalIntegrationPointValue();  // WW
-	}
+	error = m_pcs->ExecuteNonLinear(loop_process_number);
+	if (m_pcs->TimeStepAccept()) m_pcs->CalIntegrationPointValue();
 
 	// CO2-Phase_Transition BG, NB
-	if ((m_pcs->Phase_Transition_Model == 1) &&
-	    ((m_pcs->simulator.compare("GEOSYS") == 0)))
+	if (m_pcs->Phase_Transition_Model == 1)
 	{
 		// check if mfp-model for density and viscosity is 18
 		if (m_pcs->Tim->step_current == 1)
@@ -1804,53 +1633,13 @@ inline double Problem::GroundWaterFlow()
 	// std::cout << "      Calculation of secondary NOD values" << "\n";
 	if (m_pcs->TimeStepAccept())
 	{
-#ifdef RESET_4410
 		PCSCalcSecondaryVariables();  // PCS member function
-#endif
 		// std::cout << "      Calculation of secondary GP values" << "\n";
 		m_pcs->CalIntegrationPointValue();  // WW
 		m_pcs->cal_integration_point_value =
 		    true;  // WW Do not extropolate Gauss velocity
 
 	}
-	return error;
-}
-
-/*-------------------------------------------------------------------------
-   GeoSys - Function: ComponentalFlow();
-   Task:
-   Return: error
-   Programming:
-   07/2008 WW Extract from LOPTimeLoop_PCS();
-   Modification:
-   -------------------------------------------------------------------------*/
-inline double Problem::ComponentalFlow()
-{
-	double error = 1.e8;
-	CRFProcess* m_pcs = total_processes[5];
-	if (!m_pcs->selected) return error;  // 12.12.2008 WW
-	//
-	error = m_pcs->ExecuteNonLinear(loop_process_number);
-	m_pcs->CalIntegrationPointValue();  // WW
-	return error;
-}
-
-/*-------------------------------------------------------------------------
-   GeoSys - Function: OverlandFlow()
-   Task:
-   Return: error
-   Programming:
-   07/2008 WW Extract from LOPTimeLoop_PCS();
-   Modification:
-   -------------------------------------------------------------------------*/
-inline double Problem::OverlandFlow()
-{
-	double error = 1.e8;
-	CRFProcess* m_pcs = total_processes[6];
-	if (!m_pcs->selected) return error;  // 12.12.2008 WW
-
-	error = m_pcs->ExecuteNonLinear(loop_process_number);
-	if (m_pcs->TimeStepAccept()) PCSCalcSecondaryVariables();
 	return error;
 }
 
@@ -1962,44 +1751,6 @@ inline double Problem::MassTrasport()
 #endif  // REACTION_ELEMENT
 		}
 	}
-#ifdef GEM_REACT
-	else  // WW moved these pare of curly braces inside  ifdef GEM_REACT
-	    if (m_vec_GEM->initialized_flag == 1)  // when it was initialized.
-	{
-		int m_time =
-		    1;  // 0-previous time step results; 1-current time step results
-
-		// Check if the Sequential Iterative Scheme needs to be intergrated
-		if (m_pcs->m_num->cpl_max_iterations > 1)
-			m_vec_GEM->flag_iterative_scheme =
-			    1;  // set to standard iterative scheme;
-		// Move current xDC to previous xDC
-		m_vec_GEM->CopyCurXDCPre();
-		// Get info from MT
-		// m_vec_GEM->ConvPorosityNodeValue2Elem(); //
-		// second arguments should be one if we work with concentrations
-		m_vec_GEM->GetReactInfoFromMassTransport(m_time);
-		// m_vec_GEM->ConcentrationToMass();
-		m_vec_GEM->Run_MainLoop();  // Run GEM
-		m_vec_GEM->CopyCurBPre();
-
-		// m_vec_GEM->MassToConcentration();
-		// Calculate the different of xDC
-		m_vec_GEM->UpdateXDCChemDelta();
-		// Set info in MT
-		m_vec_GEM->SetReactInfoBackMassTransport(m_time);
-		// m_vec_GEM->ConvPorosityNodeValue2Elem(); // update element porosity
-		// and push back values
-	}
-#endif  // GEM_REACT
-
-#ifdef CHEMAPP
-	if (Eqlink_vec.size() > 0) Eqlink_vec[0]->ExecuteEQLINK();
-#endif
-#ifdef BRNS
-	if (m_vec_BRNS->init_flag == true)
-		m_vec_BRNS->RUN(dt /*time value in seconds*/);
-#endif
 
 	// if(KinReactData_vector.size() > 0)  //12.12.2008 WW
 	// SB4900    ClockTimeVec[0]->StopTime("EquiReact");
@@ -2022,12 +1773,8 @@ inline double Problem::FluidMomentum()
 	//
 	if (!m_pcs->selected) return error;  // 12.12.2008 WW
 
-	CFluidMomentum* fm_pcs = NULL;  // by PCH
-	//
-	CFEMesh* m_msh =
-	    fem_msh_vector[0];  // Something must be done later on here.
+	CFluidMomentum* fm_pcs = (CFluidMomentum*)m_pcs;
 
-	fm_pcs = m_msh->fm_pcs;
 	fm_pcs->Execute(loop_process_number);
 
 	// Switch off rechard flow if
@@ -2103,8 +1850,7 @@ inline double Problem::RandomWalker()
 				m_msh = FEMGet("GROUNDWATER_FLOW");
 		}
 
-		RandomWalk* rw_pcs = NULL;  // By PCH
-		rw_pcs = m_msh->PT;
+		RandomWalk* rw_pcs = (RandomWalk*)m_pcs;
 
 // Do I need velocity fileds solved by the FEM?
 #if 0
@@ -2277,44 +2023,19 @@ void Problem::LOPCalcELEResultants()
 	for (size_t p = 0; p < no_processes; p++)
 	{
 		m_pcs = pcs_vector[p];
-		if (!m_pcs->selected)  // OK4108
+		if (!m_pcs->selected)
 			continue;
-		// cout << "LOPCalcELEResultants: " << m_pcs->pcs_type_name << endl;
-		// TF
 		std::string pcs_type_name(
 		    convertProcessTypeToString(m_pcs->getProcessType()));
-		//		switch (m_pcs->pcs_type_name[0]) {
 		switch (pcs_type_name[0])
 		{
-			default:
-				break;
 			case 'L':  // Liquid flow
-				m_pcs->CalcELEVelocities();
-				break;
 			case 'G':  // Groundwater flow
-				m_pcs->CalcELEVelocities();
-				break;
 			case 'A':  // Gas flow
-				m_pcs->CalcELEVelocities();
-				// m_pcs->CalcELEMassFluxes();			// BG
-				break;
-			case 'T':  // Two-phase flow
-				break;
-			case 'C':  // Componental flow
-				break;
-			case 'H':  // Heat transport
-				break;
-			case 'M':  // Mass transport
-				break;
-			case 'D':  // Deformation
-				break;
-			case 'O':  // Overland flow
-				m_pcs->CalcELEVelocities();
-				break;
 			case 'R':  // Richards flow
 				m_pcs->CalcELEVelocities();
 				break;
-			case 'F':  // Fluid Momentum
+			default:
 				break;
 		}
 	}
@@ -2336,62 +2057,25 @@ void Problem::LOPCalcELEResultants()
 /**************************************************************************/
 void Problem::PCSCalcSecondaryVariables()
 {
-	// WW  long j;
-
 	int i, ptype;
 	CRFProcess* m_pcs = NULL;
-	// OK411 CRFProcess* m_pcs_phase_1 = NULL;
-	// OK411 CRFProcess* m_pcs_phase_2 = NULL;
-	// WW int
-	// ndx_p_gas_old,ndx_p_gas_new,ndx_p_liquid_old,ndx_p_liquid_new,ndx_p_cap_old;
-	//----------------------------------------------------------------------
-	// OK411 bool pcs_cpl = true;
-	//----------------------------------------------------------------------
-	// Check if NAPLdissolution is modeled, required by
-	// MMPCalcSecondaryVariablesNew
 	bool NAPLdiss = false;
 	NAPLdiss = KNaplDissCheck();
 	/* go through all processes */
 	int no_processes = (int)pcs_vector.size();
 	for (i = 0; i < no_processes; i++)
 	{
-		/* get process */
-		// pcs = pcs->GetProcessByNumber(i+1);
 		m_pcs = pcs_vector[i];  // JOD
 		if (m_pcs != NULL)
 		{
 			ptype = m_pcs->GetObjType();
 			switch (ptype)
 			{
-				case 1: /* Flow process */
-					// do nothing
-					break;
-				case 66:
-					break;
-				case 11: /* Non-isothermal flow process */
-					break;
-				case 13: /* Non-isothermal flow process */
-					break;
-				case 2: /* Mass transport process */
-					break;
-				case 3: /* Heat transport */
-					// do nothing
-					break;
-				case 4: /* Deformation */
-					// do nothing
-					break;
-				case 41: /* Deformation-flow coupled system in monolithic scheme
-				            */
-					// do nothing
-					break;
 				case 12: /* Multi-phase flow process */
 					MMPCalcSecondaryVariablesNew(m_pcs, NAPLdiss);
 					// MMPCalcSecondaryVariablesNew(m_pcs);
 					break;
 				default:
-					// std::cout << "PCSCalcSecondaryVariables - nothing to do"
-					// <<
-					//"\n";
 					break;
 			}
 		}  // If

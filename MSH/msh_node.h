@@ -7,23 +7,13 @@
  *
  */
 
-/**************************************************************************
-   MSHLib - Object:
-   Task:
-   Programing:
-   08/2005 WW/OK Encapsulation from rf_ele_msh
-   last modified
-**************************************************************************/
 #ifndef msh_node_INC
 #define msh_node_INC
 
 #include <cassert>
-
-#include "matrix_class.h"
 #include <string>
 #include <vector>
 
-// MSHLib
 #include "msh_core.h"
 
 namespace MeshLib

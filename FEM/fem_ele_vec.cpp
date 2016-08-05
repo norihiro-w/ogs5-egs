@@ -980,12 +980,12 @@ void CFiniteElementVec::LocalAssembly(const int update)
 	if (MeshElement->GetDimension() == 3) ns = 6;
 
 #ifdef USE_PETSC
-	if (MeshElement->g_index)  // ghost nodes pcs->pcs_number_of_primary_nvals
+	if (MeshElement->getGhostNodeIndices())  // ghost nodes pcs->pcs_number_of_primary_nvals
 	{
-		act_nodes = MeshElement->g_index[0];
-		act_nodes_h = MeshElement->g_index[1];
+		act_nodes = MeshElement->getGhostNodeIndices()[0];
+		act_nodes_h = MeshElement->getGhostNodeIndices()[1];
 		for (int i = 0; i < act_nodes_h; i++)
-			local_idx[i] = MeshElement->g_index[i + 2];
+			local_idx[i] = MeshElement->getGhostNodeIndices()[i + 2];
 	}
 	else
 	{
@@ -1011,14 +1011,14 @@ void CFiniteElementVec::LocalAssembly(const int update)
 	// WW
 	{
 		for (int i = 0; i < nnodesHQ; i++)
-			eqs_number[i] = MeshElement->nodes[i]->GetEquationIndex();
+			eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex();
 	}
 
 	// For strain and stress extropolation all element types
 	// Number of elements associated to nodes
 	for (int i = 0; i < nnodes; i++)
 		dbuff[i] =
-		    (double)MeshElement->nodes[i]->getConnectedElementIDs().size();
+		    (double)MeshElement->GetNode(i)->getConnectedElementIDs().size();
 
 	// Get displacement_n
 	if (dynamic)
@@ -1189,7 +1189,7 @@ bool CFiniteElementVec::GlobalAssembly()
 
 		for (int i = 0; i < nnodesHQ; i++)
 		{
-			node = MeshElement->nodes[i];
+			node = MeshElement->GetNode(i);
 			onExBoundary = false;
 			const size_t n_elements(node->getConnectedElementIDs().size());
 			for (size_t j = 0; j < n_elements; j++)
@@ -1530,7 +1530,7 @@ void CFiniteElementVec::add2GlobalMatrixII()
 
 		for (i = 0; i < nnodesHQ; i++)
 		{
-			const int i_buff = MeshElement->nodes[i]->GetEquationIndex() * dof;
+			const int i_buff = MeshElement->GetNode(i)->GetEquationIndex() * dof;
 			for (int k = 0; k < dof; k++)
 			{
 				idxn[k * nnodesHQ + i] = i_buff + k;
@@ -1553,7 +1553,7 @@ void CFiniteElementVec::add2GlobalMatrixII()
 			i_full *= dim_full;
 
 			idxm[i] =
-			    MeshElement->nodes[local_idx[in]]->GetEquationIndex() * dof +
+			    MeshElement->GetNode(local_idx[in])->GetEquationIndex() * dof +
 			    i_dom;
 			//        ScreenMessage2("-> ki=%d, idxm=%d \n", i, idxm[i]);
 
@@ -1585,9 +1585,9 @@ void CFiniteElementVec::add2GlobalMatrixII()
 
 		for (i = 0; i < nnodesHQ; i++)
 		{
-			const int i_buff = MeshElement->nodes[i]->GetEquationIndex() * dof;
+			const int i_buff = MeshElement->GetNode(i)->GetEquationIndex() * dof;
 			//        ScreenMessage2("-> node id=%d, eqs_id=%d \n",
-			//        MeshElement->nodes[i]->GetIndex(), i_buff);
+			//        MeshElement->GetNode(i)->GetIndex(), i_buff);
 			for (int k = 0; k < dof; k++)
 			{
 				const int ki = k * nnodesHQ + i;
@@ -1610,7 +1610,7 @@ void CFiniteElementVec::add2GlobalMatrixII()
 		os_t << "Node ID: ";
 		for (i = 0; i < this->nnodesHQ; i++)
 		{
-			os_t << MeshElement->nodes[i]->GetEquationIndex() << " ";
+			os_t << MeshElement->GetNode(i)->GetEquationIndex() << " ";
 		}
 		os_t << "\n";
 		os_t << "Act. Local ID: ";
@@ -1935,7 +1935,7 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 
 		for (int i = 0; i < nnodesHQ; i++)
 		{
-			node = MeshElement->nodes[i];
+			node = MeshElement->GetNode(i);
 			onExBoundary = false;
 			const size_t n_elements(node->getConnectedElementIDs().size());
 			for (size_t j = 0; j < n_elements; j++)
@@ -2627,7 +2627,7 @@ void CFiniteElementVec::ExtropolateGuassStress()
 	// Number of elements associated to nodes
 	for (i = 0; i < nnodes; i++)
 		dbuff[i] =
-		    (double)MeshElement->nodes[i]->getConnectedElementIDs().size();
+		    (double)MeshElement->GetNode(i)->getConnectedElementIDs().size();
 	//
 	gp = gp_r = gp_s = gp_t = 0;
 	eleV_DM = ele_value_dm[MeshElement->GetIndex()];
@@ -3306,7 +3306,7 @@ void CFiniteElementVec::LocalAssembly_EnhancedStrain(const int update)
 	zeta_t0 = eleV_DM->disp_j;
 	zeta_t1 = zeta_t0;
 
-	area = MeshElement->volume;
+	area = MeshElement->GetVolume();
 
 	n_jump[0] = cos(eleV_DM->orientation[0]);
 	n_jump[1] = sin(eleV_DM->orientation[0]);

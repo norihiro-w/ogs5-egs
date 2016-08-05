@@ -287,11 +287,6 @@ extern double pai;
 extern long binarySearch(long* arr, long target, long start, long end);
 // WW Cubic spline
 // WW
-double ComputeDetTri(const double* x1, const double* x2, const double* x3);
-double ComputeDetTex(const double* x1, const double* x2, const double* x3,
-                     const double* x4);
-void CrossProduction(const double* x, const double* y, double* z);
-double NormalizeVector(double* x, size_t n);
 
 // extern double MVectorlength(double dx, double dy, double dz);
 extern double PointProduction(double* x, double* y);

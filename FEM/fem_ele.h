@@ -7,12 +7,6 @@
  *
  */
 
-/*
-   Class element declaration
-   class for finite element.
-   Designed and programmed by WW, 06/2004
- */
-
 #ifndef fem_INC
 #define fem_INC
 

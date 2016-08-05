@@ -22,7 +22,7 @@
 #include <cfloat>
 #include <iostream>
 
-#include "mathlib.h"
+#include "MathTools.h"
 
 namespace MeshLib
 {

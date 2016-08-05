@@ -461,7 +461,7 @@ void CFluidMomentum::ConstructFractureNetworkTopology()
 		else if (m_pcs->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
 			m_msh = FEMGet("GROUNDWATER_FLOW");
 	}
-	m_pcs = PCSGet("FLUID_MOMENTUM");
+	m_pcs = this;
 	// Something must be done later on here.
 	double tolerance = 1e-12;
 
@@ -878,8 +878,11 @@ void CFluidMomentum::ConstructFractureNetworkTopology()
 
 	// Compute the angles of the element for rotation.
 	// This process can be embedded into CElem class when in need.
+	RandomWalk* PT = (RandomWalk*)PCSGet(FiniteElement::RANDOM_WALK);
 	for (int i = 0; i < (int)m_msh->ele_vector.size(); ++i)
-		m_msh->PT->SolveAnglesOfTheElment(m_msh->ele_vector[i]);
+	{
+		PT->SolveAnglesOfTheElment(m_msh->ele_vector[i]);
+	}
 }
 
 /**************************************************************************
@@ -1023,20 +1026,6 @@ void CFluidMomentum::SolveForEdgeVelocity(void)
 	}
 }
 #endif
-
-void FMRead(string file_base_name)
-{
-	(void)file_base_name;
-	// Fluid_Momentum memory allocation is moved here. by PCH
-	CRFProcess* m_pcs = PCSGet("FLUID_MOMENTUM");
-	// WW  if(!m_pcs)
-	if (m_pcs)  // WW
-	{
-		CFEMesh* m_msh =
-		    fem_msh_vector[0];  // Something must be done later on here.
-		m_msh->fm_pcs = new CFluidMomentum();
-	}
-}
 
 /**************************************************************************
    ROCKFLOW - Funktion: DATWriteFile

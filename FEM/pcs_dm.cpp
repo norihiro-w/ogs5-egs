@@ -1671,7 +1671,7 @@ void CRFProcessDeformation::Trace_Discontinuity()
 				//               xn[i] = elem->nodes[i]->X();
 				//               yn[i] = elem->nodes[i]->Y();
 				//               zn[i] = elem->nodes[i]->Z();
-				double const* const coords(elem->nodes[i]->getData());
+				double const* const coords(elem->GetNode(i)->getData());
 				xn[i] = coords[0];
 				yn[i] = coords[1];
 				zn[i] = coords[2];
@@ -1681,7 +1681,7 @@ void CRFProcessDeformation::Trace_Discontinuity()
 			bFaces = -1;
 			bFacesCounter = 0;
 			for (i = 0; i < numf; i++)
-				if (elem->neighbors[i]->GetDimension() != elem->GetDimension())
+				if (elem->GetNeighbor(i)->GetDimension() != elem->GetDimension())
 				{
 					bFaces = i;
 					bFacesCounter++;
@@ -1851,7 +1851,7 @@ long CRFProcessDeformation::MarkBifurcatedNeighbor(const int PathIndex)
 	// nfnode = elem->GetElementFaceNodes(f1, Face_node);
 
 	// Check discintinuity path goes to which neighbor
-	elem1 = elem->neighbors[f1];
+	elem1 = elem->GetNeighbor(f1);
 	// Boundary reached
 	if (elem1->GetDimension() != elem->GetDimension()) return -1;
 	nb = elem1->GetIndex();
@@ -1879,10 +1879,10 @@ long CRFProcessDeformation::MarkBifurcatedNeighbor(const int PathIndex)
 			for (j = 0; j < numf1; j++)
 			{
 				// Neighbor is a face on surface
-				if (elem1->neighbors[j]->GetDimension() !=
+				if (elem1->GetNeighbor(j)->GetDimension() !=
 				    elem1->GetDimension())
 					continue;
-				if ((size_t)index != elem1->neighbors[j]->GetIndex()) continue;
+				if ((size_t)index != elem1->GetNeighbor(j)->GetIndex()) continue;
 				{
 					adjacent = true;
 					Extended = nb;

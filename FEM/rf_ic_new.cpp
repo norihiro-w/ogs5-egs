@@ -867,29 +867,9 @@ void CInitialCondition::SetDomain(int nidx)
 	{
 		if (this->getProcessDistributionType() == FiniteElement::CONSTANT)
 		{
-			// if (this->getProcess()->pcs_type_name.compare("OVERLAND_FLOW") ==
-			// 0)
-			if (this->getProcess()->getProcessType() ==
-			    FiniteElement::OVERLAND_FLOW)
-				// OK MSH
-				for (i = 0;
-				     i < this->getProcess()->m_msh->GetNodesNumber(false);
-				     i++)
-				{
-					node_val =
-					    geo_node_value +
-					    this->getProcess()->m_msh->nod_vector[i]->getData()[2];
-					this->getProcess()->SetNodeValue(i, nidx, node_val);
-				}
-			else
-			{
-				//................................................................
-				node_val = geo_node_value;
-				// OK MSH
-				for (i = 0; i < m_msh->GetNodesNumber(true); i++)
-					this->getProcess()->SetNodeValue(i, nidx, node_val);
-				//................................................................
-			}
+			node_val = geo_node_value;
+			for (i = 0; i < m_msh->GetNodesNumber(true); i++)
+				this->getProcess()->SetNodeValue(i, nidx, node_val);
 		}
 		//--------------------------------------------------------------------
 		// Remove unused stuff by WW

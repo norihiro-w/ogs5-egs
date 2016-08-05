@@ -7,26 +7,13 @@
  *
  */
 
-/**************************************************************************
-   MSHLib - Object:
-   Task:
-   Programing:
-   08/2005 OK Encapsulated from mshlib
-**************************************************************************/
-
 #include "msh_lib.h"
 
+#include <set>
 #include <string>
 #include <vector>
 
-#include "memory.h"
-#include "math.h"
-
-#include "files0.h"
-#include "geo_lib.h"
-#include "mathlib.h"
-#include "rf_mmp_new.h"
-#include "rf_pcs.h"
+#include "display.h"
 
 std::vector<MeshLib::CFEMesh*> fem_msh_vector;
 
@@ -34,6 +21,7 @@ std::vector<MeshLib::CFEMesh*> fem_msh_vector;
 
 
 using namespace Math_Group;
+using namespace MeshLib;
 
 /**************************************************************************
    FEMLib-Method:
@@ -281,10 +269,10 @@ int MSHSetMaxMMPGroups()
    MSHLib-Method:
    07/2007 OK Implementation
 **************************************************************************/
-bool MSHTestMATGroups()
+bool MSHTestMATGroups(size_t mmp_vector_size)
 {
 	int g_max_mmp_groups = MSHSetMaxMMPGroups();
-	if (g_max_mmp_groups > (int)mmp_vector.size())
+	if (g_max_mmp_groups > (int)mmp_vector_size)
 	{
 		std::cout << "Error: not enough MMP data";
 		return false;  // abort();

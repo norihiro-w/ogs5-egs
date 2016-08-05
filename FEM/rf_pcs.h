@@ -80,10 +80,7 @@ public:
 class CSourceTermGroup;
 class CSourceTerm;
 class CNodeValue;
-class Problem;         // WW
-class CECLIPSEData;    // BG Coupling to Eclipse
-class CDUMUXData;      // BG Coupling to DuMux
-class CPlaneEquation;  // BG Calculating Plane Equation
+class Problem;
 using FiniteElement::CFiniteElementStd;
 using FiniteElement::CFiniteElementVec;
 using FiniteElement::ElementMatrix;
@@ -120,12 +117,6 @@ typedef struct /* element data info */
 	int eval_index;
 	int index;
 } PCS_EVAL_DATA;
-
-typedef struct
-{
-	long index_node;
-	double water_st_value;
-} Water_ST_GEMS;  // HS 11.2008
 
 typedef struct
 {
@@ -215,8 +206,6 @@ protected:  // WW
 	friend class FiniteElement::ElementValue;
 	friend class ::CSourceTermGroup;
 	friend class ::Problem;
-	friend class CECLIPSEData;  // BG
-	friend class CDUMUXData;    // SBG
 	/// Number of nodes to a primary variable. 11.08.2010. WW
 	int* p_var_index;
 	long* num_nodes_p_var;
@@ -366,7 +355,6 @@ public:
 	// WW
 	std::vector<long> bc_transient_index;  // WW/CB
 	std::vector<long> st_transient_index;  // WW/CB...BG
-	void UpdateTransientBC();              // WW/CB
 	void UpdateTransientST();              // WW/CB...BG
 	//....................................................................
 	// 6-ST
@@ -459,32 +447,6 @@ public:
 	// //OK
 	//....................................................................
 	int Shift[10];
-	// 16-GEM  // HS 11.2008
-	int flag_couple_GEMS;  // 0-no couple; 1-coupled
-	std::vector<Water_ST_GEMS> Water_ST_vec;
-	std::vector<long> stgem_node_value_in_dom;   // KG for domain decomposition
-	std::vector<long> stgem_local_index_in_dom;  // KG for domain decomposition
-	// KG
-	std::vector<long> rank_stgem_node_value_in_dom;
-
-	void Clean_Water_ST_vec(void);
-	void Add_GEMS_Water_ST(long idx, double val);
-	// ECLIPSE interface:
-	CDUMUXData* DuMuxData;      // SBG
-	CECLIPSEData* EclipseData;  // BG
-	void CalGPVelocitiesfromECLIPSE(std::string path,
-	                                int timestep,
-	                                int phase_index,
-	                                std::string phase);
-	std::string
-	    simulator;  // which solver to use, i.e. GeoSys, ECLIPSE or DuMux
-	std::string simulator_path;  // path for executable of external simulator
-	std::string simulator_model_path;  // path to exclipse input data file
-	                                   // (*.data), with extension
-	bool PrecalculatedFiles;  // defines if Eclipse or dumux is calculated or if
-	                          // precalculated files are used
-	std::string
-	    simulator_well_path;  // path to well schedule ( *.well), with extension
 	//....................................................................
 	// Construction / destruction
 	char pcs_name[MAX_ZEILE];  // string pcs_name;
@@ -691,20 +653,11 @@ public:
 	double ExecuteNonLinear(int loop_process_number, bool print_pcs = true);
 	void PrintStandardIterationInformation(bool write_std_errors, double nl_error);
 
-	virtual void CalculateElementMatrices(void);
-	virtual void AssembleSystemMatrixNew(void);
 	// This function is a part of the monolithic scheme
 	//  and it is related to ST, BC, IC, TIM and OUT. WW
 	void SetOBJNames();
 	// ST
 	void IncorporateSourceTerms(const int rank = -1);
-// WW void CheckSTGroup(); //OK
-#ifdef GEM_REACT
-	void IncorporateSourceTerms_GEMS(
-	    void);  // HS: dC/dt from GEMS chemical solver.
-	int GetRestartFlag() const { return reload; }
-#endif
-	// BC
 	void IncorporateBoundaryConditions(const int rank = -1,
 	                                   bool updateA = true,
 	                                   bool updateRHS = true,
@@ -802,26 +755,7 @@ public:
 	bool adaption;
 	void PrimaryVariableReloadTransport();   // kg44
 	void PrimaryVariableStorageTransport();  // kg44
-	// double GetNewTimeStepSizeTransport(double mchange); //kg44
-	// FLX
 
-	/**
-	 * modified 05/2012 by BG
-	 * @param ply
-	 * @param result
-	 */
-	void CalcELEFluxes(const GEOLIB::Polyline* const ply, double* result);
-	/**
-	 * Necessary for the output of mass fluxes over polylines, BG 08/2011
-	 * @param ply a pointer to a GEOLIB::Polyline
-	 * @param NameofPolyline the name of the polyline
-	 * @param result
-	 */
-	void CalcELEMassFluxes(const GEOLIB::Polyline* const ply,
-	                       std::string const& NameofPolyline,
-	                       double* result);
-	double TotalMass[10];  // Necessary for the output of mass fluxes over
-	                       // polylines, BG 08/2011
 	std::vector<std::string> PolylinesforOutput;  // Necessary for the output of
 	                                              // mass fluxes over polylines,
 	                                              // BG 08/2011
@@ -951,7 +885,6 @@ extern double PCSGetELEValue(long index,
                              const std::string& nod_fct_name);
 // Specials
 extern void PCSRestart();
-extern std::string PCSProblemType();
 // PCS global variables
 extern int pcs_no_components;
 extern int pcs_deformation;
@@ -1018,15 +951,6 @@ extern bool PCSCheck();  // OK
 extern void CreateEQS_LinearSolver();
 #endif
 
-#ifdef GEM_REACT
-class REACT_GEM;
-extern REACT_GEM* m_vec_GEM;
-#endif
-
-#ifdef BRNS
-class REACT_BRNS;
-extern REACT_BRNS* m_vec_BRNS;
-#endif
 
 extern bool hasAnyProcessDeactivatedSubdomains;  // NW
 #endif

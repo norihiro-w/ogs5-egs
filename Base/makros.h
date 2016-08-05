@@ -141,7 +141,6 @@
 extern std::string FileName;
 extern std::string FilePath;
 
-#define RESET_4410  // H2_ELE test
 
 //---- MPI Parallel --------------
 #if defined(USE_MPI) || defined(USE_PETSC)

@@ -7,13 +7,6 @@
  *
  */
 
-/**************************************************************************
-   MSHLib - Object:
-   Task:
-   Programing:
-   08/2005 WW/OK Encapsulation from rf_ele_msh
-   last modified
-**************************************************************************/
 #ifndef msh_elem_INC
 #define msh_elem_INC
 
@@ -23,41 +16,23 @@
 #include "MSHEnums.h"
 #include "msh_edge.h"
 
-namespace process
-{
-class CRFProcessDeformation;
-}
 namespace Math_Group
 {
 class Matrix;
 }
-class CRFProcess;
-namespace FiniteElement
-{
-class CElement;
-class CFiniteElementStd;
-class CFiniteElementVec;
-class ElementMatrix;
-class ElementMatrix_DM;
-}
 
 namespace MeshLib
 {
-//------------------------------------------------------------------------
-// Class definition
+
 class CElem : public CCore
 {
 public:
-	// Methods
 	CElem();
 	CElem(size_t Index);
 	// For Faces: Face, local face index
 	CElem(size_t Index, CElem* onwer, int Face);
-	CElem(size_t Index, CElem* m_ele_parent);  // WWOK
+	CElem(size_t Index, CElem* m_ele_parent);
 
-	/**
-	 * copy constructor
-	 */
 	CElem(CElem const& elem);
 
 	/**
@@ -279,6 +254,7 @@ public:
 	void FillTransformMatrix();
 	void FillTransformMatrix(int noneed);
 	double getTransformTensor(int idx);
+	Math_Group::Matrix const* getTransformTensor() const {return transform_tensor; }
 #ifndef OGS_ONLY_TH
 	void AllocateMeomoryforAngle()
 	{
@@ -330,6 +306,7 @@ public:
 #endif
 #if defined(USE_PETSC)
 	bool isOverlapped() const { return g_index != NULL; }
+	int* getGhostNodeIndices() { return g_index; }
 #endif
 private:
 	// Members
@@ -361,27 +338,14 @@ private:
 	int grid_adaptation;  // Flag for grid adapting.
 #endif
 	size_t patch_index;
-	/*
-	   // Since m_tim->CheckCourant() is deactivated, the following member are
-	   // put in comment.
-	   double representative_length;//For stability calculations
-	   double courant;
-	   double neumann;	  // MSH topology
-	 */
 	double area;  // Flux area
 	//
 	// MSH topology
 	Math_Group::Matrix* transform_tensor;
 	Math_Group::vec<CElem*> neighbors;
-// vec<CElem*> sons;
-// double angle[3];	// PCH, angle[0] rotation along y axis
-//	    angle[1] rotation along x' axis
-//		angle[2] translation along z'' axis.
 #ifndef OGS_ONLY_TH
-	double* angle;  // Dymanic allocate memory.  WW
-	// WW double MatT[9];
-
-	int excavated;  // WX:01.2011 excavation state
+	double* angle;
+	int excavated;
 #endif
 
 	// -- Methods
@@ -394,15 +358,8 @@ private:
 	int GetElementFacesPyramid(int Face, int* FaceNode);
 	//-- Friends
 	friend class CFEMesh;
-	// FEM
-	friend class FiniteElement::CElement;
-	friend class FiniteElement::CFiniteElementStd;
-	friend class FiniteElement::CFiniteElementVec;
-	friend class FiniteElement::ElementMatrix;
-	friend class FiniteElement::ElementMatrix_DM;
-	// PCS
-	friend class process::CRFProcessDeformation;
-	friend class ::CRFProcess;
 };
+
 }  // namespace MeshLib
+
 #endif

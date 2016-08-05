@@ -36,7 +36,6 @@
 // C: Componental flow
 // H: heat transport
 // M: Mass transport
-// O: Overland flow
 // R: Richards flow
 // F: Fluid momentum
 // A: Gas flow
@@ -49,7 +48,6 @@ enum EnumProcessType
 	C,
 	H,
 	M,
-	O,
 	R,
 	F,
 	A,
@@ -148,20 +146,6 @@ public:
 	                        // element center of gravity
 	void Cal_GP_Velocity_FM(int* i_ind);  // SB 4900 interpolate node velocities
 	                                      // to Gauss point velocities
-	// BG
-	std::string Cal_GP_Velocity_ECLIPSE(std::string tempstring,
-	                                    bool output_average,
-	                                    int phase_index,
-	                                    std::string phase);
-	// BG coupling to DuMux
-	std::string Cal_GP_Velocity_DuMux(int* i_ind,
-	                                  CRFProcess* m_pcs,
-	                                  int phase_index);
-	// BG, 04/2012: Provides the average element velocity over all gauss points
-	double Get_Element_Velocity(int Index,
-	                            CRFProcess* m_pcs,
-	                            int phase_index,
-	                            int dimension);
 	// necessary for using precalculated density and viscosity BG, 11/2010
 	double InterpolatePropertyToGausspoint(int GPIndex,
 	                                       CRFProcess* m_pcs,
@@ -170,58 +154,6 @@ public:
 	// OK
 	void AssembleParabolicEquationRHSVector();
 
-	// CVFEM functions for overland flow   JOD
-	// to move
-	void GetOverlandBasisFunctionMatrix_Line();
-	// to move
-	void GetOverlandBasisFunctionMatrix_Quad();
-	void CalcOverlandCoefficients(double* head,
-	                              double* axx,
-	                              double* ayy,
-	                              double* ast);
-	void CalcOverlandCoefficientsLine(double* head, double* axx, double* ast);
-	void CalcOverlandCoefficientsQuad(double* head,
-	                                  double* axx,
-	                                  double* ayy,
-	                                  double* ast);
-	void CalcOverlandCoefficientsTri(double* head,
-	                                 double* axx,
-	                                 double* ayy,
-	                                 double* ast);
-	void CalcOverlandNLTERMS(double* H,
-	                         double* HaaOld,
-	                         double* swval,
-	                         double* swold);
-	void CalcOverlandNLTERMSRills(double* H,
-	                              double* HaaOld,
-	                              double* swval,
-	                              double* swold);
-	void CalcOverlandNLTERMSChannel(double* H,
-	                                double* HaaOld,
-	                                double* swval,
-	                                double* swold);
-	void CalcOverlandCKWR(double* head, double* ckwr, int* iups);
-	void CalcOverlandCKWRatNodes(
-	    int i, int j, double* head, double* ckwr, int* iups);
-	void CalcOverlandResidual(double* head,
-	                          double* swval,
-	                          double* swold,
-	                          double ast,
-	                          double* residuall,
-	                          double** amat);
-	double CalcOverlandJacobiNodes(int i,
-	                               int j,
-	                               double* depth,
-	                               double* depth_keep,
-	                               double akrw,
-	                               double axx,
-	                               double ayy,
-	                               double** amatij,
-	                               double* sumjac);
-	void CalcOverlandUpwindedCoefficients(double** amat,
-	                                      double* ckwr,
-	                                      double axx,
-	                                      double ayy);
 	//
 	// CB added by CB: 090507
 	void UpwindAlphaMass(double* alpha);
@@ -374,18 +306,6 @@ private:
 	// Assembly of parabolic equation
 	void AssembleParabolicEquation();  // OK4104
 	void AssembleMixedHyperbolicParabolicEquation();
-	void AssembleParabolicEquationNewton();
-	// JOD
-	void AssembleParabolicEquationNewtonJacobian(double** jacob,
-	                                             double* Haa,
-	                                             double* HaaOld,
-	                                             double axx,
-	                                             double ayy,
-	                                             double** amat,
-	                                             double ast,
-	                                             double* swold,
-	                                             double* residuall,
-	                                             int* iups);
 	void Assemble_strainCPL(
 	    const int phase = 0);  // Assembly of strain coupling
 	void Assemble_strainCPL_Matrix(const double fac, const int phase = 0);

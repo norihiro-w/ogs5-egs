@@ -11,6 +11,7 @@
 #define msh_edge_INC
 
 #include "msh_node.h"
+#include "matrix_class.h"
 
 namespace MeshLib
 {

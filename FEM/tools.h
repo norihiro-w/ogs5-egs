@@ -20,9 +20,10 @@
 #ifndef tools_INC
 #define tools_INC
 
-#include "rf_mmp_new.h"  //MB
-#include "rf_pcs.h"
 #include <sstream>
+#include "rf_mmp_new.h"
+#include "rf_pcs.h"
+#include "sparse_table.h"
 
 typedef struct /* fuer Kurven (Stuetzstellen) */
 {
@@ -204,5 +205,9 @@ void convertElementDataToNodalData(
     const std::vector<double>& vec_ele_data,
     EleToNodeInterpolationMethod::type interpolation_type,
     std::vector<double>& vec_nod_data);
+
+#ifdef NEW_EQS
+void CreateSparseTable(MeshLib::CFEMesh* msh, Math_Group::SparseTable* &sparse_graph, Math_Group::SparseTable* &sparse_graph_H);
+#endif
 
 #endif

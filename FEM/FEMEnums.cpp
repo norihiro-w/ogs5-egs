@@ -19,10 +19,8 @@ namespace FiniteElement
 ProcessType convertProcessType(const std::string& pcs_type_string)
 {
 	if (pcs_type_string.compare("LIQUID_FLOW") == 0) return LIQUID_FLOW;
-	if (pcs_type_string.compare("FLUID_FLOW") == 0) return FLUID_FLOW;
 	if (pcs_type_string.compare("TWO_PHASE_FLOW") == 0) return TWO_PHASE_FLOW;
 	if (pcs_type_string.compare("RICHARDS_FLOW") == 0) return RICHARDS_FLOW;
-	if (pcs_type_string.compare("OVERLAND_FLOW") == 0) return OVERLAND_FLOW;
 	if (pcs_type_string.compare("GROUNDWATER_FLOW") == 0)
 		return GROUNDWATER_FLOW;
 	if (pcs_type_string.compare("HEAT_TRANSPORT") == 0) return HEAT_TRANSPORT;
@@ -52,10 +50,8 @@ ProcessType convertProcessType(const std::string& pcs_type_string)
 std::string convertProcessTypeToString(ProcessType pcs_type)
 {
 	if (pcs_type == LIQUID_FLOW) return "LIQUID_FLOW";
-	if (pcs_type == FLUID_FLOW) return "FLUID_FLOW";
 	if (pcs_type == TWO_PHASE_FLOW) return "TWO_PHASE_FLOW";
 	if (pcs_type == RICHARDS_FLOW) return "RICHARDS_FLOW";
-	if (pcs_type == OVERLAND_FLOW) return "OVERLAND_FLOW";
 	if (pcs_type == GROUNDWATER_FLOW) return "GROUNDWATER_FLOW";
 	if (pcs_type == HEAT_TRANSPORT) return "HEAT_TRANSPORT";
 	if (pcs_type == DEFORMATION) return "DEFORMATION";
@@ -76,11 +72,11 @@ std::string convertProcessTypeToString(ProcessType pcs_type)
 
 bool isFlowProcess(ProcessType pcs_type)
 {
-	if (pcs_type == LIQUID_FLOW || pcs_type == FLUID_FLOW ||
+	if (pcs_type == LIQUID_FLOW ||
 	    pcs_type == RICHARDS_FLOW || pcs_type == GROUNDWATER_FLOW ||
 	    pcs_type == PS_GLOBAL || pcs_type == MULTI_PHASE_FLOW ||
 	    pcs_type == DEFORMATION_FLOW || pcs_type == DEFORMATION_H2 ||
-	    pcs_type == TWO_PHASE_FLOW || pcs_type == OVERLAND_FLOW ||
+	    pcs_type == TWO_PHASE_FLOW ||
 	    pcs_type == AIR_FLOW || pcs_type == TH_MONOLITHIC)
 		return true;
 	return false;

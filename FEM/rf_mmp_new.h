@@ -33,6 +33,7 @@
 
 namespace FiniteElement
 {
+class CElement;
 class CFiniteElementStd;
 }
 using FiniteElement::CFiniteElementStd;

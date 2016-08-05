@@ -164,28 +164,28 @@ void CElement::ConfigElement(CElem* MElement, bool FaceIntegration)
 	CNode* a_node = NULL;  // 07.04.2009. WW
 	MeshElement = MElement;
 	Index = MeshElement->GetIndex();
-	nnodes = MeshElement->nnodes;
-	nnodesHQ = MeshElement->nnodesHQ;
+	nnodes = MeshElement->GetNodesNumber(false);
+	nnodesHQ = MeshElement->GetNodesNumber(true);
 	bool done = false;
 	ConfigNumerics(MeshElement->GetElementType());
-	if (MeshElement->quadratic)
+	if (MeshElement->GetOrder())
 		nNodes = nnodesHQ;
 	else
 		nNodes = nnodes;
 	// Node indices
 	for (i = 0; i < nNodes; i++)
-		nodes[i] = MeshElement->nodes_index[i];
+		nodes[i] = MeshElement->GetNodeIndex(i);
 	// Put coordinates of nodes to buffer to enhance the computation
 	if (!FaceIntegration)
 	{
 		if (dim != ele_dim)
 		{
 			//            a_node0 = MeshElement->nodes[0];      //07.04.2007. WW
-			double const* const coords_node_0(MeshElement->nodes[0]->getData());
+			double const* const coords_node_0(MeshElement->GetNode(0)->getData());
 			for (i = 0; i < nNodes; i++)
 			{
 				double const* const coords_node_i(
-				    MeshElement->nodes[i]->getData());
+				    MeshElement->GetNode(i)->getData());
 				//               a_node = MeshElement->nodes[i];
 				//               //07.04.2007. WW
 				//               dy = dz = 0.;
@@ -196,12 +196,13 @@ void CElement::ConfigElement(CElem* MElement, bool FaceIntegration)
 				double dy(coords_node_i[1] - coords_node_0[1]);
 				double dz(coords_node_i[2] - coords_node_0[2]);
 
-				X[i] = (*MeshElement->transform_tensor)(0, 0) * dx +
-				       (*MeshElement->transform_tensor)(1, 0) * dy +
-				       (*MeshElement->transform_tensor)(2, 0) * dz;
-				Y[i] = (*MeshElement->transform_tensor)(0, 1) * dx +
-				       (*MeshElement->transform_tensor)(1, 1) * dy +
-				       (*MeshElement->transform_tensor)(2, 1) * dz;
+				auto &trans_tensor = *MeshElement->getTransformTensor();
+				X[i] = trans_tensor(0, 0) * dx +
+				       trans_tensor(1, 0) * dy +
+				       trans_tensor(2, 0) * dz;
+				Y[i] = trans_tensor(0, 1) * dx +
+				       trans_tensor(1, 1) * dy +
+				       trans_tensor(2, 1) * dz;
 				//               Z[i] =  a_node->Z();
 				Z[i] = coords_node_i[2];
 			}
@@ -223,7 +224,7 @@ void CElement::ConfigElement(CElem* MElement, bool FaceIntegration)
 							//                        Y[i] = a_node->X();
 							//                        Z[i] = a_node->Z();
 							double const* const coords_node_i(
-							    MeshElement->nodes[i]->getData());
+							    MeshElement->GetNode(i)->getData());
 							X[i] = coords_node_i[1];
 							Y[i] = coords_node_i[0];
 							Z[i] = coords_node_i[2];
@@ -241,7 +242,7 @@ void CElement::ConfigElement(CElem* MElement, bool FaceIntegration)
 							//                        Y[i] = a_node->Y();
 							//                        Z[i] = a_node->X();
 							double const* const coords_node_i(
-							    MeshElement->nodes[i]->getData());
+							    MeshElement->GetNode(i)->getData());
 							X[i] = coords_node_i[2];
 							Y[i] = coords_node_i[1];
 							Z[i] = coords_node_i[0];
@@ -255,7 +256,7 @@ void CElement::ConfigElement(CElem* MElement, bool FaceIntegration)
 						for (i = 0; i < nNodes; i++)
 						{
 							double const* const coords_node_i(
-							    MeshElement->nodes[i]->getData());
+							    MeshElement->GetNode(i)->getData());
 							X[i] = coords_node_i[0];
 							Y[i] = coords_node_i[2];
 							Z[i] = coords_node_i[1];
@@ -270,7 +271,7 @@ void CElement::ConfigElement(CElem* MElement, bool FaceIntegration)
 	if (!done)
 		for (i = 0; i < nNodes; i++)
 		{
-			a_node = MeshElement->nodes[i];  // 07.04.2007. WW
+			a_node = MeshElement->GetNode(i);  // 07.04.2007. WW
 			double const* const coords(a_node->getData());
 			X[i] = coords[0];
 			Y[i] = coords[1];
@@ -517,7 +518,7 @@ double CElement::computeJacobian(const int order)
 			DetJac = Jacobian[0];
 			// WW
 			// if(MeshElement->area>0)
-			DetJac *= MeshElement->area;
+			DetJac *= MeshElement->GetFluxArea();
 			// WW          DetJac*=MeshElement->GetFluxArea();//CMCD
 			if (axisymmetry)
 			{
@@ -550,7 +551,7 @@ double CElement::computeJacobian(const int order)
 			//
 			// By WW
 			// if(MeshElement->area>0)
-			DetJac *= MeshElement->area;
+			DetJac *= MeshElement->GetFluxArea();
 			// WW          DetJac*=MeshElement->GetFluxArea();//CMCD
 			if (axisymmetry)
 			{
@@ -1061,13 +1062,14 @@ void CElement::ComputeGradShapefct(int order)
 			}
 		}
 	}
+	auto &t_tensor = *MeshElement->getTransformTensor();
 	// 1D element in 3D
 	if ((dim == 3 && ele_dim == 1) || (dim == 2 && ele_dim == 1))
 		for (int i = 0; i < nNodes; i++)
 		{
 			for (size_t j = 1; j < dim; j++)
-				dN[j * nNodes + i] = (*MeshElement->transform_tensor)(j)*dN[i];
-			dN[i] *= (*MeshElement->transform_tensor)(0);
+				dN[j * nNodes + i] = t_tensor(j)*dN[i];
+			dN[i] *= t_tensor(0);
 		}
 	// 2D element in 3D
 	if (dim == 3 && ele_dim == 2)
@@ -1081,7 +1083,7 @@ void CElement::ComputeGradShapefct(int order)
 				dN[j * nNodes + i] = 0.0;
 				for (size_t k = 0; k < ele_dim; k++)
 					dN[j * nNodes + i] +=
-					    (*MeshElement->transform_tensor)(j, k) *
+					    t_tensor(j, k) *
 					    dShapefct[k * nNodes + i];
 			}
 	}
