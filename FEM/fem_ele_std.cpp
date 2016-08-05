@@ -1602,8 +1602,9 @@ void CFiniteElementStd::CalCoefLaplace(bool Gravity, int ip)
 					          << "\n";
 					exit(0);
 				}
-				Matrix t_transform_tensor(*MeshElement->getTransformTensor());
-				MeshElement->getTransformTensor()->GetTranspose(t_transform_tensor);
+				Matrix const& transform_tensor(*MeshElement->getTransformTensor());
+				Matrix t_transform_tensor(transform_tensor);
+				transform_tensor.GetTranspose(t_transform_tensor);
 				Matrix global_tensor(dim, dim);
 				for (size_t i = 0; i < ele_dim; i++)
 					for (size_t j = 0; j < ele_dim; j++)
@@ -1614,7 +1615,7 @@ void CFiniteElementStd::CalCoefLaplace(bool Gravity, int ip)
 					for (size_t j = 0; j < dim; j++)
 						for (size_t k = 0; k < dim; k++)
 							global_tensor(i, j) +=
-							    t_transform_tensor(i, k) *
+							    transform_tensor(i, k) *
 							    temp_tensor(k, j);
 				// cout << "K:" << endl; global_tensor.Write();
 				for (size_t i = 0; i < dim; i++)
@@ -1680,8 +1681,9 @@ void CFiniteElementStd::CalCoefLaplace(bool Gravity, int ip)
 					          << "\n";
 					exit(0);
 				}
-				Matrix t_transform_tensor(*MeshElement->getTransformTensor());
-				MeshElement->getTransformTensor()->GetTranspose(t_transform_tensor);
+				Matrix const& transform_tensor(*MeshElement->getTransformTensor());
+				Matrix t_transform_tensor(transform_tensor);
+				transform_tensor.GetTranspose(t_transform_tensor);
 				Matrix global_tensor(dim, dim);
 				for (size_t i = 0; i < ele_dim; i++)
 					for (size_t j = 0; j < ele_dim; j++)
@@ -1693,7 +1695,7 @@ void CFiniteElementStd::CalCoefLaplace(bool Gravity, int ip)
 					for (size_t j = 0; j < dim; j++)
 						for (size_t k = 0; k < dim; k++)
 							global_tensor(i, j) +=
-							    t_transform_tensor(i, k) *
+							    transform_tensor(i, k) *
 							    temp_tensor(k, j);
 				}
 				// cout << "K:" << endl; global_tensor.Write();
