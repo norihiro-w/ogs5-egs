@@ -233,11 +233,6 @@ void CRFProcessDeformation::Initialization()
 		}
 	}
 
-	///////////////////////////
-	if (fem_dm->dynamic) CalcBC_or_SecondaryVariable_Dynamics();
-
-	// TEST
-	//   De_ActivateElement(false);
 }
 
 /*************************************************************************
@@ -345,7 +340,7 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 
 	counter++;  // Times of this method  to be called
 	// For pure elesticity
-	const bool isLinearProblem = (pcs_deformation <= 100 && !fem_dm->dynamic);
+	const bool isLinearProblem = (pcs_deformation <= 100);
 
 	// setup mesh
 	m_msh->SwitchOnQuadraticNodes(true);
@@ -515,7 +510,6 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 
 		// Update stresses
 		UpdateStress();
-		if (fem_dm->dynamic) CalcBC_or_SecondaryVariable_Dynamics();
 
 		// Update displacements, u=u+w for the Newton-Raphson
 		// u1 = u0 for linear problems
@@ -973,32 +967,6 @@ void CRFProcessDeformation::UpdateIterativeStep(const double damp,
 	eqs_x = eqs->x;
 #endif
 
-	if (type == 41 && fem_dm->dynamic)
-	{
-		for (i = 0; i < pcs_number_of_primary_nvals; i++)
-		{
-			number_of_nodes = num_nodes_p_var[i];
-			//
-			if (u_type == 0)
-			{
-				ColIndex = p_var_index[i] - 1;
-				for (j = 0; j < number_of_nodes; j++)
-					SetNodeValue(j, ColIndex, GetNodeValue(j, ColIndex) +
-					                              eqs_x[j + shift] * damp);
-				shift += number_of_nodes;
-			}
-			else
-			{
-				ColIndex = p_var_index[i];
-				for (j = 0; j < number_of_nodes; j++)
-					SetNodeValue(j, ColIndex,
-					             GetNodeValue(j, ColIndex) +
-					                 GetNodeValue(j, ColIndex - 1));
-			}
-		}
-		return;
-	}
-
 	//
 	for (i = 0; i < problem_dimension_dm; i++)
 	{
@@ -1089,7 +1057,7 @@ void CRFProcessDeformation::InitializeNewtonSteps(const bool ini_excav)
 		end = problem_dimension_dm;
 
 	/// Dynamic: plus p_0 = 0
-	if (type == 41 && !fem_dm->dynamic)
+	if (type == 41)
 	{
 		// p_1 = 0
 		for (i = 0; i < pcs_number_of_primary_nvals; i++)
@@ -1121,8 +1089,6 @@ void CRFProcessDeformation::InitializeNewtonSteps(const bool ini_excav)
 			number_of_nodes = num_nodes_p_var[i];
 			for (j = 0; j < number_of_nodes; j++)
 				SetNodeValue(j, Col, 0.0);
-
-			if (fem_dm->dynamic) continue;
 		}
 	}
 	/// Excavation: plus u_1 = 0;
@@ -2013,10 +1979,7 @@ void CRFProcessDeformation::GlobalAssembly()
 		if (!(m_num->nls_method == FiniteElement::NL_JFNK && ite_steps == 1))
 		{
 			// Apply Dirchlete bounday condition
-			if (!fem_dm->dynamic)
-				IncorporateBoundaryConditions();
-			else
-				CalcBC_or_SecondaryVariable_Dynamics(true);
+			IncorporateBoundaryConditions();
 		}
 //  {			 MXDumpGLS("rf_pcs_dm1.txt",1,eqs->b,eqs->x);  //abort();}
 //

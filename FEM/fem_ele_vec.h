@@ -125,8 +125,6 @@ private:
 	process::CRFProcessDeformation* pcs;
 	::CRFProcess* h_pcs;
 	::CRFProcess* t_pcs;
-	// excavation
-	bool excavation;  // 12.2009. WW
 	//
 	int ns;  // Number of stresses components
 	// Flow coupling
@@ -237,7 +235,6 @@ private:
 
 	// Compute the local finite element matrices
 	void LocalAssembly_continuum(const int update);
-	void LocalAssembly_EnhancedStrain(const int update);
 
 	// Assembly local stiffness matrix
 	void GlobalAssembly_Stiffness();
@@ -267,7 +264,6 @@ private:
 
 	// Dynamic
 	// Damping parameters
-	bool dynamic;
 	int* Idx_Vel;
 	double beta2, bbeta1;
 	// Auxillarary vector
