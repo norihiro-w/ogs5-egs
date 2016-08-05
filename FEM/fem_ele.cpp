@@ -431,7 +431,6 @@ double CElement::interpolate(double* nodalVal, const int order) const
 **************************************************************************/
 double CElement::interpolate(const int idx, CRFProcess* m_pcs, const int order)
 {
-	int i;
 	int nn = nnodes;
 	double* inTerpo = shapefct;
 	double val = 0.0;
@@ -441,7 +440,7 @@ double CElement::interpolate(const int idx, CRFProcess* m_pcs, const int order)
 		inTerpo = shapefctHQ;
 	}
 	//
-	for (i = 0; i < nn; i++)
+	for (int i = 0; i < nn; i++)
 		node_val[i] = m_pcs->GetNodeValue(nodes[i], idx);
 	for (int i = 0; i < nn; i++)
 		val += node_val[i] * inTerpo[i];
@@ -699,23 +698,23 @@ void CElement::UnitCoordinates(double* realXYZ)
 
    08/2005     WW        Prism element
  **************************************************************************/
-void CElement::SetGaussPoint(const int gp, int& gp_r, int& gp_s, int& gp_t)
+void CElement::SetGaussPoint(const int gp_, int& gp_r, int& gp_s, int& gp_t)
 {
 	switch (MeshElement->GetElementType())
 	{
 		case MshElemType::LINE:  // Line
-			gp_r = gp;
+			gp_r = gp_;
 			unit[0] = MXPGaussPkt(nGauss, gp_r);
 			return;
 		case MshElemType::QUAD:  // Quadralateral
-			gp_r = (int)(gp / nGauss);
-			gp_s = gp % nGauss;
+			gp_r = (int)(gp_ / nGauss);
+			gp_s = gp_ % nGauss;
 			unit[0] = MXPGaussPkt(nGauss, gp_r);
 			unit[1] = MXPGaussPkt(nGauss, gp_s);
 			return;
 		case MshElemType::HEXAHEDRON:  // Hexahedra
-			gp_r = (int)(gp / (nGauss * nGauss));
-			gp_s = (gp % (nGauss * nGauss));
+			gp_r = (int)(gp_ / (nGauss * nGauss));
+			gp_s = (gp_ % (nGauss * nGauss));
 			gp_t = gp_s % nGauss;
 			gp_s /= nGauss;
 			unit[0] = MXPGaussPkt(nGauss, gp_r);
@@ -723,25 +722,25 @@ void CElement::SetGaussPoint(const int gp, int& gp_r, int& gp_s, int& gp_t)
 			unit[2] = MXPGaussPkt(nGauss, gp_t);
 			return;
 		case MshElemType::TRIANGLE:  // Triangle
-			SamplePointTriHQ(gp, unit);
+			SamplePointTriHQ(gp_, unit);
 			break;
 		case MshElemType::TETRAHEDRON:  // Tedrahedra
 			// To be flexible          SamplePointTet15(gp, unit);
-			SamplePointTet5(gp, unit);
+			SamplePointTet5(gp_, unit);
 			return;
 		case MshElemType::PRISM:  // Prism
-			gp_r = gp % nGauss;
+			gp_r = gp_ % nGauss;
 			SamplePointTriHQ(gp_r, unit);
 			//
 			gp_s = nGaussPoints / nGauss;
-			gp_t = (int)(gp / nGauss);
+			gp_t = (int)(gp_ / nGauss);
 			unit[2] = MXPGaussPkt(gp_s, gp_t);
 			return;
 		case MshElemType::PYRAMID:  // Pyramid
 			if (Order == 1)
-				SamplePointPyramid5(gp, unit);
+				SamplePointPyramid5(gp_, unit);
 			else
-				SamplePointPyramid8(gp,
+				SamplePointPyramid8(gp_,
 				                    unit);  // SamplePointPyramid13(gp, unit);
 			return;
 		default:
@@ -767,10 +766,10 @@ void CElement::SetGaussPoint(const int gp, int& gp_r, int& gp_s, int& gp_t)
    02/2005 OK case 1
    02/2007 WW Abstract the calcultion of Gauss point in one function
  **************************************************************************/
-double CElement::GetGaussData(int gp, int& gp_r, int& gp_s, int& gp_t)
+double CElement::GetGaussData(int gp_, int& gp_r, int& gp_s, int& gp_t)
 {
 	double fkt = 0.0;
-	SetGaussPoint(gp, gp_r, gp_s, gp_t);
+	SetGaussPoint(gp_, gp_r, gp_s, gp_t);
 	switch (MeshElement->GetElementType())
 	{
 		case MshElemType::LINE:  // Line
@@ -823,7 +822,7 @@ double CElement::GetGaussData(int gp, int& gp_r, int& gp_s, int& gp_t)
  **************************************************************************/
 void CElement::FaceIntegration(double* NodeVal)
 {
-	int i, gp, gp_r, gp_s;
+	int i, gp_, gp_r, gp_s;
 	double fkt = 0.0, det, val;
 	double* sf = shapefct;
 
@@ -839,7 +838,7 @@ void CElement::FaceIntegration(double* NodeVal)
 	for (i = 0; i < nNodes; i++)
 		dbuff[i] = 0.0;
 	// Loop over Gauss points
-	for (gp = 0; gp < nGaussPoints; gp++)
+	for (gp_ = 0; gp_ < nGaussPoints; gp_++)
 	{
 		//---------------------------------------------------------
 		//  Get local coordinates and weights
@@ -848,17 +847,17 @@ void CElement::FaceIntegration(double* NodeVal)
 		switch (MeshElement->GetElementType())
 		{
 			case MshElemType::LINE:  // Line
-				gp_r = gp;
+				gp_r = gp_;
 				unit[0] = MXPGaussPkt(nGauss, gp_r);
 				fkt = 0.5 * det * MXPGaussFkt(nGauss, gp_r);
 				break;
 			case MshElemType::TRIANGLE:  // Triangle
-				SamplePointTriHQ(gp, unit);
+				SamplePointTriHQ(gp_, unit);
 				fkt = 2.0 * det * unit[2];  // Weights
 				break;
 			case MshElemType::QUAD:  // Quadralateral
-				gp_r = (int)(gp / nGauss);
-				gp_s = gp % nGauss;
+				gp_r = (int)(gp_ / nGauss);
+				gp_s = gp_ % nGauss;
 				unit[0] = MXPGaussPkt(nGauss, gp_r);
 				unit[1] = MXPGaussPkt(nGauss, gp_s);
 				fkt = 0.25 * det * MXPGaussFkt(nGauss, gp_r) *
@@ -895,7 +894,7 @@ void CElement::FaceIntegration(double* NodeVal)
 
 void CElement::DomainIntegration(double* NodeVal)
 {
-	int i, gp, gp_r, gp_s, gp_t;
+	int i, gp_, gp_r, gp_s, gp_t;
 	double fkt = 0.0, val;
 	double* sf = shapefct;
 
@@ -911,13 +910,13 @@ void CElement::DomainIntegration(double* NodeVal)
 	for (i = 0; i < nNodes; i++)
 		dbuff[i] = 0.0;
 	// Loop over Gauss points
-	for (gp = 0; gp < nGaussPoints; gp++)
+	for (gp_ = 0; gp_ < nGaussPoints; gp_++)
 	{
 		//---------------------------------------------------------
 		//  Get local coordinates and weights
 		//  Compute Jacobian matrix and its determinate
 		//---------------------------------------------------------
-		fkt = GetGaussData(gp, gp_r, gp_s, gp_t);
+		fkt = GetGaussData(gp_, gp_r, gp_s, gp_t);
 
 		ComputeShapefct(Order);
 
@@ -935,7 +934,7 @@ void CElement::DomainIntegration(double* NodeVal)
 
 void CElement::CalcFaceMass(double* mass)
 {
-	int i, j, gp, gp_r, gp_s;
+	int i, j, gp_, gp_r, gp_s;
 	double fkt = 0.0, det;
 	//	double* sf = shapefct;
 
@@ -951,7 +950,7 @@ void CElement::CalcFaceMass(double* mass)
 	for (i = 0; i < nNodes; i++)
 		dbuff[i] = 0.0;
 	// Loop over Gauss points
-	for (gp = 0; gp < nGaussPoints; gp++)
+	for (gp_ = 0; gp_ < nGaussPoints; gp_++)
 	{
 		//---------------------------------------------------------
 		//  Get local coordinates and weights
@@ -960,17 +959,17 @@ void CElement::CalcFaceMass(double* mass)
 		switch (MeshElement->GetElementType())
 		{
 			case MshElemType::LINE:  // Line
-				gp_r = gp;
+				gp_r = gp_;
 				unit[0] = MXPGaussPkt(nGauss, gp_r);
 				fkt = 0.5 * det * MXPGaussFkt(nGauss, gp_r);
 				break;
 			case MshElemType::TRIANGLE:  // Triangle
-				SamplePointTriHQ(gp, unit);
+				SamplePointTriHQ(gp_, unit);
 				fkt = 2.0 * det * unit[2];  // Weights
 				break;
 			case MshElemType::QUAD:  // Quadralateral
-				gp_r = (int)(gp / nGauss);
-				gp_s = gp % nGauss;
+				gp_r = (int)(gp_ / nGauss);
+				gp_s = gp_ % nGauss;
 				unit[0] = MXPGaussPkt(nGauss, gp_r);
 				unit[1] = MXPGaussPkt(nGauss, gp_s);
 				fkt = 0.25 * det * MXPGaussFkt(nGauss, gp_r) *
@@ -1343,7 +1342,7 @@ void CElement::SetExtropoGaussPoints(const int i)
  **************************************************************************/
 double CElement::CalcXi_p()
 {
-	double Xi_p = 0.0;
+	double Xi_p2 = 0.0;
 	MshElemType::type ElementType = MeshElement->GetElementType();
 	if (ElementType == MshElemType::QUAD ||
 	    ElementType == MshElemType::HEXAHEDRON)
@@ -1352,13 +1351,13 @@ double CElement::CalcXi_p()
 		for (gp = 0; gp < nGauss; gp++)
 		{
 			r = MXPGaussPkt(nGauss, gp);
-			if (fabs(r) > Xi_p) Xi_p = fabs(r);
+			if (fabs(r) > Xi_p2) Xi_p2 = fabs(r);
 		}
-		r = 1.0 / Xi_p;
-		Xi_p = r;
+		r = 1.0 / Xi_p2;
+		Xi_p2 = r;
 	}
 
-	return Xi_p;
+	return Xi_p2;
 }
 
 /***************************************************************************

@@ -37,11 +37,11 @@ namespace MeshLib
    Programing:
    03/2005 OK Implementation
 **************************************************************************/
-CFEMesh::CFEMesh(GEOLIB::GEOObjects* geo_obj, std::string* geo_name)
+CFEMesh::CFEMesh(GEOLIB::GEOObjects* geo_obj, std::string* geo_name_)
     : max_mmp_groups(0),
       msh_max_dim(0),
       _geo_obj(geo_obj),
-      _geo_name(geo_name),
+      _geo_name(geo_name_),
       _ele_type(MshElemType::INVALID),
       _n_msh_layer(0),
       _cross_section(false),
@@ -868,18 +868,14 @@ void CFEMesh::constructMeshGrid()
 **************************************************************************/
 void CFEMesh::GenerateHighOrderNodes()
 {
-	int j, k, ii;
-	int nnodes0, nedges0, nedges;
-	long e, ei, ee, e_size_l;
 	int edgeIndex_loc0[2];
-	bool done;
-	double x0 = 0.0, y0 = 0.0, z0 = 0.0;  // OK411
+	double x0 = 0.0, y0 = 0.0, z0 = 0.0;
 
 	// Set neighbors of node. All elements, even in deactivated subdomains, are
 	// taken into account here.
-	for (e = 0; e < (long)nod_vector.size(); e++)
+	for (size_t e = 0; e < nod_vector.size(); e++)
 		nod_vector[e]->getConnectedElementIDs().clear();
-	done = false;
+	bool done = false;
 	size_t ele_vector_size(ele_vector.size());
 	for (size_t e = 0; e < ele_vector_size; e++)
 	{
@@ -915,34 +911,34 @@ void CFEMesh::GenerateHighOrderNodes()
 		thisElem0 = ele_vector[e];
 		if (thisElem0->GetElementType() == MshElemType::LINE) continue;  // NW
 
-		nnodes0 = thisElem0->nnodes;  // Number of nodes for linear element
+		auto nnodes0 = thisElem0->nnodes;  // Number of nodes for linear element
 		//      thisElem0->GetNodeIndeces(node_index_glb0);
 		for (int i = 0; i < nnodes0; i++)  // Nodes
 			e_nodes0[i] = thisElem0->GetNode(i);
 		// --------------------------------
 		// Edges
-		nedges0 = thisElem0->GetEdgesNumber();
+		auto const nedges0 = thisElem0->GetEdgesNumber();
 		// Check if there is any neighbor that has new middle points
-		for (int i = 0; i < nedges0; i++)
+		for (size_t i = 0; i < nedges0; i++)
 		{
 			thisEdge0 = thisElem0->GetEdge(i);
 			thisElem0->GetLocalIndicesOfEdgeNodes(i, edgeIndex_loc0);
 			// Check neighbors
 			done = false;
-			for (k = 0; k < 2; k++)
+			for (int k = 0; k < 2; k++)
 			{
-				e_size_l = (long)e_nodes0[edgeIndex_loc0[k]]
+				auto const e_size_l = (long)e_nodes0[edgeIndex_loc0[k]]
 				               ->getConnectedElementIDs()
 				               .size();
-				for (ei = 0; ei < e_size_l; ei++)
+				for (long ei = 0; ei < e_size_l; ei++)
 				{
 					size_t ee(e_nodes0[edgeIndex_loc0[k]]
 					              ->getConnectedElementIDs()[ei]);
 					if (ee == e) continue;
 					thisElem = ele_vector[ee];
-					nedges = thisElem->GetEdgesNumber();
+					auto const nedges = thisElem->GetEdgesNumber();
 					// Edges of neighbors
-					for (ii = 0; ii < nedges; ii++)
+					for (size_t ii = 0; ii < nedges; ii++)
 					{
 						thisEdge = thisElem->GetEdge(ii);
 						if (*thisEdge0 == *thisEdge)
@@ -1015,7 +1011,7 @@ void CFEMesh::GenerateHighOrderNodes()
 			thisElem0 = ele_vector[e];
 			if (thisElem0->GetElementType() != MshElemType::LINE) continue;
 
-			nnodes0 = thisElem0->nnodes;
+			auto nnodes0 = thisElem0->nnodes;
 			for (int i = 0; i < nnodes0; i++)
 				e_nodes0[i] = thisElem0->GetNode(i);
 
@@ -1027,24 +1023,24 @@ void CFEMesh::GenerateHighOrderNodes()
 				// look for adjacent solid elements
 				if (thisElem->GetElementType() == MshElemType::LINE) continue;
 
-				for (j = 0; j < thisElem->nnodes; j++)
+				for (int j = 0; j < thisElem->nnodes; j++)
 					e_nodes[j] = thisElem->GetNode(j);
-				nedges = thisElem->GetEdgesNumber();
+				auto const nedges = thisElem->GetEdgesNumber();
 				// search a edge connecting to this line element
-				for (j = 0; j < nedges; j++)
+				for (size_t j = 0; j < nedges; j++)
 				{
 					thisEdge = thisElem->GetEdge(j);
 					thisElem->GetLocalIndicesOfEdgeNodes(j, edgeIndex_loc0);
 					// Check neighbors
-					for (k = 0; k < 2; k++)
+					for (int k = 0; k < 2; k++)
 					{
 						// OK411 CNode *tmp_nod = e_nodes[edgeIndex_loc0[k]];
-						e_size_l = (long)e_nodes[edgeIndex_loc0[k]]
+						auto const e_size_l = (long)e_nodes[edgeIndex_loc0[k]]
 						               ->getConnectedElementIDs()
 						               .size();
-						for (ei = 0; ei < e_size_l; ei++)
+						for (long ei = 0; ei < e_size_l; ei++)
 						{
-							ee = e_nodes[edgeIndex_loc0[k]]
+							auto ee = e_nodes[edgeIndex_loc0[k]]
 							         ->getConnectedElementIDs()[ei];
 							if (ele_vector[ee] != thisElem0) continue;
 							// the edge is found now
@@ -1089,7 +1085,7 @@ void CFEMesh::GenerateHighOrderNodes()
 		}
 	//
 	NodesNumber_Quadratic = (long)nod_vector.size();
-	for (e = NodesNumber_Linear; (size_t)e < NodesNumber_Quadratic; e++)
+	for (auto e = NodesNumber_Linear; e < NodesNumber_Quadratic; e++)
 	{
 #if !defined(USE_PETSC)  // && !defined(USE_OTHER Parallel solver lib)
 		nod_vector[e]->SetEquationIndex(e);
@@ -1103,7 +1099,7 @@ void CFEMesh::GenerateHighOrderNodes()
 		{
 			done = false;
 			aNode = thisElem0->GetNode(i);
-			for (k = 0; k < (int)aNode->getConnectedElementIDs().size(); k++)
+			for (int k = 0; k < (int)aNode->getConnectedElementIDs().size(); k++)
 				if (e == aNode->getConnectedElementIDs()[k])
 				{
 					done = true;

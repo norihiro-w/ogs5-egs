@@ -170,8 +170,8 @@ private:
 private:
 	// Limits and coefficients for free Helmholtz Energy, NB JUN 09
 	int limit[5];
-	double k[2][8];
-	double K[14][56];
+	double k_[2][8];
+	double K_[14][56];
 
 public:
 	// FEM

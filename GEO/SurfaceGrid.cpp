@@ -189,12 +189,12 @@ SurfaceGrid::SurfaceGrid(Surface const* const sfc)
 
 		for (size_t m(1); m < 3; m++)
 		{
-			Point const& pnt(*(tri->getPoint(m)));
-			const size_t i(static_cast<size_t>((pnt[0] - _min_pnt[0]) *
+			Point const& pnt2(*(tri->getPoint(m)));
+			const size_t i(static_cast<size_t>((pnt2[0] - _min_pnt[0]) *
 			                                   _inverse_step_sizes[0]));
-			const size_t j(static_cast<size_t>((pnt[1] - _min_pnt[1]) *
+			const size_t j(static_cast<size_t>((pnt2[1] - _min_pnt[1]) *
 			                                   _inverse_step_sizes[1]));
-			const size_t k(static_cast<size_t>((pnt[2] - _min_pnt[2]) *
+			const size_t k(static_cast<size_t>((pnt2[2] - _min_pnt[2]) *
 			                                   _inverse_step_sizes[2]));
 
 			if (i >= _n_steps[0] || j >= _n_steps[1] || k >= _n_steps[2])
@@ -244,9 +244,9 @@ bool SurfaceGrid::isPntInSurface(const double* pnt, double eps) const
 	                           k * _n_steps[0] * _n_steps[1]]);
 	bool nfound(true);
 	const size_t n_triangles(triangles.size());
-	for (size_t k(0); k < n_triangles && nfound; k++)
+	for (size_t kk(0); kk < n_triangles && nfound; kk++)
 	{
-		if (triangles[k]->containsPoint(pnt, eps))
+		if (triangles[kk]->containsPoint(pnt, eps))
 		{
 			nfound = false;
 		}

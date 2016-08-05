@@ -156,7 +156,6 @@ extern CGLPoint* GEOGetPointById(long);  // CC
 //........................................................................
 // GEO
 extern long GEOPointID();
-extern void GEO_Search_DoublePoints(double);  // TK
 extern std::vector<CGLPoint*> GEOLIB_SetGLIPoints_Vector(
     std::vector<CGLPoint*> gl_point);  // TK
 extern double AngleSumPointInsideTriangle(double* point,

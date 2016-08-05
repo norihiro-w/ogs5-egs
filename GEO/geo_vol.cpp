@@ -202,7 +202,7 @@ std::ios::pos_type CGLVolume::Read(std::ifstream* gli_file)
 void CGLVolume::Write(std::string path_name)
 {
 	const char* char_string;
-	Surface* m_sfc = NULL;
+	Surface* sfc = NULL;
 	//-----------------------------------------------------------------------
 	// File handling
 	FILE* gli_file = NULL;
@@ -230,8 +230,8 @@ void CGLVolume::Write(std::string path_name)
 			    surface_vector.begin();            // CC
 			while (p_sfc != surface_vector.end())  // CC
 			{
-				m_sfc = *p_sfc;
-				fprintf(gli_file, "  %s\n", m_sfc->name.c_str());
+				sfc = *p_sfc;
+				fprintf(gli_file, "  %s\n", sfc->name.c_str());
 				++p_sfc;
 			}
 		}
