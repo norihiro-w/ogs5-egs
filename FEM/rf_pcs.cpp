@@ -1430,27 +1430,24 @@ void CRFProcess::ConfigureCouplingForLocalAssemblier()
 **************************************************************************/
 void PCSDestroyAllProcesses(void)
 {
-	CRFProcess* m_process = NULL;
-	long i;
-	int j;
-//----------------------------------------------------------------------
-#ifdef NEW_EQS           // WW
-	for (j = 0; j < (int)EQS_Vector.size(); j++)   // WW
-	{
-		if (EQS_Vector[j]) delete EQS_Vector[j];
-		EQS_Vector[j] = NULL;
-	}
+
+#ifdef NEW_EQS
+	for (auto p : EQS_Vector)
+		delete p;
+	EQS_Vector.clear();
+	for (auto p : SparseTable_Vector)
+		delete p;
+	SparseTable_Vector.clear();
 #endif
 
 	//----------------------------------------------------------------------
 	// PCS
+	CRFProcess* m_process = NULL;
+	long i;
+	int j;
 	for (j = 0; j < (int)pcs_vector.size(); j++)
 	{
 		m_process = pcs_vector[j];
-#ifdef USE_MPI  // WW
-		//  if(myrank==0)
-		m_process->Print_CPU_time_byAssembly();
-#endif
 		if (m_process->pcs_nval_data)
 			m_process->pcs_nval_data =
 			    (PCS_NVAL_DATA*)Free(m_process->pcs_nval_data);
@@ -1465,11 +1462,11 @@ void PCSDestroyAllProcesses(void)
 			    (double*)Free(k->values[m_process->pcs_number]);
 		}
 #endif
-		if (m_process->TempArry)  // MX
+		if (m_process->TempArry)
 			m_process->TempArry = (double*)Free(m_process->TempArry);
 		delete (m_process);
 	}
-	pcs_vector.clear();  // WW
+	pcs_vector.clear();
 	//----------------------------------------------------------------------
 	// MSH
 	for (i = 0; i < (long)fem_msh_vector.size(); i++)
@@ -1478,9 +1475,7 @@ void PCSDestroyAllProcesses(void)
 		fem_msh_vector[i] = NULL;
 	}
 	fem_msh_vector.clear();
-//----------------------------------------------------------------------
 
-	// WW
 	//----------------------------------------------------------------------
 	// ELE
 	for (i = 0; i < (long)ele_val_vector.size(); i++)
@@ -1492,15 +1487,15 @@ void PCSDestroyAllProcesses(void)
 		delete ic_vector[i];
 	ic_vector.clear();
 	//----------------------------------------------------------------------
-	MSPDelete();                 // WW
-	BCDelete();                  // WW
-	ICDelete();                  // HS
-	BCGroupDelete();             // HS
-	STDelete();                  // WW
-	STGroupsDelete();            // HS
-	GEOLIB_Clear_GeoLib_Data();  // HS
+	MSPDelete();
+	BCDelete();
+	ICDelete();
+	BCGroupDelete();
+	STDelete();
+	STGroupsDelete();
+	GEOLIB_Clear_GeoLib_Data();
 	//......................................................................
-	TIMDelete();  // OK
+	TIMDelete();
 	OUTDelete();
 	NUMDelete();
 	MFPDelete();
