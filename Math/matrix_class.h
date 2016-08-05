@@ -10,8 +10,6 @@
 #ifndef matrix_class_INC
 #define matrix_class_INC
 
-#include "Configure.h"
-
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -29,13 +27,14 @@ namespace Math_Group
 class Matrix
 {
 public:
-	Matrix(size_t rows, size_t cols = 1);
+	explicit Matrix(size_t rows, size_t cols = 1);
 	Matrix();
-	explicit Matrix(const Matrix& m);
+	Matrix(const Matrix& m);
+	virtual ~Matrix();
+
 	//
 	void resize(size_t rows, size_t cols = 1);
 	//
-	virtual ~Matrix();
 	void ReleaseMemory();  // 06.2010. WW
 
 	// Operators
