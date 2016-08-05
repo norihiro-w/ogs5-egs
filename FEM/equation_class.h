@@ -109,7 +109,7 @@ private:
 
 	// Operators
 	double dot(const double* xx, const double* yy);
-	inline double Norm(const double* xx) { return sqrt(dot(xx, xx)); }
+	inline double Norm(const double* x_) { return sqrt(dot(x_, x_)); }
 	inline bool CheckNormRHS(const double normb_new);
 
 #ifdef MKL

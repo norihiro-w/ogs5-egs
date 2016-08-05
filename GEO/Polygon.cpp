@@ -434,17 +434,17 @@ void Polygon::splitPolygonAtPoint(
 			// create two closed polylines
 			GEOLIB::Polygon* polygon0(
 			    new GEOLIB::Polygon((*polygon_it)->getPointsVec()));
-			for (size_t k(0); k <= idx0; k++)
-				polygon0->addPoint((*polygon_it)->getPointID(k));
-			for (size_t k(idx1 + 1); k < (*polygon_it)->getNumberOfPoints();
-			     k++)
-				polygon0->addPoint((*polygon_it)->getPointID(k));
+			for (size_t kk(0); kk <= idx0; kk++)
+				polygon0->addPoint((*polygon_it)->getPointID(kk));
+			for (size_t kk(idx1 + 1); kk < (*polygon_it)->getNumberOfPoints();
+			     kk++)
+				polygon0->addPoint((*polygon_it)->getPointID(kk));
 			polygon0->initialise();
 
 			GEOLIB::Polygon* polygon1(
 			    new GEOLIB::Polygon((*polygon_it)->getPointsVec()));
-			for (size_t k(idx0); k <= idx1; k++)
-				polygon1->addPoint((*polygon_it)->getPointID(k));
+			for (size_t kk(idx0); kk <= idx1; kk++)
+				polygon1->addPoint((*polygon_it)->getPointID(kk));
 			polygon1->initialise();
 
 			// remove original polygon and add two new polygons

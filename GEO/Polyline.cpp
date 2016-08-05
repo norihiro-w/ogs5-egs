@@ -110,8 +110,8 @@ void Polyline::insertPoint(size_t pos, size_t pnt_id)
 				double len_seg1(sqrt(sqrDist(
 				    _ply_pnts[_ply_pnt_ids[pos + 1]], _ply_pnts[pnt_id])));
 				_length[pos - 1] = dist_until_now + len_seg0;
-				std::vector<double>::iterator it(_length.begin() + pos);
-				_length.insert(it, _length[pos - 1] + len_seg1);
+				std::vector<double>::iterator it2(_length.begin() + pos);
+				_length.insert(it2, _length[pos - 1] + len_seg1);
 			}
 		}
 	}

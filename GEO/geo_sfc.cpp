@@ -354,7 +354,6 @@ void Surface::output(FILE* geo_file, int& p_index, int& l_index, int& pl_index,
 	for (i = 0; i < lineIndex_size; i++)
 	{
 		FilePrintInt(geo_file, lineIndex[i]);
-		int lineIndex_size = (int)lineIndex.size();
 		if (i != lineIndex_size - 1) FilePrintString(geo_file, ", ");
 	}
 	FilePrintString(geo_file, "};");
@@ -1652,9 +1651,9 @@ void Surface::PolygonPointVector()
 	CGLPoint* gl_point = NULL;
 	CGLPolyline* gl_polyline = NULL;
 	// CC 02/2008-----------------------------------------------begin
-	vector<CGLPolyline*>::iterator p1 = polyline_of_surface_vector.begin();
 	if (polyline_of_surface_vector.size() == 1)
 	{
+		vector<CGLPolyline*>::iterator p1 = polyline_of_surface_vector.begin();
 		// Closed polyline
 		gl_polyline = *p1;
 		vector<CGLPoint*>::iterator pt = gl_polyline->point_vector.begin();

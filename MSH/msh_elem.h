@@ -157,8 +157,8 @@ public:
 	 */
 	const Math_Group::vec<long>& GetNodeIndeces() const { return nodes_index; }
 
-	long GetNodeIndex(int index) const { return nodes_index[index]; }
-	void SetNodeIndex(int index, long g_index) { nodes_index[index] = g_index; }
+	long GetNodeIndex(int i) const { return nodes_index[i]; }
+	void SetNodeIndex(int i, long g_index) { nodes_index[i] = g_index; }
 
 	void GetNodes(Math_Group::vec<CNode*>& ele_nodes)
 	{
@@ -172,9 +172,9 @@ public:
 			nodesVec.push_back(nodes[i]);
 	}
 
-	CNode* GetNode(int index) { return nodes[index]; }
+	CNode* GetNode(int i) { return nodes[i]; }
 
-	CNode const* GetNode(int index) const { return nodes[index]; }
+	CNode const* GetNode(int i) const { return nodes[i]; }
 
 	void SetNodes(Math_Group::vec<CNode*>& ele_nodes, bool ReSize = false);
 
@@ -201,7 +201,7 @@ public:
 		for (size_t i = 0; i < nedges; i++)
 			ele_edges[i] = edges[i];
 	}
-	CEdge* GetEdge(int index) { return edges[index]; }
+	CEdge* GetEdge(int i) { return edges[i]; }
 	void SetEdges(Math_Group::vec<CEdge*>& ele_edges)
 	{
 		for (size_t i = 0; i < nedges; i++)
@@ -247,7 +247,7 @@ public:
 		for (size_t i = 0; i < nfaces; i++)
 			ele_neighbors[i] = neighbors[i];
 	}
-	CElem* GetNeighbor(int index) { return neighbors[index]; }
+	CElem* GetNeighbor(int i) { return neighbors[i]; }
 
 	//------------------------------------------------------------------
 	// Coordinates transform

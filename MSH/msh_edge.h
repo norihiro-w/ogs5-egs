@@ -45,7 +45,7 @@ public:
 #ifndef OGS_ONLY_TH
 	int GetJoint() const { return joint; }  // PCH
 
-	double GetVelocity(size_t index) { return velocity[index]; }  // PCH
+	double GetVelocity(size_t i) { return velocity[i]; }  // PCH
 #endif
 
 	// Set functions
@@ -54,7 +54,7 @@ public:
 		for (int i = 0; i < 3; i++)
 			nodes_of_edges[i] = Nodes[i];
 	}
-	void SetNode(int index, CNode* aNode) { nodes_of_edges[index] = aNode; }
+	void SetNode(int i, CNode* aNode) { nodes_of_edges[i] = aNode; }
 #ifndef OGS_ONLY_TH
 	void SetJoint(int i) { joint = i; }  // PCH
 
@@ -81,7 +81,7 @@ public:
 	// OK
 	void GetEdgeMidPoint(double* edge_vector);
 	size_t GetPatchIndex() const { return patch_index; }
-	void SetPatchIndex(size_t index) { patch_index = index; }
+	void SetPatchIndex(size_t i) { patch_index = i; }
 
 private:
 	/**

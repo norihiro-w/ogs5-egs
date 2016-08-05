@@ -76,9 +76,9 @@ public:
 	                                             // dof
 	double nls_plasticity_local_tolerance;
 	int nls_jacobian_level;
-	void setNonLinearErrorMethod(FiniteElement::ErrorMethod nls_method)
+	void setNonLinearErrorMethod(FiniteElement::ErrorMethod err_method)
 	{
-		_pcs_nls_error_method = nls_method;
+		_pcs_nls_error_method = err_method;
 	}
 	FiniteElement::ErrorMethod getNonLinearErrorMethod() const
 	{
