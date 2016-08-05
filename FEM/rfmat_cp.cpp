@@ -38,9 +38,6 @@
 #include "rf_pcs.h"
 #include "rf_tim_new.h"
 #include "tools.h"
-#ifdef GEM_REACT
-#include "rf_REACT_GEM.h"
-#endif
 
 using SolidProp::CSolidProperties;
 using namespace std;
@@ -698,15 +695,9 @@ void CompProperties::Write(ofstream* rfe_file)
 function
 
 *************************************************************************/
-#ifdef GEM_REACT
-double CompProperties::CalcDiffusionCoefficientCP(long index,
-                                                  double theta,
-                                                  CRFProcess* m_pcs)
-#else
 double CompProperties::CalcDiffusionCoefficientCP(long /*index*/,
                                                   double /*theta*/,
                                                   CRFProcess* /*m_pcs*/)
-#endif
 {
 	//	int p_idx = -1, t_idx = -1;
 	/*int dependence = 0; */
@@ -717,19 +708,8 @@ double CompProperties::CalcDiffusionCoefficientCP(long /*index*/,
 	double* k = NULL;
 	double Dm;
 // static long *element_nodes;
-#ifdef GEM_REACT
-	static int count_nodes;
-	// TF unused variable - fix a compiler warning
-	//   static double eta = 0.0;                       //, theta = 1.0;
-	double porosity;
-	int i;
-#endif
 // static int p_ind, t_ind;
 
-#ifdef GEM_REACT
-	const long group(m_pcs->m_msh->ele_vector[index]->GetPatchIndex());
-	CMediumProperties* m_mat_mp(mmp_vector[group]);
-#endif
 
 	k = diffusion_model_values;
 

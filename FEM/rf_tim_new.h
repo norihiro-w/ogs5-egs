@@ -153,10 +153,6 @@ public:
 	//
 	// Dynamic time control methods JT2012
 	bool isDynamicTimeFailureSuggested(CRFProcess* this_pcs = NULL);
-//
-#ifdef GEM_REACT
-	double MaxTimeStep();
-#endif
 	//
 	// WW bool GetTimeStepTargetVector(); // kg44
 	double CheckCourant();  // CMCD

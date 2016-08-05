@@ -59,17 +59,6 @@
 #include "rf_st_new.h"
 #include "tools.h"
 
-#ifdef GEM_REACT
-// GEMS chemical solver
-#include "rf_REACT_GEM.h"
-REACT_GEM* m_vec_GEM;
-#endif
-#ifdef BRNS
-// BRNS chemical solver
-#include "rf_REACT_BRNS.h"
-REACT_BRNS* m_vec_BRNS;
-#endif
-
 #if defined(USE_PETSC)
 #include "PETSC/PETScLinearSolver.h"
 #elif defined(NEW_EQS)
@@ -295,7 +284,6 @@ CRFProcess::CRFProcess(void)
 	eqs_new = NULL;
 	configured_in_nonlinearloop = false;
 #endif
-	flag_couple_GEMS = 0;    // 11.2009 HS
 	femFCTmode = false;      // NW
 	this->Gl_ML = NULL;      // NW
 	this->Gl_Vec = NULL;     // NW
@@ -4331,41 +4319,6 @@ void CRFProcess::CopyU_n()
 	}
 }
 
-/*************************************************************************
-   ROCKFLOW - Function:
-   Task: Calculate element matrices
-   Programming:
-   05/2003 OK Implementation
-   09/2005 OK gas flow removed
-   last modified:
- **************************************************************************/
-void CRFProcess::CalculateElementMatrices(void)
-{
-	switch (this->type)
-	{
-		case 1:  // SM
-			break;
-		case 2:  // MTM2
-			break;
-		case 3:  // HTM
-			break;
-		case 5:  // Gas flow
-			break;
-		case 11:
-			break;
-		case 12:  // MMP
-			break;
-		case 13:  // MPC
-			break;
-		case 66:  // OF
-			break;
-		default:
-			DisplayMsgLn(
-			    "CalculateElementMatrices: no CalculateElementMatrices "
-			    "specified");
-			abort();
-	}
-}
 
 /*************************************************************************
    GeoSys-Function:
@@ -4904,25 +4857,6 @@ void CRFProcess::GlobalAssembly()
 
 // MXDumpGLS("rf_pcs1.txt",1,eqs->b,eqs->x); //abort();
 
-#ifdef GEM_REACT
-	if (getProcessType() == FiniteElement::MASS_TRANSPORT &&
-	    aktueller_zeitschritt > 1)
-	{  // JT->KG. New coupling system.
-		if (_problem->GetCPLMaxIterations() >
-		        1 ||  // Then there is a coupling on all processes
-		    (this->pcs_is_cpl_overlord &&
-		     this->m_num->cpl_max_iterations >
-		         1) ||  // This process (the overlord) controls coupling for
-		                // another (the underling) process.
-		    (this->pcs_is_cpl_underling &&
-		     this->cpl_overlord->m_num->cpl_max_iterations >
-		         1))  // This process (the underling) has a coupling with a
-		              // controlling (the overlord) process
-		{
-			// IncorporateSourceTerms_GEMS();
-		}
-	}
-#endif
 
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012.
 	eqs_new->AssembleRHS_PETSc(false);
@@ -5185,49 +5119,6 @@ void CRFProcess::AllocateLocalMatrixMemory()
 	}
 }
 
-
-/*************************************************************************
-   ROCKFLOW - Function:
-   Task: Assemble system matrix
-   Programming: 05/2003 OK Implementation
-   ToDo: Prototyp function
-   last modified:
- **************************************************************************/
-void CRFProcess::AssembleSystemMatrixNew(void)
-{
-	switch (type)
-	{
-		case 1:
-			// MakeGS_ASM_NEW(eqs->b,eqs->x,ddummy);
-			// SMAssembleMatrix(eqs->b,eqs->x,ddummy,this);
-			break;
-		case 2:  // MTM2
-			break;
-		case 3:  // HTM
-			break;
-		case 5:  // Gas flow
-			break;
-		case 11:
-			break;
-		case 12:
-			break;
-		case 13:
-			break;
-		case 66:
-			// MakeGS_ASM_NEW(eqs->b,eqs->x,ddummy);
-			// SMAssembleMatrix(eqs->b,eqs->x,ddummy,this);
-			break;
-		default:
-			DisplayMsgLn(
-			    "CalculateElementMatrices: no CalculateElementMatrices "
-			    "specified");
-			abort();
-	}
-	IncorporateSourceTerms();
-	IncorporateBoundaryConditions();
-	// SetLinearSolver(eqs);
-	// MXDumpGLS("global_matrix_dd.txt",1,eqs->b,eqs->x);
-}
 
 // WW
 /**************************************************************************
@@ -6589,72 +6480,6 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 
 	//====================================================================
 
-	// if coupling to GEMS
-	// exist----------------------------------------------------
-	// HS, added 11.2008
-	// KG44 03/03/2010 modified to hopefully soon work with parallel solvers
-	long gem_node_index = -1, glocalindex = -1;
-	if (flag_couple_GEMS == 1 && aktueller_zeitschritt > 1)
-	{
-		begin = 0;
-		if (rank == -1)  // serial version and also Version for PETSC!!
-
-			end = (long)Water_ST_vec.size();
-		else  // parallel version
-		{
-			end = 0;
-			if (rank_stgem_node_value_in_dom.size() > 0)
-				end = rank_stgem_node_value_in_dom[0];
-		}
-		// only when switch is on and not in the first time step
-		// loop over the Water_ST_vec vector,
-		// add the excess water to the right-hand-side of the equation
-		for (long i = begin; i < end; i++)
-		{
-			if (rank > -1)  // parallel version: stgem_node_value_in_dom and
-			                // stgem_local_index_in_dom contain only values for
-			                // the corresponding domain  == rank
-			{
-				//				cout << "rank " << rank ;
-				gindex = stgem_node_value_in_dom[i];  // contains indexes to
-				                                      // water-st_vec
-				//				cout << " gindex " << gindex << " i " << i <<
-				//endl
-				//;
-				// contains index to node
-				glocalindex = stgem_local_index_in_dom[i];
-//				cout << " gem_node_index " << gem_node_index << "\n";
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-
-				st_eqs_id.push_back(static_cast<int>(
-				    m_msh->nod_vector[glocalindex]->GetEquationIndex()));
-				st_eqs_value.push_back(Water_ST_vec[gindex].water_st_value);
-#else
-				eqs_rhs[glocalindex] += Water_ST_vec[gindex].water_st_value;
-#endif
-			}
-			else  // serial version
-			{
-				gem_node_index = Water_ST_vec[i].index_node;
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-				st_eqs_id.push_back(static_cast<int>(
-				    m_msh->nod_vector[gem_node_index]->GetEquationIndex()));
-				st_eqs_value.push_back(Water_ST_vec[i].water_st_value);
-
-#else
-				eqs_rhs[gem_node_index] += Water_ST_vec[i].water_st_value;
-#endif
-			}
-		}
-		// after finished adding to RHS, clear the vector
-		Water_ST_vec.clear();
-		if (rank > -1)
-		{
-			stgem_node_value_in_dom.clear();
-			stgem_local_index_in_dom.clear();
-			rank_stgem_node_value_in_dom.clear();
-		}
-	}
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
 	if (m_num->petsc_split_fields)
 	{
@@ -8299,11 +8124,6 @@ void CRFProcess::CopyTimestepELEValues(bool forward)
 	if (nvals < 2) return;  // then we don't have 2 time levels of anything
 	num_ele = (long)m_msh->ele_vector.size();
 //
-#ifdef GEM_REACT
-	// do nothing as porosity update is handled by REACT_GEMS after!! flow and
-	// transport solution
-	copy_porosity = false;
-#endif
 	//
 	for (j = 0; j < nvals - 1; j++)
 	{
@@ -10415,71 +10235,6 @@ void CRFProcess::EQSSolver(double* x)
 }
 #endif
 #endif
-
-#ifdef GEM_REACT
-void CRFProcess::IncorporateSourceTerms_GEMS(void)
-{
-	// Initialization
-	long it;       // iterator
-	long N_Nodes;  // Number of Nodes
-	int nDC;       // Number of mass transport components.
-	int i = 0;     // index of the component
-
-	// Get a vector pointing to the REACT_GEM class
-	if (m_vec_GEM)
-	{
-		// Get needed informations.----------------------------
-		// Number of Nodes
-		N_Nodes = (long)m_msh->GetNodesNumber(false);
-		// Number of DC
-		nDC = m_vec_GEM->nDC;
-		// Identify which PCS it is and its sequence in mcp.
-		i = this->pcs_component_number;
-		// ----------------------------------------------------
-
-		// Loop over all the nodes-----------------------------
-		for (it = 0; it < N_Nodes /*Number of Nodes*/; it++)
-		{
-// Adding the rate of concentration change to the right hand side of the
-// equation.
-#ifdef NEW_EQS  // 15.12.2008. WW
-			eqs_new->b[it] -= m_vec_GEM->m_xDC_Chem_delta[it * nDC + i] /
-			                  Tim->time_step_length;
-#elif defined(USE_PETSC)
-// eqs_new->b[it] -= m_vec_GEM->m_xDC_Chem_delta[it * nDC + i] /
-// Tim->time_step_length;
-#else
-			eqs->b[it] -= m_vec_GEM->m_xDC_Chem_delta[it * nDC + i] /
-			              Tim->time_step_length;
-#endif
-		}
-		// ----------------------------------------------------
-	}
-}
-#endif
-
-
-/*************************************************************************
-   ROCKFLOW - Function: CRFProcess::Add_GEMS_Water_ST
-   Task: add one more record into the vector Water_ST_vec
-   Programming:
-   11/2008 //HS Implementation
- **************************************************************************/
-
-void CRFProcess::Add_GEMS_Water_ST(long idx, double val)
-{
-	Water_ST_GEMS tmp_st;
-
-	tmp_st.index_node = idx;
-	tmp_st.water_st_value = val;
-
-	Water_ST_vec.push_back(tmp_st);
-}
-
-void CRFProcess::Clean_Water_ST_vec()
-{
-	Water_ST_vec.clear();
-}
 
 void CRFProcess::configMaterialParameters()
 {

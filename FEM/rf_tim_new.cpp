@@ -1516,21 +1516,6 @@ double CTimeDiscretization::SelfAdaptiveTimeControl(void)
 	ScreenMessage("-> calculate the next time step for %s\n",
 	              pcs_type_name.c_str());
 
-// First calculate maximum time step according to Neumann criteria
-#ifdef GEM_REACT
-	my_max_time_step = MMin(max_time_step, MaxTimeStep());
-	std::cout << "Self_Adaptive Time Step: max time step " << my_max_time_step
-	          << "\n";
-#else
-// kg44 This does not work in this way with multiple mass tranport processes!
-//	if ( repeat )
-//	{
-//		std::cout << "   TIM step is repeated" << "\n";
-//		//exit(1);
-//		m_pcs = PCSGet ( pcs_type_name );
-//		m_pcs->PrimaryVariableReload();
-//	}
-#endif
 
 	// find pcs
 	CRFProcess* m_pcs = NULL;
@@ -1955,61 +1940,6 @@ void CTimeDiscretization::FillCriticalTime()
 				//				critical_time[j] = val;
 				std::swap(critical_time[i], critical_time[j]);
 }
-
-#ifdef GEM_REACT
-double CTimeDiscretization::MaxTimeStep()
-{
-	long i;
-	double max_diff_time_step = 1.0e+100, Dm, dummy,
-	       max_adv_time_step = 1.0e+100;
-	double theta = 0.0;  // direction zero...no anisotropy
-	CRFProcess* this_pcs = NULL;
-	MeshLib::CElem* melem = NULL;
-
-	CMediumProperties* m_mat_mp = NULL;
-	// Get the pointer to a proper PCS. ..we assume that all transport processes
-	// use the same diffusion coefficient
-
-	this_pcs = PCSGet("MASS_TRANSPORT");
-	long nElems = (long)this_pcs->m_msh->ele_vector.size();
-	int component = this_pcs->pcs_component_number;
-	int group;
-
-	CompProperties* m_cp = cp_vec[component];
-
-	dummy = CheckCourant();  // courant number
-	std::cout << " Advective Time Step " << dummy << " ";
-	// only do if Courant number bigger than zero
-	if (dummy > DBL_EPSILON)
-		max_adv_time_step = std::min(max_diff_time_step, dummy);
-
-	// find Neumann for first mass transport process
-	for (i = 0; i < nElems; i++)
-	{
-		group = this_pcs->m_msh->ele_vector[i]->GetPatchIndex();
-		m_mat_mp = mmp_vector[group];
-
-		melem = this_pcs->m_msh->ele_vector[i];
-		//		cout << m_mat_mp->Porosity(i,theta) << " " <<
-		// melem->representative_length << endl;
-		// KG44 attention DM needs to be multiplied with porosity!
-		Dm = m_mat_mp->Porosity(i, theta) *
-		     m_cp->CalcDiffusionCoefficientCP(i, theta, this_pcs);
-		// calculation of typical length
-
-		dummy = (0.5 * (melem->representative_length *
-		                melem->representative_length)) /
-		        Dm;
-		max_diff_time_step = std::min(max_diff_time_step, dummy);
-		//	std::cout << "Neumann criteria: " << max_diff_time_step << " i " <<
-		// i << "\n";
-	}
-
-	std::cout << " Diffusive Time Step " << max_diff_time_step << "\n";
-
-	return std::min(max_diff_time_step, max_adv_time_step);
-}
-#endif  // end of GEM_REACT
 
 bool CTimeDiscretization::PIDControl()
 {

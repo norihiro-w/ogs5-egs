@@ -35,9 +35,6 @@
 #include "msh_lib.h"
 
 #include "CSVOutput.h"
-#ifdef CHEMAPP
-#include "eqlink.h"
-#endif
 #include "fem_ele_std.h"
 #include "files0.h"
 #include "LegacyVtkInterface.h"
@@ -47,9 +44,6 @@
 #include "rf_msp_new.h"
 #include "rf_pcs.h"
 #include "rf_random_walk.h"
-#ifdef GEM_REACT
-#include "rf_REACT_GEM.h"
-#endif
 #include "rf_tim_new.h"
 #include "vtk.h"
 

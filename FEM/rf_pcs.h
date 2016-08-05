@@ -120,12 +120,6 @@ typedef struct /* element data info */
 
 typedef struct
 {
-	long index_node;
-	double water_st_value;
-} Water_ST_GEMS;  // HS 11.2008
-
-typedef struct
-{
 	std::string name;  // fluid name
 	double temperature;
 	double pressure;
@@ -453,16 +447,6 @@ public:
 	// //OK
 	//....................................................................
 	int Shift[10];
-	// 16-GEM  // HS 11.2008
-	int flag_couple_GEMS;  // 0-no couple; 1-coupled
-	std::vector<Water_ST_GEMS> Water_ST_vec;
-	std::vector<long> stgem_node_value_in_dom;   // KG for domain decomposition
-	std::vector<long> stgem_local_index_in_dom;  // KG for domain decomposition
-	// KG
-	std::vector<long> rank_stgem_node_value_in_dom;
-
-	void Clean_Water_ST_vec(void);
-	void Add_GEMS_Water_ST(long idx, double val);
 	//....................................................................
 	// Construction / destruction
 	char pcs_name[MAX_ZEILE];  // string pcs_name;
@@ -669,20 +653,11 @@ public:
 	double ExecuteNonLinear(int loop_process_number, bool print_pcs = true);
 	void PrintStandardIterationInformation(bool write_std_errors, double nl_error);
 
-	virtual void CalculateElementMatrices(void);
-	virtual void AssembleSystemMatrixNew(void);
 	// This function is a part of the monolithic scheme
 	//  and it is related to ST, BC, IC, TIM and OUT. WW
 	void SetOBJNames();
 	// ST
 	void IncorporateSourceTerms(const int rank = -1);
-// WW void CheckSTGroup(); //OK
-#ifdef GEM_REACT
-	void IncorporateSourceTerms_GEMS(
-	    void);  // HS: dC/dt from GEMS chemical solver.
-	int GetRestartFlag() const { return reload; }
-#endif
-	// BC
 	void IncorporateBoundaryConditions(const int rank = -1,
 	                                   bool updateA = true,
 	                                   bool updateRHS = true,
@@ -976,15 +951,6 @@ extern bool PCSCheck();  // OK
 extern void CreateEQS_LinearSolver();
 #endif
 
-#ifdef GEM_REACT
-class REACT_GEM;
-extern REACT_GEM* m_vec_GEM;
-#endif
-
-#ifdef BRNS
-class REACT_BRNS;
-extern REACT_BRNS* m_vec_BRNS;
-#endif
 
 extern bool hasAnyProcessDeactivatedSubdomains;  // NW
 #endif

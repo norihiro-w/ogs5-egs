@@ -42,21 +42,6 @@
 
 extern size_t max_dim;
 
-#ifdef CHEMAPP
-#include "eqlink.h"
-#endif
-
-#ifdef SUPERCOMPUTER
-// kg44 this is usefull for io-buffering as endl flushes the buffer
-#define endl \
-	'\n'  // Introduced by WW. LB super bad programming style: this breaks
-          // platform independet IO
-#define MY_IO_BUFSIZE 4096
-#endif  // SUPERCOMPUTER
-#ifdef GEM_REACT
-#include "rf_REACT_GEM.h"
-#endif  // GEM_REACT
-
 using MeshLib::CFEMesh;
 using MeshLib::CElem;
 using MeshLib::CEdge;

@@ -20,10 +20,6 @@
 #include "rf_pcs.h"
 #include "rf_pcs.h"
 
-#ifdef GEM_REACT
-#include "rf_REACT_GEM.h"
-#endif  // GEM_REACT
-
 #include <string>
 #include <iomanip>
 
@@ -602,13 +598,6 @@ void LegacyVtkInterface::WriteVTKDataArraysPETSC(PetscViewer viewer) const
 			}
 		}
 	}
-
-// here is the place to add the GEMS node data
-#ifdef GEM_REACT
-	m_vec_GEM->WriteVTKGEMValuesPETSC(viewer);  // kg44 export GEM internal
-                                                // variables like speciateion
-                                                // vector , phases etc
-#endif
 
 	// ELEMENT DATA
 	// first create a PETSC vector for storing the data
@@ -1231,12 +1220,6 @@ void LegacyVtkInterface::WriteVTKDataArrays(fstream& vtk_file) const
 			vtk_file << 1.0 - val_n << "\n";
 		}
 	}
-// kg44 GEM node data
-#ifdef GEM_REACT
-	m_vec_GEM->WriteVTKGEMValues(vtk_file);  // kg44 export GEM internal
-                                             // variables like speciateion
-                                             // vector , phases etc
-#endif
 	// ELEMENT DATA
 	// ---------------------------------------------------------------------
 	bool wroteAnyEleData = false;  // NW

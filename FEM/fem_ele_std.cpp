@@ -1490,24 +1490,11 @@ double CFiniteElementStd::CalCoefContent()
 			break;
 		case M:  // Mass transport //SB4200
 		{
-// kg44 added changing Porosity for GEMS coupling
-
-#ifdef GEM_REACT
-			// kg44 for GEMS coupling this should be updated to arbitrary flow
-			// processes
-			porval0 = PCSGetFlow()->GetElementValue(
-			    Index,
-			    PCSGetFlow()->GetElementValueIndex(
-			        "POROSITY"));  // for GEMS we need old and new porosity!
-			porval1 = PCSGetFlow()->GetElementValue(
-			    Index, PCSGetFlow()->GetElementValueIndex("POROSITY") + 1);
-#else
 			porval0 = MediaProp->Porosity(
 			    Index, pcs->m_num->ls_theta);  // get porosity..this is the
 			                                   // "old" behaviour without GEMS
 			                                   // coupling
 			porval1 = porval0;                 // mimic no porosity change
-#endif
 			// Get saturation change:
 			// Get saturation change, depending on phase // SB, BG
 			tr_phase = cp_vec[this->pcs->pcs_component_number]->transport_phase;
