@@ -49,7 +49,6 @@ enum EnumProcessType
 	C,
 	H,
 	M,
-	O,
 	R,
 	F,
 	A,
@@ -170,58 +169,6 @@ public:
 	// OK
 	void AssembleParabolicEquationRHSVector();
 
-	// CVFEM functions for overland flow   JOD
-	// to move
-	void GetOverlandBasisFunctionMatrix_Line();
-	// to move
-	void GetOverlandBasisFunctionMatrix_Quad();
-	void CalcOverlandCoefficients(double* head,
-	                              double* axx,
-	                              double* ayy,
-	                              double* ast);
-	void CalcOverlandCoefficientsLine(double* head, double* axx, double* ast);
-	void CalcOverlandCoefficientsQuad(double* head,
-	                                  double* axx,
-	                                  double* ayy,
-	                                  double* ast);
-	void CalcOverlandCoefficientsTri(double* head,
-	                                 double* axx,
-	                                 double* ayy,
-	                                 double* ast);
-	void CalcOverlandNLTERMS(double* H,
-	                         double* HaaOld,
-	                         double* swval,
-	                         double* swold);
-	void CalcOverlandNLTERMSRills(double* H,
-	                              double* HaaOld,
-	                              double* swval,
-	                              double* swold);
-	void CalcOverlandNLTERMSChannel(double* H,
-	                                double* HaaOld,
-	                                double* swval,
-	                                double* swold);
-	void CalcOverlandCKWR(double* head, double* ckwr, int* iups);
-	void CalcOverlandCKWRatNodes(
-	    int i, int j, double* head, double* ckwr, int* iups);
-	void CalcOverlandResidual(double* head,
-	                          double* swval,
-	                          double* swold,
-	                          double ast,
-	                          double* residuall,
-	                          double** amat);
-	double CalcOverlandJacobiNodes(int i,
-	                               int j,
-	                               double* depth,
-	                               double* depth_keep,
-	                               double akrw,
-	                               double axx,
-	                               double ayy,
-	                               double** amatij,
-	                               double* sumjac);
-	void CalcOverlandUpwindedCoefficients(double** amat,
-	                                      double* ckwr,
-	                                      double axx,
-	                                      double ayy);
 	//
 	// CB added by CB: 090507
 	void UpwindAlphaMass(double* alpha);
@@ -374,18 +321,6 @@ private:
 	// Assembly of parabolic equation
 	void AssembleParabolicEquation();  // OK4104
 	void AssembleMixedHyperbolicParabolicEquation();
-	void AssembleParabolicEquationNewton();
-	// JOD
-	void AssembleParabolicEquationNewtonJacobian(double** jacob,
-	                                             double* Haa,
-	                                             double* HaaOld,
-	                                             double axx,
-	                                             double ayy,
-	                                             double** amat,
-	                                             double ast,
-	                                             double* swold,
-	                                             double* residuall,
-	                                             int* iups);
 	void Assemble_strainCPL(
 	    const int phase = 0);  // Assembly of strain coupling
 	void Assemble_strainCPL_Matrix(const double fac, const int phase = 0);
