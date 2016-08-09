@@ -150,7 +150,7 @@ private:
 	Matrix* PressureC;
 	Matrix* PressureC_S;     // Function of S
 	Matrix* PressureC_S_dp;  // Function of S and ds_dp
-	Vec* RHS;
+	Vector* RHS;
 	// Global RHS. 08.2010. WW
 	double* b_rhs;
 

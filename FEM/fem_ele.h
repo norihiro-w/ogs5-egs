@@ -10,19 +10,10 @@
 #ifndef fem_INC
 #define fem_INC
 
-// C++
-//#include <vector>
-//#include <string>
-
 #include "prototyp.h"
 #include "MSHEnums.h"
+#include "matrix_class.h"
 
-namespace Math_Group
-{
-class SymMatrix;
-class Matrix;
-typedef Matrix Vec;
-}
 namespace MeshLib
 {
 class CElem;
@@ -44,21 +35,13 @@ struct ExtrapolationMethod
 	};
 };
 
-using Math_Group::SymMatrix;
-using Math_Group::Matrix;
-using Math_Group::Vec;
-
-using MeshLib::CNode;
-using MeshLib::CEdge;
-using MeshLib::CElem;
-
 class CElement
 {
 public:
 	CElement(int CoordFlag, const int order = 1);
 	virtual ~CElement();
 	//
-	void ConfigElement(CElem* MElement, bool FaceIntegration = false);
+	void ConfigElement(MeshLib::CElem* MElement, bool FaceIntegration = false);
 	void setOrder(const int order);
 	// Set Gauss point
 	void SetGaussPoint(const int gp, int& gp_r, int& gp_s, int& gp_t);
@@ -119,7 +102,7 @@ public:
 	void SetCenterGP();
 	int GetGPindex() const { return gp; }
 	int GetElementIndex() const { return Index; }
-	CElem* GetMeshElement() const  // OK
+	MeshLib::CElem* GetMeshElement() const  // OK
 	{
 		return MeshElement;
 	}
@@ -138,7 +121,7 @@ public:
 	}
 
 protected:
-	CElem* MeshElement;
+	MeshLib::CElem* MeshElement;
 	long* element_nodes_dom;  // Only a pointer. For domain decomposition. WW
 
 	friend class CRFProcess;
@@ -257,50 +240,50 @@ public:
 	}
 	~ElementMatrix();
 	// Allocate memory for strain coupling matrix
-	void AllocateMemory(CElem* ele, int type = 0);
+	void AllocateMemory(MeshLib::CElem* ele, int type = 0);
 	// Set members
-	void SetMass(Matrix* mass) { Mass = mass; }
-	void SetMass_notsym(Matrix* mass) { Mass_notsym = mass; }
-	void SetLaplace(Matrix* laplace) { Laplace = laplace; }
-	void SetStiffness(Matrix* x) { Stiffness = x; }
-	void SetAdvection(Matrix* x) { Advection = x; }
-	void SetStorage(Matrix* x) { Storage = x; }
-	void SetContent(Matrix* x) { Content = x; }
-	void SetCouplingMatrixA(Matrix* cplM) { CouplingA = cplM; }
-	void SetCouplingMatrixB(Matrix* cplM) { CouplingB = cplM; }
-	void SetRHS(Vec* rhs) { RHS = rhs; }
+	void SetMass(Math_Group::Matrix* mass) { Mass = mass; }
+	void SetMass_notsym(Math_Group::Matrix* mass) { Mass_notsym = mass; }
+	void SetLaplace(Math_Group::Matrix* laplace) { Laplace = laplace; }
+	void SetStiffness(Math_Group::Matrix* x) { Stiffness = x; }
+	void SetAdvection(Math_Group::Matrix* x) { Advection = x; }
+	void SetStorage(Math_Group::Matrix* x) { Storage = x; }
+	void SetContent(Math_Group::Matrix* x) { Content = x; }
+	void SetCouplingMatrixA(Math_Group::Matrix* cplM) { CouplingA = cplM; }
+	void SetCouplingMatrixB(Math_Group::Matrix* cplM) { CouplingB = cplM; }
+	void SetRHS(Math_Group::Vector* rhs) { RHS = rhs; }
 	// Get members
-	Matrix* GetMass() { return Mass; }
-	Matrix* GetMass_notsym() { return Mass_notsym; }
-	Matrix* GetLaplace() { return Laplace; }
-	Matrix* GetStiffness() { return Stiffness; }
-	Matrix* GetAdvection()  // SB4200
+	Math_Group::Matrix* GetMass() { return Mass; }
+	Math_Group::Matrix* GetMass_notsym() { return Mass_notsym; }
+	Math_Group::Matrix* GetLaplace() { return Laplace; }
+	Math_Group::Matrix* GetStiffness() { return Stiffness; }
+	Math_Group::Matrix* GetAdvection()
 	{
 		return Advection;
 	}
-	Matrix* GetStorage()  // SB4200
+	Math_Group::Matrix* GetStorage()
 	{
 		return Storage;
 	}
-	Matrix* GetContent()  // SB4200
+	Math_Group::Matrix* GetContent()
 	{
 		return Content;
 	}
-	Matrix* GetCouplingMatrixA() { return CouplingA; }
-	Matrix* GetCouplingMatrixB() { return CouplingB; }
-	Vec* GetRHS() { return RHS; }
+	Math_Group::Matrix* GetCouplingMatrixA() { return CouplingA; }
+	Math_Group::Matrix* GetCouplingMatrixB() { return CouplingB; }
+	Math_Group::Vector* GetRHS() { return RHS; }
 
 private:
-	Matrix* Mass;
-	Matrix* Mass_notsym;
-	Matrix* Laplace;
-	Matrix* Advection;
-	Matrix* Storage;
-	Matrix* Content;
-	Matrix* CouplingA;  // Pressure coupling for M_Process
-	Matrix* CouplingB;  // Strain coupling gor H_Process
-	Matrix* Stiffness;
-	Vec* RHS;
+	Math_Group::Matrix* Mass;
+	Math_Group::Matrix* Mass_notsym;
+	Math_Group::Matrix* Laplace;
+	Math_Group::Matrix* Advection;
+	Math_Group::Matrix* Storage;
+	Math_Group::Matrix* Content;
+	Math_Group::Matrix* CouplingA;  // Pressure coupling for M_Process
+	Math_Group::Matrix* CouplingB;  // Strain coupling gor H_Process
+	Math_Group::Matrix* Stiffness;
+	Math_Group::Vector* RHS;
 };
 }  // end namespace
 

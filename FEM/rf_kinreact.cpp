@@ -2747,6 +2747,8 @@ void CKinReactData::ExecuteKinReact(void)
 void CKinReactData::Biodegradation(long node, double eps, double hmin,
                                    double* usedtneu, int* nok, int* nbad)
 {
+	(void)eps;
+	(void)hmin;
 	double* Concentration;
 	double* newVolume;
 	double nexth = 0.;
@@ -2756,10 +2758,11 @@ void CKinReactData::Biodegradation(long node, double eps, double hmin,
 	double Csat_max, DensityNAPL, DensityAQ, DiffusionAQ, ViscosityAQ,
 	    // OK411
 	    PoreVelocity = 0.0, d50, Reynolds, Schmidt, Sherwood;
-	double tstart, tend, dt = 0.0;
+	//double tstart, tend;
+	//double dt = 0.0;
 	double baditerations;
 	//  CRFProcess* m_pcs = NULL;
-	CTimeDiscretization* m_tim = NULL;
+	//CTimeDiscretization* m_tim = NULL;
 	//  CompProperties *m_cp = NULL;
 	string speciesname = " dummy";
 
@@ -2771,11 +2774,11 @@ void CKinReactData::Biodegradation(long node, double eps, double hmin,
 	CKinReactData* m_krd = NULL;
 	m_krd = KinReactData_vector[0];
 
-	if (time_vector.size() > 0)
-	{
-		m_tim = time_vector[0];
-		dt = m_tim->CalcTimeStep();
-	}
+//	if (time_vector.size() > 0)
+//	{
+//		m_tim = time_vector[0];
+//		dt = m_tim->CalcTimeStep();
+//	}
 	// Number_of_Components = kr_active_species; //
 	Number_of_Components = (int)cp_vec.size();
 	// Get storage for vector of concentrations
@@ -2912,8 +2915,8 @@ void CKinReactData::Biodegradation(long node, double eps, double hmin,
 		m_kb->current_Interfacial_area = m_kb->Interfacial_area[node];
 	}
 
-	tstart = DMAX(aktuelle_zeit - dt, 0.);
-	tend = aktuelle_zeit;
+//	tstart = DMAX(aktuelle_zeit - dt, 0.);
+//	tend = aktuelle_zeit;
 //  tstart=tstart/86400.0; tend = tend/86400.0 ;  // alte Version: hier wurde
 //  nur im kinetischen Teil mit Tagen gerechnet
 //  cout << " times: " << tstart << ", " << tend << endl;

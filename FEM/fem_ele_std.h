@@ -235,7 +235,7 @@ private:
 	Matrix* Storage;    // SB4200
 	Matrix* Content;    // SB4209
 	Matrix* StrainCoupling;
-	Vec* RHS;
+	Vector* RHS;
 	DiagonalMatrix* FCT_MassL;  // NW
 	//-------------------------------------------------------
 	void SetHighOrderNodes();  // 25.2.2007 WW
@@ -377,7 +377,7 @@ private:
 class ElementValue
 {
 public:
-	ElementValue(CRFProcess* m_pcs, CElem* ele);
+	ElementValue(CRFProcess* m_pcs, MeshLib::CElem* ele);
 	~ElementValue();
 	void getIPvalue_vec(const int IP, double* vec);
 	// SB 09/2010

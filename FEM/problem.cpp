@@ -33,7 +33,6 @@
 #include "fem_ele_std.h"
 #include "files0.h"
 #include "Output.h"
-#include "pcs_dm.h"
 #include "rfmat_cp.h"
 #include "rf_bc_new.h"
 #include "rf_fluid_momentum.h"
@@ -41,6 +40,7 @@
 #include "rf_node.h"
 #include "rf_out_new.h"
 #include "rf_pcs.h"
+#include "rf_pcs_dm.h"
 #include "rf_pcs_TH.h"
 #include "rf_random_walk.h"
 #include "rf_react.h"
@@ -1818,31 +1818,6 @@ inline double Problem::RandomWalker()
 	if (m_pcs && m_pcs->selected)
 	{
 		lop_coupling_iterations = 1;
-
-		// Mount the proper mesh
-		CFEMesh* m_msh = NULL;
-		for (int i = 0; i < (int)pcs_vector.size(); ++i)
-		{
-			m_pcs = pcs_vector[i];
-
-			// Select the mesh whose process name has the mesh for
-			// Fluid_Momentum
-			//			if(
-			// m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-			// TF
-			if (m_pcs->getProcessType() == FiniteElement::RICHARDS_FLOW)
-				m_msh = FEMGet("RICHARDS_FLOW");
-			//			else if(
-			// m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-			// TF
-			else if (m_pcs->getProcessType() == FiniteElement::LIQUID_FLOW)
-				m_msh = FEMGet("LIQUID_FLOW");
-			//			else if(
-			// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-			// TF
-			else if (m_pcs->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
-				m_msh = FEMGet("GROUNDWATER_FLOW");
-		}
 
 		RandomWalk* rw_pcs = (RandomWalk*)m_pcs;
 

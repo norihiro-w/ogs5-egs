@@ -11,28 +11,26 @@
    The definitions of members of class CFiniteElementStd.
  */
 
+#include "fem_ele_std.h"
+
+#include <cfloat>
+
 #include "Configure.h"
 
-// C++ STL
-#include <cfloat>
-// Method
-#include "fem_ele_std.h"
-#include "mathlib.h"
-// Problems
-#include "rf_mmp_new.h"
-
-#include "pcs_dm.h"
-#include "rfmat_cp.h"
-
-// Solver
 #ifdef NEW_EQS
 #include "equation_class.h"
+#endif
+#include "mathlib.h"
+#include "rfmat_cp.h"
+#include "rf_mmp_new.h"
+#include "rf_pcs_dm.h"
+
+#ifdef NEW_EQS
 using Math_Group::CSparseMatrix;
 #endif
 
-#include "pcs_dm.h"  // displacement coupled
-
 using namespace std;
+
 namespace FiniteElement
 {
 /*!

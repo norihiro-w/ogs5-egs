@@ -393,6 +393,4 @@ extern std::vector<std::string> analytical_processes;
 // OK
 extern CSourceTerm* STGet(const std::string&, const std::string&,
                           const std::string&);
-
-extern void GetNODValue(double& value, CNodeValue* cnodev, CSourceTerm* m_st);
 #endif

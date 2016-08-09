@@ -5314,12 +5314,10 @@ void RandomWalk::buildFDMIndex(void)
 **************************************************************************/
 void PCTRead(string file_base_name)
 {
-	CFEMesh* m_msh = NULL;
-
 	if (fem_msh_vector.size() == 0) return;  // OK
 
 	// Mount the proper mesh
-	m_msh = fem_msh_vector[0];  // Something must be done later on here.
+	//auto m_msh = fem_msh_vector[0];  // Something must be done later on here.
 
 	// File handling
 	string pct_file_name;
@@ -5394,35 +5392,7 @@ void PCTRead(string file_base_name)
 **************************************************************************/
 void DATWriteParticleFile(int current_time_step)
 {
-	CFEMesh* m_msh = NULL;
 	RandomWalk* RW = (RandomWalk*)PCSGet(FiniteElement::RANDOM_WALK);
-
-	// Gather the momentum mesh
-	size_t pcs_vector_size(pcs_vector.size());
-	for (size_t i = 0; i < pcs_vector_size; ++i)
-	{
-		//		m_pcs = pcs_vector[i];
-		const FiniteElement::ProcessType pcs_type(
-		    pcs_vector[i]->getProcessType());
-		//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos){
-		if (pcs_type == FiniteElement::RICHARDS_FLOW)
-		{
-			m_msh = FEMGet("RICHARDS_FLOW");
-			break;
-		}
-		//		else if(
-		// m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos){
-		else if (pcs_type == FiniteElement::LIQUID_FLOW)
-		{
-			m_msh = FEMGet("LIQUID_FLOW");
-			break;
-		}
-		else if (pcs_type == FiniteElement::GROUNDWATER_FLOW)
-		{
-			m_msh = FEMGet("GROUNDWATER_FLOW");
-			break;
-		}
-	}
 
 	int np = RW->numOfParticles;
 

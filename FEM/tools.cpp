@@ -1716,7 +1716,7 @@ double getNodalValueFromElementValue(
 
 			if (e0->GetElementType() == MshElemType::QUAD)
 			{
-				size_t mid_nod_id = node_id;
+				//size_t mid_nod_id = node_id;
 				if (n_conn_ele < 4)
 				{
 					std::map<long, int> set_mid_node;
@@ -1741,7 +1741,7 @@ double getNodalValueFromElementValue(
 					{
 						if (itr->second > 1)
 						{
-							mid_nod_id = itr->first;
+							//mid_nod_id = itr->first;
 							break;
 						}
 					}

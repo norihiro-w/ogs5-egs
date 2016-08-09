@@ -7,15 +7,14 @@
  *
  */
 
-/**************************************************************************
-   FEMLib - Object: MAT-SP
-   Task: class implementation
-   Programing:
-   08/2004 WW Implementation
-   last modified:
-**************************************************************************/
 #ifndef rf_msp_new_INC
 #define rf_msp_new_INC
+
+#include <iosfwd>
+#include <string>
+#include <vector>
+
+#include "matrix_class.h"
 
 #define MSP_FILE_EXTENSION ".msp"
 
@@ -23,6 +22,7 @@ namespace FiniteElement
 {
 class CFiniteElementVec;
 class CFiniteElementStd;
+class ElementValue;
 class ElementValue_DM;
 }
 

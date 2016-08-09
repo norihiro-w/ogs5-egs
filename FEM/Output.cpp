@@ -1345,6 +1345,7 @@ void COutput::WriteELEValuesTECData(fstream& tec_file)
 **************************************************************************/
 double COutput::NODWritePLYDataTEC(int number)
 {
+	(void)number;
 	if (_nod_value_vector.empty() && mfp_value_vector.empty())
 		return 0.0;
 

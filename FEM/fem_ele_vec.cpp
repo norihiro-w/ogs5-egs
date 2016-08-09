@@ -22,9 +22,9 @@
 using Math_Group::CSparseMatrix;
 #endif
 #include "mathlib.h"
-#include "pcs_dm.h"
 #include "rf_mfp_new.h"
 #include "rf_msp_new.h"
+#include "rf_pcs_dm.h"
 #include "tools.h"
 
 
@@ -203,7 +203,7 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 	if (pcs->Memory_Type == 0)  // Do not store local matrices
 	{
 		Stiffness = new Matrix(60, 60);
-		RHS = new Vec(60);
+		RHS = new Vector(60);
 		if (H_Process) PressureC = new Matrix(60, 20);
 	}
 	else  // Local matrices stored and allocated the pcs.cpp;
@@ -1063,24 +1063,18 @@ bool CFiniteElementVec::GlobalAssembly()
  **************************************************************************/
 void CFiniteElementVec::GlobalAssembly_Stiffness()
 {
-	int i, j;
-	double f1, f2;
-	f1 = 1.0;
-	f2 = -1.0;
-
-	double biot = 1.0;
-	biot = smat->biot_const;
+	double biot = smat->biot_const;
 #if defined(NEW_EQS)
-	CSparseMatrix* A = NULL;
-	A = pcs->eqs_new->A;
+	CSparseMatrix* A = pcs->eqs_new->A;
 #endif
 
 #ifndef USE_PETSC
+	double f1 = 1.0;
 	// Assemble stiffness matrix
-	for (i = 0; i < nnodesHQ; i++)
+	for (int i = 0; i < nnodesHQ; i++)
 	{
 		const long eqs_number_i = eqs_number[i];
-		for (j = 0; j < nnodesHQ; j++)
+		for (int j = 0; j < nnodesHQ; j++)
 		{
 			const long eqs_number_j = eqs_number[j];
 			// Local assembly of stiffness matrix
@@ -1093,17 +1087,11 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 					double globalColId = eqs_number_j + NodeShift[l];
 					double val =
 					    f1 * (*Stiffness)(localRowId, j + l * nnodesHQ);
-#if defined(USE_PETSC)  // || defined(other parallel libs)//10.3012. WW
-// TODO
-#else
 #ifdef NEW_EQS
 					double& a = (*A)(globalRowId, globalColId);
 #pragma omp atomic
 					a += val;
 //(*A)(globalRowId,globalColId) += val;
-#else
-					MXInc(globalRowId, globalColId, val);
-#endif
 #endif
 				}
 			}
@@ -1116,9 +1104,10 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 	if (pcs->type / 40 != 1)  // Not monolithic scheme
 		return;
 
+	double f2 = -1.0;
 	if (PressureC)
 	{
-		i = 0;               // phase
+		int i = 0;               // phase
 		if (Flow_Type == 2)  // Multi-phase-flow
 			i = 1;
 		GlobalAssembly_PressureCoupling(PressureC, f2 * biot, i);
@@ -1129,70 +1118,6 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 	if (PressureC_S_dp)
 		GlobalAssembly_PressureCoupling(PressureC_S_dp, -f2 * biot, 0);
 
-	/*
-	   // Assemble coupling matrix
-	   if(Flow_Type>=0&&pcs->type/40 == 1)              // Monolithic scheme
-	   {
-
-	   f2 *= biot;
-
-	   double fact_NR = 0.;
-	   if(pcs->m_num->nls_method == 1) // If Newton-Raphson method
-	   {
-	      if(Flow_Type == 2)     // Multi-phase-flow: p_g-Sw*p_c
-	   {
-
-	   // P_g related:
-	   for (i=0;i<nnodesHQ;i++)
-	   {
-	   for (j=0;j<nnodes;j++)
-	   {
-	   for(k=0; k<ele_dim; k++)
-	   #ifdef NEW_EQS
-	   (*A)(NodeShift[k]+eqs_number[i], NodeShift[dim+1]+eqs_number[j])
-	   += f2*(*PressureC)(nnodesHQ*k+i,j);
-	   #else
-	   MXInc(NodeShift[k]+eqs_number[i], NodeShift[dim+1]+eqs_number[j],\
-	   f2*(*PressureC)(nnodesHQ*k+i,j));
-	   #endif
-	   }
-	   }
-
-	   fact_NR = 0.0;
-	   for (i=0;i<nnodes;i++)
-	   {
-	   fact_NR += AuxNodal_S[i];  /// Sw
-
-	   /// dS_dPcPc
-	   fact_NR +=
-	   m_mmp->SaturationPressureDependency(AuxNodal_S[i])*h_pcs->GetNodeValue(nodes[i],idx_P1);
-	   }
-
-	   fact_NR /= static_cast<double>(nnodes);
-
-	   f2 *= -1.0*fact_NR;
-
-	   }
-	   }
-
-	   // Add pressure coupling matrix to the stifness matrix
-	   for (i=0;i<nnodesHQ;i++)
-	   {
-	   for (j=0;j<nnodes;j++)
-	   {
-	   for(k=0; k<ele_dim; k++)
-	   #ifdef NEW_EQS
-	   (*A)(NodeShift[k]+eqs_number[i], NodeShift[dim]+eqs_number[j])
-	   += f2*(*PressureC)(nnodesHQ*k+i,j);
-	   #else
-	   MXInc(NodeShift[k]+eqs_number[i], NodeShift[dim]+eqs_number[j],\
-	   f2*(*PressureC)(nnodesHQ*k+i,j));
-	   #endif
-	   }
-	   }
-
-	   }
-	 */
 	// TEST OUT
 	// PressureC->Write();
 }
@@ -1236,10 +1161,6 @@ void CFiniteElementVec::GlobalAssembly_PressureCoupling(Matrix* pCMatrix,
 				(*A)(NodeShift[k] + eqs_number[i],
 				     NodeShift[dim_shift] + eqs_number[j]) +=
 				    fct * (*pCMatrix)(nnodesHQ* k + i, j);
-#else
-				MXInc(NodeShift[k] + eqs_number[i],
-				      NodeShift[dim_shift] + eqs_number[j],
-				      fct * (*pCMatrix)(nnodesHQ* k + i, j));
 #endif
 			}
 		}

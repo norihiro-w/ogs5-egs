@@ -7,13 +7,7 @@
  *
  */
 
-/**************************************************************************
-   FEMLib - Object: MSP Solid Properties
-   Task:
-   Programing:
-   08/2004 WW Implementation
-   last modified:
-**************************************************************************/
+#include "rf_msp_new.h"
 
 #include <cfloat>
 
@@ -24,9 +18,8 @@
 
 #include "fem_ele_std.h"
 #include "fem_ele_vec.h"
-#include "pcs_dm.h"
-#include "rf_msp_new.h"
 #include "rf_pcs.h"
+#include "rf_pcs_dm.h"
 #include "rf_tim_new.h"
 #include "tools.h"
 
