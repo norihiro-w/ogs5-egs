@@ -1706,14 +1706,15 @@ void CSourceTerm::FaceIntegration(CFEMesh* msh,
 	int nodesFace[8];
 	double nodesFVal[8];
 
+//----------------------------------------------------------------------
+// Interpolation of polygon values to nodes_on_sfc
+#if 0
 	bool Const = false;
 	if (this->getProcessDistributionType() == FiniteElement::CONSTANT ||
 	    this->getProcessDistributionType() == FiniteElement::CONSTANT_NEUMANN)
 		//	if (dis_type_name.find("CONSTANT") != std::string::npos)
 		Const = true;
-//----------------------------------------------------------------------
-// Interpolation of polygon values to nodes_on_sfc
-#if 0
+
    if (!Const)                                    // Get node BC by interpolation with surface
    {
       int nPointsPly = 0;
@@ -1931,7 +1932,7 @@ void CSourceTerm::FaceIntegration(CFEMesh* msh,
 #ifdef _OPENMP
 	std::cout << "[CSourceTerm::FaceIntegration] face integration ... "
 	          << std::flush;
-	double begin_int = omp_get_wtime();
+	//double begin_int = omp_get_wtime();
 #endif
 	CElem face(1);
 	face.SetFace();
@@ -2011,57 +2012,6 @@ void CSourceTerm::FaceIntegration(CFEMesh* msh,
 			}
 		}
 	}
-
-/*
- //----------------------------------------------------------------------
- int count;
- double fac=1.0;
- for (i = 0; i < (long)msh->ele_vector.size(); i++)
- {
- elem = msh->ele_vector[i];
- if(!elem->GetMark()) continue;
- nfaces = elem->GetFacesNumber();
- elem->SetOrder(msh->getOrder());
- for(j=0; j<nfaces; j++)
-{
-e_nei =  elem->GetNeighbor(j);
-nfn = elem->GetElementFaceNodes(j, nodesFace);
-count=0;
-for(k=0; k<nfn; k++)
-{
-e_node = elem->GetNode(nodesFace[k]);
-for (l = 0; l <this_number_of_nodes; l++)
-{
-if(*e_node==*msh->nod_vector[nodes_on_sfc[l]])
-{
-count++;
-break;
-}
-}
-}
-if(count!=nfn) continue;
-for(k=0; k<nfn; k++)
-{
-e_node = elem->GetNode(nodesFace[k]);
-nodesFVal[k] = node_value_vector[G2L[e_node->GetIndex()]];
-}
-fac = 1.0;
-if(elem->GetDimension()==e_nei->GetDimension()) // Not a surface face
-fac = 0.5;
-face->SetFace(elem, j);
-face->SetOrder(msh->getOrder());
-face->ComputeVolume();
-fem->setOrder(msh->getOrder()+1);
-fem->ConfigElement(face, true);
-fem->FaceIntegration(nodesFVal);
-for(k=0; k<nfn; k++)
-{
-e_node = elem->GetNode(nodesFace[k]);
-NVal[G2L[e_node->GetIndex()]] += fac*nodesFVal[k];
-}
-}
-}
-*/
 
 #pragma omp for
 	for (i = 0; i < this_number_of_nodes; i++)
@@ -2347,65 +2297,6 @@ void GetGreenAmptNODValue(double& value, CSourceTerm* m_st, long msh_node)
 	value = infiltration;
 }
 
-
-/**************************************************************************
- FEMLib-Method:
- Task: Calculate relative coupling permeability for GetCouplingNODValue(***).
- Programing: prerequisites: phase 0 in mfp
- 06/2007 JOD Implementation
- 10/2008 JOD include leakance 4.7.10
- **************************************************************************/
-double GetRelativeCouplingPermeability(const CRFProcess* pcs, double head,
-                                       const CSourceTerm* source_term,
-                                       long msh_node)
-{
-	double relPerm;
-	double z = pcs->m_msh->nod_vector[msh_node]->getData()[2];
-
-	if (pcs->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
-		relPerm = 1;
-	else if (pcs->getProcessType() == FiniteElement::RICHARDS_FLOW)
-	{
-		/*CElem *m_ele = NULL;
-		 long msh_ele;
-		 int group;
-		 double gamma =  mfp_vector[0]->Density() * GRAVITY_CONSTANT; // only
-		 one phase
-
-		 msh_ele = pcs->m_msh->nod_vector[msh_node]->connected_elements[0];
-		 m_ele = pcs->m_msh->ele_vector[msh_ele];
-		 group = pcs->m_msh->ele_vector[msh_ele]->GetPatchIndex();
-
-		 sat = mmp_vector[group]->SaturationCapillaryPressureFunction( -(head -
-		 z) * gamma, 0);
-		 relPerm = mmp_vector[group]->PermeabilitySaturationFunction(sat,0);*/
-
-		relPerm = 1;  // JOD 4.10.01
-	}
-	else
-	{
-		std::cout << "!!!!! Coupling flux upwinding not implemented for this "
-		             "case !!!!!"
-		          << "\n";
-		relPerm = 1;
-	}
-
-	return relPerm * source_term->getCoupLeakance();
-}
-
-
-
-/**************************************************************************
- FEMLib-Method:
- Task:
- Programing:
- 11/2007 JOD Implementation
- **************************************************************************/
-void GetNODValue(double& value, CNodeValue* cnodev, CSourceTerm* st)
-{
-#if 0
-#endif
-}
 
 /**************************************************************************
  FEMLib-Method:

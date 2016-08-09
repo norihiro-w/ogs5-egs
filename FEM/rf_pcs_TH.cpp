@@ -946,6 +946,7 @@ PetscErrorCode FormFunctionTH(SNES /*snes*/, Vec x, Vec f, void* ctx)
 #if (PETSC_VERSION_NUMBER >= 3050)
 PetscErrorCode FormJacobianTH(SNES snes, Vec x, Mat jac_, Mat B_, void* ctx)
 {
+	(void)snes;
 	Mat* jac = &jac_;
 	Mat* B = &B_;
 #else

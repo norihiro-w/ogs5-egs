@@ -7,18 +7,11 @@
  *
  */
 
-/*
-   Class element declaration
-   class for finite element.
-   Designed and programmed by WW, 06/2004
- */
 #ifndef fem_dm_INC
 #define fem_dm_INC
+
 #include "fem_ele.h"
 #include "matrix_class.h"
-// Material properties
-//#include "rf_mfp_new.h"
-//#include "rf_mmp_new.h"
 
 namespace SolidProp
 {
@@ -26,29 +19,21 @@ class CSolidProperties;
 }
 
 class CRFProcess;
+class CRFProcessDeformation;
 class CFluidProperties;
 class CMediumProperties;
 
-namespace process
-{
-class CRFProcessDeformation;
-}
 namespace MeshLib
 {
 class CElem;
 }
+using namespace SolidProp;
+using namespace Math_Group;
+using namespace MeshLib;
+
 namespace FiniteElement
 {
-using SolidProp::CSolidProperties;
-using Math_Group::Matrix;
-using Math_Group::SymMatrix;
-using Math_Group::Vec;
-using ::CRFProcess;
-using ::CMediumProperties;
-using process::CRFProcessDeformation;
-using MeshLib::CElem;
 
-// Vector for storing element values
 class ElementValue_DM
 {
 public:
@@ -66,7 +51,7 @@ public:
 private:
 	// Friend class
 	friend class SolidProp::CSolidProperties;
-	friend class process::CRFProcessDeformation;
+	friend class ::CRFProcessDeformation;
 	friend class ::CMediumProperties;
 	friend class CFiniteElementVec;
 	Matrix* Stress0;  // Initial stress
@@ -95,7 +80,7 @@ private:
 class CFiniteElementVec : public CElement
 {
 public:
-	CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
+	CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 	                  const int C_Sys_Flad, const int order = 2);
 	~CFiniteElementVec();
 
@@ -122,11 +107,9 @@ public:
 	int IntersectionPoint(const int O_edge, const double* NodeA, double* NodeB);
 	//----------- End of enhanced element ----------------
 private:
-	process::CRFProcessDeformation* pcs;
-	::CRFProcess* h_pcs;
-	::CRFProcess* t_pcs;
-	// excavation
-	bool excavation;  // 12.2009. WW
+	CRFProcessDeformation* pcs;
+	CRFProcess* h_pcs;
+	CRFProcess* t_pcs;
 	//
 	int ns;  // Number of stresses components
 	// Flow coupling
@@ -145,14 +128,14 @@ private:
 	// B matrix
 	Matrix* B_matrix;
 	Matrix* B_matrix_T;
-	std::vector<Matrix*> vec_B_matrix;    // NW
-	std::vector<Matrix*> vec_B_matrix_T;  // NW
+	std::vector<Matrix*> vec_B_matrix;
+	std::vector<Matrix*> vec_B_matrix_T;
 
 	//------ Material -------
 	CSolidProperties* smat;
-	CFluidProperties* m_mfp;  // Fluid coupling
-	// Medium property
-	CMediumProperties* m_mmp;  // Fluid coupling
+	CFluidProperties* m_mfp;
+	CMediumProperties* m_mmp;
+
 	double CalDensity();
 
 	// Elastic constitutive matrix
@@ -162,13 +145,12 @@ private:
 
 	// Local matricies and vectors
 	Matrix* AuxMatrix;
-	Matrix* AuxMatrix2;  // NW
+	Matrix* AuxMatrix2;
 	Matrix* Stiffness;
 	Matrix* PressureC;
 	Matrix* PressureC_S;     // Function of S
 	Matrix* PressureC_S_dp;  // Function of S and ds_dp
-	Matrix* Mass;            // For dynamic analysis
-	Vec* RHS;
+	Vector* RHS;
 	// Global RHS. 08.2010. WW
 	double* b_rhs;
 
@@ -237,7 +219,6 @@ private:
 
 	// Compute the local finite element matrices
 	void LocalAssembly_continuum(const int update);
-	void LocalAssembly_EnhancedStrain(const int update);
 
 	// Assembly local stiffness matrix
 	void GlobalAssembly_Stiffness();
@@ -255,7 +236,7 @@ private:
 	// Compute the singular enhanced strain matrix
 	void ComputeSESM(const double* tangJump = NULL);
 
-	friend class process::CRFProcessDeformation;
+	friend class ::CRFProcessDeformation;
 
 	// Auxillarary vector
 	double* AuxNodal0;
@@ -265,14 +246,6 @@ private:
 	double* AuxNodal1;
 	double* AuxNodal2;
 
-	// Dynamic
-	// Damping parameters
-	bool dynamic;
-	int* Idx_Vel;
-	double beta2, bbeta1;
-	// Auxillarary vector
-	Vec* dAcceleration;
-	void ComputeMass();
 };
 }  // end namespace
 

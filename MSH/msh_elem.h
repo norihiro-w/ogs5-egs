@@ -274,7 +274,7 @@ public:
 
 	//------------------------------------------------------------------
 	// MAT
-	Math_Group::Vec mat_vector;  // OKWW
+	Math_Group::Vector mat_vector;  // OKWW
 #ifndef OGS_ONLY_TH
 	int matgroup_view;  // TK
 #endif

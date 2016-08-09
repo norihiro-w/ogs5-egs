@@ -58,28 +58,20 @@ enum EnumProcessType
 };
 //-----------------------------------------------------
 
-namespace process
-{
-class CRFProcessDeformation;
-}
-// using SolidProp::CSolidProperties; // evil in header!
 namespace SolidProp
 {
 class CSolidProperties;
 }
-// Predeclared classes  01/07, WW
 class CMediumProperties;
 class CFluidProperties;
 
 class CRFProcess;
+class CRFProcessDeformation;
+
+using namespace Math_Group;
+
 namespace FiniteElement
 {
-using Math_Group::SymMatrix;
-using Math_Group::Matrix;
-using Math_Group::DiagonalMatrix;
-using Math_Group::Vec;
-using process::CRFProcessDeformation;
-using ::CRFProcess;
 
 class CFiniteElementStd : public CElement
 {
@@ -217,8 +209,8 @@ private:
 	SolidProp::CSolidProperties*
 	    SolidProp1;  // Matrix for the dual model. YD/WW
 	CRFProcess* pcs;
-	::CRFProcess* cpl_pcs;  // Pointer to coupled process. WW
-	process::CRFProcessDeformation* dm_pcs;
+	CRFProcess* cpl_pcs;  // Pointer to coupled process. WW
+	CRFProcessDeformation* dm_pcs;
 	bool flag_cpl_pcs;  // OK
 	//-------------------------------------------------------
 	// Auxillarary matrices
@@ -243,7 +235,7 @@ private:
 	Matrix* Storage;    // SB4200
 	Matrix* Content;    // SB4209
 	Matrix* StrainCoupling;
-	Vec* RHS;
+	Vector* RHS;
 	DiagonalMatrix* FCT_MassL;  // NW
 	//-------------------------------------------------------
 	void SetHighOrderNodes();  // 25.2.2007 WW
@@ -385,7 +377,7 @@ private:
 class ElementValue
 {
 public:
-	ElementValue(CRFProcess* m_pcs, CElem* ele);
+	ElementValue(CRFProcess* m_pcs, MeshLib::CElem* ele);
 	~ElementValue();
 	void getIPvalue_vec(const int IP, double* vec);
 	// SB 09/2010

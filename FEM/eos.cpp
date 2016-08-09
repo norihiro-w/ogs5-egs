@@ -27,6 +27,22 @@
 #include "eos.h"
 #include "tools.h"
 
+typedef struct
+{
+	double B;
+	double C;
+	double D;
+	double E;
+	double F;
+	double b;
+	double G;
+	double Vc;
+	double V2, V3, V5, V6;
+	double Tc, Pc;
+	double M;
+	int id;
+} VirialCoefficients;
+
 using namespace std;
 
 /**********************************************************************

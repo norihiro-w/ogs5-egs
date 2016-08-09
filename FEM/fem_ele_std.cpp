@@ -7,47 +7,31 @@
  *
  */
 
-/*
-   The members of class Element definitions.
- */
-
 #include "fem_ele_std.h"
 
-// C++ STL
 #include <cfloat>
-//#include <iostream>
-//#include <limits>	// PCH to better use system max and min
+
 #include "Configure.h"
 #include "memory.h"
-// Method
-#include "mathlib.h"
-// Problems
-//#include "rf_mfp_new.h"
-#include "rf_mmp_new.h"
-#include "rf_msp_new.h"
-#include "eos.h"
-#include "SparseMatrixDOK.h"
 
-#include "pcs_dm.h"  // displacement coupled
-#include "rfmat_cp.h"
-// Steps
-//#include "rf_pcs.h"
-//#include "rf_tim_new.h"
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-#include "PETSC/PETScLinearSolver.h"
-#else
-#ifndef NEW_EQS  // WW. 06.11.2008
-// Sytem matrix
-#include "matrix_routines.h"
-#endif
-#endif
-// Solver
 #ifdef NEW_EQS
 #include "equation_class.h"
+#endif
+#include "eos.h"
+#include "mathlib.h"
+#if defined(USE_PETSC)
+#include "PETSC/PETScLinearSolver.h"
+#endif
+#include "rfmat_cp.h"
+#include "rf_mmp_new.h"
+#include "rf_msp_new.h"
+#include "rf_pcs_dm.h"
+#include "SparseMatrixDOK.h"
+
+#ifdef NEW_EQS
 using Math_Group::CSparseMatrix;
 #endif
 
-#include "pcs_dm.h"                 // displacement coupled
 extern double gravity_constant;     // TEST, must be put in input file
 #define COMP_MOL_MASS_AIR 28.96     // kg/kmol WW  28.96
 #define COMP_MOL_MASS_WATER 18.016  // WW 18.016
@@ -56,6 +40,7 @@ extern double gravity_constant;     // TEST, must be put in input file
 #define T_KILVIN_ZERO 273.15        // WW
 
 using namespace std;
+using namespace MeshLib;
 
 namespace FiniteElement
 {
@@ -391,7 +376,7 @@ CFiniteElementStd::CFiniteElementStd(CRFProcess* Pcs, const int C_Sys_Flad,
 			Advection = new Matrix(size_m, size_m);
 		}
 		if (D_Flag) StrainCoupling = new Matrix(size_m, 60);
-		RHS = new Vec(size_m);
+		RHS = new Vector(size_m);
 	}
 	//
 	StiffMatrix = new Matrix(size_m, size_m);
@@ -4206,20 +4191,11 @@ void CFiniteElementStd::Assemble_DualTransfer()
 		{
 			for (int j = 0; j < nnodes; j++)
 			{
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-// TODO_PETSC
-#else
 #ifdef NEW_EQS
 				(*A)(eqs_number[i], eqs_number[j] + cshift) +=
 				    -fm * (*Advection)(i, j);
 				(*A)(eqs_number[i] + cshift, eqs_number[j]) +=
 				    -ff * (*Advection)(i, j);
-#else
-				MXInc(eqs_number[i], eqs_number[j] + cshift,
-				      -fm * (*Advection)(i, j));
-				MXInc(eqs_number[i] + cshift, eqs_number[j],
-				      -ff * (*Advection)(i, j));
-#endif
 #endif
 			}
 		}
@@ -6385,9 +6361,6 @@ void CFiniteElementStd::add2GlobalMatrixII(const int block_cols)
 #ifdef NEW_EQS
 						(*A)(kk, j_sh + eqs_number[j]) +=
 						    (*StiffMatrix)(i + ii_sh, j + jj_sh);
-#else
-						MXInc(kk, j_sh + eqs_number[j],
-						      (*StiffMatrix)(i + ii_sh, j + jj_sh));
 #endif
 					}
 				}
@@ -6404,8 +6377,6 @@ void CFiniteElementStd::add2GlobalMatrixII(const int block_cols)
 			{
 #ifdef NEW_EQS
 				(*A)(kk, cshift_dm + eqs_number[j]) += (*StiffMatrix)(i, j);
-#else
-				MXInc(kk, cshift_dm + eqs_number[j], (*StiffMatrix)(i, j));
 #endif
 			}
 		}
@@ -6443,7 +6414,7 @@ void CFiniteElementStd::CalcFEM_FCT()
 		for (int j = 0; j < nnodes; j++)
 			(*FCT_MassL)(i) += (*Mass)(i, j);
 	// add into a global diagonal vector
-	Math_Group::Vec* ML = this->pcs->Gl_ML;
+	Math_Group::Vector* ML = this->pcs->Gl_ML;
 	for (int i = 0; i < nnodes; i++)
 	{
 #ifdef USE_PETSC
@@ -6502,10 +6473,6 @@ void CFiniteElementStd::CalcFEM_FCT()
 			(*A)(NodeShift[problem_dimension_dm] + eqs_number[i],
 			     NodeShift[problem_dimension_dm] + eqs_number[j]) +=
 			    (*AuxMatrix)(i, j);
-#else
-			MXInc(NodeShift[problem_dimension_dm] + eqs_number[i],
-			      NodeShift[problem_dimension_dm] + eqs_number[j],
-			      (*AuxMatrix)(i, j));
 #endif
 		}
 	}
@@ -6724,10 +6691,6 @@ void CFiniteElementStd::AssembleMixedHyperbolicParabolicEquation()
 					(*A)(NodeShift[problem_dimension_dm] + eqs_number[i],
 					     NodeShift[problem_dimension_dm] + eqs_number[j]) +=
 					    (*StiffMatrix)(i, j);
-#else
-					MXInc(NodeShift[problem_dimension_dm] + eqs_number[i],
-					      NodeShift[problem_dimension_dm] + eqs_number[j],
-					      (*StiffMatrix)(i, j));
 #endif
 				}
 			}
@@ -6984,16 +6947,6 @@ void CFiniteElementStd::Assemble_strainCPL_Matrix(const double fac,
 				(*A)(NodeShift[shift_index] + eqs_number[i],
 				     eqs_number[j] + NodeShift[2]) +=
 				    (*StrainCoupling)(i, j + 2 * nnodesHQ) * fac;
-#else
-			MXInc(NodeShift[shift_index] + eqs_number[i],
-			      eqs_number[j] + NodeShift[0], (*StrainCoupling)(i, j) * fac);
-			MXInc(NodeShift[shift_index] + eqs_number[i],
-			      eqs_number[j] + NodeShift[1],
-			      (*StrainCoupling)(i, j + nnodesHQ) * fac);
-			if (problem_dimension_dm == 3)
-				MXInc(NodeShift[shift_index] + eqs_number[i],
-				      eqs_number[j] + NodeShift[2],
-				      (*StrainCoupling)(i, j + 2 * nnodesHQ) * fac);
 #endif
 		}
 	}
@@ -7070,14 +7023,9 @@ void CFiniteElementStd::AssembleMassMatrix(int option)
 				{
 					for (int j = 0; j < nnodes; j++)
 					{
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-// TODO
-#elif NEW_EQS
+#ifdef NEW_EQS
 						(*A)(i_sh + eqs_number[i], j_sh + eqs_number[j]) +=
 						    (*Mass)(i + ii_sh, j + jj_sh);
-#else
-						MXInc(i_sh + eqs_number[i], j_sh + eqs_number[j],
-						      (*Mass)(i + ii_sh, j + jj_sh));
 #endif
 					}
 				}
@@ -7093,14 +7041,9 @@ void CFiniteElementStd::AssembleMassMatrix(int option)
 		{
 			for (int j = 0; j < nnodes; j++)
 			{
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-// TODO
-#elif defined(NEW_EQS)
+#ifdef NEW_EQS
 				(*A)(cshift + eqs_number[i], cshift + eqs_number[j]) +=
 				    (*Mass)(i, j);
-#else
-				MXInc(cshift + eqs_number[i], cshift + eqs_number[j],
-				      (*Mass)(i, j));
 #endif
 			}
 		}
@@ -7170,7 +7113,7 @@ void CFiniteElementStd::Config()
 	//----------------------------------------------------------------------
 	// ?2WW
 	if ((D_Flag == 41 && pcs_deformation > 100) || dynamic)
-		dm_pcs = (process::CRFProcessDeformation*)pcs;
+		dm_pcs = (CRFProcessDeformation*)pcs;
 	//----------------------------------------------------------------------
 	// Initialize RHS
 	if (pcs->Memory_Type > 0)

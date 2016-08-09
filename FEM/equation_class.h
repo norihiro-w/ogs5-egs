@@ -27,18 +27,13 @@
 
 class CNumerics;
 class CRFProcess;
-namespace process
-{
 class CRFProcessDeformation;
-}
 namespace FiniteElement
 {
 class CFiniteElementStd;
 class CFiniteElementVec;
 }
-using process::CRFProcessDeformation;
-using FiniteElement::CFiniteElementStd;
-using FiniteElement::CFiniteElementVec;
+using namespace FiniteElement;
 
 namespace Math_Group
 {
@@ -135,7 +130,7 @@ private:
 
 	// Friends
 	friend class ::CRFProcess;
-	friend class process::CRFProcessDeformation;
+	friend class ::CRFProcessDeformation;
 	friend class FiniteElement::CFiniteElementStd;
 	friend class FiniteElement::CFiniteElementVec;
 	//
