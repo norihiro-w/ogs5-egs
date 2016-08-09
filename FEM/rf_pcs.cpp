@@ -100,15 +100,6 @@ int pcs_number_flow = -1;         // JT2012
 int pcs_number_heat = -1;         // JT2012
 vector<int> pcs_number_mass;      // JT2012
 
-namespace process
-{
-class CRFProcessDeformation;
-}
-using process::CRFProcessDeformation;
-using MeshLib::CNode;
-using MeshLib::CElem;
-using FiniteElement::ElementValue;
-using Math_Group::vec;
 
 #define noCHECK_EQS
 #define noCHECK_ST_GROUP
@@ -247,8 +238,6 @@ CRFProcess::CRFProcess(void)
 	// Reload solutions
 	reload = -1;
 	nwrite_restart = 1;  // kg44 write every timestep is default
-	pcs_nval_data = NULL;
-	pcs_eval_data = NULL;
 	non_linear = false;                   // OK/CMCD
 	cal_integration_point_value = false;  // WW
 	continuum = 0;
@@ -1427,12 +1416,6 @@ void PCSDestroyAllProcesses(void)
 	for (j = 0; j < (int)pcs_vector.size(); j++)
 	{
 		m_process = pcs_vector[j];
-		if (m_process->pcs_nval_data)
-			m_process->pcs_nval_data =
-			    (PCS_NVAL_DATA*)Free(m_process->pcs_nval_data);
-		if (m_process->pcs_eval_data)
-			m_process->pcs_eval_data =
-			    (PCS_EVAL_DATA*)Free(m_process->pcs_eval_data);
 #ifdef PCS_NOD
 		for (i = 0; i < NodeListSize(); i++)
 		{
@@ -3262,24 +3245,6 @@ void CRFProcess::ConfigUnsaturatedFlow()
 		pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "m/s";
 		pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
 		pcs_number_of_secondary_nvals++;
-// TEST
-//#define DECOVALEX
-#ifdef DECOVALEX
-		// DECOVALEX Test
-		pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-		    "PRESSURE_I";
-		pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-		pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 0;
-		pcs_number_of_secondary_nvals++;
-#endif
-		/* if(adaption) //WW, JOD removed
-		   {
-		   pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-		   "STORAGE_P";
-		   pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-		   pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 0;
-		   pcs_number_of_secondary_nvals++;
-		   }*/
 		// Nodal velocity. WW
 		pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
 		    "VELOCITY_X1";
@@ -3712,63 +3677,6 @@ void CRFProcess::ConfigTH()
 	p_var_index = new int[2];
 }
 
-
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   07/2004 OK Implementation
-**************************************************************************/
-int PCSGetNODValueIndex(const string& name, int timelevel)
-{
-	// PCS primary variables
-	int pcs_vector_size = (int)pcs_vector.size();
-	int i, j;
-	CRFProcess* m_pcs = NULL;
-	if (pcs_vector_size > 0)
-		for (i = 0; i < pcs_vector_size; i++)
-		{
-			m_pcs = pcs_vector[i];
-			for (j = 0; j < m_pcs->number_of_nvals; j++)
-				if ((name.compare(m_pcs->pcs_nval_data[j].name) == 0) &&
-				    (m_pcs->pcs_nval_data[j].timelevel == timelevel))
-					return m_pcs->pcs_nval_data[j].nval_index;
-		}
-	cout << "Error in PCSGetNODValueIndex: " << name << endl;
-	return -1;
-}
-
-//////////////////////////////////////////////////////////////////////////
-// Configuration ELE
-//////////////////////////////////////////////////////////////////////////
-
-/*************************************************************************
-   ROCKFLOW - Function: CRFProcess::PCSGetELEValueIndex
-   Task: Provide index for element values
-   Programming: 08/2003 SB Implementation
-   last modified:
- **************************************************************************/
-int PCSGetELEValueIndex(char* name)
-{
-	int i;
-	CRFProcess* m_process = NULL;
-	int j;
-	int no_processes = (int)pcs_vector.size();
-	for (j = 0; j < no_processes; j++)
-	{
-		m_process = pcs_vector[j];
-		for (i = 0; i < m_process->pcs_number_of_evals; i++)
-			if (strcmp(m_process->pcs_eval_data[i].name, name) == 0)
-				return m_process->pcs_eval_data[i].eval_index;
-	}
-	printf("PCSGetELEValueIndex Alert\n");
-	printf("%s \n", name);
-	return -1;
-}
-
-//////////////////////////////////////////////////////////////////////////
-// Configuration ELE matrices
-//////////////////////////////////////////////////////////////////////////
 
 /**************************************************************************
    FEMLib-Method:
@@ -6518,16 +6426,6 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 #endif
 }
 
-// WW
-int CRFProcess::GetNODValueIndex(const string& name, int timelevel)
-{
-	for (int j = 0; j < number_of_nvals; j++)
-		if ((name.compare(pcs_nval_data[j].name) == 0) &&
-		    (pcs_nval_data[j].timelevel == timelevel))
-			return pcs_nval_data[j].nval_index;
-	cout << "Error in PCSGetNODValueIndex: " << name << endl;
-	return -1;
-}
 
 ///////////////////////////////////////////////////////////////////////////
 // Specials

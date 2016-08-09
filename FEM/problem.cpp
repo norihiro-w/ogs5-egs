@@ -49,12 +49,6 @@
 #include "tools.h"
 
 
-namespace process
-{
-class CRFProcessDeformation;
-}
-using process::CRFProcessDeformation;
-
 std::string FileName;
 std::string FilePath;
 

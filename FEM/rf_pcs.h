@@ -7,36 +7,20 @@
  *
  */
 
-/**************************************************************************
-   ROCKFLOW - Object: Process PCS
-   Task:
-   Programing:
-   02/2003 OK Implementation
-   11/2004 OK PCS2
-**************************************************************************/
 #ifndef rf_pcs_INC
 #define rf_pcs_INC
 
 #include "makros.h"
 
-// MSHLib
 #include "msh_lib.h"
 
-// PCSLib
 #include "ProcessInfo.h"
 #include "rf_bc_new.h"
 #include "rf_num_new.h"
 #include "rf_tim_new.h"
-
 #include "SparseMatrixDOK.h"
 
-//#include "rf_st_new.h"//CMCD 02_06
-// C++ STL
-//#include <fstream>
-//
-// The follows are implicit declaration. WW
-//---------------------------------------------------------------------------
-#if defined(USE_PETSC)  // || defined(using other parallel scheme)
+#if defined(USE_PETSC)
 namespace petsc_group
 {
 class PETScLinearSolver;
@@ -56,26 +40,13 @@ namespace MeshLib
 class CFEMesh;
 }
 
-#ifdef NEW_EQS  // WW
+#ifdef NEW_EQS
 namespace Math_Group
 {
 class Linear_EQS;
 }
 using Math_Group::Linear_EQS;
 #endif
-
-// using Math_Group::SparseMatrixDOK;
-//
-
-/*
-class etr_data
-{
-public:
-    double x;
-    double y;
-    double val;
-};
-*/
 
 class CSourceTermGroup;
 class CSourceTerm;
@@ -86,94 +57,9 @@ using FiniteElement::CFiniteElementVec;
 using FiniteElement::ElementMatrix;
 using FiniteElement::ElementValue;
 using MeshLib::CFEMesh;
-//---------------------------------------------------------------------------
 
 #define PCS_FILE_EXTENSION ".pcs"
 
-typedef struct /* Knotenwert-Informationen */
-{
-	char name[80];      /* Name der Knotengroesse */
-	char einheit[10];   /* Einheit der Knotengroesse */
-	int speichern;      /* s.u., wird Wert gespeichert ? */
-	int laden;          /* s.u., wird Wert zu Beginn geladen ? */
-	int restart;        /* s.u., wird Wert bei Restart geladen ? */
-	int adapt_interpol; /* Soll Wert bei Adaption auf Kinder interpoliert
-	                       werden? */
-	double vorgabe;     /* Default-Wert fuer Initialisierung */
-	int nval_index;
-	int pcs_this;
-	int timelevel;
-} PCS_NVAL_DATA;
-
-typedef struct /* element data info */
-{
-	char name[80];      /* Name der Elementgroesse */
-	char einheit[10];   /* Einheit der Elementgroesse */
-	int speichern;      /* s.u., wird Wert gespeichert ? */
-	int laden;          /* s.u., wird Wert zu Beginn geladen ? */
-	int restart;        /* s.u., wird Wert bei Restart geladen ? */
-	int adapt_interpol; /* Soll Wert bei Adaption auf Kinder vererbt werden? */
-	double vorgabe;     /* Default-Wert fuer Initialisierung */
-	int eval_index;
-	int index;
-} PCS_EVAL_DATA;
-
-typedef struct
-{
-	std::string name;  // fluid name
-	double temperature;
-	double pressure;
-	double density;    // density g/cm^3
-	double viscosity;  // viscosity mPa.s
-	double volume;     // volume cm^3
-	double mass;       // weight g
-	double CO2;        // mole of CO2
-	double H2O;        // mole of H2O
-	double NaCl;       // mole of NaCl
-} Phase_Properties;
-
-typedef struct
-{
-	double B;
-	double C;
-	double D;
-	double E;
-	double F;
-	double b;
-	double G;
-	double Vc;
-	double V2, V3, V5, V6;
-	double Tc, Pc;
-	double M;
-	int id;
-} VirialCoefficients;
-
-
-// MB moved inside the Process object
-// extern vector<double*>nod_val_vector; //OK
-// extern vector<string>nod_val_name_vector; //OK
-// extern void pcs->SetNodeValue(long,int,double); //OK
-// extern double pcs->GetNodeValue(long,int); //OK
-// extern int pcs->GetNodeValueIndex(string); //OK
-
-// Element values for all process
-// Moved inside Process object
-// extern vector<double*>ele_val_vector; //PCH
-// extern vector<string>eld_val_name_vector; //PCH
-// extern void SetElementValue(long,int,double); //PCH
-// extern double GetElementValue(long,int); //PCH
-// extern int GetElementValueIndex(string); //PCH
-/**************************************************************************
-   FEMLib-Class:
-   Task:
-   Programing:
-   03/2003 OK Implementation
-   02/2005 WW Local element assembly (all protected members)
-   12/2005 OK MSH_TYPE
-   last modification:
-   05/2010 TF inserted pointer to instance of class Problem inclusive access
-functions
-**************************************************************************/
 
 /**
  * class manages the physical processes
@@ -304,25 +190,8 @@ public:
 	// 1-GEO
 	int ite_steps;  /// Newton step index;
 public:
-	// BG, DL Calculate phase transition of CO2
-	void CO2_H2O_NaCl_VLE_isobaric(double T,
-	                               double P,
-	                               Phase_Properties& vapor,
-	                               Phase_Properties& liquid,
-	                               Phase_Properties& solid,
-	                               int f);
-	// BG, DL Calculate phase transition of CO2
-	void CO2_H2O_NaCl_VLE_isochoric(Phase_Properties& vapor,
-	                                Phase_Properties& liquid,
-	                                Phase_Properties& solid,
-	                                int f);
-	// BG, NB Calculate phase transition of CO2
-	void Phase_Transition_CO2(CRFProcess* m_pcs, int Step);
 	int Phase_Transition_Model;  // BG, NB flag of Phase_Transition_Model
 	                             // (1...CO2-H2O-NaCl)
-	// BG 11/2010 Sets the initial conditions for multi phase flow if
-	// Phase_Transition_CO2 is used
-	void CalculateFluidDensitiesAndViscositiesAtNodes(CRFProcess* m_pcs);
 	/**
 	 * Sets the value for pointer _problem.
 	 * @param problem the value for _problem
@@ -474,7 +343,6 @@ public:
 	std::string file_name_base;  // OK
 	// Access to PCS
 	// Configuration 1 - NOD
-	PCS_NVAL_DATA* pcs_nval_data;  /// OK
 	int number_of_nvals;
 	int pcs_number_of_primary_nvals;
 	size_t GetPrimaryVNumber() const
@@ -518,7 +386,6 @@ public:
 	   pcs_secondary_function_value_history[index];}//CMCD for analytical
 	   solution*/
 	// Configuration 2 - ELE
-	PCS_EVAL_DATA* pcs_eval_data;
 	int pcs_number_of_evals;
 	const char* pcs_eval_name[PCS_NUMBER_MAX];
 	const char* pcs_eval_unit[PCS_NUMBER_MAX];
@@ -703,8 +570,6 @@ public:
 	// Specials
 	void PCSMoveNOD();
 	void PCSDumpModelNodeValues(void);
-	// WW
-	int GetNODValueIndex(const std::string& name, int timelevel);
 	// BC for dynamic problems. WW
 	inline void setBC_danymic_problems();
 	inline void setST_danymic_problems();
@@ -874,11 +739,9 @@ extern CRFProcess* PCSGetMass(size_t component_number);  // JT
 extern CRFProcess* PCSGetDeformation();                  // JT
 extern bool PCSConfig();                                 //
 // NOD
-extern int PCSGetNODValueIndex(const std::string&, int);
 extern double PCSGetNODValue(long, char*, int);
 extern void PCSSetNODValue(long, const std::string&, double, int);
 // ELE
-extern int PCSGetELEValueIndex(char*);
 extern double PCSGetELEValue(long index,
                              double* gp,
                              double theta,

@@ -77,8 +77,6 @@ using FiniteElement::ElementValue_DM;
 using SolidProp::CSolidProperties;
 using Math_Group::Matrix;
 
-namespace process
-{
 CRFProcessDeformation::CRFProcessDeformation()
     : CRFProcess(),
       fem_dm(NULL),
@@ -191,22 +189,7 @@ void CRFProcessDeformation::Initialization()
 	}
 	InitialMBuffer();
 	InitGauss();
-////////////////////////////////////
 
-#ifdef DECOVALEX
-	// DECOVALEX test
-	size_t i;
-	int idv0 = 0, idv1 = 0;
-	CRFProcess* h_pcs = NULL;
-	h_pcs = fem_dm->h_pcs;
-	if (h_pcs->type == 14)  // Richards
-	{
-		idv0 = h_pcs->GetNodeValueIndex("PRESSURE_I");
-		idv1 = h_pcs->GetNodeValueIndex("PRESSURE1");
-		for (i = 0; i < m_msh->GetNodesNumber(false); i++)
-			h_pcs->SetNodeValue(i, idv0, h_pcs->GetNodeValue(i, idv1));
-	}
-#endif
 
 	// Initial pressure is stored to evaluate pressure difference from the
 	// initial
@@ -2606,4 +2589,3 @@ bool CRFProcessDeformation::CalcBC_or_SecondaryVariable_Dynamics(bool BC)
 
 	return BC;
 }
-}  // end namespace

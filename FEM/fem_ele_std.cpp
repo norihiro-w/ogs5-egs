@@ -7170,7 +7170,7 @@ void CFiniteElementStd::Config()
 	//----------------------------------------------------------------------
 	// ?2WW
 	if ((D_Flag == 41 && pcs_deformation > 100) || dynamic)
-		dm_pcs = (process::CRFProcessDeformation*)pcs;
+		dm_pcs = (CRFProcessDeformation*)pcs;
 	//----------------------------------------------------------------------
 	// Initialize RHS
 	if (pcs->Memory_Type > 0)

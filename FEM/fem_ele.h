@@ -30,10 +30,7 @@ class CNode;
 class CEdge;
 }
 class CRFProcess;
-namespace process
-{
 class CRFProcessDeformation;
-}
 
 namespace FiniteElement
 {
@@ -144,8 +141,8 @@ protected:
 	CElem* MeshElement;
 	long* element_nodes_dom;  // Only a pointer. For domain decomposition. WW
 
-	friend class ::CRFProcess;
-	friend class process::CRFProcessDeformation;
+	friend class CRFProcess;
+	friend class CRFProcessDeformation;
 
 	// Coordinate indicator
 	// 10:  X component only

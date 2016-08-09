@@ -36,7 +36,7 @@ std::vector<FiniteElement::ElementValue_DM*> ele_value_dm;
 namespace FiniteElement
 {
 
-CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
+CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
                                      const int C_Sys_Flad,
                                      const int order)
     : CElement(C_Sys_Flad, order),
@@ -54,7 +54,6 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 	t_pcs = NULL;
 
 	AuxNodal2 = NULL;
-	Idx_Vel = NULL;
 	X0 = n_jump = pr_stress = NULL;
 	//
 	dim = pcs->m_msh->GetMaxElementDim();  // overwrite dim in CElement
@@ -75,9 +74,6 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 	for (i = 0; i < 4; i++)
 		NodeShift[i] = pcs->Shift[i];
 	{
-		dAcceleration = NULL;
-		// Idx_Vel[0] = Idx_Vel[1] = Idx_Vel[2] = -1;
-		beta2 = bbeta1 = 1.0;
 		// Indecex in nodal value table
 		Idx_dm0[0] = pcs->GetNodeValueIndex("DISPLACEMENT_X1");
 		Idx_dm0[1] = pcs->GetNodeValueIndex("DISPLACEMENT_Y1");
@@ -410,7 +406,6 @@ CFiniteElementVec::~CFiniteElementVec()
 	if (X0) delete[] X0;
 	if (n_jump) delete[] n_jump;
 	if (pr_stress) delete[] pr_stress;
-	if (Idx_Vel) delete[] Idx_Vel;
 	X0 = n_jump = pr_stress = NULL;
 	delete[] AuxNodal;
 	delete[] AuxNodal0;
@@ -418,7 +413,6 @@ CFiniteElementVec::~CFiniteElementVec()
 	delete[] AuxNodal_S;
 	delete[] AuxNodal1;
 	AuxNodal = AuxNodal_S0 = AuxNodal_S = AuxNodal1 = NULL;
-	Idx_Vel = NULL;
 	//
 	Idx_Strain = NULL;
 	Idx_Stress = NULL;
@@ -902,7 +896,6 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 void CFiniteElementVec::LocalAssembly(const int update)
 {
 	int j;
-	double* a_n = NULL;
 
 	Index = MeshElement->GetIndex();
 	SetMemory();
@@ -1419,45 +1412,6 @@ void CFiniteElementVec::add2GlobalMatrixII()
 
 /***************************************************************************
    GeoSys - Funktion:
-           CFiniteElementVec::ComputeMass()
-   Aufgabe:
-           Compute the mass matrix for dynamic analyses
-   Programming:
-   05/2005   WW   Elastische Elemente
- **************************************************************************/
-void CFiniteElementVec::ComputeMass()
-{
-	int i, j;
-	// ---- Gauss integral
-	int gp_r = 0, gp_s = 0, gp_t;
-	gp = 0;
-	gp_t = 0;
-	double fkt = 0.0;
-
-	(*Mass) = 0.0;
-	// Loop over Gauss points
-	for (gp = 0; gp < nGaussPoints; gp++)
-	{
-		//---------------------------------------------------------
-		//  Get local coordinates and weights
-		//  Compute Jacobian matrix and its determinate
-		//---------------------------------------------------------
-		fkt = GetGaussData(gp, gp_r, gp_s, gp_t);
-		ComputeShapefct(1);  // need for density calculation
-		ComputeShapefct(2);  // Quadratic interpolation function
-		fkt *= CalDensity();
-
-		for (i = 0; i < nnodesHQ; i++)
-			for (j = 0; j < nnodesHQ; j++)
-			{
-				if (i > j) continue;
-				(*Mass)(i, j) += fkt * shapefctHQ[i] * shapefctHQ[j];
-			}
-	}
-}
-
-/***************************************************************************
-   GeoSys - Funktion:
            CFiniteElementVec::  GlobalAssembly_RHS()
    Aufgabe:
            Assemble local matrics and vectors to the global system
@@ -1468,17 +1422,8 @@ void CFiniteElementVec::ComputeMass()
  **************************************************************************/
 void CFiniteElementVec::GlobalAssembly_RHS()
 {
-	int i, j, k;
-	double fact, val_n = 0.0;
-	double* a_n = NULL;
-	double biot = 1.0;
-	// WW double dent_w = 1000.0;
-	bool Residual;
-	Residual = false;
-	fact = 1.0;
-	k = 0;
 
-	biot = smat->biot_const;
+	bool Residual = false;
 	if (Flow_Type >= 0)
 	{
 		if (pcs->type / 10 == 4)  // Monolithic scheme
@@ -1489,10 +1434,12 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 		else  // Partitioned scheme
 			Residual = true;
 	}
+
 	// Assemble coupling matrix
 	// If dynamic GetNodeValue(nodes[i],idx_P0) = 0;
 	if (Residual)
 	{
+		const double biot = smat->biot_const;
 		double* p0 = pcs->GetInitialFluidPressure();  // NW should calculate (p
 		                                              // - p0) because OGS
 		                                              // calculates (stress -
@@ -1502,9 +1449,9 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 			case 0:  // Liquid flow
 				// For monolithic scheme and liquid flow, the limit of positive
 				// pressure must be removed
-				for (i = 0; i < nnodes; i++)
+				for (int i = 0; i < nnodes; i++)
 				{
-					val_n = h_pcs->GetNodeValue(nodes[i], idx_P1);
+					double val_n = h_pcs->GetNodeValue(nodes[i], idx_P1);
 					//                AuxNodal[i] = LoadFactor*( val_n
 					//                -Max(pcs->GetNodeValue(nodes[i],idx_P0),0.0));
 					if (pcs->PCS_ExcavState == 1)
@@ -1524,45 +1471,31 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 				}
 				break;
 			case 10:  // Ground_flow. Will be merged to case 0
-				// WW dent_w =  m_mfp->Density();
-				for (i = 0; i < nnodes; i++)
+				for (int i = 0; i < nnodes; i++)
 					AuxNodal[i] =
 					    LoadFactor * h_pcs->GetNodeValue(nodes[i], idx_P1);
 				break;
 			case 1:  // Richards flow
-#ifdef DECOVALEX
-				int idv0;
-				// DECOVALEX
-				idv0 = S_Water * h_pcs->GetNodeValueIndex("PRESSURE_I");
-#endif
 				//
-				for (i = 0; i < nnodes; i++)
+				for (int i = 0; i < nnodes; i++)
 				{
-					val_n = h_pcs->GetNodeValue(nodes[i], idx_P1);
+					double val_n = h_pcs->GetNodeValue(nodes[i], idx_P1);
 					if (biot < 0.0 && val_n < 0.0)
 						AuxNodal[i] = 0.0;
 					else
-// DECOVALEX
-#ifdef DECOVALEX
-						AuxNodal[i] =
-						    LoadFactor *
-						    (val_n -
-						     Max(h_pcs->GetNodeValue(nodes[i], idv0), 0.0));
-#else
 						AuxNodal[i] = LoadFactor * S_Water * val_n;
-#endif
 				}
 				break;
 			case 2:
 			{  // Multi-phase-flow: p_g-Sw*p_c
 				// 07.2011. WW
 				const int dim_times_nnodesHQ(dim * nnodesHQ);
-				for (i = 0; i < dim_times_nnodesHQ; i++)
+				for (int i = 0; i < dim_times_nnodesHQ; i++)
 					AuxNodal1[i] = 0.0;
 
 				if (smat->bishop_model > 0)
 				{
-					for (i = 0; i < nnodes; i++)
+					for (int i = 0; i < nnodes; i++)
 					{
 						double bishop_coef = 1.;  // bishop
 						double S_e = 1.;
@@ -1580,6 +1513,7 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 							default:
 								break;
 						}
+						double val_n = 0;
 						if (smat->bishop_model == 1 ||
 						    smat->bishop_model == 2)  // pg-bishop*pc 05.2011 WX
 							val_n = h_pcs->GetNodeValue(nodes[i], idx_P2) -
@@ -1604,14 +1538,6 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 				}
 				else
 				{
-					/*
-					   for (i=0;i<nnodes;i++)
-					   {
-					   if(AuxNodal0[i]<0.0)
-					      AuxNodal0[i] = 0.;
-					   }
-					 */
-
 					PressureC->multi(AuxNodal2, AuxNodal1, LoadFactor);
 					PressureC_S->multi(AuxNodal0, AuxNodal1, -1.0 * LoadFactor);
 				}
@@ -1619,13 +1545,13 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 				break;
 			}
 			case 3:  // Multi-phase-flow: SwPw+SgPg	// PCH 05.05.2009
-				for (i = 0; i < nnodes; i++)
+				for (int i = 0; i < nnodes; i++)
 				{
 					double Snw = h_pcs->GetNodeValue(nodes[i], idx_Snw);
 					double Sw = 1.0 - Snw;
 					double Pw = h_pcs->GetNodeValue(nodes[i], idx_P1);
 					double Pnw = h_pcs->GetNodeValue(nodes[i], idx_P2);
-					val_n = Sw * Pw + Snw * Pnw;
+					double val_n = Sw * Pw + Snw * Pnw;
 					if (biot < 0.0 && val_n < 0.0)
 						AuxNodal[i] = 0.0;
 					else
@@ -1636,13 +1562,13 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 
 		const int dim_times_nnodesHQ(dim * nnodesHQ);
 		// Coupling effect to RHS
-		if (Flow_Type != 2)  // 07.2011. WW
+		if (Flow_Type != 2)
 		{
-			for (i = 0; i < dim_times_nnodesHQ; i++)
+			for (int i = 0; i < dim_times_nnodesHQ; i++)
 				AuxNodal1[i] = 0.0;
 			PressureC->multi(AuxNodal, AuxNodal1);
 		}
-		for (i = 0; i < dim_times_nnodesHQ; i++)
+		for (int i = 0; i < dim_times_nnodesHQ; i++)
 			(*RHS)(i) -= fabs(biot) * AuxNodal1[i];
 	}  // End if partioned
 
@@ -1653,7 +1579,7 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 	//	std::cerr << "e: " << Index << "\n";
 	for (size_t i = 0; i < dim; i++)
 	{
-		for (j = 0; j < nnodesHQ; j++)
+		for (int j = 0; j < nnodesHQ; j++)
 		{
 			//		    std::cerr << eqs_number[j] << "," << NodeShift[i] << ","
 			//<< i * nnodesHQ + j << "\n";

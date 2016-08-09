@@ -39,8 +39,6 @@ class CFiniteElementVec;
 }
 using FiniteElement::CFiniteElementVec;
 
-namespace process
-{
 enum InitDataReadWriteType
 {
 	none,
@@ -75,7 +73,7 @@ public:
 
 	// Aux. Memory
 	double* GetAuxArray() const { return ARRAY; }
-	double* GetInitialFluidPressure() const { return p0; };
+	double* GetInitialFluidPressure() const { return p0; }
 
 	void ScalingNodeForce(const double SFactor);
 	void InitGauss();
@@ -136,7 +134,6 @@ private:
 	long MarkBifurcatedNeighbor(const int PathIndex);
 	double getNormOfDisplacements();
 };
-}  // end namespace
 
 extern void CalStressInvariants(const long Node_Inex, double* StressInv);
 // For visualization

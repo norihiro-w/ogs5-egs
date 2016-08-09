@@ -29,10 +29,7 @@ class CGLPolyline;
 class CGLLine;
 class Surface;
 
-namespace process  // WW
-{
 class CRFProcessDeformation;
-};
 
 namespace MathLib
 {
@@ -266,8 +263,8 @@ private:
 	std::vector<std::string> precip_files;
 
 	friend class CSourceTermGroup;
-	friend class process::CRFProcessDeformation;  // WW
-	friend class ::CRFProcess;                    // WW
+	friend class CRFProcessDeformation;
+	friend class CRFProcess;
 
 	std::string geo_name;
 	double _coup_leakance;

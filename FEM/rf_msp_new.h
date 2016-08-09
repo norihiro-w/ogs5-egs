@@ -17,16 +17,10 @@
 #ifndef rf_msp_new_INC
 #define rf_msp_new_INC
 
-// C++ STL
-//#include <fstream>
-//#include <string>
-//#include <vector>
-
 #define MSP_FILE_EXTENSION ".msp"
 
 namespace FiniteElement
 {
-class element;
 class CFiniteElementVec;
 class CFiniteElementStd;
 class ElementValue_DM;
@@ -36,24 +30,15 @@ namespace Math_Group
 {
 class Matrix;
 }
-namespace process
-{
+class CRFProcess;
 class CRFProcessDeformation;
-}
 
-#if defined(WIN32)
-class CMATGroupEditorDataEdit;  // WW
-#endif
+using namespace FiniteElement;
+using namespace Math_Group;
+
 namespace SolidProp
 {
-using FiniteElement::CFiniteElementVec;
-using FiniteElement::ElementValue_DM;
-using FiniteElement::CFiniteElementStd;
-using FiniteElement::ElementValue;
-using Math_Group::Matrix;
-using process::CRFProcessDeformation;
-using ::CRFProcess;
-/*---------------------------------------------------------------*/
+
 class CSolidProperties
 {
 private:
@@ -158,11 +143,8 @@ private:
 	friend class FiniteElement::CFiniteElementVec;
 	friend class FiniteElement::CFiniteElementStd;
 	friend class FiniteElement::ElementValue;
-	friend class process::CRFProcessDeformation;
+	friend class ::CRFProcessDeformation;
 	friend class ::CRFProcess;
-#if defined(WIN32)  // 15.03.2008 WW
-	friend class ::CMATGroupEditorDataEdit;
-#endif
 	// WW
 public:
 	//
