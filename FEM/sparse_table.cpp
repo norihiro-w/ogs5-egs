@@ -320,9 +320,9 @@ CSparseMatrix::CSparseMatrix(const SparseTable& sparse_table, const int dof)
 	zero_e = 0.;
 //
 #if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
-	IndexType counter, counter_ptr = 0, counter_col_idx = 0;
-	IndexType i, k, ii, jj, J, K;
-	IndexType row_in_sparse_table;
+	IndexType counter = 0, counter_ptr = 0, counter_col_idx = 0;
+	IndexType i=0, k=0, ii=0, jj=0, J=0, K=0;
+	IndexType row_in_sparse_table = 0;
 
 	ptr = new IndexType[rows * dof + 1];
 	col_idx = new IndexType[dof * dof * size_entry_column];

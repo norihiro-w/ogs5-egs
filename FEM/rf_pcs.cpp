@@ -5051,7 +5051,7 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 	long shift;
 	int interp_method = 0;
 	int curve, valid = 0;
-	int ii, idx0 = -1;
+	int idx0 = -1;
 	CBoundaryConditionNode* m_bc_node;  // WW
 	CBoundaryCondition* m_bc;           // WW
 	CFunction* m_fct = NULL;            // OK
@@ -5201,7 +5201,7 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 			if (m_bc_node->conditional)
 			{
 				int idx_1 = -1;               // 28.2.2007 WW
-				for (ii = 0; ii < dof; ii++)  // 28.2.2007 WW
+				for (int ii = 0; ii < dof; ii++)  // 28.2.2007 WW
 
 					if (convertPrimaryVariableToString(
 					        m_bc->getProcessPrimaryVariable())
@@ -6815,25 +6815,17 @@ Referenz)
 double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
                                          bool nls_error, bool cpl_error)
 {
-	long i, k, g_nnodes;
-	double error, error_g, val1, val2, value;
-	int nidx1, ii;
-#ifndef USE_PETSC
-	double* eqs_x = NULL;  // 11.2007. WW
-#endif
 	int num_dof_errors = pcs_number_of_primary_nvals;
 	double unknowns_norm = 0.0;
 	double absolute_error[DOF_NUMBER_MAX];
 #ifdef USE_PETSC
-	g_nnodes = m_msh->getNumNodesLocal();
+	auto g_nnodes = m_msh->getNumNodesLocal();
 #else
-	g_nnodes = m_msh->GetNodesNumber(false);
+	auto g_nnodes = m_msh->GetNodesNumber(false);
 #endif
 
 #if defined(NEW_EQS)
-	eqs_x = eqs_new->x;
-#elif !defined(USE_PETSC)
-	eqs_x = eqs->x;
+	double* eqs_x = eqs_new->x;
 #endif
 
 	switch (method)
@@ -6849,11 +6841,11 @@ double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
 			if (FiniteElement::isNewtonKind(m_num->nls_method))
 			{  // NEWTON-RAPHSON
 #ifndef USE_PETSC
-				for (ii = 0; ii < pcs_number_of_primary_nvals; ii++)
+				for (int ii = 0; ii < pcs_number_of_primary_nvals; ii++)
 				{
-					for (i = 0; i < g_nnodes; i++)
+					for (size_t i = 0; i < g_nnodes; i++)
 					{
-						val1 = eqs_x[i + ii * g_nnodes];
+						double val1 = eqs_x[i + ii * g_nnodes];
 						unknowns_norm += val1 * val1;
 					}
 				}
@@ -6861,15 +6853,15 @@ double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
 			}
 			else
 			{  // PICARD
-				for (ii = 0; ii < pcs_number_of_primary_nvals; ii++)
+				for (int ii = 0; ii < pcs_number_of_primary_nvals; ii++)
 				{
-					nidx1 =
+					int nidx1 =
 					    GetNodeValueIndex(pcs_primary_function_name[ii]) + 1;
 					//
-					for (i = 0; i < g_nnodes; i++)
+					for (size_t i = 0; i < g_nnodes; i++)
 					{
-						k = m_msh->Eqs2Global_NodeIndex[i];
-						val1 =
+						auto k = m_msh->Eqs2Global_NodeIndex[i];
+						double val1 =
 						    GetNodeValue(k, nidx1) - eqs_x[i + ii * g_nnodes];
 						unknowns_norm += val1 * val1;
 					}
@@ -6888,19 +6880,19 @@ double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
 		//
 		case FiniteElement::ERNORM:
 		{
-			value = 0.0;
+			double value = 0.0;
 			if (FiniteElement::isNewtonKind(m_num->nls_method))
 			{  // NEWTON-RAPHSON
-				for (ii = 0; ii < pcs_number_of_primary_nvals; ii++)
+				for (int ii = 0; ii < pcs_number_of_primary_nvals; ii++)
 				{
-					nidx1 =
+					int nidx1 =
 					    GetNodeValueIndex(pcs_primary_function_name[ii]) + 1;
 					//
-					for (i = 0; i < g_nnodes; i++)
+					for (size_t i = 0; i < g_nnodes; i++)
 					{
-						k = m_msh->Eqs2Global_NodeIndex[i];
-						val1 = eqs_x[i + ii * g_nnodes];
-						val2 = GetNodeValue(k, nidx1);
+						auto k = m_msh->Eqs2Global_NodeIndex[i];
+						double val1 = eqs_x[i + ii * g_nnodes];
+						double val2 = GetNodeValue(k, nidx1);
 						//
 						unknowns_norm += val1 * val1;
 						value += val2 * val2;
@@ -6909,17 +6901,16 @@ double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
 			}
 			else
 			{  // PICARD
-				for (ii = 0; ii < pcs_number_of_primary_nvals; ii++)
+				for (int ii = 0; ii < pcs_number_of_primary_nvals; ii++)
 				{
-					nidx1 =
+					int nidx1 =
 					    GetNodeValueIndex(pcs_primary_function_name[ii]) + 1;
 					//
-					error = 0.0;
-					for (i = 0; i < g_nnodes; i++)
+					for (size_t i = 0; i < g_nnodes; i++)
 					{
-						k = m_msh->Eqs2Global_NodeIndex[i];
-						val1 = GetNodeValue(k, nidx1);
-						val2 = val1 - eqs_x[i + ii * g_nnodes];
+						auto k = m_msh->Eqs2Global_NodeIndex[i];
+						double val1 = GetNodeValue(k, nidx1);
+						double val2 = val1 - eqs_x[i + ii * g_nnodes];
 						//
 						unknowns_norm += val2 * val2;
 						value += val1 * val1;
@@ -6941,12 +6932,12 @@ double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
 		{
 			if (FiniteElement::isNewtonKind(m_num->nls_method))
 			{  // NEWTON-RAPHSON
-				for (ii = 0; ii < pcs_number_of_primary_nvals; ii++)
+				for (int ii = 0; ii < pcs_number_of_primary_nvals; ii++)
 				{
-					error = 0.0;
-					for (i = 0; i < g_nnodes; i++)
+					double error = 0.0;
+					for (size_t i = 0; i < g_nnodes; i++)
 					{
-						val1 = eqs_x[i + ii * g_nnodes];
+						double val1 = eqs_x[i + ii * g_nnodes];
 						error += val1 * val1;
 					}
 					unknowns_norm += error;
@@ -6955,16 +6946,16 @@ double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
 			}
 			else
 			{  // PICARD
-				for (ii = 0; ii < pcs_number_of_primary_nvals; ii++)
+				for (int ii = 0; ii < pcs_number_of_primary_nvals; ii++)
 				{
-					nidx1 =
+					int nidx1 =
 					    GetNodeValueIndex(pcs_primary_function_name[ii]) + 1;
 					//
-					error = 0.0;
-					for (i = 0; i < g_nnodes; i++)
+					double error = 0.0;
+					for (size_t i = 0; i < g_nnodes; i++)
 					{
-						k = m_msh->Eqs2Global_NodeIndex[i];
-						val1 =
+						auto k = m_msh->Eqs2Global_NodeIndex[i];
+						double val1 =
 						    GetNodeValue(k, nidx1) - eqs_x[i + ii * g_nnodes];
 						error += val1 * val1;
 					}
@@ -6986,26 +6977,26 @@ double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
 		{
 			if (FiniteElement::isNewtonKind(m_num->nls_method))
 			{  // NEWTON-RAPHSON
-				for (ii = 0; ii < pcs_number_of_primary_nvals; ii++)
+				for (int ii = 0; ii < pcs_number_of_primary_nvals; ii++)
 				{
-					for (i = 0; i < g_nnodes; i++)
+					for (size_t i = 0; i < g_nnodes; i++)
 					{
-						val1 = eqs_x[i + ii * g_nnodes];
+						double val1 = eqs_x[i + ii * g_nnodes];
 						unknowns_norm += val1 * val1;
 					}
 				}
 			}
 			else
 			{  // PICARD
-				for (ii = 0; ii < pcs_number_of_primary_nvals; ii++)
+				for (int ii = 0; ii < pcs_number_of_primary_nvals; ii++)
 				{
-					nidx1 =
+					int nidx1 =
 					    GetNodeValueIndex(pcs_primary_function_name[ii]) + 1;
 					//
-					for (i = 0; i < g_nnodes; i++)
+					for (size_t i = 0; i < g_nnodes; i++)
 					{
-						k = m_msh->Eqs2Global_NodeIndex[i];
-						val1 =
+						auto k = m_msh->Eqs2Global_NodeIndex[i];
+						double val1 =
 						    GetNodeValue(k, nidx1) - eqs_x[i + ii * g_nnodes];
 						unknowns_norm += val1 * val1;
 					}
@@ -7026,12 +7017,12 @@ double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
 		{
 			if (FiniteElement::isNewtonKind(m_num->nls_method))
 			{  // NEWTON-RAPHSON
-				for (ii = 0; ii < pcs_number_of_primary_nvals; ii++)
+				for (int ii = 0; ii < pcs_number_of_primary_nvals; ii++)
 				{
-					error = 0.0;
-					for (i = 0; i < g_nnodes; i++)
+					double error = 0.0;
+					for (size_t i = 0; i < g_nnodes; i++)
 					{
-						val1 = eqs_x[i + ii * g_nnodes];
+						double val1 = eqs_x[i + ii * g_nnodes];
 						unknowns_norm += val1 * val1;
 						val1 = fabs(val1);
 						if (val1 > error) error = val1;
@@ -7041,22 +7032,22 @@ double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
 			}
 			else
 			{  // PICARD
-				for (ii = 0; ii < pcs_number_of_primary_nvals; ii++)
+				for (int ii = 0; ii < pcs_number_of_primary_nvals; ii++)
 				{
-					error = 0.0;
-					nidx1 =
+					double error = 0.0;
+					int nidx1 =
 					    GetNodeValueIndex(pcs_primary_function_name[ii]) + 1;
 					//
-					for (i = 0; i < g_nnodes; i++)
+					for (size_t i = 0; i < g_nnodes; i++)
 					{
 #ifdef USE_PETSC
-						val1 = GetNodeValue(i, nidx1);
+						double val1 = GetNodeValue(i, nidx1);
 						val1 -= eqs_x[pcs_number_of_primary_nvals *
 						                  m_msh->Eqs2Global_NodeIndex[i] +
 						              ii];
 #else
-						k = m_msh->Eqs2Global_NodeIndex[i];
-						val1 =
+						auto k = m_msh->Eqs2Global_NodeIndex[i];
+						double val1 =
 						    GetNodeValue(k, nidx1) - eqs_x[i + ii * g_nnodes];
 #endif
 						unknowns_norm += val1 * val1;
@@ -7175,13 +7166,13 @@ double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
 	// Store the error (JT)
 	// JT: now returning RELATIVE error. NECESSARY BECAUSE DOF MAY BE > 1 AND
 	// EACH DOF MAY HAVE DIFFERENT CHARACTER
+	double error_g = 0.0;
 	if (cpl_error)
 	{  // Return coupling error
-		error_g = 0.0;
-		for (ii = 0; ii < num_dof_errors; ii++)
+		for (int ii = 0; ii < num_dof_errors; ii++)
 		{
 			cpl_absolute_error[ii] = absolute_error[ii];
-			error = absolute_error[ii] / m_num->cpl_error_tolerance[ii];
+			double error = absolute_error[ii] / m_num->cpl_error_tolerance[ii];
 			error_g = std::max(
 			    error_g, error);  // Coupling error just stores the maximum
 		}
@@ -7191,7 +7182,7 @@ double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
 	if (nls_error)
 	{  // Return Non-Linear iteration error
 		error_g = 0.0;
-		for (ii = 0; ii < num_dof_errors; ii++)
+		for (int ii = 0; ii < num_dof_errors; ii++)
 		{
 			pcs_absolute_error[ii] = absolute_error[ii];
 			pcs_relative_error[ii] =
@@ -7204,7 +7195,7 @@ double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
 	if (!nls_error && !cpl_error)
 	{   // Then this routine called from somewhere else to get the error (i.e.
 		// time control). Store it in a temporary vector for access.
-		for (ii = 0; ii < num_dof_errors; ii++)
+		for (int ii = 0; ii < num_dof_errors; ii++)
 		{
 			temporary_absolute_error[ii] = absolute_error[ii];
 		}
@@ -7600,7 +7591,6 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 void CRFProcess::PrintStandardIterationInformation(bool write_std_errors,
                                                    double nl_error)
 {
-	int ii;
 	//
 	// LINEAR SOLUTION
 	if (m_num->nls_method == FiniteElement::INVALID_NL_TYPE)
@@ -7608,7 +7598,7 @@ void CRFProcess::PrintStandardIterationInformation(bool write_std_errors,
 		ScreenMessage("      -->LINEAR solution complete. \n");
 		if (write_std_errors)
 		{
-			for (ii = 0; ii < pcs_number_of_primary_nvals; ii++)
+			for (int ii = 0; ii < pcs_number_of_primary_nvals; ii++)
 			{
 				ScreenMessage("         PCS error DOF[%d]: %g\n", ii,
 				              pcs_absolute_error[ii]);
@@ -7635,7 +7625,7 @@ void CRFProcess::PrintStandardIterationInformation(bool write_std_errors,
 		}
 		else
 		{
-			for (ii = 0; ii < pcs_number_of_primary_nvals; ii++)
+			for (int ii = 0; ii < pcs_number_of_primary_nvals; ii++)
 			{
 				ScreenMessage("\tPCS error DOF[%d]: %e\n", ii,
 				              pcs_absolute_error[ii]);
@@ -7698,7 +7688,6 @@ void CRFProcess::Extropolation_GaussValue()
 **************************************************************************/
 void CRFProcess::Extropolation_MatValue()
 {
-	//	if (_pcs_type_name.find("FLOW") == string::npos)
 	if (!isFlowProcess(this->getProcessType())) return;
 	if (additioanl2ndvar_print < 0) return;
 
@@ -7707,7 +7696,7 @@ void CRFProcess::Extropolation_MatValue()
 	//
 	if ((additioanl2ndvar_print > 0) && (additioanl2ndvar_print < 3))
 	{
-		int idx[3];
+		int idx[3] = {};
 		idx[0] = GetNodeValueIndex("PERMEABILITY_X1");
 		idx[1] = GetNodeValueIndex("PERMEABILITY_Y1");
 		if (NS > 2) idx[2] = GetNodeValueIndex("PERMEABILITY_Z1");
@@ -8034,7 +8023,7 @@ CRFProcess* PCSGetFluxProcess()
  **************************************************************************/
 void CRFProcess::CalcSecondaryVariablesUnsaturatedFlow(bool initial)
 {
-	int ii, jj;
+	int jj;
 	long i;
 	double p_cap;
 	int idxp, idxcp, idxS;
@@ -8056,7 +8045,7 @@ void CRFProcess::CalcSecondaryVariablesUnsaturatedFlow(bool initial)
 	CElem* elem = NULL;
 	CFiniteElementStd* fem = GetAssembler();
 	//----------------------------------------------------------------------
-	for (ii = 0; ii < (int)secondSNames.size(); ii++)
+	for (int ii = 0; ii < (int)secondSNames.size(); ii++)
 	{
 		idxS = GetNodeValueIndex(secondSNames[ii].c_str()) + 1;
 		if (type == 1212 || type == 42)  // Multiphase flow
@@ -8092,7 +8081,7 @@ void CRFProcess::CalcSecondaryVariablesUnsaturatedFlow(bool initial)
 		}
 	}
 	// Cal S
-	for (ii = 0; ii < (int)secondSNames.size(); ii++)
+	for (int ii = 0; ii < (int)secondSNames.size(); ii++)
 	{
 		continuum = ii;
 		for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
@@ -8109,7 +8098,7 @@ void CRFProcess::CalcSecondaryVariablesUnsaturatedFlow(bool initial)
 	//
 	if (!initial) return;
 	//----------
-	for (ii = 0; ii < (int)secondSNames.size(); ii++)
+	for (int ii = 0; ii < (int)secondSNames.size(); ii++)
 	{
 		idxS = GetNodeValueIndex(secondSNames[ii].c_str()) + 1;
 		for (i = 0; i < (long)m_msh->GetNodesNumber(false); i++)
@@ -9816,7 +9805,7 @@ void CRFProcess::PI_TimeStepSize()
 #else                   // ifdef E_NORM
 	err = 0.0;
 	//
-	int ii, nidx1;
+	int nidx1;
 	long g_nnodes, j, k, l, size_x;
 	double x0, x1;
 	double Rtol = Tim->GetRTol();
@@ -9824,7 +9813,7 @@ void CRFProcess::PI_TimeStepSize()
 	double* u_k = _problem->GetBufferArray(true);
 
 	size_x = 0;
-	for (ii = 0; ii < pcs_number_of_primary_nvals; ii++)
+	for (int ii = 0; ii < pcs_number_of_primary_nvals; ii++)
 	{
 		nidx1 = GetNodeValueIndex(pcs_primary_function_name[ii]) + 1;
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
