@@ -286,7 +286,6 @@ CRFProcess::CRFProcess(void)
 	PCS_ExcavState = -1;      // WX
 
 	isRSM = false;  // WW
-	eqs_x = NULL;
 	write_leqs = false;  // NW
 
 	pcs_num_dof_errors = 1;
@@ -6819,12 +6818,14 @@ double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
 	double unknowns_norm = 0.0;
 	double absolute_error[DOF_NUMBER_MAX];
 #ifdef USE_PETSC
-	auto g_nnodes = m_msh->getNumNodesLocal();
+	size_t const g_nnodes = m_msh->getNumNodesLocal();
 #else
-	auto g_nnodes = m_msh->GetNodesNumber(false);
+	size_t const g_nnodes = m_msh->GetNodesNumber(false);
 #endif
 
-#if defined(NEW_EQS)
+#ifdef USE_PETSC
+	double* eqs_x = eqs_new->GetGlobalSolution();
+#else
 	double* eqs_x = eqs_new->x;
 #endif
 

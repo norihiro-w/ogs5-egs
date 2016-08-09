@@ -94,13 +94,10 @@ double CRFProcessTH::Execute(int loop_process_number)
 		ScreenMessage("------------------------------------------------\n");
 		return error;
 	}
-
-	eqs_x = eqs_new->GetGlobalSolution();
 #endif
-#if defined(NEW_EQS)  // WW
-//
-	eqs_new->ConfigNumerics(m_num);  // 27.11.2007 WW
-//
+
+#if defined(NEW_EQS)
+	eqs_new->ConfigNumerics(m_num);
 #endif
 
 	// Begin Newton-Raphson steps
@@ -276,7 +273,6 @@ double CRFProcessTH::Execute(int loop_process_number)
 		if (!m_num->petsc_split_fields)
 		{
 			eqs_new->MappingSolution();
-			eqs_x = eqs_new->GetGlobalSolution();
 		}
 		else
 		{
@@ -467,6 +463,8 @@ void CRFProcessTH::UpdateIterativeStep(const double damp)
 //	long shift = 0;
 #if defined(NEW_EQS)
 	const double* eqs_x = eqs_new->getX();
+#else
+	const double* eqs_x = eqs_new->GetGlobalSolution();
 #endif
 
 	// x^k1 = x^k + dx
