@@ -3339,38 +3339,38 @@ void COutput::checkConsistency()
 			}  // end for(l...)
 			if (!found)
 			{
-				std::cout << "Warning - no PCS data for output variable "
-				          << _nod_value_vector[j] << " in ";
+				std::stringstream ss;
+				ss << "-> Warning - no PCS data for output variable " << _nod_value_vector[j] << " in ";
 				switch (getGeoType())
 				{
 					case GEOLIB::POINT:
-						std::cout << "POINT " << getGeoName() << "\n";
+						ss << "POINT " << getGeoName() << "\n";
 						break;
 					case GEOLIB::POLYLINE:
-						std::cout << "POLYLINE " << getGeoName() << "\n";
+						ss << "POLYLINE " << getGeoName() << "\n";
 						break;
 					case GEOLIB::SURFACE:
-						std::cout << "SURFACE " << getGeoName() << "\n";
+						ss << "SURFACE " << getGeoName() << "\n";
 						break;
 					case GEOLIB::VOLUME:
-						std::cout << "VOLUME " << getGeoName() << "\n";
+						ss << "VOLUME " << getGeoName() << "\n";
 						break;
 					case GEOLIB::GEODOMAIN:
-						std::cout << "DOMAIN " << getGeoName() << "\n";
+						ss << "DOMAIN " << getGeoName() << "\n";
 						break;
 					case GEOLIB::INVALID:
-						std::cout << "WARNING: COutput::checkConsistency - "
-						             "invalid geo type" << endl;
+						ss << "WARNING: COutput::checkConsistency - "
+						             "invalid geo type\n";
 						break;
 				}
+				ScreenMessage("%s", ss.str().data());
 			}
 		}  // end for(j...)
 
 		// Reduce vector out->_nod_value_vector by elements which have no PCS
 		if (del_index.size() < _nod_value_vector.size())
 		{
-			std::cout << " Reducing output to variables with existing PCS-data "
-			          << "\n";
+			ScreenMessage("-> Reducing output to variables with existing PCS-data\n");
 			_nod_value_vector.clear();
 			for (size_t j = 0; j < del_index.size(); j++)
 				_nod_value_vector.push_back(del_index[j]);
@@ -3400,7 +3400,7 @@ void COutput::setInternalVarialbeNames(CFEMesh* msh)
     bool isPVD = (dat_type_name.compare("PVD") == 0); //currently only for PVD
 
     if (isXZplane && isPVD) {
-        std::cout << "-> recognized XZ plane for PVD output." << "\n";
+        ScreenMessage("-> recognized XZ plane for PVD output.\n");
         map<string,string> map_output_variable_name;
         map_output_variable_name.insert(pair<string, string>("DISPLACEMENT_Y1", "DISPLACEMENT_Z1" ));
         map_output_variable_name.insert(pair<string, string>("DISPLACEMENT_Z1", "DISPLACEMENT_Y1" ));
@@ -3436,8 +3436,7 @@ void COutput::setInternalVarialbeNames(CFEMesh* msh)
 
 	if (isXZplane && isPVD)
 	{
-		std::cout << "-> recognized XZ plane for PVD output."
-		          << "\n";
+		ScreenMessage("-> recognized XZ plane for PVD output.\n");
 		map<string, string> map_output_variable_name;
 		map_output_variable_name.insert(
 		    pair<string, string>("DISPLACEMENT_Y1", "DISPLACEMENT_Z1"));

@@ -1375,9 +1375,6 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 					double val_n = h_pcs->GetNodeValue(nodes[i], idx_P1);
 					//                AuxNodal[i] = LoadFactor*( val_n
 					//                -Max(pcs->GetNodeValue(nodes[i],idx_P0),0.0));
-					if (pcs->PCS_ExcavState == 1)
-						// WX:07.2011 for HM excavation
-						val_n -= h_pcs->GetNodeValue(nodes[i], idx_P1 - 1);
 
 					// Initial pressure should be subtracted, i.e. (p-p0)
 					// because DEFORMATION

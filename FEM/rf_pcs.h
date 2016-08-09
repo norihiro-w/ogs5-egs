@@ -81,8 +81,6 @@ protected:
 	int continuum;
 	bool continuum_ic;
 
-	bool isRSM;     // WW
-
 	std::vector<std::string> pcs_type_name_vector;
 
 protected:  // WW
@@ -636,24 +634,8 @@ public:
 	// NEW
 	CRFProcess* CopyPCStoDM_PCS();
 	CRFProcess* CopyPCStoTH_PCS();
-	bool OBJRelations();        // OK
-	void OBJRelationsDelete();  // OK
-	bool NODRelations();        // OK
-	bool ELERelations();        // OK
-	bool Check();                 // OK
-	void NODRelationsDelete();    // OK
-	void ELERelationsDelete();    // OK
-	bool m_bCheckOBJ;             // OK
-	bool m_bCheckNOD;             // OK
-	bool m_bCheckELE;             // OK
-	bool m_bCheckEQS;             // OK
-	void Delete();                // OK
-	bool m_bCheck;                // OK
-	int ExcavMaterialGroup;       // WX
-	int ExcavDirection;           // WX
-	int ExcavCurve;               // WX
-	double ExcavBeginCoordinate;  // WX
-	int PCS_ExcavState;           // WX
+	bool Check();
+
 	bool calcDiffFromStress0;
 	bool resetStrain;
 	bool scaleUnknowns;

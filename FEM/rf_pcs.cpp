@@ -148,9 +148,6 @@ CRFProcess::CRFProcess(void)
 	ite_steps = 0;
 	cpl_num_dof_errors = 0;
 	continuum_ic = true;
-	ExcavDirection = 0;
-	ExcavCurve = 0;
-	ExcavBeginCoordinate = .0;
 	number_of_nvals = 0;
 	pcs_number_of_primary_nvals = 0;
 	pcs_number_of_secondary_nvals = 0;
@@ -250,11 +247,6 @@ CRFProcess::CRFProcess(void)
 	this->Phase_Transition_Model = 0;  // BG, 11/2010, flag for using CO2 Phase
 	                                   // transition (0...not used, 1...used)
 	//----------------------------------------------------------------------
-	m_bCheck = false;     // OK
-	m_bCheckOBJ = false;  // OK
-	m_bCheckNOD = false;  // OK
-	m_bCheckELE = false;  // OK
-	m_bCheckEQS = false;  // OK
 	//
 	write_boundary_condition = false;  // 15.01.2008. WW
 	OutputMassOfGasInModel = false;    // 05/2012     BG
@@ -282,10 +274,7 @@ CRFProcess::CRFProcess(void)
 	this->FCT_K = NULL;
 	this->FCT_d = NULL;
 #endif
-	ExcavMaterialGroup = -1;  // 01.2010 WX
-	PCS_ExcavState = -1;      // WX
 
-	isRSM = false;  // WW
 	write_leqs = false;  // NW
 
 	pcs_num_dof_errors = 1;
@@ -373,25 +362,22 @@ CRFProcess::~CRFProcess(void)
 	CNodeValue* m_nod_val = NULL;
 
 	// Added &&m_nod_val for RSM model. 15.08.2011. WW
-	if (!isRSM)
+	for (i = 0; i < (int)st_node_value.size(); i++)
 	{
-		for (i = 0; i < (int)st_node_value.size(); i++)
+		for (int j = 0; j < (int)st_node_value[i].size(); j++)
 		{
-			for (int j = 0; j < (int)st_node_value[i].size(); j++)
+			m_nod_val = st_node_value[i][j];
+			// OK delete st_node_value[i];
+			// OK st_node_value[i] = NULL;
+			if (m_nod_val->check_me)  // OK
 			{
-				m_nod_val = st_node_value[i][j];
-				// OK delete st_node_value[i];
-				// OK st_node_value[i] = NULL;
-				if (m_nod_val->check_me)  // OK
-				{
-					m_nod_val->check_me = false;
-					delete m_nod_val;
-					m_nod_val = NULL;
-				}
+				m_nod_val->check_me = false;
+				delete m_nod_val;
+				m_nod_val = NULL;
 			}
 		}
-		st_node_value.clear();
 	}
+	st_node_value.clear();
 	//----------------------------------------------------------------------
 	for (i = 0; i < (int)bc_node_value.size(); i++)
 	{
@@ -1574,20 +1560,11 @@ CRFProcess* CRFProcess::CopyPCStoDM_PCS()
 	dm_pcs->reload = reload;
 	dm_pcs->nwrite_restart = nwrite_restart;
 	dm_pcs->isPCSDeformation = true;
-	dm_pcs->isPCSFlow = this->isPCSFlow;            // JT
-	dm_pcs->isPCSMultiFlow = this->isPCSMultiFlow;  // JT
-	// WW
+	dm_pcs->isPCSFlow = this->isPCSFlow;
+	dm_pcs->isPCSMultiFlow = this->isPCSMultiFlow;
 	dm_pcs->write_boundary_condition = write_boundary_condition;
 	dm_pcs->Deactivated_SubDomain = Deactivated_SubDomain;
 	pcs_deformation = 1;
-	// WX:01.2011 for coupled excavation
-	if (ExcavMaterialGroup >= 0)
-	{
-		dm_pcs->ExcavMaterialGroup = ExcavMaterialGroup;
-		dm_pcs->ExcavDirection = ExcavDirection;
-		dm_pcs->ExcavBeginCoordinate = ExcavBeginCoordinate;
-		dm_pcs->ExcavCurve = ExcavCurve;
-	}
 	dm_pcs->write_leqs = write_leqs;
 	dm_pcs->calcDiffFromStress0 = calcDiffFromStress0;
 	dm_pcs->resetStrain = resetStrain;
@@ -1609,20 +1586,11 @@ CRFProcess* CRFProcess::CopyPCStoTH_PCS()
 	dm_pcs->reload = reload;
 	dm_pcs->nwrite_restart = nwrite_restart;
 	dm_pcs->isPCSDeformation = false;
-	dm_pcs->isPCSFlow = this->isPCSFlow;            // JT
-	dm_pcs->isPCSMultiFlow = this->isPCSMultiFlow;  // JT
-	// WW
+	dm_pcs->isPCSFlow = this->isPCSFlow;
+	dm_pcs->isPCSMultiFlow = this->isPCSMultiFlow;
 	dm_pcs->write_boundary_condition = write_boundary_condition;
 	dm_pcs->Deactivated_SubDomain = Deactivated_SubDomain;
 	pcs_deformation = 1;
-	// WX:01.2011 for coupled excavation
-	if (ExcavMaterialGroup >= 0)
-	{
-		dm_pcs->ExcavMaterialGroup = ExcavMaterialGroup;
-		dm_pcs->ExcavDirection = ExcavDirection;
-		dm_pcs->ExcavBeginCoordinate = ExcavBeginCoordinate;
-		dm_pcs->ExcavCurve = ExcavCurve;
-	}
 	dm_pcs->write_leqs = write_leqs;
 	dm_pcs->scaleUnknowns = scaleUnknowns;
 	dm_pcs->vec_scale_dofs = vec_scale_dofs;
@@ -1974,13 +1942,6 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 			string tempstring;
 			*pcs_file >> tempstring;
 			if (tempstring == "CO2_H2O_NaCl") this->Phase_Transition_Model = 1;
-			continue;
-		}
-		// WX:07.2011
-		if (line_string.find("$TIME_CONTROLLED_EXCAVATION") == 0)
-		{
-			*pcs_file >> ExcavMaterialGroup >> ExcavDirection >>
-			    ExcavBeginCoordinate >> ExcavCurve;
 			continue;
 		}
 		if (line_string.find("$LEQS_OUTPUT") == 0)
@@ -3733,35 +3694,6 @@ void CRFProcess::CheckMarkedElement()
 	}
 }
 
-/**************************************************************************
-   FEMLib-Method:
-   Task:  check the excavation state of each aktive element
-   Programing:
-   01/2011 WX Implementation
-**************************************************************************/
-void CRFProcess::CheckExcavedElement()
-{
-#ifndef OGS_ONLY_TH
-	int valid;
-	long l;
-	// bool done;
-	CElem* elem = NULL;
-	// CNode *node = NULL;
-	for (l = 0; l < (long)m_msh->ele_vector.size(); l++)
-	{
-		elem = m_msh->ele_vector[l];
-		if (elem->GetPatchIndex() == static_cast<size_t>(ExcavMaterialGroup) &&
-		    elem->GetMark())
-		{
-			double const* ele_center(elem->GetGravityCenter());
-			if ((GetCurveValue(ExcavCurve, 0, aktuelle_zeit, &valid) +
-			     ExcavBeginCoordinate) > (ele_center[ExcavDirection]) &&
-			    (ele_center[ExcavDirection] - ExcavBeginCoordinate) > -0.001)
-				elem->SetExcavState(1);
-		}
-	}
-#endif
-}
 
 //////////////////////////////////////////////////////////////////////////
 // PCS Execution
