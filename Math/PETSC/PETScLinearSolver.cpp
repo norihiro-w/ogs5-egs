@@ -324,11 +324,10 @@ void PETScLinearSolver::MatrixCreate(PetscInt m, PetscInt n)
 	MatSetType(A, MATMPIAIJ);
 	MatSetFromOptions(A);
 #if 1
-	ScreenMessage2d(
-	    "-> set PETSc matrix preallocation wiht d_nz=%d and o_nz=%d\n", d_nz,
-	    o_nz);
+	ScreenMessage2("-> preallocate PETSc matrix with d_nz=%d and o_nz=%d\n", d_nz, o_nz);
 	MatMPIAIJSetPreallocation(A, d_nz, PETSC_NULL, o_nz, PETSC_NULL);
 	MatSeqAIJSetPreallocation(A, d_nz, PETSC_NULL);
+	MatSetOption(A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE);
 #else
 	ScreenMessage("-> do not preallocate PETSc\n");
 	MatSetUp(A);
@@ -383,9 +382,11 @@ void PETScLinearSolver::CheckIfMatrixIsSame(const std::string& filename)
 int PETScLinearSolver::Solver()
 {
 // TEST
+#define TEST_MEM_PETSC
 #ifdef TEST_MEM_PETSC
 	PetscLogDouble mem1, mem2;
 	PetscMemoryGetCurrentUsage(&mem1);
+	PetscPrintf(PETSC_COMM_WORLD, "-> memory usage: %f FB\n", mem1/(1024*1024*1024));
 #endif
 
 	/*
@@ -519,13 +520,10 @@ int PETScLinearSolver::Solver()
 #endif
 
 #ifdef TEST_MEM_PETSC
-	// TEST
 	PetscMemoryGetCurrentUsage(&mem2);
-	PetscPrintf(PETSC_COMM_WORLD,
-	            "###Memory usage by solver. Before :%f After:%f Increase:%d\n",
-	            mem1, mem2, (int)(mem2 - mem1));
+	PetscPrintf(PETSC_COMM_WORLD, "-> memory usage: %f FB\n", mem1/(1024*1024*1024));
 #endif
-
+#undef TEST_MEM_PETSC
 	return its;
 }
 
@@ -799,7 +797,8 @@ void PETScLinearSolver::addMatrixEntries(const int m, const int idxm[],
                                          const int n, const int idxn[],
                                          const PetscScalar v[])
 {
-	MatSetValues(A, m, idxm, n, idxn, v, ADD_VALUES);
+	int err = MatSetValues(A, m, idxm, n, idxn, v, ADD_VALUES);
+	CHKERRABORT(PETSC_COMM_WORLD, err);
 }
 
 void PETScLinearSolver::zeroRows_in_Matrix(const int nrows,
