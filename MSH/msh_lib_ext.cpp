@@ -589,6 +589,46 @@ int CFEMesh::calMaximumConnectedNodes()
 	return global_max;
 }
 
+int CFEMesh::getMaxNumNodesOfElement(bool quadratic) const
+{
+	int max_nnodes = 0;
+	if (this->getNumberOfLines() > 0)
+		max_nnodes = std::max(max_nnodes, quadratic ? 3 : 2);
+	if (this->getNumberOfTris() > 0)
+		max_nnodes = std::max(max_nnodes, quadratic ? 6 : 3);
+	if (this->getNumberOfQuads() > 0)
+		max_nnodes = std::max(max_nnodes, quadratic ? 9 : 4);
+	if (this->getNumberOfHexs() > 0)
+		max_nnodes = std::max(max_nnodes, quadratic ? 20 : 8);
+	if (this->getNumberOfTets() > 0)
+		max_nnodes = std::max(max_nnodes, quadratic ? 10 : 4);
+	if (this->getNumberOfPrisms() > 0)
+		max_nnodes = std::max(max_nnodes, quadratic ? 15 : 6);
+	if (this->getNumberOfPyramids() > 0)
+		max_nnodes = std::max(max_nnodes, quadratic ? 13 : 5);
+
+	int local_max = max_nnodes;
+	int global_max = 0;
+	MPI_Allreduce(&local_max, &global_max, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+
+	return global_max;
+}
+
+int CFEMesh::getMaxNumConnectedElements() const
+{
+	size_t max_n_conn_eles = 0;
+	for (CNode const* node : nod_vector)
+	{
+		max_n_conn_eles = std::max(max_n_conn_eles, node->getConnectedElementIDs().size());
+	}
+
+	int local_max = max_n_conn_eles;
+	int global_max = 0;
+	MPI_Allreduce(&local_max, &global_max, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+
+	return global_max;
+}
+
 }  // end namespace
 
 void BuildNodeStruc(MeshNodes* anode, MPI_Datatype* MPI_Node_ptr)

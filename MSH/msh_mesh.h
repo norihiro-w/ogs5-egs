@@ -157,6 +157,8 @@ public:
 	void setSubdomainElements(int* header, const int* elem_info,
 	                          const bool inside);
 	int calMaximumConnectedNodes();
+	int getMaxNumNodesOfElement(bool quadratic) const;
+	int getMaxNumConnectedElements() const;
 	/// Get number of nodes of the entire mesh
 	int getNumNodesGlobal() const { return glb_NodesNumber_Linear; }
 	/// Get number of nodes of the entire mesh of quadratic elements
