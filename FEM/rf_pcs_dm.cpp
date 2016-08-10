@@ -317,16 +317,11 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 
 	// setup mesh
 	m_msh->SwitchOnQuadraticNodes(true);
-	if (hasAnyProcessDeactivatedSubdomains || Deactivated_SubDomain.size() > 0 ||
-	    num_type_name.find("EXCAVATION") != string::npos)
+	if (hasAnyProcessDeactivatedSubdomains || Deactivated_SubDomain.size() > 0)
 		CheckMarkedElement();
 
-// system matrix
-#if defined(USE_PETSC)
-#elif defined(NEW_EQS)  // WW
-	eqs_new->ConfigNumerics(m_num);  // 27.11.2007 WW
-#else
-	SetZeroLinearSolver(eqs);
+#ifdef NEW_EQS
+	eqs_new->ConfigNumerics(m_num);
 #endif
 
 	if (this->first_coupling_iteration)
@@ -376,8 +371,6 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 			eqs_new->Initialize();
 #elif defined(NEW_EQS)
 			eqs_new->Initialize();
-#else
-			SetZeroLinearSolver(eqs);
 #endif
 
 			// Assemble and solve system equation
@@ -393,20 +386,16 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 #endif
 
 			ScreenMessage("Calling linear solver...\n");
-// Linear solver
+			// Linear solver
 #if defined(USE_PETSC)
 			//			eqs_new->EQSV_Viewer("eqs" +
 			// number2str(aktueller_zeitschritt) + "b");
 			eqs_new->Solver();
 			eqs_new->MappingSolution();
-#elif defined(LIS)
+#elif defined(NEW_EQS)
 			bool compress_eqs =
 				(type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
 			eqs_new->Solver(this->m_num, compress_eqs);
-#elif defined(NEW_EQS)
-			eqs_new->Solver();
-#else
-			ExecuteLinearSolver();
 #endif
 
 			if (!isLinearProblem)
@@ -418,9 +407,6 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 #elif defined(NEW_EQS)
 				NormR = eqs_new->NormRHS();
 				NormDU = eqs_new->NormX();
-#else
-				NormR = NormOfUnkonwn_orRHS(false);
-				NormDU = NormOfUnkonwn_orRHS();
 #endif
 
 				if (ite_steps == 1)

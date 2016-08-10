@@ -244,15 +244,13 @@ void CreateEQS_LinearSolver()
 		    "-> Process: %s\n",
 		    FiniteElement::convertProcessTypeToString(pcs_type).c_str());
 
-		if ((pcs_type == DEFORMATION_H2) || (pcs_type == DEFORMATION_FLOW) ||
-		    (pcs_type == DEFORMATION_DYNAMIC) || (pcs_type == DEFORMATION))
+		if (isDeformationProcess(pcs_type))
 		{
 			int eqs_dim = nn_q * dim;
 			vector<int> global_n_id;
 			if (pcs_type == DEFORMATION_H2)
 				eqs_dim += 2 * nn;
-			else if ((pcs_type == DEFORMATION_FLOW) ||
-			         (pcs_type == DEFORMATION_DYNAMIC))
+			else if (pcs_type == DEFORMATION_FLOW)
 				eqs_dim += nn;
 
 			sparse_info[0] = max_connected_eles * max_ele_nodes *

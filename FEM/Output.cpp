@@ -908,8 +908,6 @@ void COutput::WriteTECNodeData(fstream& tec_file)
 			NodeIndex[k] = m_pcs->GetNodeValueIndex(_nod_value_vector[k],
 			                                        true);  // JT Latest.
 			if ((m_pcs->getProcessType() == FiniteElement::DEFORMATION) ||
-			    (m_pcs->getProcessType() ==
-			     FiniteElement::DEFORMATION_DYNAMIC) ||
 			    (m_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW) ||
 			    (m_pcs->getProcessType() == FiniteElement::DEFORMATION_H2))
 			{

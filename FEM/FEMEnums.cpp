@@ -27,8 +27,6 @@ ProcessType convertProcessType(const std::string& pcs_type_string)
 	if (pcs_type_string.compare("DEFORMATION") == 0) return DEFORMATION;
 	if (pcs_type_string.compare("DEFORMATION_FLOW") == 0)
 		return DEFORMATION_FLOW;
-	if (pcs_type_string.compare("DEFORMATION_DYNAMIC") == 0)
-		return DEFORMATION_DYNAMIC;
 	if (pcs_type_string.compare("MASS_TRANSPORT") == 0) return MASS_TRANSPORT;
 	if (pcs_type_string.compare("MULTI_PHASE_FLOW") == 0)
 		return MULTI_PHASE_FLOW;
@@ -56,7 +54,6 @@ std::string convertProcessTypeToString(ProcessType pcs_type)
 	if (pcs_type == HEAT_TRANSPORT) return "HEAT_TRANSPORT";
 	if (pcs_type == DEFORMATION) return "DEFORMATION";
 	if (pcs_type == DEFORMATION_FLOW) return "DEFORMATION_FLOW";
-	if (pcs_type == DEFORMATION_DYNAMIC) return "DEFORMATION_DYNAMIC";
 	if (pcs_type == MASS_TRANSPORT) return "MASS_TRANSPORT";
 	if (pcs_type == MULTI_PHASE_FLOW) return "MULTI_PHASE_FLOW";
 	if (pcs_type == DEFORMATION_H2) return "DEFORMATION_H2";
@@ -93,7 +90,7 @@ bool isMultiFlowProcess(ProcessType pcs_type)
 bool isDeformationProcess(ProcessType pcs_type)
 {
 	if (pcs_type == DEFORMATION || pcs_type == DEFORMATION_H2 ||
-	    pcs_type == DEFORMATION_FLOW || pcs_type == DEFORMATION_DYNAMIC)
+	    pcs_type == DEFORMATION_FLOW)
 		return true;
 	return false;
 }

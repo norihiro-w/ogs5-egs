@@ -29,7 +29,6 @@ enum ProcessType
 	AIR_FLOW,             //!< AIR_FLOW
 	/// M process, single/multi-phase flow
 	DEFORMATION,          //!< DEFORMATION
-	DEFORMATION_DYNAMIC,  //!< ...
 	/// C process, single/multi-phase flow
 	DEFORMATION_FLOW,  //!< DEFORMATION_FLOW
 	/// H2M monolithic

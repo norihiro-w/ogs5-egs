@@ -492,7 +492,6 @@ public:
 	// WW   double GetELEValue(long index,double*gp,double theta,string
 	// nod_fct_name);
 	void CheckMarkedElement();   // WW
-	void CheckExcavedElement();  // WX
 	// Configuration 3 - ELE matrices
 	void CreateELEMatricesPointer(void);
 	// Equation system

@@ -6277,8 +6277,8 @@ void CRFProcess::CalcSecondaryVariables(bool initial)
 			// WW
 			CalcSecondaryVariablesUnsaturatedFlow(initial);
 			break;
-		case FiniteElement::DEFORMATION || FiniteElement::DEFORMATION_FLOW ||
-		    FiniteElement::DEFORMATION_DYNAMIC:
+		case FiniteElement::DEFORMATION:
+		case FiniteElement::DEFORMATION_FLOW:
 			if (type == 42)  // H2M //WW
 				CalcSecondaryVariablesUnsaturatedFlow(initial);
 
