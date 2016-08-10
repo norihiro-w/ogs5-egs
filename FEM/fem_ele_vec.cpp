@@ -1321,7 +1321,7 @@ void CFiniteElementVec::add2GlobalMatrixII()
 	//	ScreenMessage2("-> addMatrixEntries end\n");
 	//	ScreenMessage2("-> setArrayValues begin\n");
 
-	static double temp_vec[100];
+	double temp_vec[100];
 	for (int i = 0; i < m_dim; i++)
 		temp_vec[i] = -local_vec[i];  // r -= RHS
 	eqs->setArrayValues(1, m_dim, idxm, &temp_vec[0]);
