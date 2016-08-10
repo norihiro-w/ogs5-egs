@@ -358,7 +358,7 @@ public:
 	// To record eqs_index->global node index
 	std::vector<long> Eqs2Global_NodeIndex;
 
-	void ConnectedNodes(bool quadratic) const;
+	void ConnectedNodes(bool quadratic);
 	void ConnectedElements2Node(bool quadratic = false);
 	void FaceNormal();
 

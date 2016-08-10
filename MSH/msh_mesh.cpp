@@ -2359,54 +2359,26 @@ void CFEMesh::SetActiveElements(std::vector<long>&elements_active)
    10/2005 OK Implementation
    02/2006 WW Ordering and remove bugs
 **************************************************************************/
-void CFEMesh::ConnectedNodes(bool quadratic) const
+void CFEMesh::ConnectedNodes(bool quadratic)
 {
 #define noTestConnectedNodes
-	bool exist = false;
-
-	for (size_t i = 0; i < nod_vector.size(); i++)
+	for (CNode* nod : nod_vector)
 	{
-		CNode* nod = nod_vector[i];
-		size_t n_connected_elements(nod->getConnectedElementIDs().size());
-		for (size_t j = 0; j < n_connected_elements; j++)
+		for (size_t ele_id : nod->getConnectedElementIDs())
 		{
-			CElem* ele = ele_vector[nod->getConnectedElementIDs()[j]];
-			size_t n_quadratic_node(
-			    static_cast<size_t>(ele->GetNodesNumber(quadratic)));
-			for (size_t l = 0; l < n_quadratic_node; l++)
-			{
-				exist = false;
-				size_t n_connected_nodes(nod->getConnectedNodes().size());
-				// WW
-				for (size_t k = 0; k < n_connected_nodes; k++)
-					if (nod->getConnectedNodes()[k] ==
-					    static_cast<size_t>(ele->nodes_index[l]))
-					{
-						exist = true;
-						break;
-					}
-				if (!exist)  // WW
-					nod->getConnectedNodes().push_back(ele->nodes_index[l]);
-			}
+			CElem* ele = ele_vector[ele_id];
+			for (size_t l = 0; l < ele->GetNodesNumber(quadratic); l++)
+				nod->getConnectedNodes().push_back(ele->GetNodeIndex(l));
 		}
 	}
 
-	// Sorting. WW
-	// WW
+	// Sorting, unique
 	for (size_t i = 0; i < nod_vector.size(); i++)
 	{
 		CNode* nod = nod_vector[i];
-		size_t n_connected_nodes = nod->getConnectedNodes().size();
-		for (size_t k = 0; k < n_connected_nodes; k++)
-		{
-			for (size_t l = k; l < n_connected_nodes; l++)
-				if (nod->getConnectedNodes()[l] < nod->getConnectedNodes()[k])
-				{
-					const size_t n(nod->getConnectedNodes()[k]);
-					nod->getConnectedNodes()[k] = nod->getConnectedNodes()[l];
-					nod->getConnectedNodes()[l] = n;
-				}
-		}
+		std::vector<size_t> &vec_nodes(nod->getConnectedNodes());
+		std::sort(vec_nodes.begin(), vec_nodes.end());
+		vec_nodes.erase(std::unique(vec_nodes.begin(), vec_nodes.end()), vec_nodes.end());
 	}
 //----------------------------------------------------------------------
 #ifdef TestConnectedNodes
