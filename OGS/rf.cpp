@@ -16,6 +16,11 @@
 #include <unistd.h>
 #endif
 
+#ifndef WIN32
+#include <sys/time.h>
+#include <sys/resource.h>
+#endif
+
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -58,6 +63,29 @@
 double elapsed_time_mpi;
 #endif
 
+#ifndef WIN32
+void setmemlimit()
+{
+	char* env_value = getenv("MAXMEM_GB");
+	if(env_value!=NULL)
+	{
+		long bytes = atol(env_value)*(1024*1024*1024);
+		if (bytes > 0)
+		{
+#ifdef USE_PETSC
+			bytes /= mysize;
+#endif
+			ScreenMessage("-> limit memory size to %g GB\n", atol(env_value));
+			struct rlimit memlimit;
+			memlimit.rlim_cur = bytes;
+			memlimit.rlim_max = bytes;
+			setrlimit(RLIMIT_AS, &memlimit);
+		}
+	}
+}
+#else
+void setmemlimit() {}
+#endif
 
 /* Definitionen */
 
@@ -202,6 +230,9 @@ int main(int argc, char* argv[])
 	paralution::info_paralution();
 	ScreenMessage("--- PARALUTION INFO END ------------------------------------\n");
 #endif
+
+	setmemlimit();
+
 /*========================================================================*/
 /* Kommunikation mit Betriebssystem */
 /* Ctrl-C ausschalten */
