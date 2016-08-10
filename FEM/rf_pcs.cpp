@@ -3789,6 +3789,10 @@ double CRFProcess::Execute()
 #endif
 	}
 
+#ifndef WIN32
+	BaseLib::MemWatch mem_watch;
+	ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
+#endif
 //---------------------------------------------------------------------
 // Assembly
 #if defined(USE_MPI) || defined(USE_PETSC)  // WW
@@ -3798,6 +3802,9 @@ double CRFProcess::Execute()
 #endif
 		cout << "Assembling equation system..." << endl;
 	GlobalAssembly();
+#ifndef WIN32
+	ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
+#endif
 #if defined(USE_MPI) || defined(USE_PETSC)  // WW
 	cpu_time += clock();
 	cpu_time_assembly += cpu_time;
@@ -3831,6 +3838,10 @@ double CRFProcess::Execute()
 	bool compress_eqs = (type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
 	iter_lin = eqs_new->Solver(this->m_num, compress_eqs);  // NW
 #endif
+#ifndef WIN32
+	ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
+#endif
+
 	if (iter_lin == -1)
 	{
 		ScreenMessage("*** Linear solve failed\n");

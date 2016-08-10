@@ -17,6 +17,7 @@
 #include <iostream>
 
 #include "makros.h"
+#include "MemWatch.h"
 #include "display.h"
 #include "StringTools.h"
 
@@ -373,9 +374,39 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 			eqs_new->Initialize();
 #endif
 
+#ifndef WIN32
+			if (ite_steps == 1)
+			{
+				BaseLib::MemWatch mem_watch;
+				ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
+			}
+#endif
 			// Assemble and solve system equation
 			ScreenMessage("Assembling equation system...\n");
 			GlobalAssembly();
+
+#ifndef WIN32
+			if (ite_steps == 1)
+			{
+				BaseLib::MemWatch mem_watch;
+				ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
+			}
+#endif
+
+			if (write_leqs)
+			{
+				std::string fname = FileName + "_" +
+									convertProcessTypeToString(this->getProcessType()) +
+									number2str(aktueller_zeitschritt) + "_" +
+									number2str(ite_steps) + "_leqs_assembly.txt";
+#if defined(NEW_EQS)
+				std::ofstream Dum(fname.c_str(), ios::out);
+				eqs_new->Write(Dum);
+				Dum.close();
+#elif defined(USE_PETSC)
+					eqs_new->EQSV_Viewer(fname);
+#endif
+			}
 
 			// init solution vector
 			if (isLinearProblem && type != 41)
@@ -1865,6 +1896,9 @@ void CRFProcessDeformation::GlobalAssembly()
 {
 	// WW
 	{
+//		MatInfo info;
+//		MatGetInfo(eqs_new->A, MAT_LOCAL, &info);
+//		ScreenMessage("-> MatInfo: nz_allocated=%g, memory=%g, assemblies=%g, mallocs=%g \n", info.nz_allocated, info.memory, info.assemblies, info.mallocs);
 		GlobalAssembly_DM();
 
 		if (type / 10 == 4)
@@ -1971,11 +2005,18 @@ void CRFProcessDeformation::GlobalAssembly()
  */
 void CRFProcessDeformation::GlobalAssembly_DM()
 {
+	const size_t dn = m_msh->ele_vector.size() / 10;
+	const bool print_progress = (dn >= 100);
+	if (print_progress)
+		ScreenMessage("start local assembly for %d elements...\n",
+		              m_msh->ele_vector.size());
+
 	long i;
 	MeshLib::CElem* elem = NULL;
 
 	for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
 	{
+		if (print_progress && (i + 1) % dn == 0) ScreenMessage("* ");
 		elem = m_msh->ele_vector[i];
 		if (!elem->GetMark())  // Marked for use
 			continue;
