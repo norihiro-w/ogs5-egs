@@ -67,21 +67,27 @@ double elapsed_time_mpi;
 void setmemlimit()
 {
 	char* env_value = getenv("MAXMEM_GB");
-	if(env_value!=NULL)
+	if(env_value == NULL)
 	{
-		long bytes = atol(env_value)*(1024*1024*1024);
-		if (bytes > 0)
-		{
-#ifdef USE_PETSC
-			bytes /= mysize;
-#endif
-			ScreenMessage("-> limit memory size to %g GB\n", atol(env_value));
-			struct rlimit memlimit;
-			memlimit.rlim_cur = bytes;
-			memlimit.rlim_max = bytes;
-			setrlimit(RLIMIT_AS, &memlimit);
-		}
+		ScreenMessage("-> ENV(MAXMEM_GB) is not specified. no limit memory\n");
+		return;
 	}
+	long GBytes = atol(env_value);
+	if (GBytes <= 0)
+	{
+		ScreenMessage("-> Given ENV(MAXMEM_GB) %d is in valid\n", GBytes);
+		return;
+	}
+	ScreenMessage("-> ENV(MAXMEM_GB) specified to %d GB\n", GBytes);
+	long bytes = GBytes*(1024*1024*1024);
+#ifdef USE_PETSC
+	bytes /= mysize;
+#endif
+	ScreenMessage("-> limit memory size to %g GB per process\n", (double)bytes/(1024*1024*1024) );
+	struct rlimit memlimit;
+	memlimit.rlim_cur = bytes;
+	memlimit.rlim_max = bytes;
+	setrlimit(RLIMIT_AS, &memlimit);
 }
 #else
 void setmemlimit() {}
@@ -217,7 +223,6 @@ int main(int argc, char* argv[])
 #endif
 	MPI_Comm_rank(PETSC_COMM_WORLD, &myrank);
 	MPI_Comm_size(PETSC_COMM_WORLD, &mysize);
-	ScreenMessage("===\nUse PETSc solver (MPI processes = %d)\n", mysize);
 #endif
 
 /*---------- LIS solver -----------------------------------------*/
@@ -230,8 +235,6 @@ int main(int argc, char* argv[])
 	paralution::info_paralution();
 	ScreenMessage("--- PARALUTION INFO END ------------------------------------\n");
 #endif
-
-	setmemlimit();
 
 /*========================================================================*/
 /* Kommunikation mit Betriebssystem */
@@ -308,6 +311,14 @@ int main(int argc, char* argv[])
 	time_t tm =time(NULL );
 	struct tm * curtime = localtime ( &tm );
 	ScreenMessage("current time   : %s", asctime(curtime));
+
+	ScreenMessage("\n---------------------------------------------\n");
+	ScreenMessage("Running environment:\n");
+#ifdef USE_PETSC
+	ScreenMessage("-> %d MPI processes\n", mysize);
+#endif
+	setmemlimit();
+
 
 #ifdef USE_PETSC
 	MPI_Barrier(PETSC_COMM_WORLD);
