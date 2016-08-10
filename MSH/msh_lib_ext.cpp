@@ -575,46 +575,18 @@ void CFEMesh::ConfigHighOrderElements()
 //
 int CFEMesh::calMaximumConnectedNodes()
 {
-	int max_connected_nodes = 0;
-	for (size_t i = 0; i < nod_vector.size(); i++)
+	size_t max_connected_nodes = 0;
+	for (auto node : nod_vector)
 	{
-		const int k = static_cast<int>(nod_vector[i]->getNumConnectedNodes());
-		if (k > max_connected_nodes) max_connected_nodes = k;
+		max_connected_nodes = std::max(max_connected_nodes, node->getNumConnectedNodes());
 	}
 	ScreenMessage2d("-> max. connected nodes = %d\n", max_connected_nodes);
 
-	int msize;
-	// int mrank;
-	int* i_cnt;
-	int* i_disp;
-	int* i_recv;
+	int local_max = max_connected_nodes;
+	int global_max = 0;
+	MPI_Allreduce(&local_max, &global_max, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
-	MPI_Comm_size(MPI_COMM_WORLD, &msize);
-	// MPI_Comm_rank(MPI_COMM_WORLD,&mrank);
-
-	i_cnt = (int*)malloc(msize * sizeof(int));
-	i_disp = (int*)malloc(msize * sizeof(int));
-	i_recv = (int*)malloc(msize * sizeof(int));
-
-	for (int i = 0; i < msize; i++)
-	{
-		i_cnt[i] = 1;
-		i_disp[i] = i;
-	}
-
-	MPI_Allgatherv(&max_connected_nodes, 1, MPI_INT, i_recv, i_cnt, i_disp,
-	               MPI_INT, MPI_COMM_WORLD);
-
-	max_connected_nodes = 0;
-	for (int i = 0; i < msize; i++)
-	{
-		if (i_recv[i] > max_connected_nodes) max_connected_nodes = i_recv[i];
-	}
-	free(i_cnt);
-	free(i_recv);
-	free(i_disp);
-
-	return max_connected_nodes;
+	return global_max;
 }
 
 }  // end namespace
