@@ -238,8 +238,7 @@ void CRFProcessDeformation::InitialMBuffer()
 		             2 * m_msh->GetNodesNumber(false);
 
 	// Allocate memory for  temporal array
-	if (m_num->nls_method != FiniteElement::NL_JFNK)
-		ARRAY = new double[bufferSize];
+	ARRAY = new double[bufferSize];
 
 	// Allocate memory for element variables
 	MeshLib::CElem* elem = NULL;
@@ -330,8 +329,7 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 	SetZeroLinearSolver(eqs);
 #endif
 
-	if (this->first_coupling_iteration &&
-	    m_num->nls_method != FiniteElement::NL_JFNK)
+	if (this->first_coupling_iteration)
 		StoreLastSolution();  // u_n-->temp
 
 	//  Reset stress for each coupling step when partitioned scheme is applied
@@ -384,9 +382,7 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 
 			// Assemble and solve system equation
 			ScreenMessage("Assembling equation system...\n");
-			if (m_num->nls_method !=
-			    FiniteElement::NL_JFNK)  // Not JFNK method. 05.08.2010. WW
-				GlobalAssembly();
+			GlobalAssembly();
 
 			// init solution vector
 			if (isLinearProblem && type != 41)
@@ -494,7 +490,7 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 	if (enhanced_strain_dm > 0) Trace_Discontinuity();
 
 	// Recovery the old solution.  Temp --> u_n	for flow proccess
-	if (m_num->nls_method != FiniteElement::NL_JFNK) RecoverSolution();
+	RecoverSolution();
 
 	// get coupling error
 	const double norm_u_k1 =
@@ -1948,13 +1944,8 @@ void CRFProcessDeformation::GlobalAssembly()
 		//		eqs_new->AssembleRHS_PETSc();
 		//#endif
 
-		/// If not JFNK or if JFNK but the Newton step is greater than one.
-		/// 11.11.2010. WW
-		if (!(m_num->nls_method == FiniteElement::NL_JFNK && ite_steps == 1))
-		{
-			// Apply Dirchlete bounday condition
-			IncorporateBoundaryConditions();
-		}
+		// Apply Dirchlete bounday condition
+		IncorporateBoundaryConditions();
 //  {			 MXDumpGLS("rf_pcs_dm1.txt",1,eqs->b,eqs->x);  //abort();}
 //
 
@@ -1996,9 +1987,6 @@ void CRFProcessDeformation::GlobalAssembly_DM()
 {
 	long i;
 	MeshLib::CElem* elem = NULL;
-	/// If JFNK method. 10.08.2010. WW
-	//   if(m_num->nls_method==2&&ite_steps==1)
-	//      IncorporateBoundaryConditions();
 
 	for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
 	{

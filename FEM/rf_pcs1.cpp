@@ -7,19 +7,7 @@
  *
  */
 
-/*!
-    \file rf_pcs1.cpp
-     \brief definitions of member functions of CRFProcess
-
-     for JFNK method
- */
-
-
-/*!
-    \brief
-     Build linear solver
- */
-#if defined(USE_PETSC)  // || defined(other solver libs)//03.3012. WW
+#if defined(USE_PETSC)
 #include "rf_pcs.h"
 
 #include <cmath>
@@ -304,5 +292,4 @@ void CreateEQS_LinearSolver()
 	}
 }
 
-#endif
-//-------------------------------------------------------------------------------
+#endif // PETSC

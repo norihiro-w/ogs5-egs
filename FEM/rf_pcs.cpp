@@ -4563,8 +4563,6 @@ void CRFProcess::GlobalAssembly()
 
 	CElem* elem = NULL;
 
-	if (m_num->nls_method == FiniteElement::NL_JFNK)  // 06.09.2010. WW
-		IncorporateBoundaryConditions();
 	bool Check2D3D;
 	Check2D3D = false;
 	if (type == 66)  // Overland flow
@@ -5188,14 +5186,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 					bc_value -=
 					    GetNodeValue(m_bc_node->geo_node_number, idx0) +
 					    GetNodeValue(m_bc_node->geo_node_number, idx0 + 1);
-					/// if JFNK and if the first Newton step
-					/// In the successive Newton steps, node BC value taken from
-					/// the previous Newton step.
-					if (m_num->nls_method == FiniteElement::NL_JFNK &&
-					    ite_steps == 1)
-						SetNodeValue(m_bc_node->geo_node_number, idx0,
-						             bc_value);
-
 				}
 				else
 				{
