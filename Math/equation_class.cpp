@@ -240,7 +240,7 @@ double Linear_EQS::NormX()
 	return sqrt(dot(x, x));
 }
 
-
+#ifdef LIS
 Linear_EQS::IndexType Linear_EQS::searcgNonZeroEntries(
     IndexType nrows, IndexType* ptr, double* value,
     std::vector<IndexType>& vec_nz_rows, std::vector<IndexType>& vec_z_rows)
@@ -306,6 +306,7 @@ void Linear_EQS::compressCRS(const IndexType* org_ptr,
 	new_ptr[vec_nz_rows.size()] = nnz_counter;
 	// assert(n_nz_entries==nnz_counter);
 }
+#endif
 
 #ifdef MKL
 void Linear_EQS::solveWithPARDISO(bool compress_if_possible)
