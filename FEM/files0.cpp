@@ -270,48 +270,6 @@ bool RFDOpen(std::string file_name_base)
 	return false;
 }
 
-/**************************************************************************/
-/* ROCKFLOW - Funktion: *OpenMsgFile *CloseMsgFile
- */
-/* Aufgabe:
-   Oeffnet MSG-Datei fuer Display-Umleitung
- */
-/* Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
- */
-/* Ergebnis:
-   - FILE -
- */
-/* Programmaenderungen:
-   12/2001     MK        Erste Version
- */
-/**************************************************************************/
-FILE* OpenMsgFile()
-{
-	FILE* f = NULL;
-	if (msgdat)
-	{
-		if ((f = fopen(msgdat, "a")) == NULL)
-		{
-			f = stdout;
-			fprintf(f,
-			        "\n!!!!!!!!  %s\n\n            ",
-			        "Fehler: Schreibzugriff auf Message-Protokolldatei nicht "
-			        "moeglich!!");
-		}
-	}
-	else
-		f = stdout; /* Dateiname existiert nicht */
-	return f;
-}
-
-void CloseMsgFile(FILE* f)
-{
-	if (f != stdout)
-		if (fclose(f))
-			DisplayErrorMsg(
-			    "Fehler: Message-Protokolldatei konnte nicht geschlossen "
-			    "werden !!");
-}
 
 
 /**************************************************************************
