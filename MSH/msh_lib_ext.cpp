@@ -285,6 +285,104 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 	    mesh->getNumNodesLocal_Q());
 	MPI_Barrier(MPI_COMM_WORLD);
 
+	//-------------------------------------------------------------------------------------
+	if (mesh->hasHigherOrderNodes())
+	{
+		// assign global equation IDs to local nodes. IDs should be continuous even for quadratic nodes
+		ScreenMessage("-> assgin global equation IDs to local nodes\n");
+		int global_eqs_id_Q = 0;
+		for (int i=0; i<mysize; i++)
+		{
+			if (i==myrank)
+			{
+				//ScreenMessage2("-> assgin global equation index for quadratic from id %d\n", global_eqs_id_Q);
+				for (CNode* node : mesh->getNodeVector())
+				{
+					if (mesh->isNodeLocal(node->GetIndex()))
+						node->SetEquationIndex_Q(global_eqs_id_Q++);
+					else
+						node->SetEquationIndex_Q(-1);
+				}
+				//ScreenMessage2("-> set global_eqs_id_Q=%d\n", global_eqs_id_Q);
+			}
+			MPI_Bcast(&global_eqs_id_Q, 1, MPI_INT, i, MPI_COMM_WORLD);
+			MPI_Barrier(MPI_COMM_WORLD);
+		}
+		if (myrank == mysize-1)
+		{
+			//ScreenMessage2("-> global_eqs_id_Q=%d, mesh->getNumNodesGlobal_Q=%d\n", global_eqs_id_Q, mesh->getNumNodesGlobal_Q());
+			if (global_eqs_id_Q != mesh->getNumNodesGlobal_Q())
+				ScreenMessage2("*** error: global_eqs_id_Q (%d) != mesh->getNumNodesGlobal_Q (%d)\n", global_eqs_id_Q, mesh->getNumNodesGlobal_Q());
+		}
+
+		// get global equation IDs of ghost nodes from other ranks
+		ScreenMessage("-> assgin global equation IDs to ghost nodes\n");
+		for (int i=0; i<mysize; i++)
+		{
+			// send a list of ghost nodes in this rank
+			std::vector<int> vec_ghost_node_localIDs;
+			std::vector<int> vec_ghost_node_globalIDs;
+			if (i==myrank)
+			{
+				//ScreenMessage2("-> send a list of ghost node IDs\n");
+				for (CNode* node : mesh->getNodeVector())
+				{
+					if (mesh->isNodeLocal(node->GetIndex()))
+						continue;
+					vec_ghost_node_localIDs.push_back(node->GetIndex());
+					vec_ghost_node_globalIDs.push_back(node->GetEquationIndex());
+				}
+				ScreenMessage2("-> looking for equations ids for %d ghost nodes\n", vec_ghost_node_globalIDs.size());
+			}
+			int vec_ghost_node_globalIDs_size = vec_ghost_node_globalIDs.size();
+			MPI_Bcast(&vec_ghost_node_globalIDs_size, 1, MPI_INT, i, MPI_COMM_WORLD);
+			if (i!=myrank)
+				vec_ghost_node_globalIDs.resize(vec_ghost_node_globalIDs_size);
+			MPI_Bcast(vec_ghost_node_globalIDs.data(), vec_ghost_node_globalIDs.size(), MPI_INT, i, MPI_COMM_WORLD);
+			//if (i!=myrank)
+			//	ScreenMessage2("-> received %d ghost node IDs from rank %d\n", vec_ghost_node_globalIDs.size(), i);
+
+			// for each ghost node
+			std::vector<int> vec_rank_data(mysize);
+			for (size_t j=0; j<vec_ghost_node_globalIDs.size(); j++)
+			{
+				int node_globalID = vec_ghost_node_globalIDs[j];
+				//ScreenMessage("-> look for a node with global ID %d\n", node_globalID);
+				MPI_Barrier(MPI_COMM_WORLD);
+				// who owns this?
+				int global_eqs_id_Q = -1;
+				if (i != myrank)
+				{
+					CNode* node = mesh->findNodeByGlobalID(node_globalID);
+					if (node) {
+						global_eqs_id_Q = node->GetEquationIndex_Q();
+						//ScreenMessage2("-> found a node (local id=%d, global id=%d, global id(Q)=%d)\n", node->GetIndex(), node_globalID, global_eqs_id_Q);
+					}
+				}
+				MPI_Gather(&global_eqs_id_Q, 1, MPI_INT, vec_rank_data.data(), 1, MPI_INT, i, MPI_COMM_WORLD);
+				//
+				if (i == myrank)
+				{
+					//ScreenMessage2("-> gathered a result of node look up\n");
+					int reccv_eqsid = -1;
+					for (size_t ii=0; ii<vec_rank_data.size(); ii++)
+					{
+						if (vec_rank_data[ii]!=-1) {
+							reccv_eqsid = vec_rank_data[ii];
+							break;
+						}
+					}
+					//ScreenMessage2("-> global node id=%d, global equation ID (Q)=%d\n", node_globalID, reccv_eqsid);
+					if (reccv_eqsid<0)
+						ScreenMessage2("*** error: not found global equation ID (Q) for node %d\n", vec_ghost_node_localIDs[j]);
+					mesh->nod_vector[vec_ghost_node_localIDs[j]]->SetEquationIndex_Q(reccv_eqsid);
+				}
+			}
+		}
+
+	}
+
+	//-------------------------------------------------------------------------------------
 	mesh->ConstructGrid();
 	mesh->FillTransformMatrix();
 	// mesh->calMaximumConnectedNodes();
@@ -293,6 +391,20 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 
 namespace MeshLib
 {
+
+CNode* CFEMesh::findNodeByGlobalID(long global_node_id) const
+{
+	for (CNode* node : nod_vector)
+	{
+		if (node->GetEquationIndex() != global_node_id)
+			continue;
+		if (!isNodeLocal(node->GetIndex()))
+			continue;
+		return node;
+	}
+	return nullptr;
+}
+
 /*!
    Fill data for subdomain mesh
 

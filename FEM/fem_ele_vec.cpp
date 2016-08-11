@@ -1227,7 +1227,7 @@ void CFiniteElementVec::add2GlobalMatrixII()
 
 		for (int i = 0; i < nnodesHQ; i++)
 		{
-			const int i_buff = MeshElement->GetNode(i)->GetEquationIndex() * ndof;
+			const int i_buff = MeshElement->GetNode(i)->GetEquationIndex_Q() * ndof;
 			for (int k = 0; k < ndof; k++)
 			{
 				col_ids[k * nnodesHQ + i] = i_buff + k;
@@ -1246,7 +1246,7 @@ void CFiniteElementVec::add2GlobalMatrixII()
 			local_vec[i] = loc_v[i_full];
 			i_full *= dim_full;
 
-			row_ids[i] = MeshElement->GetNode(local_idx[in])->GetEquationIndex() * ndof + i_dom;
+			row_ids[i] = MeshElement->GetNode(local_idx[in])->GetEquationIndex_Q() * ndof + i_dom;
 
 			for (int j = 0; j < dim_full; j++)
 			{
@@ -1270,7 +1270,7 @@ void CFiniteElementVec::add2GlobalMatrixII()
 
 		for (int i = 0; i < nnodesHQ; i++)
 		{
-			const int offset = MeshElement->GetNode(i)->GetEquationIndex() * ndof;
+			const int offset = MeshElement->GetNode(i)->GetEquationIndex_Q() * ndof;
 			for (int k = 0; k < ndof; k++)
 			{
 				const int ki = k * nnodesHQ + i;

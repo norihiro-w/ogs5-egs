@@ -103,6 +103,12 @@ public:
 
 	void SetEquationIndex(long eqIndex) { eqs_index = eqIndex; }
 
+#ifdef USE_PETSC
+	int GetEquationIndex_Q() const { return eqs_index_quadratic; }
+
+	void SetEquationIndex_Q(long i) { eqs_index_quadratic = i; }
+#endif
+
 	// Output
 	void Write(std::ostream& os = std::cout) const;
 
@@ -128,6 +134,9 @@ public:
 private:
 	double coordinate[3];
 	long eqs_index = -1;
+#ifdef USE_PETSC
+	long eqs_index_quadratic = -1;
+#endif
 	std::vector<size_t> _connected_nodes;
 	std::vector<size_t> _connected_elements;
 };

@@ -190,6 +190,8 @@ public:
 		}
 		return true;
 	}
+
+	CNode* findNodeByGlobalID(long global_node_id) const;
 #else
 	/// is the node owned by this domain
 	bool isNodeLocal(long) const { return true; }

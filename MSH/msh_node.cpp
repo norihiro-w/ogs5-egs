@@ -93,6 +93,9 @@ void CNode::operator=(const CNode& n)
 	index = n.index;
 	mark = n.mark;
 	eqs_index = n.eqs_index;
+#ifdef USE_PETSC
+	eqs_index_quadratic = n.eqs_index_quadratic;
+#endif
 	coordinate[0] = n.coordinate[0];
 	coordinate[1] = n.coordinate[1];
 	coordinate[2] = n.coordinate[2];
