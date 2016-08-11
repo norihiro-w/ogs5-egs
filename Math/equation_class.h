@@ -26,8 +26,6 @@
 #include "sparse_table.h"
 #include "sparse_matrix.h"
 
-class CNumerics;
-
 namespace Math_Group
 {
 class SparseTable;
@@ -43,9 +41,9 @@ public:
 	Linear_EQS(const SparseTable& sparse_table, const long dof);
 	~Linear_EQS();
 
-	void ConfigNumerics(CNumerics* m_num, const long n = 0);
+	void ConfigNumerics(int ls_precond, int ls_method, int ls_max_iterations, double ls_error_tolerance, int storage_type, std::string const& extra_arg);
 
-	int Solver(CNumerics* num = NULL, bool compress = false);
+	int Solver(bool compress = false);
 
 	//
 	void Initialize();
@@ -57,10 +55,12 @@ public:
 	{
 		A->SetDOF(dof_n);
 	}
-	void SetKnownX_i(const long i, const double x_i);
-	double X(const long i) const { return x[i]; }
+	double* getX() { return x; }
 	const double* getX() const { return x; }
 	const double* getRHS() const { return b; }
+	const CSparseMatrix* getA() const { return A; }
+	void SetKnownX_i(const long i, const double x_i);
+	double X(const long i) const { return x[i]; }
 	double RHS(const long i) const { return b[i]; }
 	double NormX();
 	double ComputeNormRHS() { return Norm(b); }
@@ -72,20 +72,20 @@ public:
 	void WriteX(std::ostream& os = std::cout);
 	void Write_BIN(std::ostream& os);
 
-private:
 	CSparseMatrix* A;
 	double* b;
 	double* x;
 
+private:
 #ifdef LIS
 	LIS_MATRIX AA;
 	LIS_VECTOR bb, xx;
 	LIS_SOLVER solver;
 #endif
 #ifdef USE_PARALUTION
-	paralution::LocalMatrix<double> AA;
-	paralution::LocalVector<double> bb;
-	paralution::LocalVector<double> xx;
+	paralution::LocalMatrix<double> plAA;
+	paralution::LocalVector<double> plbb;
+	paralution::LocalVector<double> plxx;
 #endif
 
 	// Controls
@@ -94,6 +94,8 @@ private:
 	int iter, max_iter;
 	double tol, bNorm, error;
 	long size_A;
+	int storage_type;
+	std::string extra_arg;
 
 	// Operators
 	double dot(const double* xx, const double* yy);
@@ -101,13 +103,13 @@ private:
 	inline bool CheckNormRHS(const double normb_new);
 
 #ifdef MKL
-	void solveWithPARDISO(CNumerics* num, bool compress);
+	void solveWithPARDISO(bool compress);
 #endif
 #ifdef LIS
-	int solveWithLIS(CNumerics* num, bool compress);
+	int solveWithLIS(bool compress);
 #endif
 #ifdef USE_PARALUTION
-	int solveWithParalution(CNumerics* num, bool compress);
+	int solveWithParalution(bool compress);
 #endif
 
 	IndexType searcgNonZeroEntries(IndexType nrows, IndexType* ptr,

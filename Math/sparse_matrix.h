@@ -54,7 +54,6 @@ public:
 		DOF = dof_n;
 	}
 	long Size() const { return rows; }
-#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
 	// These two pointers are in need for Compressed Row Storage
 	IndexType nnz() const  // PCH
 	{
@@ -64,7 +63,6 @@ public:
 	IndexType* col_idx;
 	IndexType* entry_index;
 	int GetCRSValue(double* value);
-#endif
 	// Print
 	void Write(std::ostream& os = std::cout);
 	void Write_BIN(std::ostream& os);

@@ -56,8 +56,6 @@ extern int PARDISO(int*, int*, int*, int*, int*, int*, double*, int*, int*,
 #include "display.h"
 
 #include "matrix_class.h"
-#include "rf_num_new.h"
-#include "rf_pcs.h"
 
 std::vector<Math_Group::Linear_EQS*> EQS_Vector;
 std::vector<Math_Group::SparseTable*> SparseTable_Vector;
@@ -111,15 +109,16 @@ Linear_EQS::~Linear_EQS()
    Programing:
    10/2007 WW/
 **************************************************************************/
-void Linear_EQS::ConfigNumerics(CNumerics* m_num, const long n)
+void Linear_EQS::ConfigNumerics(int ls_precond, int ls_method, int ls_max_iterations, double ls_error_tolerance, int ls_storage_method, std::string const& ls_extra_arg)
 {
-	(void)n;
-	precond_type = m_num->ls_precond;
-	solver_type = m_num->ls_method;
-
-	max_iter = m_num->ls_max_iterations;
-	tol = m_num->ls_error_tolerance;
+	precond_type = ls_precond;
+	solver_type = ls_method;
+	max_iter = ls_max_iterations;
+	tol = ls_error_tolerance;
+	storage_type = ls_storage_method;
+	extra_arg = ls_extra_arg;
 }
+
 /**************************************************************************
    Task: Linear equation::Alocate memory for solver
    Programing:
@@ -241,7 +240,7 @@ double Linear_EQS::NormX()
 	return sqrt(dot(x, x));
 }
 
-
+#ifdef LIS
 Linear_EQS::IndexType Linear_EQS::searcgNonZeroEntries(
     IndexType nrows, IndexType* ptr, double* value,
     std::vector<IndexType>& vec_nz_rows, std::vector<IndexType>& vec_z_rows)
@@ -307,9 +306,10 @@ void Linear_EQS::compressCRS(const IndexType* org_ptr,
 	new_ptr[vec_nz_rows.size()] = nnz_counter;
 	// assert(n_nz_entries==nnz_counter);
 }
+#endif
 
 #ifdef MKL
-void Linear_EQS::solveWithPARDISO(CNumerics* num, bool compress_if_possible)
+void Linear_EQS::solveWithPARDISO(bool compress_if_possible)
 {
 	ScreenMessage2(
 	    "------------------------------------------------------------------\n");
@@ -407,7 +407,7 @@ void Linear_EQS::solveWithPARDISO(CNumerics* num, bool compress_if_possible)
 #endif
 
 	_INTEGER_t mtype = 11; /* Real unsymmetric matrix */
-	if (num->ls_storage_method == 102)
+	if (storage_type == 102)
 		mtype = 1;       // Real and structurally symmetric
 	_INTEGER_t nrhs = 1; /* Number of right hand sides. */
 	/* Internal solver memory pointer pt, */
@@ -632,7 +632,7 @@ void Linear_EQS::solveWithPARDISO(CNumerics* num, bool compress_if_possible)
 #endif
 
 #ifdef LIS
-int Linear_EQS::solveWithLIS(CNumerics* m_num, bool compress)
+int Linear_EQS::solveWithLIS(bool compress)
 {
 	ScreenMessage2(
 	    "------------------------------------------------------------------\n");
@@ -696,15 +696,15 @@ int Linear_EQS::solveWithLIS(CNumerics* m_num, bool compress)
 	char solver_options[MAX_ZEILE], tol_option[MAX_ZEILE];
 	sprintf(solver_options,
 	        "-i %d -p %d %s",
-	        m_num->ls_method,
-	        m_num->ls_precond,
-	        m_num->ls_extra_arg.c_str());
+	        solver_type,
+	        precond_type,
+	        extra_arg.c_str());
 	// tolerance and other setting parameters are same
 	// NW add max iteration counts
 	sprintf(tol_option,
 	        "-tol %e -maxiter %d",
-	        m_num->ls_error_tolerance,
-	        m_num->ls_max_iterations);
+	        tol,
+	        max_iter);
 
 #ifndef OGS_USE_LONG
 	ierr = lis_matrix_set_crs(nonzero, ptr, col_idx, value, AA);
@@ -765,7 +765,7 @@ int Linear_EQS::solveWithLIS(CNumerics* m_num, bool compress)
 	int iter = 0;
 	ierr = lis_solver_get_iters(solver, &iter);
 	// NW
-	printf("iteration: %d/%d\n", iter, m_num->ls_max_iterations);
+	printf("iteration: %d/%d\n", iter, max_iter);
 	double resid = 0.0;
 	ierr = lis_solver_get_residualnorm(solver, &resid);
 	printf("residuals: %e\n", resid);
@@ -871,11 +871,11 @@ struct SolverType
 }
 
 template<typename T_SOLVER>
-void paralution_solve(T_SOLVER &ls, CNumerics* m_num,
+void paralution_solve(T_SOLVER &ls, double tol, int max_itr,
 		paralution::LocalMatrix<double> &AA, paralution::LocalVector<double> &bb, paralution::LocalVector<double> &xx,
 		int &iter, int &status)
 {
-	ls.Init(.0, m_num->ls_error_tolerance, 1e+8, m_num->ls_max_iterations);
+	ls.Init(.0, tol, 1e+8, max_itr);
 	//ls.Verbose(0);
 	ls.SetOperator(AA);
 	ls.Build();
@@ -889,14 +889,14 @@ void paralution_solve(T_SOLVER &ls, CNumerics* m_num,
 
 
 	printf("status   : %d\n", status);
-	printf("iteration: %d/%d\n", ls.GetIterationCount(), m_num->ls_max_iterations);
+	printf("iteration: %d/%d\n", ls.GetIterationCount(), max_itr);
 	printf("residuals: %e\n", ls.GetCurrentResidual());
 
 	ls.Clear();
 }
 
 template <typename T_SOLVER>
-void paralution_solve_with_pre(T_SOLVER &ls, PARALUTION::PreType::type &preType, CNumerics* m_num,
+void paralution_solve_with_pre(T_SOLVER &ls, PARALUTION::PreType::type &preType,  double tol, int max_itr,
 	paralution::LocalMatrix<double> &AA, paralution::LocalVector<double> &bb, paralution::LocalVector<double> &xx,
 	int &iter, int &status)
 {
@@ -906,37 +906,37 @@ void paralution_solve_with_pre(T_SOLVER &ls, PARALUTION::PreType::type &preType,
 		ILU<LocalMatrix<double >, LocalVector<double>, double> p;
 		p.Set(1);
 		ls.SetPreconditioner(p);
-		paralution_solve(ls, m_num, AA, bb, xx, iter, status);
+		paralution_solve(ls, tol, max_itr, AA, bb, xx, iter, status);
 	} else if  (preType == PreType::ILUT) {
 		paralution::ILUT<paralution::LocalMatrix <double >, paralution::LocalVector<double>, double> p;
 		//p.Set(0.01);
 		ls.SetPreconditioner(p);
-		paralution_solve(ls, m_num, AA, bb, xx, iter, status);
+		paralution_solve(ls, tol, max_itr, AA, bb, xx, iter, status);
 	} else if  (preType == PreType::MCILU) {
 		paralution::MultiColoredILU<paralution::LocalMatrix <double >, paralution::LocalVector<double>, double> p;
 		//p.Set(1, 2);
 		ls.SetPreconditioner(p);
-		paralution_solve(ls, m_num, AA, bb, xx, iter, status);
+		paralution_solve(ls, tol, max_itr, AA, bb, xx, iter, status);
 	} else if  (preType == PreType::MEILU) {
 		paralution::MultiElimination<paralution::LocalMatrix <double >, paralution::LocalVector<double>, double> p;
 		paralution::Jacobi<paralution::LocalMatrix <double >, paralution::LocalVector<double>, double> j;
 		p.Set(j, 2);
 		ls.SetPreconditioner(p);
-		paralution_solve(ls, m_num, AA, bb, xx, iter, status);
+		paralution_solve(ls, tol, max_itr, AA, bb, xx, iter, status);
 	} else if  (preType == PreType::AMG) {
 		paralution::AMG<paralution::LocalMatrix <double >, paralution::LocalVector<double>, double> p;
 		p.InitMaxIter(1);
 		p.Verbose(0);
 		ls.SetPreconditioner(p);
-		paralution_solve(ls, m_num, AA, bb, xx, iter, status);
+		paralution_solve(ls, tol, max_itr, AA, bb, xx, iter, status);
 	} else if (preType == PreType::NONE) {
-		paralution_solve(ls, m_num, AA, bb, xx, iter, status);
+		paralution_solve(ls, tol, max_itr, AA, bb, xx, iter, status);
 	} else {
-		ScreenMessage("*** errror: Unsupported precon type %d\n", m_num->ls_precond);
+		ScreenMessage("*** errror: Unsupported precon type %d\n", preType);
 	}
 }
 
-int Linear_EQS::solveWithParalution(CNumerics* m_num, bool compress)
+int Linear_EQS::solveWithParalution(bool /*compress*/)
 {
 	using namespace paralution;
 	using namespace PARALUTION;
@@ -958,13 +958,13 @@ int Linear_EQS::solveWithParalution(CNumerics* m_num, bool compress)
 	// Creating a matrix.
 //	AA.AllocateCSR("mat", nonzero, nrows, nrows);
 //	AA.CopyFromCSR(ptr, col_idx, value);
-	AA.SetDataPtrCSR(&ptr, &col_idx, &value, "mat", nonzero, nrows, nrows);
-	bb.SetDataPtr(&b, "b", nrows);
-	xx.SetDataPtr(&x, "x", nrows);
+	plAA.SetDataPtrCSR(&ptr, &col_idx, &value, "mat", nonzero, nrows, nrows);
+	plbb.SetDataPtr(&b, "b", nrows);
+	plxx.SetDataPtr(&x, "x", nrows);
 
 
-	PreType::type preType =  PreType::GetType(m_num->ls_precond);
-	SolverType::type solType = SolverType::GetType(m_num->ls_method);
+	PreType::type preType =  PreType::GetType(precond_type);
+	SolverType::type solType = SolverType::GetType(solver_type);
 
 	typedef paralution::AMG<paralution::LocalMatrix <double >, paralution::LocalVector<double>, double> AMGType;
 	typedef paralution::BiCGStab<paralution::LocalMatrix<double>, paralution::LocalVector<double>, double> BiCGStabType;
@@ -975,14 +975,14 @@ int Linear_EQS::solveWithParalution(CNumerics* m_num, bool compress)
 
 	if (solType == SolverType::BiCGStab) {
 		BiCGStabType ls;
-		paralution_solve_with_pre(ls, preType, m_num, AA, bb, xx, iter, status);
+		paralution_solve_with_pre(ls, preType, tol, max_iter, plAA, plbb, plxx, iter, status);
 	} else if (solType == SolverType::DPCG) {
 		DPCGType ls;
-		paralution_solve_with_pre(ls, preType, m_num, AA, bb, xx, iter, status);
+		paralution_solve_with_pre(ls, preType, tol, max_iter, plAA, plbb, plxx, iter, status);
 	} else if (solType == SolverType::GMRES) {
 		GMRESType ls;
 		//ls.SetBasisSize(30);
-		paralution_solve_with_pre(ls, preType, m_num, AA, bb, xx, iter, status);
+		paralution_solve_with_pre(ls, preType, tol, max_iter, plAA, plbb, plxx, iter, status);
 	} else if (solType == SolverType::AMG) {
 		AMGType ls;
 		//ls.SetCouplingStrength(1e-3);
@@ -990,9 +990,9 @@ int Linear_EQS::solveWithParalution(CNumerics* m_num, bool compress)
 		//ls.SetInterpolation(paralution::SmoothedAggregation);
 		//ls.SetInterpRelax(2./3.);
 
-		paralution_solve(ls, m_num, AA, bb, xx, iter, status);
+		paralution_solve(ls, tol, max_iter, plAA, plbb, plxx, iter, status);
 	} else {
-		ScreenMessage("*** errror: Unsupported solver type %d\n", m_num->ls_method);
+		ScreenMessage("*** errror: Unsupported solver type %d\n", solver_type);
 	}
 
 	bool success = (status==1 || status==2);
@@ -1007,12 +1007,12 @@ int Linear_EQS::solveWithParalution(CNumerics* m_num, bool compress)
 	// Clear memory
 	delete[] value;
 
-	AA.LeaveDataPtrCSR(&ptr, &col_idx, &value);
-	bb.LeaveDataPtr(&b);
-	xx.LeaveDataPtr(&x);
-	AA.Clear();
-	bb.Clear();
-	xx.Clear();
+	plAA.LeaveDataPtrCSR(&ptr, &col_idx, &value);
+	plbb.LeaveDataPtr(&b);
+	plxx.LeaveDataPtr(&x);
+	plAA.Clear();
+	plbb.Clear();
+	plxx.Clear();
 	ScreenMessage2(
 	    "------------------------------------------------------------------\n");
 
@@ -1020,9 +1020,8 @@ int Linear_EQS::solveWithParalution(CNumerics* m_num, bool compress)
 }
 #endif
 
-int Linear_EQS::Solver(CNumerics* num, bool compress)
+int Linear_EQS::Solver(bool compress)
 {
-	CNumerics* m_num = (num == NULL) ? num_vector[0] : num;
 #define ENABLE_COMPRESS_EQS
 #ifndef ENABLE_COMPRESS_EQS
 	compress = false;
@@ -1041,18 +1040,18 @@ int Linear_EQS::Solver(CNumerics* num, bool compress)
 #endif
 
 #ifdef USE_PARALUTION
-	iter = solveWithParalution(num, compress);
+	iter = solveWithParalution(compress);
 #else
-	if (m_num->ls_method == 805)  // Then, PARDISO parallel direct solver
+	if (solver_type == 805)  // Then, PARDISO parallel direct solver
 	{
 #ifdef MKL
-		solveWithPARDISO(num, compress);
+		solveWithPARDISO(compress);
 #endif
 	}
 	else  // LIS parallel solver
 	{
 #ifdef LIS
-		iter = solveWithLIS(num, compress);
+		iter = solveWithLIS(compress);
 #endif
 	}
 #endif
