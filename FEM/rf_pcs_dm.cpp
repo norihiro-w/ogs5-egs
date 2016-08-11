@@ -21,6 +21,8 @@
 #include "display.h"
 #include "StringTools.h"
 
+#include "Curve.h"
+
 #include "geo_sfc.h"
 
 #include "msh_elem.h"

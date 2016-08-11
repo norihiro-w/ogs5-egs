@@ -7,13 +7,6 @@
  *
  */
 
-/**************************************************************************
-   FEMLib - Class: BC BoundaryConditions
-   Task:
-   Programing:
-   02/2004 OK Implementation
-   last modified
-**************************************************************************/
 #include "rf_bc_new.h"
 
 #include <algorithm>
@@ -21,24 +14,24 @@
 #include <cmath>
 #include <iostream>
 
-#include "makros.h"
 #include "display.h"
-#include "memory.h"
 #include "FileToolsRF.h"
+#include "makros.h"
+#include "memory.h"
+#include "readNonBlankLineFromInputStream.h"
 
 #include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
 
 #include "GEOObjects.h"
 
-#include "BoundaryConditionIO.h"
-#include "GeoIO.h"
-#include "ProcessIO.h"
-#include "readNonBlankLineFromInputStream.h"
-
 #include "BoundaryCondition.h"
+#include "BoundaryConditionIO.h"
 #include "DistributionTools.h"
+#include "GeoIO.h"
 #include "mathlib.h"
+#include "ProcessIO.h"
 #include "rfmat_cp.h"
+#include "rf_pcs.h"
 #include "tools.h"
 
 

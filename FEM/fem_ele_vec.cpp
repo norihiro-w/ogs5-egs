@@ -19,10 +19,10 @@
 
 #if defined(NEW_EQS)
 #include "equation_class.h"
-using Math_Group::CSparseMatrix;
 #endif
 #include "mathlib.h"
 #include "rf_mfp_new.h"
+#include "rf_mmp_new.h"
 #include "rf_msp_new.h"
 #include "rf_pcs_dm.h"
 #include "tools.h"

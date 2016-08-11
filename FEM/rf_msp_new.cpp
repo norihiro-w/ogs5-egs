@@ -16,6 +16,8 @@
 #include "FileToolsRF.h"
 #include "StringTools.h"
 
+#include "Curve.h"
+
 #include "fem_ele_std.h"
 #include "fem_ele_vec.h"
 #include "rf_pcs.h"

@@ -123,6 +123,52 @@ string GetLineFromFile1(ifstream* ein)
 	return zeile;
 }
 
+
+/**************************************************************************/
+/* ROCKFLOW - Funktion: GetLineFromFile
+ */
+/* Aufgabe:
+   Liest aus dem Eingabefile für die heterogenen Felder die nächste ZEile
+   Fängt die Zeile mit ; an, wird sie ausgelassen
+   SB:todo
+ */
+/* Ergebnis:
+   Nächste Zeile aus dem Eingabefile
+ */
+/* Programmaenderungen:
+    01/2004     SB  First Version
+ */
+/**************************************************************************/
+int GetLineFromFile(char* zeile, ifstream* ein)
+{
+	int ok = 1;
+	string line;
+	int fertig = 0, i, j;
+
+	while (fertig < 1)
+	{
+		if (ein->getline(zeile, MAX_ZEILE))  // Zeile lesen
+		{
+			line = zeile;  // character in string umwandeln
+			i = (int)line.find_first_not_of(
+			    " ", 0);  // Anfängliche Leerzeichen überlesen, i=Position des
+			              // ersten Nichtleerzeichens im string
+			j = (int)line.find(";", i);  // Nach Kommentarzeichen ; suchen. j =
+			                             // Position des Kommentarzeichens, j=-1
+			                             // wenn es keines gibt.
+			if (j != i) fertig = 1;      // Wenn das erste nicht-leerzeichen ein
+			// Kommentarzeichen ist, zeile überlesen. Sonst ist
+			// das eine Datenzeile
+		}
+		else  // end of file found
+		{
+			ok = 0;
+			fertig = 1;
+		}
+	}  // while
+	return ok;
+}
+
 /**************************************************************************/
 /* ROCKFLOW - Funktion: FilePrintString
  */

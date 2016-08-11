@@ -136,10 +136,11 @@ extern std::string get_sub_string2(const std::string&, const std::string&,
 extern bool SubKeyword(const std::string&);
 extern bool Keyword(const std::string&);
 
-// CC move here
 extern std::string GetLineFromFile1(std::ifstream*);
-// SB
+extern int GetLineFromFile(char*, std::ifstream*);
 extern std::string GetUncommentedLine(std::string);
 // extern std::string NumberToString(long);
-extern void is_line_empty(std::string*);  // OK
+extern void is_line_empty(std::string*);  //
+
+
 #endif

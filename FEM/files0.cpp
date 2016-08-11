@@ -7,39 +7,6 @@
  *
  */
 
-/**************************************************************************/
-/* ROCKFLOW - Modul: files0.c
- */
-/* Aufgabe:
-   Enthaelt die uebergeordneten Datei- Ein- und Ausgaberoutinen, sowie
-   das Speichern der Durchbruchskurven.
- */
-/* Programmaenderungen:
-   07/1996     MSR        Erste Version
-   02/1999     CT         Bugfix: Anpassung fuer mit 0 beginnende Elemente.
-                          Kennung fuer Version im Kopf. Versionsabhaengiges
-                          lesen.
-   02/1999     CT         Korrekturen fuer herausgeloeste Materialgruppen
-   03/1999     AH         Korrekturen nicht noetig, da die Materialzuweisung
-                          nicht mehr auf dieser Ebene erfolgt. Die Abfrage ist
-                          jetzt auskommentiert. Sie war hier nur um
-   Kompatibilitaeten
-                          zum Rockflow aufzubewahren.
-   03/1999     CT         anz_matxx, start_mat entfernt
-   02/2000     CT         Restart wieder hergestellt
-   07/2000     AH         Vorbereitungen zum HGM.
-   9/2000     CT         Neu: RefreshNodeOutputData, Warnungen beseitigt
-   10/2001     AH         Inverse Modellierung
-   Trennung und Anpassung (CreateFileData)
-   In DestroyFileData Datenfeld auskommentiert.
-   Neues Konzept fuer Datenbank-Verwaltung ah inv
-   01/2002     MK         DisplayMsgX-Umleitung in *.msg-Datei: OpenMsgFile
-   08/2002     MK         GetPathRFDFile
-   ConfigFileData aus CreateFileData herausgeloest
-   03/2003     RK         Quellcode bereinigt, Globalvariablen entfernt
- */
-/**************************************************************************/
-
 #include "files0.h"
 
 #include "Configure.h"
@@ -48,34 +15,35 @@
 #include "memory.h"
 #include "FileTools.h"
 #include "FileToolsRF.h"
+#include "readNonBlankLineFromInputStream.h"
 
+#include "Curve.h"
+
+#include "OGSIOVer4.h"
+
+#include "fct_mpi.h"
+#include "rfmat_cp.h"
 #include "rf_bc_new.h"
 #include "rf_ic_new.h"
-#include "rf_st_new.h"
-#include "rfmat_cp.h"
-#include "tools.h"
-#include "rf_out_new.h"
+#include "rf_fct.h"
 #include "rf_mfp_new.h"
+#include "rf_mmp_new.h"
 #include "rf_msp_new.h"
-#include "rf_fct.h"             //OK
-#include "fct_mpi.h"
-
-// FileIO
-#include "OGSIOVer4.h"
-#include "readNonBlankLineFromInputStream.h"
-//#include "FEMIO.h"
+#include "rf_pcs.h"
+#include "rf_out_new.h"
+#include "rf_st_new.h"
+#include "tools.h"
 
 /* Dateinamen */
 char* crdat = NULL;     /*MX*/
 char* file_name = NULL; /* dateiname */
 static char* msgdat = NULL;
 
-#define RFD_FILE_EXTENSION ".rfd"  // OK
-#ifndef MFC                        // WW
-void CURRead(std::string);         // OK
-#endif
-std::ios::pos_type CURReadCurve(std::ifstream*);  // OK
-void CURWrite();                                  // OK
+#define RFD_FILE_EXTENSION ".rfd"
+
+void CURRead(std::string);
+std::ios::pos_type CURReadCurve(std::ifstream*);
+void CURWrite();
 
 #define KEYWORD '#'
 #define SUBKEYWORD '$'

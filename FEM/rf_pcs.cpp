@@ -34,6 +34,7 @@
 #include "StringTools.h"
 
 // MathLib
+#include "Curve.h"
 #include "InterpolationAlgorithms/InverseDistanceInterpolation.h"
 #include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
 
@@ -52,6 +53,8 @@
 #include "rfmat_cp.h"
 #include "rf_ic_new.h"
 #include "rf_fct.h"
+#include "rf_mfp_new.h"
+#include "rf_mmp_new.h"
 #include "rf_msp_new.h"
 #include "rf_node.h"
 #include "rf_pcs_dm.h"
@@ -211,9 +214,6 @@ CRFProcess::CRFProcess(void)
 	//----------------------------------------------------------------------
 	//
 	mobile_nodes_flag = -1;
-	//----------------------------------------------------------------------
-	// USER
-	PCSSetIC_USER = NULL;
 	//----------------------------------------------------------------------
 	// TIM
 	tim_type = FiniteElement::TIM_TRANSIENT;
@@ -396,9 +396,9 @@ CRFProcess::~CRFProcess(void)
 	ele_val_vector.clear();
 	//----------------------------------------------------------------------
 	// 11.08.2010. WW
-	DeleteArray(num_nodes_p_var);
+	delete [] num_nodes_p_var;
 	// 20.08.2010. WW
-	DeleteArray(p_var_index);
+	delete [] p_var_index;
 	//----------------------------------------------------------------------
 	if (this->m_num && this->m_num->fct_method > 0)  // NW
 	{
@@ -927,9 +927,6 @@ void CRFProcess::Create()
 			fem->SetGaussPointNumber(m_num->ele_gauss_points);
 		}
 	}
-
-	// Initialize the system equations
-	if (PCSSetIC_USER) PCSSetIC_USER(pcs_type_number);
 
 	if (compute_domain_face_normal)
 		m_msh->FaceNormal();
