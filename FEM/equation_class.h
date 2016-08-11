@@ -24,16 +24,9 @@
 
 #include "Configure.h"
 #include "sparse_table.h"
+#include "sparse_matrix.h"
 
 class CNumerics;
-class CRFProcess;
-class CRFProcessDeformation;
-namespace FiniteElement
-{
-class CFiniteElementStd;
-class CFiniteElementVec;
-}
-using namespace FiniteElement;
 
 namespace Math_Group
 {
@@ -128,12 +121,6 @@ private:
 	                 IndexType n_nz_entries, IndexType*& new_ptr,
 	                 IndexType*& new_col_index, double*& new_value);
 
-	// Friends
-	friend class ::CRFProcess;
-	friend class ::CRFProcessDeformation;
-	friend class FiniteElement::CFiniteElementStd;
-	friend class FiniteElement::CFiniteElementVec;
-	//
 };
 }
 

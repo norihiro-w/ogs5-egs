@@ -5238,30 +5238,4 @@ double GetFCTADiff(double K_ij, double K_ji)
  ##########################################################################
  ########################################################################## */
 
-/*!
-    \brief Binary search a array
-     The array must be sorted
 
-     \param arr     an array
-     \param target  searched index
-     \param start   the start index of the array
-     \parm  end     the end index of the array
-
-     By WW. 03.2011
-
- */
-long binarySearch(long* arr, long target, long start, long end)
-{
-	long middle;
-	while (start <= end)
-	{
-		middle = (start + end) / 2;
-		if (arr[middle] == target)
-			return middle;
-		else if (arr[middle] > target)
-			end = middle - 1;
-		else
-			start = middle + 1;
-	}
-	return -1;
-}
