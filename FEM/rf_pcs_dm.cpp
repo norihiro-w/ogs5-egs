@@ -271,7 +271,7 @@ double CRFProcessDeformation::getNormOfDisplacements()
 		{
 			int ish = pcs_number_of_primary_nvals * j + i;
 			ix[ish] =
-			    pcs_number_of_primary_nvals * m_msh->Eqs2Global_NodeIndex[j] +
+			    pcs_number_of_primary_nvals * m_msh->Eqs2Global_NodeIndex_Q[j] +
 			    i;
 			val[ish] = GetNodeValue(j, nidx0 + 1);
 		}
@@ -893,12 +893,10 @@ void CRFProcessDeformation::UpdateIterativeStep(const double damp,
 	int ColIndex = 0;
 	double* eqs_x = NULL;
 
-#if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
+#if defined(USE_PETSC)
 	eqs_x = eqs_new->GetGlobalSolution();
 #elif defined(NEW_EQS)
 	eqs_x = eqs_new->getX();
-#else
-	eqs_x = eqs->x;
 #endif
 
 	//
@@ -907,20 +905,16 @@ void CRFProcessDeformation::UpdateIterativeStep(const double damp,
 		number_of_nodes = num_nodes_p_var[i];
 		//
 		ColIndex = p_var_index[i] - 1;
-		///  Update Newton step: w = w+dw
+		//  Update Newton step: w = w+dw
 		if (u_type == 0)
 		{
 			for (j = 0; j < number_of_nodes; j++)
 			{
 #ifdef USE_PETSC
-				long k = m_msh->Eqs2Global_NodeIndex[j] *
-				             pcs_number_of_primary_nvals +
-				         i;
-				SetNodeValue(j, ColIndex,
-				             GetNodeValue(j, ColIndex) + eqs_x[k] * damp);
+				long k = m_msh->Eqs2Global_NodeIndex_Q[j] * pcs_number_of_primary_nvals + i;
+				SetNodeValue(j, ColIndex, GetNodeValue(j, ColIndex) + eqs_x[k] * damp);
 #else
-				SetNodeValue(j, ColIndex, GetNodeValue(j, ColIndex) +
-				                              eqs_x[j + shift] * damp);
+				SetNodeValue(j, ColIndex, GetNodeValue(j, ColIndex) + eqs_x[j + shift] * damp);
 #endif
 			}
 			shift += number_of_nodes;
@@ -934,10 +928,9 @@ void CRFProcessDeformation::UpdateIterativeStep(const double damp,
 	}
 
 	// if(type == 42&&m_num->nls_method>0)         //H2M, Newton-Raphson.
-	// 06.09.2010. WW
-	if (type / 10 == 4)  // H2M, HM. 28.09.2011. WW
+	if (type / 10 == 4)  // H2M, HM
 	{
-		/// $p_{n+1}=p_{n+1}+\Delta p$ is already performed when type = 0
+		// $p_{n+1}=p_{n+1}+\Delta p$ is already performed when type = 0
 		if (u_type == 1) return;
 
 		for (i = problem_dimension_dm; i < pcs_number_of_primary_nvals; i++)
