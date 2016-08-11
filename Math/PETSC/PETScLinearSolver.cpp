@@ -231,6 +231,7 @@ void PETScLinearSolver::CreateMatrix(PetscInt n_global_rows, PetscInt n_global_c
 	MatMPIAIJSetPreallocation(A, d_nz, PETSC_NULL, o_nz, PETSC_NULL);
 	MatSeqAIJSetPreallocation(A, d_nz, PETSC_NULL);
 	MatSetOption(A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE);
+	MatSetOption(A, MAT_NO_OFF_PROC_ENTRIES, PETSC_TRUE);
 
 	MatInfo info;
 	MatGetInfo(A, MAT_LOCAL, &info);
