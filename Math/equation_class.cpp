@@ -1041,7 +1041,7 @@ int Linear_EQS::Solver(bool compress)
 #ifdef USE_PARALUTION
 	iter = solveWithParalution(compress);
 #else
-	if (ls_method == 805)  // Then, PARDISO parallel direct solver
+	if (solver_type == 805)  // Then, PARDISO parallel direct solver
 	{
 #ifdef MKL
 		solveWithPARDISO(compress);
