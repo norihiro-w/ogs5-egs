@@ -40,7 +40,7 @@ PETScLinearSolver::PETScLinearSolver(const int size)
 	time_elapsed = 0.0;
 	d_nz = 10;
 	o_nz = 10;
-	nz = 10;
+	//nz = 10;
 	m_size_loc = PETSC_DECIDE;
 	mpi_size = 0;
 	rank = 0;
@@ -79,17 +79,17 @@ PETScLinearSolver::~PETScLinearSolver()
 	            time_elapsed);
 }
 
-void PETScLinearSolver::Init(const int* sparse_index)
+void PETScLinearSolver::Init(SparseIndex* sparse_index)
 {
 	if (sparse_index)
 	{
-		d_nz = sparse_index[0];
-		o_nz = sparse_index[1];
-		nz = sparse_index[2];
-		m_size_loc = sparse_index[3];
+		d_nz = sparse_index->d_nz;
+		o_nz = sparse_index->d_nz;
+		//nz = sparse_index->nz;
+		m_size_loc = sparse_index->m_size_loc;
 	}
 
-	CreateMatrix(m_size, m_size);
+	CreateMatrix();
 
 	global_x0 = new PetscScalar[m_size];
 	global_x1 = new PetscScalar[m_size];
@@ -209,7 +209,7 @@ void PETScLinearSolver::ConfigLinear(const PetscReal tol, const PetscInt maxits,
 
 }
 
-void PETScLinearSolver::CreateMatrix(PetscInt n_global_rows, PetscInt n_global_cols)
+void PETScLinearSolver::CreateMatrix()
 {
 	PetscErrorCode ierr;
 	MatCreate(PETSC_COMM_WORLD, &A);

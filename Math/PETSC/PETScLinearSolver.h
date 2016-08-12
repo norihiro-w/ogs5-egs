@@ -35,6 +35,16 @@ typedef Vec PETSc_Vec;
 
 namespace petsc_group
 {
+
+struct SparseIndex
+{
+	int d_nz = 0;
+	int o_nz = 0;
+	//int nz = 0;
+	int m_size_loc = 0;
+};
+
+
 class PETScLinearSolver
 {
 public:
@@ -50,7 +60,7 @@ public:
 	                  const KSPType lsol, const PCType prec_type,
 	                  const std::string& misc_setting, const std::string& prefix);
 
-	void Init(const int* sparse_index = NULL);
+	void Init(SparseIndex* sparse_index);
 
 	void CheckIfMatrixIsSame(const std::string& filename);
 	int Solver();
@@ -145,7 +155,7 @@ public:
 	// local submatrix (same value is used for all local rows).
 	PetscInt o_nz;
 	// Number of nonzeros per row (same for all rows)
-	PetscInt nz;
+	//PetscInt nz;
 
 	int mpi_size;
 	int rank;
@@ -153,7 +163,7 @@ public:
 	typedef std::pair<std::string, std::string> Para;
 	std::vector<Para> vec_para;
 
-	void CreateMatrix(PetscInt m, PetscInt n);
+	void CreateMatrix();
 
 	IS is_global_node_id, is_local_node_id;
 };
