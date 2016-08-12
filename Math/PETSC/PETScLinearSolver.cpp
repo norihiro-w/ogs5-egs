@@ -229,6 +229,9 @@ void PETScLinearSolver::CreateMatrixVectors(SparseIndex& sparse_index)
 #else
 	MatGetVecs(A, &x, &b);
 #endif
+	VecSetOption(x, VEC_IGNORE_NEGATIVE_INDICES,PETSC_TRUE);
+	VecSetOption(b, VEC_IGNORE_NEGATIVE_INDICES,PETSC_TRUE);
+
 	VecGetSize(x, &M);
 	ScreenMessage("-> x: global nrows=%d\n", M);
 	VecGetLocalSize(x, &m);
