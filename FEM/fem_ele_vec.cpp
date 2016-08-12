@@ -1197,7 +1197,7 @@ void CFiniteElementVec::add2GlobalMatrixII()
 	for (int i = 0; i < nnodesHQ; i++)
 	{
 		MeshLib::CNode* node = MeshElement->GetNode(i);
-		const int offset = node->GetEquationIndex() * ndof;
+		const int offset = node->GetEquationIndex(true) * ndof;
 		const bool isGhost = !pcs->m_msh->isNodeLocal(node->GetIndex());
 		for (int k = 0; k < ndof; k++)
 		{
