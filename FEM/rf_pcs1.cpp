@@ -191,7 +191,7 @@ double CRFProcess::CalcIterationNODError(int method)
 }
 #endif
 
-/// Set PETSc solver. 10.2012. WW
+/// Set PETSc solver
 void CRFProcess::setSolver(petsc_group::PETScLinearSolver* petsc_solver)
 {
 	eqs_new = petsc_solver;
@@ -200,7 +200,7 @@ void CRFProcess::setSolver(petsc_group::PETScLinearSolver* petsc_solver)
 	                m_num->getPreconditionerName(), m_num->ls_extra_arg,
 	                convertProcessTypeToString(this->getProcessType()) + "_");
 }
-//------------------------------------------------------------
+
 /*!
      PETSc version of CreateEQS_LinearSolver()
      03.2012 WW
@@ -221,7 +221,6 @@ void CreateEQS_LinearSolver()
 	const int n_local_quadratic_nodes = mesh->getNumNodesLocal_Q();
 	const int dim = mesh->GetMaxElementDim();
 
-	int sparse_info[4] = {}; // d_nz, o_nz, nz, m_size_loc
 	for (size_t i = 0; i < pcs_vector.size(); i++)
 	{
 		CRFProcess* a_pcs = pcs_vector[i];
@@ -236,20 +235,21 @@ void CreateEQS_LinearSolver()
 		const bool quadratic = isDeformationProcess(pcs_type);
 		a_pcs->CheckMarkedElement();
 		mesh->ConnectedNodes(quadratic);
-		const int max_connected_nodes = mesh->calMaximumConnectedNodes();
+		//const int max_connected_nodes = mesh->calMaximumConnectedNodes();
+		//ScreenMessage("-> max. number of connected nodes = %d\n", max_connected_nodes);
 		const int max_connected_local_nodes = mesh->calMaximumConnectedLocalNodes();
 		const int max_connected_ghost_nodes = mesh->calMaximumConnectedGhostNodes();
-		ScreenMessage("-> max. number of connected nodes = %d\n", max_connected_nodes);
 
 //		const int max_connected_eles = mesh->getMaxNumConnectedElements(); // (dim < 3) ? 4 : 8;
 //		const int max_ele_nodes = mesh->getMaxNumNodesOfElement(quadratic); //(dim < 3) ? 9 : 20;
 //		ScreenMessage("-> max. number of connected elements = %d\n", max_connected_eles);
 //		ScreenMessage("-> max. number of element nodes = %d\n", max_ele_nodes);
 
-		PETScLinearSolver* eqs = NULL;
+		int global_eqs_dim = 0;
+		SparseIndex sparse_info;
 		if (isDeformationProcess(pcs_type))
 		{
-			int global_eqs_dim = n_global_quadratic_nodes * dim;
+			global_eqs_dim = n_global_quadratic_nodes * dim;
 			//vector<int> global_n_id;
 			if (pcs_type == DEFORMATION_H2)
 				global_eqs_dim += 2 * n_global_linear_nodes;
@@ -257,45 +257,29 @@ void CreateEQS_LinearSolver()
 				global_eqs_dim += n_global_linear_nodes;
 
 			// number of nonzeros per row in DIAGONAL portion
-			sparse_info[0] = max_connected_local_nodes * dim; // max_connected_nodes * dim;
-			//sparse_info[0] = max_connected_eles * max_ele_nodes * dim;
+			sparse_info.d_nz = max_connected_local_nodes * dim; // max_connected_nodes * dim;
+			//sparse_info.d_nz = max_connected_eles * max_ele_nodes * dim;
 			// number of nonzeros per row in the OFF-DIAGONAL portion
-			sparse_info[1] = max_connected_ghost_nodes * dim; //sparse_info[0];
-			sparse_info[2] = max_connected_nodes * dim;
-			sparse_info[3] = n_local_quadratic_nodes * dim;
+			sparse_info.o_nz = max_connected_ghost_nodes * dim; //sparse_info.d_nz;
+			//sparse_info.nz = max_connected_nodes * dim;
+			sparse_info.m_size_loc = n_local_quadratic_nodes * dim;
 			if (pcs_type == DEFORMATION_H2)
-				sparse_info[3] += 2 * n_local_linear_nodes;
+				sparse_info.m_size_loc += 2 * n_local_linear_nodes;
 			else if (pcs_type == DEFORMATION_FLOW)
-				sparse_info[3] += n_local_linear_nodes;
-			eqs = new PETScLinearSolver(global_eqs_dim);
-			eqs->Init(sparse_info);
-			eqs->set_rank_size(rank_p, size_p);
-		}
-		else if ((pcs_type == MULTI_PHASE_FLOW) || (pcs_type == TWO_PHASE_FLOW))
-		{
-			sparse_info[0] = max_connected_nodes * 2;
-			sparse_info[1] = 0;  // max_cnct_nodes * 2;
-			sparse_info[2] = max_connected_nodes * 2;
-			sparse_info[3] = n_local_linear_nodes * 2;
-
-			eqs = new PETScLinearSolver(2 * n_global_linear_nodes);
-			eqs->Init(sparse_info);
-			eqs->set_rank_size(rank_p, size_p);
+				sparse_info.m_size_loc += n_local_linear_nodes;
 		}
 		else
 		{
-//			sparse_info[0] = max_connected_nodes * a_pcs->GetPrimaryVNumber();
-//			sparse_info[1] = max_connected_nodes * a_pcs->GetPrimaryVNumber();
-			sparse_info[0] = max_connected_local_nodes * a_pcs->GetPrimaryVNumber();
-			sparse_info[1] = max_connected_ghost_nodes * a_pcs->GetPrimaryVNumber();
-			sparse_info[2] = max_connected_nodes * a_pcs->GetPrimaryVNumber();
-			sparse_info[3] =
-			    n_local_linear_nodes * a_pcs->GetPrimaryVNumber();
-
-			eqs = new PETScLinearSolver(n_global_linear_nodes * a_pcs->GetPrimaryVNumber());
-			eqs->Init(sparse_info);
-			eqs->set_rank_size(rank_p, size_p);
+			sparse_info.d_nz = max_connected_local_nodes * a_pcs->GetPrimaryVNumber();
+			sparse_info.o_nz = max_connected_ghost_nodes * a_pcs->GetPrimaryVNumber();
+			//sparse_info.nz = max_connected_nodes * a_pcs->GetPrimaryVNumber();
+			sparse_info.m_size_loc = n_local_linear_nodes * a_pcs->GetPrimaryVNumber();
+			global_eqs_dim = n_global_linear_nodes * a_pcs->GetPrimaryVNumber();
 		}
+
+		PETScLinearSolver* eqs = new PETScLinearSolver(global_eqs_dim);
+		eqs->Init(&sparse_info);
+		eqs->set_rank_size(rank_p, size_p);
 		a_pcs->setSolver(eqs);
 	}
 }
