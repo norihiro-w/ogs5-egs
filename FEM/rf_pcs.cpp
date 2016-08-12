@@ -4983,9 +4983,9 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 
 			//----------------------------------------------------------------
 #if defined(USE_PETSC)
-				int eqs_id = m_msh->nod_vector[bc_msh_node]->GetEquationIndex();
-				if (isDisplacementBC)
-					eqs_id = m_msh->nod_vector[bc_msh_node]->GetEquationIndex_Q();
+			int eqs_id = m_msh->nod_vector[bc_msh_node]->GetEquationIndex();
+			if (isDisplacementBC)
+				eqs_id = m_msh->nod_vector[bc_msh_node]->GetEquationIndex_Q();
 
 			bc_eqs_id.push_back(eqs_id * dof_per_node + shift);
 			bc_eqs_value.push_back(bc_value);
@@ -5860,7 +5860,7 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 #if defined(USE_PETSC)
 			int eqs_id = m_msh->nod_vector[msh_node_id]->GetEquationIndex();
 			if (FiniteElement::isPrimaryVariableDisplacement(m_st->getProcessPrimaryVariable()))
-				eqs_id = m_msh->nod_vector[msh_node]->GetEquationIndex_Q();
+				eqs_id = m_msh->nod_vector[msh_node_id]->GetEquationIndex_Q();
 
 			st_eqs_id.push_back(eqs_id * dof_per_node + shift);
 			st_eqs_value.push_back(value);
