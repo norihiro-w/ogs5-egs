@@ -766,7 +766,7 @@ void CFEMesh::ConstructGrid()
 	if (this->hasHigherOrderNodes()) {
 		Eqs2Global_NodeIndex_Q.reserve(nod_vector.size());
 		for (size_t e = 0; e < nod_vector.size(); e++)
-			Eqs2Global_NodeIndex_Q.push_back(nod_vector[e]->GetEquationIndex_Q());
+			Eqs2Global_NodeIndex_Q.push_back(nod_vector[e]->GetEquationIndex(true));
 	}
 #endif
 	Eqs2Global_NodeIndex.reserve(nod_vector.size());

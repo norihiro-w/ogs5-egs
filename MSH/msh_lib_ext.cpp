@@ -299,9 +299,9 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 				for (CNode* node : mesh->getNodeVector())
 				{
 					if (mesh->isNodeLocal(node->GetIndex()))
-						node->SetEquationIndex_Q(global_eqs_id_Q++);
+						node->SetEquationIndex(global_eqs_id_Q++, true);
 					else
-						node->SetEquationIndex_Q(-1);
+						node->SetEquationIndex(-1, true);
 				}
 				//ScreenMessage2("-> set global_eqs_id_Q=%d\n", global_eqs_id_Q);
 			}
@@ -355,7 +355,7 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 				{
 					CNode* node = mesh->findNodeByGlobalID(node_globalID);
 					if (node) {
-						global_eqs_id_Q = node->GetEquationIndex_Q();
+						global_eqs_id_Q = node->GetEquationIndex(true);
 						//ScreenMessage2("-> found a node (local id=%d, global id=%d, global id(Q)=%d)\n", node->GetIndex(), node_globalID, global_eqs_id_Q);
 					}
 				}
@@ -375,7 +375,7 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 					//ScreenMessage2("-> global node id=%d, global equation ID (Q)=%d\n", node_globalID, reccv_eqsid);
 					if (reccv_eqsid<0)
 						ScreenMessage2("*** error: not found global equation ID (Q) for node %d\n", vec_ghost_node_localIDs[j]);
-					mesh->nod_vector[vec_ghost_node_localIDs[j]]->SetEquationIndex_Q(reccv_eqsid);
+					mesh->nod_vector[vec_ghost_node_localIDs[j]]->SetEquationIndex(reccv_eqsid, true);
 				}
 			}
 		}
