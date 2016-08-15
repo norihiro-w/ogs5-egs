@@ -534,7 +534,7 @@ Math_Group::SparseTable* createSparseTable(MeshLib::CFEMesh* a_mesh,
 	// CRS storage
 	if (st->storage_type == Math_Group::CRS)
 	{
-		/// num_column_entries saves vector ptr of CRS
+		// num_column_entries saves vector ptr of CRS
 		st->num_column_entries = new long[st->rows + 1];
 
 		std::vector<long> A_index;
@@ -543,13 +543,16 @@ Math_Group::SparseTable* createSparseTable(MeshLib::CFEMesh* a_mesh,
 		{
 			st->num_column_entries[i] = (long)A_index.size();
 
-			MeshLib::CNode* node = a_mesh->nod_vector[i];
-			for (long j = 0; j < (long)node->getConnectedNodes().size(); j++)
+			MeshLib::CNode const* node = a_mesh->nod_vector[i];
+			std::vector<size_t> vec_node_ids(node->getConnectedNodes());
+			vec_node_ids.push_back(i);
+			std::sort(vec_node_ids.begin(), vec_node_ids.end());
+			for (size_t j = 0; j < vec_node_ids.size(); j++)
 			{
-				long col_index = node->getConnectedNodes()[j];
+				long col_index = vec_node_ids[j];
 
-				/// If linear element is used
-				if ((!quadratic) && (col_index >= st->rows)) continue;
+				if ((!quadratic) && (col_index >= st->rows))
+					continue;
 
 				if (i == col_index)
 					st->diag_entry[i] = (long)A_index.size();
