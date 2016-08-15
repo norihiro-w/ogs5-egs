@@ -18,6 +18,7 @@
 
 #include "msh_elem.h"
 #include "msh_lib.h"
+#include "msh_node.h"
 
 #include "femlib.h"
 #include "mathlib.h"
@@ -486,10 +487,6 @@ Math_Group::SparseTable* createSparseTable(MeshLib::CFEMesh* a_mesh,
 	st->symmetry = symm;
 	st->storage_type = stype;
 
-	long i = 0, j = 0, ii = 0, jj = 0;
-	long lbuff0 = 0, lbuff1 = 0;
-	long** larraybuffer;
-	larraybuffer = nullptr;
 	//
 	// In sparse table, = number of nodes
 	st->rows = a_mesh->GetNodesNumber(quadratic);
@@ -507,50 +504,49 @@ Math_Group::SparseTable* createSparseTable(MeshLib::CFEMesh* a_mesh,
 		st->row_index_mapping_o2n = NULL;
 	}
 
+	long** larraybuffer = nullptr;
 	if (st->symmetry)
 	{
 		larraybuffer = new long* [st->rows];
-		for (i = 0; i < st->rows; i++)
+		for (long i = 0; i < st->rows; i++)
 		{
+			MeshLib::CNode* node = a_mesh->nod_vector[i];
 			if (st->storage_type == Math_Group::JDS)
 				st->row_index_mapping_n2o[i] = i;
 			// 'diag_entry' used as a temporary array
 			// to store the number of nodes connected to this node
-			lbuff1 = (long)a_mesh->nod_vector[i]->getConnectedNodes().size();
+			const long lbuff1 = (long)node->getConnectedNodes().size();
 			larraybuffer[i] = new long[lbuff1 + 1];
 			//
 			larraybuffer[i][0] = lbuff1;
-			for (j = 0; j < lbuff1; j++)
-				larraybuffer[i][j + 1] =
-				    a_mesh->nod_vector[i]->getConnectedNodes()[j];
-			a_mesh->nod_vector[i]->getConnectedNodes().clear();
-			for (j = 0; j < lbuff1; j++)
+			for (long j = 0; j < lbuff1; j++)
+				larraybuffer[i][j + 1] = node->getConnectedNodes()[j];
+			node->getConnectedNodes().clear();
+			for (long j = 0; j < lbuff1; j++)
 			{
-				jj = larraybuffer[i][j + 1];
+				long jj = larraybuffer[i][j + 1];
 				if (i <= jj)
-					a_mesh->nod_vector[i]->getConnectedNodes().push_back(jj);
+					node->getConnectedNodes().push_back(jj);
 			}
 		}
 	}
 
-	/// CRS storage
+	// CRS storage
 	if (st->storage_type == Math_Group::CRS)
 	{
 		/// num_column_entries saves vector ptr of CRS
 		st->num_column_entries = new long[st->rows + 1];
 
 		std::vector<long> A_index;
-		long col_index;
 
-		for (i = 0; i < st->rows; i++)
+		for (long i = 0; i < st->rows; i++)
 		{
 			st->num_column_entries[i] = (long)A_index.size();
 
-			for (j = 0;
-			     j < (long)a_mesh->nod_vector[i]->getConnectedNodes().size();
-			     j++)
+			MeshLib::CNode* node = a_mesh->nod_vector[i];
+			for (long j = 0; j < (long)node->getConnectedNodes().size(); j++)
 			{
-				col_index = a_mesh->nod_vector[i]->getConnectedNodes()[j];
+				long col_index = node->getConnectedNodes()[j];
 
 				/// If linear element is used
 				if ((!quadratic) && (col_index >= st->rows)) continue;
@@ -565,7 +561,7 @@ Math_Group::SparseTable* createSparseTable(MeshLib::CFEMesh* a_mesh,
 		st->num_column_entries[st->rows] = st->size_entry_column;
 
 		st->entry_column = new long[st->size_entry_column];
-		for (i = 0; i < st->size_entry_column; i++)
+		for (long i = 0; i < st->size_entry_column; i++)
 			st->entry_column[i] = A_index[i];
 	}
 	else if (st->storage_type == Math_Group::JDS)
@@ -574,33 +570,33 @@ Math_Group::SparseTable* createSparseTable(MeshLib::CFEMesh* a_mesh,
 		//--- Sort, from that has maximum connect nodes to that has minimum
 		// connect nodes
 		//
-		for (i = 0; i < st->rows; i++)
+		for (long i = 0; i < st->rows; i++)
 		{
+			MeshLib::CNode* node = a_mesh->nod_vector[i];
 			st->row_index_mapping_n2o[i] = i;
 			// 'diag_entry' used as a temporary array
 			// to store the number of nodes connected to this node
-			st->diag_entry[i] =
-			    (long)a_mesh->nod_vector[i]->getConnectedNodes().size();
+			st->diag_entry[i] = (long)node->getConnectedNodes().size();
 			if (!quadratic)
 			{
-				lbuff0 = 0;
-				for (j = 0; j < st->diag_entry[i]; j++)
-					if (a_mesh->nod_vector[i]->getConnectedNodes()[j] <
-					    static_cast<size_t>(st->rows))
+				long lbuff0 = 0;
+				for (long j = 0; j < st->diag_entry[i]; j++) {
+					if (node->getConnectedNodes()[j] < static_cast<size_t>(st->rows))
 						lbuff0++;
+				}
 				st->diag_entry[i] = lbuff0;
 			}
 			st->size_entry_column += st->diag_entry[i];
 		}
 
 		//
-		for (i = 0; i < st->rows; i++)
+		for (long i = 0; i < st->rows; i++)
 		{
 			// 'diag_entry' used as a temporary array
 			// to store the number of nodes connected to this node
-			lbuff0 = st->diag_entry[i];  // Nodes to this row
-			lbuff1 = st->row_index_mapping_n2o[i];
-			j = i;
+			long lbuff0 = st->diag_entry[i];  // Nodes to this row
+			long lbuff1 = st->row_index_mapping_n2o[i];
+			long j = i;
 			while ((j > 0) && (st->diag_entry[j - 1] < lbuff0))
 			{
 				st->diag_entry[j] = st->diag_entry[j - 1];
@@ -611,7 +607,7 @@ Math_Group::SparseTable* createSparseTable(MeshLib::CFEMesh* a_mesh,
 			st->row_index_mapping_n2o[j] = lbuff1;
 		}
 		// Old index to new one
-		for (i = 0; i < st->rows; i++)
+		for (long i = 0; i < st->rows; i++)
 			st->row_index_mapping_o2n[st->row_index_mapping_n2o[i]] = i;
 		// Maximum number of columns in the sparse table
 		st->max_columns = st->diag_entry[0];
@@ -622,25 +618,27 @@ Math_Group::SparseTable* createSparseTable(MeshLib::CFEMesh* a_mesh,
 		st->num_column_entries = new long[st->max_columns];
 		st->entry_column = new long[st->size_entry_column];
 		// 1. Count entries in each column in sparse table
-		for (i = 0; i < st->max_columns; i++)
+		for (long i = 0; i < st->max_columns; i++)
 			st->num_column_entries[i] = 0;
-		for (i = 0; i < st->rows; i++)
+		for (long i = 0; i < st->rows; i++) {
 			// 'diag_entry' still is used as a temporary array
 			// it stores that numbers of nodes connect to this nodes
-			for (j = 0; j < st->diag_entry[i]; j++)
+			for (long j = 0; j < st->diag_entry[i]; j++)
 				st->num_column_entries[j]++;
+		}
 
 		// 2. Fill the sparse table, i.e. store all its entries to
 		//    entry_column
-		lbuff0 = 0;
+		long lbuff0 = 0;
 
-		for (i = 0; i < st->max_columns; i++)
-			for (j = 0; j < st->num_column_entries[i]; j++)
+		for (long i = 0; i < st->max_columns; i++)
+		{
+			for (long j = 0; j < st->num_column_entries[i]; j++)
 			{
 				// ii is the real row index of this entry in matrix
-				ii = st->row_index_mapping_n2o[j];
+				long ii = st->row_index_mapping_n2o[j];
 				// jj is the real column index of this entry in matrix
-				jj = a_mesh->nod_vector[ii]->getConnectedNodes()[i];
+				long jj = a_mesh->nod_vector[ii]->getConnectedNodes()[i];
 				st->entry_column[lbuff0] = jj;
 
 				// Till to this stage, 'diag_entry' is really used to store
@@ -650,27 +648,28 @@ Math_Group::SparseTable* createSparseTable(MeshLib::CFEMesh* a_mesh,
 				//
 				lbuff0++;
 			}
+		}
 	}
 
 	// For the case of symmetry matrix
 	if (st->symmetry)
 	{
-		for (i = 0; i < st->rows; i++)
+		for (long i = 0; i < st->rows; i++)
 		{
-			lbuff0 = larraybuffer[i][0];
+			long lbuff0 = larraybuffer[i][0];
 			a_mesh->nod_vector[i]->getConnectedNodes().resize(lbuff0);
 			//
-			for (j = 0; j < lbuff0; j++)
+			for (long j = 0; j < lbuff0; j++)
 				a_mesh->nod_vector[i]->getConnectedNodes()[j] =
 				    larraybuffer[i][j + 1];
 		}
-		for (i = 0; i < st->rows; i++)
+		for (long i = 0; i < st->rows; i++)
 		{
 			delete[] larraybuffer[i];
-			larraybuffer[i] = 0;
+			larraybuffer[i] = nullptr;
 		}
 		delete[] larraybuffer;
-		larraybuffer = 0;
+		larraybuffer = nullptr;
 	}
 
 	return st;
@@ -681,11 +680,13 @@ void CreateSparseTable(MeshLib::CFEMesh* msh, Math_Group::SparseTable* &sparse_g
 	Math_Group::StorageType stype;
 	stype = Math_Group::JDS;
 	for (int i = 0; i < (int)num_vector.size(); i++)
+	{
 		if (num_vector[i]->ls_storage_method == 100)
 		{
 			stype = Math_Group::CRS;
 			break;
 		}
+	}
 
 	// Symmetry case is skipped.
 	// 1. Sparse_graph_H for high order interpolation. Up to now, deformation
