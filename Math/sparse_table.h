@@ -24,12 +24,8 @@ struct SparseTable
 	long* entry_column = nullptr;
 	long* num_column_entries = nullptr;     // number of entries of each columns in sparse
 	                              // table
-	long* row_index_mapping_n2o = nullptr;  // Row index of sparse table to row index of
-	                              // matrix
-	long* row_index_mapping_o2n = nullptr;  // Inverse of last
 	long* diag_entry = nullptr;             // Global index to the index of  entry_column
 	long size_entry_column = 0;
-	long max_columns = 0;
 	long rows = 0;
 
 	void Write(std::ostream& os = std::cout);

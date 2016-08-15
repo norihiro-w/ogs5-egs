@@ -27,10 +27,6 @@ public:
 
 	CSparseMatrix(const SparseTable& sparse_table, const int dof);
 	~CSparseMatrix();
-	// Preconditioner
-	void Precond_Jacobi(double* vec_s, double* vec_r);
-	// TEMP
-	void Precond_ILU(double* /*vec_s*/, double* /*vec_r*/) {}
 	// Operator
 	void operator=(const double a);
 	void operator*=(const double a);
@@ -39,8 +35,6 @@ public:
 	void operator+=(const CSparseMatrix& m);
 	void operator-=(const CSparseMatrix& m);
 	// Vector pass through augment and bring results back.
-	void multiVec(double* vec_s, double* vec_r);
-	void Trans_MultiVec(double* vec_s, double* vec_r);
 	void Diagonize(const long idiag, const double b_given, double* b);
 	//
 	// Access to members
@@ -48,19 +42,21 @@ public:
 	//
 	long Dim() const { return DOF * rows; }
 	int Dof() const { return DOF; }
-	void SetDOF(const int dof_n)  //_new. 02/2010. WW
+	void SetDOF(const int dof_n)
 	{
 		DOF = dof_n;
 	}
 	long Size() const { return rows; }
-	// These two pointers are in need for Compressed Row Storage
-	IndexType nnz() const  // PCH
+
+	IndexType nnz() const
 	{
 		return DOF * DOF * size_entry_column;
 	}
+
 	IndexType* ptr;
 	IndexType* col_idx;
 	IndexType* entry_index;
+
 	int GetCRSValue(double* value);
 	// Print
 	void Write(std::ostream& os = std::cout);
@@ -76,12 +72,8 @@ private:
 	long* entry_column;
 	long* num_column_entries;     // number of entries of each columns in sparse
 	                              // table
-	long* row_index_mapping_n2o;  // Row index of sparse table to row index of
-	                              // matrix
-	long* row_index_mapping_o2n;  // Inverse of last
 	long* diag_entry;
 	long size_entry_column;
-	long max_columns;
 	long rows;
 	//
 	int DOF;

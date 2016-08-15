@@ -34,24 +34,19 @@ CSparseMatrix::CSparseMatrix(const SparseTable& sparse_table, const int dof)
 {
 	symmetry = sparse_table.symmetry;
 	size_entry_column = sparse_table.size_entry_column;
-	max_columns = sparse_table.max_columns;
 	rows = sparse_table.rows;
 	// Topology mapping from data array to matrix
 	// Only refer address
 	entry_column = sparse_table.entry_column;
 	num_column_entries = sparse_table.num_column_entries;
-	row_index_mapping_n2o = sparse_table.row_index_mapping_n2o;
-	row_index_mapping_o2n = sparse_table.row_index_mapping_o2n;
 	diag_entry = sparse_table.diag_entry;
 	// Values of all sparse entries
 	entry = new double[dof * dof * size_entry_column + 1];
 	entry[dof * dof * size_entry_column] = 0.;
 	zero_e = 0.;
-//
-#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
-	IndexType counter = 0, counter_ptr = 0, counter_col_idx = 0;
-	IndexType i=0, k=0, ii=0, jj=0, J=0, K=0;
-	IndexType row_in_sparse_table = 0;
+
+	IndexType counter_ptr = 0, counter_col_idx = 0;
+	IndexType i=0, k=0, ii=0, jj=0;
 
 	ptr = new IndexType[rows * dof + 1];
 	col_idx = new IndexType[dof * dof * size_entry_column];
@@ -101,7 +96,6 @@ CSparseMatrix::CSparseMatrix(const SparseTable& sparse_table, const int dof)
 		}
 	}
 
-#endif
 }
 /*\!
  ********************************************************************
@@ -365,117 +359,6 @@ void CSparseMatrix::Write_BIN(std::ostream& os)
 	}
 }
 
-/********************************************************************
-   Perform A*x
-   Arguments:
-     vec_sr: M*vec_s-->vec_r
-   01/2006 WW
-   08/2007 WW
-   10/2007 WW
-   03/2011 WW      CRS storage
-********************************************************************/
-void CSparseMatrix::multiVec(double* vec_s, double* vec_r)
-{
-	long i, j, k, ii, jj, kk, ll, idof, jdof, counter;
-	for (i = 0; i < rows * DOF; i++)
-		vec_r[i] = 0.0;
-	//
-	counter = 0;
-	if (DOF > 1)
-	{
-		// Although this piece of code can deal with the case
-		// of DOF = 1, we also prepare a special piece of code for
-		// the case of DOF = 1 just for efficiency
-		/// ptr is num_column_entries
-		for (ii = 0; ii < rows; ii++)
-			for (j = num_column_entries[ii]; j < num_column_entries[ii + 1];
-				 j++)
-			{
-				jj = entry_column[j];
-				for (idof = 0; idof < DOF; idof++)
-				{
-					kk = idof * rows + ii;
-					for (jdof = 0; jdof < DOF; jdof++)
-					{
-						ll = jdof * rows + jj;
-						k = (idof * DOF + jdof) * size_entry_column + j;
-						vec_r[kk] += entry[k] * vec_s[ll];
-						if (symmetry & (kk != ll))
-							vec_r[ll] += entry[k] * vec_s[kk];
-					}
-				}
-			}
-
-	}
-	else  // DOF = 1
-	{
-		/// ptr is num_column_entries
-		for (ii = 0; ii < rows; ii++)
-			for (j = num_column_entries[ii]; j < num_column_entries[ii + 1];
-				 j++)
-			{
-				jj = entry_column[j];
-				vec_r[ii] += entry[j] * vec_s[jj];
-				if (symmetry & (ii != jj))
-					vec_r[jj] += entry[j] * vec_s[ii];
-			}
-	}
-}
-
-/*\!
- ********************************************************************
-   Perform A^T*x
-   Arguments:
-      vec_sr: M^T*vec_s-->vec_r
-   10/2010 WW
-   03/2011 WW      CRS storage
- ********************************************************************/
-void CSparseMatrix::Trans_MultiVec(double* vec_s, double* vec_r)
-{
-	long i, j, k, ii, jj, kk, ll, idof, jdof, counter;
-	for (i = 0; i < rows * DOF; i++)
-		vec_r[i] = 0.0;
-	//
-	counter = 0;
-	if (DOF > 1)
-	{
-		// Although this piece of code can deal with the case
-		// of DOF = 1, we also prepare a special piece of code for
-		// the case of DOF = 1 just for efficiency
-		/// ptr is num_column_entries
-		for (ii = 0; ii < rows; ii++)
-			for (j = num_column_entries[ii]; j < num_column_entries[ii + 1];
-				 j++)
-			{
-				jj = entry_column[j];
-				for (idof = 0; idof < DOF; idof++)
-				{
-					kk = idof * rows + ii;
-					for (jdof = 0; jdof < DOF; jdof++)
-					{
-						ll = jdof * rows + jj;
-						k = (idof * DOF + jdof) * size_entry_column + j;
-						vec_r[ll] += entry[k] * vec_s[kk];
-						if (symmetry & (kk != ll))
-							vec_r[kk] += entry[k] * vec_s[ll];
-					}
-				}
-			}
-	}
-	else  // DOF = 1
-	{
-		/// ptr is num_column_entries
-		for (ii = 0; ii < rows; ii++)
-			for (j = num_column_entries[ii]; j < num_column_entries[ii + 1];
-				 j++)
-			{
-				jj = entry_column[j];
-				vec_r[jj] += entry[j] * vec_s[ii];
-				if (symmetry & (ii != jj))
-					vec_r[ii] += entry[j] * vec_s[jj];
-			}
-	}
-}
 /*\!
  ********************************************************************
    Set
@@ -534,54 +417,6 @@ void CSparseMatrix::Diagonize(const long idiag, const double b_given, double* b)
 	}
 #endif
 	b[idiag] = vdiag * b_given;
-}
-
-/*\!
- ********************************************************************
-   M^{-1}*A
-
-          a_ij  i=j
-   M = {
-          0     i!=j
-   Programm:
-   10/2007 WW
- ********************************************************************/
-void CSparseMatrix::Precond_Jacobi(double* vec_s, double* vec_r)
-{
-	long i, idof;
-	double diag = 0.;
-	//
-	if (DOF > 1)
-	{
-		// Although this piece of code can deal with the case
-		// of DOF = 1, we also prepare a special piece of code for
-		// the case of DOF = 1 just for efficiency
-		for (i = 0; i < rows; i++)
-			for (idof = 0; idof < DOF; idof++)
-			{
-				diag = entry[(idof * DOF + idof) * size_entry_column +
-				             diag_entry[i]];
-				if (fabs(diag) < DBL_MIN)
-					//        if(fabs(diag)<DBL_EPSILON)
-					diag = 1.0;
-				//  std::cout<<"Diagonal entry is zero. Abort simulation!!  "
-				//  <<"\n";
-				vec_r[idof * rows + i] = vec_s[idof * rows + i] / diag;
-			}
-		//
-	}
-	else  // DOF = 1
-
-		for (i = 0; i < rows; i++)
-		{
-			diag = entry[diag_entry[i]];
-			// if(fabs(diag)<DBL_EPSILON)
-			if (fabs(diag) < DBL_MIN) diag = 1.0;
-			//   std::cout<<"Diagonal entry is zero. Abort simulation!!  "
-			//   <<"\n";
-			//
-			vec_r[i] = vec_s[i] / diag;
-		}
 }
 
 /********************************************************************
