@@ -157,8 +157,8 @@ public:
 	void setSubdomainElements(int* header, const int* elem_info,
 	                          const bool inside);
 	int calMaximumConnectedNodes();
-	int calMaximumConnectedLocalNodes();
-	int calMaximumConnectedGhostNodes();
+	int calMaximumConnectedLocalNodes(bool quadratic, std::vector<int> &d_nnz);
+	int calMaximumConnectedGhostNodes(bool quadratic, std::vector<int> &o_nnz);
 	int getMaxNumNodesOfElement(bool quadratic) const;
 	int getMaxNumConnectedElements() const;
 	/// Get number of nodes of the entire mesh

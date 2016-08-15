@@ -238,8 +238,10 @@ void CreateEQS_LinearSolver()
 		mesh->ConnectedNodes(quadratic);
 		//const int max_connected_nodes = mesh->calMaximumConnectedNodes();
 		//ScreenMessage("-> max. number of connected nodes = %d\n", max_connected_nodes);
-		const int max_connected_local_nodes = mesh->calMaximumConnectedLocalNodes();
-		const int max_connected_ghost_nodes = mesh->calMaximumConnectedGhostNodes();
+		std::vector<int> vec_n_connected_local_nodes;
+		const int max_connected_local_nodes = mesh->calMaximumConnectedLocalNodes(quadratic, vec_n_connected_local_nodes);
+		std::vector<int> vec_n_connected_ghost_nodes;
+		const int max_connected_ghost_nodes = mesh->calMaximumConnectedGhostNodes(quadratic, vec_n_connected_ghost_nodes);
 
 //		const int max_connected_eles = mesh->getMaxNumConnectedElements(); // (dim < 3) ? 4 : 8;
 //		const int max_ele_nodes = mesh->getMaxNumNodesOfElement(quadratic); //(dim < 3) ? 9 : 20;
@@ -250,6 +252,28 @@ void CreateEQS_LinearSolver()
 		if (isDeformationProcess(pcs_type))
 		{
 			const int ndof = mesh->GetMaxElementDim();
+			eqs->sparse_index.d_nnz.resize(vec_n_connected_local_nodes.size() * ndof);
+			for (size_t j=0; j<vec_n_connected_local_nodes.size(); j++) {
+				for (int ii=0; ii<ndof; ii++)
+					eqs->sparse_index.d_nnz[j*ndof + ii] = (vec_n_connected_local_nodes[j] + 1) * 3;
+			}
+			eqs->sparse_index.o_nnz.resize(vec_n_connected_ghost_nodes.size() * ndof);
+			for (size_t j=0; j<vec_n_connected_ghost_nodes.size(); j++) {
+				for (int ii=0; ii<ndof; ii++)
+					eqs->sparse_index.o_nnz[j*ndof + ii] = vec_n_connected_ghost_nodes[j] * 3;
+			}
+//			for (int ii=0; ii<ndof; ii++) {
+//				std::copy(vec_n_connected_local_nodes.begin(), vec_n_connected_local_nodes.end(),  eqs->sparse_index.d_nnz.begin() + ii*vec_n_connected_local_nodes.size());
+//				std::copy(vec_n_connected_ghost_nodes.begin(), vec_n_connected_ghost_nodes.end(),  eqs->sparse_index.o_nnz.begin() + ii*vec_n_connected_ghost_nodes.size());
+//			}
+			//for (size_t j=0; j<eqs->sparse_index.d_nnz.size(); j++)
+			//	eqs->sparse_index.d_nnz[j] += 1; // add diagonla entries
+
+//			for (size_t j=0; j<eqs->sparse_index.d_nnz.size(); j++)
+//				eqs->sparse_index.d_nnz[j] *= ndof;
+//			for (size_t j=0; j<eqs->sparse_index.o_nnz.size(); j++)
+//				eqs->sparse_index.o_nnz[j] *= ndof;
+
 			global_eqs_dim = n_global_quadratic_nodes * ndof;
 			//vector<int> global_n_id;
 			if (pcs_type == DEFORMATION_H2)
@@ -273,6 +297,13 @@ void CreateEQS_LinearSolver()
 		}
 		else
 		{
+			if (a_pcs->GetPrimaryVNumber() > 1) {
+				for (size_t j=0; j<eqs->sparse_index.d_nnz.size(); j++)
+					eqs->sparse_index.d_nnz[j] *= a_pcs->GetPrimaryVNumber();
+				for (size_t j=0; j<eqs->sparse_index.o_nnz.size(); j++)
+					eqs->sparse_index.o_nnz[j] *= a_pcs->GetPrimaryVNumber();
+			}
+
 			eqs->sparse_index.d_nz = max_connected_local_nodes * a_pcs->GetPrimaryVNumber();
 			eqs->sparse_index.o_nz = max_connected_ghost_nodes * a_pcs->GetPrimaryVNumber();
 			//sparse_index.nz = max_connected_nodes * a_pcs->GetPrimaryVNumber();
