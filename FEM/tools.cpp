@@ -681,12 +681,12 @@ Math_Group::SparseTable* createSparseTable(MeshLib::CFEMesh* a_mesh,
 void CreateSparseTable(MeshLib::CFEMesh* msh, Math_Group::SparseTable* &sparse_graph, Math_Group::SparseTable* &sparse_graph_H)
 {
 	Math_Group::StorageType stype;
-	stype = Math_Group::JDS;
+	stype = Math_Group::CRS;
 	for (int i = 0; i < (int)num_vector.size(); i++)
 	{
 		if (num_vector[i]->ls_storage_method == 100)
 		{
-			stype = Math_Group::CRS;
+			stype = Math_Group::JDS;
 			break;
 		}
 	}
