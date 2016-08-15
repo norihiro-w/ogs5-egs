@@ -46,7 +46,6 @@ public:
 	// Access to members
 	double& operator()(const long i, const long j = 0) const;
 	//
-	StorageType GetStorageType() const { return storage_type; }  // 05.2011. WW
 	long Dim() const { return DOF * rows; }
 	int Dof() const { return DOF; }
 	void SetDOF(const int dof_n)  //_new. 02/2010. WW
@@ -70,8 +69,6 @@ private:
 	// Data
 	double* entry;
 	mutable double zero_e;
-	/// 0. 03.2011. WW
-	StorageType storage_type;
 	//
 	bool symmetry;
 	// Topology mapping from data array to matrix. All are only pointers to the

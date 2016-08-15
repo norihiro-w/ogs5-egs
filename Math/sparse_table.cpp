@@ -30,34 +30,13 @@ void SparseTable::Write(std::ostream& os)
 	os << "\n*** Row index  "
 	   << "\n";
 
-	if (storage_type == CRS)
+	os << "\n*** Sparse entry  "
+	   << "\n";
+	for (i = 0; i < rows; i++)
 	{
-		os << "\n*** Sparse entry  "
-		   << "\n";
-		for (i = 0; i < rows; i++)
-		{
-			for (k = num_column_entries[i]; k < num_column_entries[i + 1]; k++)
-				os << entry_column[k] + 1 << " ";
-			os << "\n";
-		}
-	}
-	else if (storage_type == JDS)
-	{
-		for (i = 0; i < rows; i++)
-			os << row_index_mapping_n2o[i] + 1 << "\n";
-		//
-		os << "\n*** Sparse entry  "
-		   << "\n";
-		for (k = 0; k < max_columns; k++)
-		{
-			os << "--Column: " << k + 1 << "\n";
-			for (i = 0; i < num_column_entries[k]; i++)
-			{
-				os << entry_column[counter] + 1 << "\n";
-				counter++;
-			}
-			os << "\n";
-		}
+		for (k = num_column_entries[i]; k < num_column_entries[i + 1]; k++)
+			os << entry_column[k] + 1 << " ";
+		os << "\n";
 	}
 }
 
