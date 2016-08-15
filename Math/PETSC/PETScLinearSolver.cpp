@@ -21,31 +21,8 @@
 
 namespace petsc_group
 {
-PETScLinearSolver::PETScLinearSolver(const int size)
-    : A(NULL),
-      B(NULL),
-      b(NULL),
-      x(NULL),
-      snes(NULL),
-      lsolver(NULL),
-      prec(NULL),
-      total_x(NULL),
-      global_x0(NULL),
-      global_x1(NULL),
-      global_buff(NULL)
+PETScLinearSolver::PETScLinearSolver()
 {
-	i_start = i_end = 0;
-	ltolerance = 1.e-10;
-	m_size = size;
-	time_elapsed = 0.0;
-	d_nz = 10;
-	o_nz = 10;
-	//nz = 10;
-	m_size_loc = PETSC_DECIDE;
-	mpi_size = 0;
-	rank = 0;
-	is_global_node_id = NULL;
-	is_local_node_id = NULL;
 }
 
 PETScLinearSolver::~PETScLinearSolver()
@@ -79,17 +56,15 @@ PETScLinearSolver::~PETScLinearSolver()
 	            time_elapsed);
 }
 
-void PETScLinearSolver::Init(SparseIndex* sparse_index)
+void PETScLinearSolver::Init(int size_)
 {
-	if (sparse_index)
-	{
-		d_nz = sparse_index->d_nz;
-		o_nz = sparse_index->d_nz;
-		//nz = sparse_index->nz;
-		m_size_loc = sparse_index->m_size_loc;
-	}
+	m_size = size_;
+//	if (sparse_index_)
+//	{
+//		_sparse_index = *sparse_index_;
+//	}
 
-	CreateMatrix();
+	CreateMatrixVectors(sparse_index);
 
 	global_x0 = new PetscScalar[m_size];
 	global_x1 = new PetscScalar[m_size];
@@ -209,12 +184,12 @@ void PETScLinearSolver::ConfigLinear(const PetscReal tol, const PetscInt maxits,
 
 }
 
-void PETScLinearSolver::CreateMatrix()
+void PETScLinearSolver::CreateMatrixVectors(SparseIndex& sparse_index)
 {
 	PetscErrorCode ierr;
 	MatCreate(PETSC_COMM_WORLD, &A);
 
-	ierr = MatSetSizes(A, m_size_loc, m_size_loc, PETSC_DECIDE, PETSC_DECIDE);
+	ierr = MatSetSizes(A, sparse_index.m_size_loc, sparse_index.m_size_loc, PETSC_DECIDE, PETSC_DECIDE);
 	//ierr = MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, n_global_rows, n_global_cols);
 	PetscInt M, N;
 	MatGetSize(A, &M, &N);
@@ -227,9 +202,9 @@ void PETScLinearSolver::CreateMatrix()
 	MatSetType(A, MATMPIAIJ);
 	MatSetFromOptions(A);
 #if 1
-	ScreenMessage2("-> preallocate PETSc matrix with d_nz=%d and o_nz=%d\n", d_nz, o_nz);
-	MatMPIAIJSetPreallocation(A, d_nz, PETSC_NULL, o_nz, PETSC_NULL);
-	MatSeqAIJSetPreallocation(A, d_nz, PETSC_NULL);
+	ScreenMessage2("-> preallocate PETSc matrix with d_nz=%d and o_nz=%d\n", sparse_index.d_nz, sparse_index.o_nz);
+	MatMPIAIJSetPreallocation(A, sparse_index.d_nz, PETSC_NULL, sparse_index.o_nz, PETSC_NULL);
+	MatSeqAIJSetPreallocation(A, sparse_index.d_nz, PETSC_NULL);
 	MatSetOption(A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE);
 	MatSetOption(A, MAT_NO_OFF_PROC_ENTRIES, PETSC_TRUE);
 
