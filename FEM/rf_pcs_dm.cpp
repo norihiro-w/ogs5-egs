@@ -887,28 +887,23 @@ void CRFProcessDeformation::SetInitialGuess_EQS_VEC()
 void CRFProcessDeformation::UpdateIterativeStep(const double damp,
                                                 const int u_type)
 {
-	int i, j;
-	long shift = 0;
-	long number_of_nodes;
-	int ColIndex = 0;
-	double* eqs_x = NULL;
-
 #if defined(USE_PETSC)
-	eqs_x = eqs_new->GetGlobalSolution();
+	double* eqs_x = eqs_new->GetGlobalSolution();
 #elif defined(NEW_EQS)
-	eqs_x = eqs_new->getX();
+	double* eqs_x = eqs_new->getX();
 #endif
 
 	//
-	for (i = 0; i < problem_dimension_dm; i++)
+	long shift = 0;
+	for (int i = 0; i < problem_dimension_dm; i++)
 	{
-		number_of_nodes = num_nodes_p_var[i];
+		long const number_of_nodes = num_nodes_p_var[i];
 		//
-		ColIndex = p_var_index[i] - 1;
+		int const ColIndex = p_var_index[i] - 1;
 		//  Update Newton step: w = w+dw
 		if (u_type == 0)
 		{
-			for (j = 0; j < number_of_nodes; j++)
+			for (long j = 0; j < number_of_nodes; j++)
 			{
 #ifdef USE_PETSC
 				long k = m_msh->Eqs2Global_NodeIndex_Q[j] * pcs_number_of_primary_nvals + i;
@@ -920,11 +915,12 @@ void CRFProcessDeformation::UpdateIterativeStep(const double damp,
 			shift += number_of_nodes;
 		}
 		else
-			for (j = 0; j < number_of_nodes; j++)
+		{
+			for (long j = 0; j < number_of_nodes; j++)
 			{
-				SetNodeValue(j, ColIndex + 1, GetNodeValue(j, ColIndex + 1) +
-				                                  GetNodeValue(j, ColIndex));
+				SetNodeValue(j, ColIndex + 1, GetNodeValue(j, ColIndex + 1) + GetNodeValue(j, ColIndex));
 			}
+		}
 	}
 
 	// if(type == 42&&m_num->nls_method>0)         //H2M, Newton-Raphson.
@@ -933,15 +929,14 @@ void CRFProcessDeformation::UpdateIterativeStep(const double damp,
 		// $p_{n+1}=p_{n+1}+\Delta p$ is already performed when type = 0
 		if (u_type == 1) return;
 
-		for (i = problem_dimension_dm; i < pcs_number_of_primary_nvals; i++)
+		for (int i = problem_dimension_dm; i < pcs_number_of_primary_nvals; i++)
 		{
-			number_of_nodes = num_nodes_p_var[i];
+			long const number_of_nodes = num_nodes_p_var[i];
 			//
-			ColIndex = p_var_index[i];
+			int const ColIndex = p_var_index[i];
 
-			for (j = 0; j < number_of_nodes; j++)
-				SetNodeValue(j, ColIndex, GetNodeValue(j, ColIndex) +
-				                              eqs_x[j + shift] * damp);
+			for (long j = 0; j < number_of_nodes; j++)
+				SetNodeValue(j, ColIndex, GetNodeValue(j, ColIndex) + eqs_x[j + shift] * damp);
 
 			shift += number_of_nodes;
 		}
