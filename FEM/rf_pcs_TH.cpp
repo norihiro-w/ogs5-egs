@@ -559,8 +559,8 @@ void CRFProcessTH::setSolver(petsc_group::PETScLinearSolver* petsc_solver)
 			ierr = MatSetFromOptions(eqs_new->vec_subA[i]);
 			CHKERRCONTINUE(ierr);
 			ierr = MatMPIAIJSetPreallocation(eqs_new->vec_subA[i],
-			                                 eqs_new->d_nz, PETSC_NULL,
-			                                 eqs_new->o_nz, PETSC_NULL);
+			                                 eqs_new->sparse_index.d_nz, PETSC_NULL,
+			                                 eqs_new->sparse_index.o_nz, PETSC_NULL);
 			CHKERRCONTINUE(ierr);
 			MatSetOption(eqs_new->vec_subA[i], MAT_NEW_NONZERO_ALLOCATION_ERR,
 			             PETSC_FALSE);
