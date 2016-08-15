@@ -267,13 +267,15 @@ double CRFProcessDeformation::getNormOfDisplacements()
 	for (int i = 0; i < pcs_number_of_primary_nvals; i++)
 	{
 		const int nidx0 = GetNodeValueIndex(pcs_primary_function_name[i]);
-		for (int j = 0; j < g_nnodes; j++)
+		int local_node_counter = 0;
+		for (size_t j = 0; j < m_msh->GetNodesNumber(true); j++)
 		{
-			int ish = pcs_number_of_primary_nvals * j + i;
-			ix[ish] =
-			    pcs_number_of_primary_nvals * m_msh->Eqs2Global_NodeIndex_Q[j] +
-			    i;
+			if (!m_msh->isNodeLocal(j))
+				continue;
+			int ish = pcs_number_of_primary_nvals * local_node_counter + i;
+			ix[ish] = pcs_number_of_primary_nvals * m_msh->Eqs2Global_NodeIndex_Q[j] + i;
 			val[ish] = GetNodeValue(j, nidx0 + 1);
+			local_node_counter++;
 		}
 	}
 	eqs_new->setArrayValues(0, size, &ix[0], &val[0], INSERT_VALUES);
@@ -512,8 +514,7 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 	RecoverSolution();
 
 	// get coupling error
-	const double norm_u_k1 =
-	    getNormOfDisplacements();  // InitialNormDU_coupling
+	const double norm_u_k1 = getNormOfDisplacements();  // InitialNormDU_coupling
 	const double cpl_abs_error =
 	    std::abs(InitialNormDU0 - norm_du0_pre_cpl_itr) /
 	    (norm_u_k1 == 0 ? 1 : norm_u_k1);
