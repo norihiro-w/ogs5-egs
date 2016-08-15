@@ -15,12 +15,6 @@
 namespace Math_Group
 {
 
-enum StorageType
-{
-	CRS,
-	JDS
-};
-
 struct SparseTable
 {
 	~SparseTable();
@@ -37,7 +31,6 @@ struct SparseTable
 	long size_entry_column = 0;
 	long max_columns = 0;
 	long rows = 0;
-	StorageType storage_type;
 
 	void Write(std::ostream& os = std::cout);
 };

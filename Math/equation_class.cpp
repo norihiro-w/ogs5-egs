@@ -182,7 +182,7 @@ void Linear_EQS::WriteRHS(ostream& os)
 //**************************************************************************
 void Linear_EQS::Write_BIN(ostream& os)
 {
-	if ((A->GetStorageType() != CRS) || (!A)) return;
+	if (!A) return;
 
 	A->Write_BIN(os);
 	os.write((char*)b, A->Dim() * sizeof(double));
