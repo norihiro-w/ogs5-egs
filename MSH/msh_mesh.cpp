@@ -2364,7 +2364,8 @@ void CFEMesh::ConnectedNodes(bool quadratic)
 		{
 			CElem* ele = ele_vector[ele_id];
 			for (size_t l = 0; l < ele->GetNodesNumber(quadratic); l++)
-				nod->getConnectedNodes().push_back(ele->GetNodeIndex(l));
+				if ((size_t)ele->GetNodeIndex(l) != nod->GetIndex())
+					nod->getConnectedNodes().push_back(ele->GetNodeIndex(l));
 		}
 	}
 
