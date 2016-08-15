@@ -491,9 +491,6 @@ Math_Group::SparseTable* createSparseTable(MeshLib::CFEMesh* a_mesh,
 	st->size_entry_column = 0;
 	st->diag_entry = new long[st->rows];
 
-	st->row_index_mapping_n2o = NULL;
-	st->row_index_mapping_o2n = NULL;
-
 	long** larraybuffer = nullptr;
 	if (st->symmetry)
 	{
