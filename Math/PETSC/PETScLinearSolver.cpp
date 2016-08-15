@@ -203,8 +203,9 @@ void PETScLinearSolver::CreateMatrixVectors(SparseIndex& sparse_index)
 	MatSetFromOptions(A);
 #if 1
 	ScreenMessage2("-> preallocate PETSc matrix with d_nz=%d and o_nz=%d\n", sparse_index.d_nz, sparse_index.o_nz);
-	MatMPIAIJSetPreallocation(A, sparse_index.d_nz, PETSC_NULL, sparse_index.o_nz, PETSC_NULL);
-	MatSeqAIJSetPreallocation(A, sparse_index.d_nz, PETSC_NULL);
+	MatMPIAIJSetPreallocation(A, sparse_index.d_nz, sparse_index.d_nnz.empty() ? PETSC_NULL : &sparse_index.d_nnz[0],
+							  sparse_index.o_nz, sparse_index.o_nnz.empty() ? PETSC_NULL : &sparse_index.o_nnz[0]);
+	MatSeqAIJSetPreallocation(A, sparse_index.d_nz, sparse_index.d_nnz.empty() ? PETSC_NULL : &sparse_index.d_nnz[0]);
 	MatSetOption(A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE);
 	MatSetOption(A, MAT_NO_OFF_PROC_ENTRIES, PETSC_TRUE);
 

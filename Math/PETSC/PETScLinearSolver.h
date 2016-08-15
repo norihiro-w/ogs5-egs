@@ -37,6 +37,8 @@ struct SparseIndex
 	PetscInt o_nz = 0;
 	//PetscInt nz = 0;
 	PetscInt m_size_loc = 0;
+	std::vector<int> d_nnz;
+	std::vector<int> o_nnz;
 };
 
 

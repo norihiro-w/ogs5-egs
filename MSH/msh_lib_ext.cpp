@@ -545,31 +545,45 @@ int CFEMesh::calMaximumConnectedNodes()
 	return global_max;
 }
 
-int CFEMesh::calMaximumConnectedLocalNodes()
+int CFEMesh::calMaximumConnectedLocalNodes(bool quadratic, std::vector<int> &d_nnz)
 {
+	d_nnz.resize(quadratic ? this->getNumNodesLocal_Q() : this->getNumNodesLocal());
 	size_t max_connected_nodes = 0;
-	for (CNode* node : nod_vector)
+	const int node0_eqsId = nod_vector[0]->GetEquationIndex(quadratic);
+	for (size_t i=0; i<this->GetNodesNumber(quadratic); i++)
 	{
-		size_t cnt = 0;
+		CNode* node = nod_vector[i];
+		if (!this->isNodeLocal(node->GetIndex()))
+			continue;
+		size_t cnt_local = 0;
 		for (auto node_id : node->getConnectedNodes())
 			if (this->isNodeLocal(node_id))
-				cnt++;
-		max_connected_nodes = std::max(max_connected_nodes, cnt);
+				cnt_local++;
+		max_connected_nodes = std::max(max_connected_nodes, cnt_local);
+		int eqs_id = node->GetEquationIndex(quadratic) - node0_eqsId;
+		d_nnz[eqs_id] = cnt_local;
 	}
 	ScreenMessage2d("-> max. connected local nodes = %d\n", max_connected_nodes);
 	return max_connected_nodes;
 }
 
-int CFEMesh::calMaximumConnectedGhostNodes()
+int CFEMesh::calMaximumConnectedGhostNodes(bool quadratic, std::vector<int> &o_nnz)
 {
+	o_nnz.resize(quadratic ? this->getNumNodesLocal_Q() : this->getNumNodesLocal());
 	size_t max_connected_nodes = 0;
-	for (auto node : nod_vector)
+	const int node0_eqsId = nod_vector[0]->GetEquationIndex(quadratic);
+	for (size_t i=0; i<this->GetNodesNumber(quadratic); i++)
 	{
-		size_t cnt = 0;
+		CNode* node = nod_vector[i];
+		if (!this->isNodeLocal(node->GetIndex()))
+			continue;
+		size_t cnt_ghost = 0;
 		for (auto node_id : node->getConnectedNodes())
 			if (!this->isNodeLocal(node_id))
-				cnt++;
-		max_connected_nodes = std::max(max_connected_nodes, cnt);
+				cnt_ghost++;
+		max_connected_nodes = std::max(max_connected_nodes, cnt_ghost);
+		int eqs_id = node->GetEquationIndex(quadratic) - node0_eqsId;
+		o_nnz[eqs_id] = cnt_ghost;
 	}
 	ScreenMessage2d("-> max. connected ghost nodes = %d\n", max_connected_nodes);
 	return max_connected_nodes;
