@@ -189,10 +189,6 @@ CFiniteElementStd::CFiniteElementStd(CRFProcess* Pcs, const int C_Sys_Flad,
 	for (i = 0; i < 4; i++)
 		NodeShift[i] = 0;
 	//
-	dynamic = false;
-	if (pcs->pcs_type_name_vector.size() &&
-	    pcs->pcs_type_name_vector[0].find("DYNAMIC") != string::npos)
-		dynamic = true;
 	idx_vel_disp = new int[3];
 
 	dm_pcs = NULL;
@@ -220,22 +216,8 @@ CFiniteElementStd::CFiniteElementStd(CRFProcess* Pcs, const int C_Sys_Flad,
 	switch (PcsType)
 	{
 		case L:  // Liquid flow
-			// 02.2.2007 GravityMatrix = new  SymMatrix(size_m);
-			if (dynamic)
-			{
-				idx0 = pcs->GetNodeValueIndex("PRESSURE_RATE1");
-				idx1 = idx0 + 1;
-				idx_pres = pcs->GetNodeValueIndex("PRESSURE1");
-				idx_vel_disp[0] = pcs->GetNodeValueIndex("VELOCITY_DM_X");
-				idx_vel_disp[1] = pcs->GetNodeValueIndex("VELOCITY_DM_Y");
-				if (dim == 3)
-					idx_vel_disp[2] = pcs->GetNodeValueIndex("VELOCITY_DM_Z");
-			}
-			else
-			{
-				idx0 = pcs->GetNodeValueIndex("PRESSURE1");
-				idx1 = idx0 + 1;
-			}
+			idx0 = pcs->GetNodeValueIndex("PRESSURE1");
+			idx1 = idx0 + 1;
 			idx_vel[0] = pcs->GetNodeValueIndex("VELOCITY_X1");
 			idx_vel[1] = pcs->GetNodeValueIndex("VELOCITY_Y1");
 			idx_vel[2] = pcs->GetNodeValueIndex("VELOCITY_Z1");
@@ -338,17 +320,6 @@ CFiniteElementStd::CFiniteElementStd(CRFProcess* Pcs, const int C_Sys_Flad,
 		default:
 #if 0
 		//WW GravityMatrix = new  SymMatrix(size_m);
-		if (dynamic)
-		{
-			idx0 = pcs->GetNodeValueIndex("PRESSURE_RATE1");
-			idx1 = idx0 + 1;
-			idx_pres = pcs->GetNodeValueIndex("PRESSURE1");
-			idx_vel_disp[0] = pcs->GetNodeValueIndex("VELOCITY_DM_X");
-			idx_vel_disp[1] = pcs->GetNodeValueIndex("VELOCITY_DM_Y");
-			if (dim == 3)
-				idx_vel_disp[2] = pcs->GetNodeValueIndex("VELOCITY_DM_Z");
-		}
-		else
 		{
 			idx0 = pcs->GetNodeValueIndex("PRESSURE1");
 			idx1 = idx0 + 1;
@@ -5792,17 +5763,7 @@ void CFiniteElementStd::AssembleParabolicEquation()
 	if (pcs->type / 10 == 4) dm_shift = problem_dimension_dm;
 	//----------------------------------------------------------------------
 	// Dynamic
-	dynamic = false;
-	double* p_n = NULL;
 	double fac1, fac2;
-	double beta1 = 0.0;
-	if (pcs->pcs_type_name_vector.size() &&
-	    pcs->pcs_type_name_vector[0].find("DYNAMIC") == 0)
-	{
-		dynamic = true;
-		if (pcs->m_num->CheckDynamic())  // why NUM, it is PCS
-			beta1 = pcs->m_num->GetDynamicDamping_beta1();
-	}
 	//----------------------------------------------------------------------
 	// Initialize.
 	// if (pcs->Memory_Type==2) skip the these initialization
@@ -5853,13 +5814,6 @@ void CFiniteElementStd::AssembleParabolicEquation()
 	//----------------------------------------------------------------------
 	// Assemble local left matrix:
 	// [C]/dt + theta [K] non_linear_function for static problems
-	// [C] + beta1*dt [K] for dynamic problems: ? different equation type
-	if (dynamic)
-	{
-		fac1 = 1.0;
-		fac2 = beta1 * pcs_time_step;
-	}
-	else
 	{
 		fac1 = dt_inverse;
 		fac2 = relax0;  // unterrelaxation WW theta* non_linear_function_iter;
@@ -5902,8 +5856,7 @@ void CFiniteElementStd::AssembleParabolicEquation()
 	if (PcsType == V)  // For DOF>1: 27.2.2007 WW
 		for (i = 0; i < nnodes; i++)
 			NodalVal[i + nnodes] = 0.0;
-	if (pcs->m_num->nls_method == FiniteElement::NL_NEWTON &&
-	    (!dynamic))  // Newton method
+	if (pcs->m_num->nls_method == FiniteElement::NL_NEWTON)
 		StiffMatrix->multi(NodalVal1, NodalVal, -1.0);
 
 
@@ -5915,13 +5868,6 @@ void CFiniteElementStd::AssembleParabolicEquation()
 	//======================================================================
 	// Assemble local RHS vector:
 	// ( [C]/dt - (1.0-theta) [K] non_linear_function ) u0  for static problems
-	// ( [C] + beta1*dt [K] ) dp  for dynamic problems
-	if (dynamic)
-	{
-		fac1 = -1.0;
-		fac2 = beta1 * pcs_time_step;
-	}
-	else
 	{
 		fac1 = dt_inverse;
 		fac2 = relax1;  // Unerrelaxation. WW  (1.0-theta) *
@@ -5966,23 +5912,6 @@ void CFiniteElementStd::AssembleParabolicEquation()
 	AuxMatrix1->multi(NodalVal0, NodalVal);
 	// PCH: Type III (Cauchy boundary conditions) in need, it should be added
 	// here.
-
-	//
-	if (dynamic)
-	{
-		// Velocity of pressure of the previous step
-		p_n = dm_pcs->GetAuxArray();
-		for (i = 0; i < nnodes; i++)
-			NodalVal0[i] = p_n[nodes[i] + NodeShift[dm_shift]];
-		Mass->multi(NodalVal0, NodalVal, -1.0);
-		// p_n+vp*dt
-		for (i = 0; i < nnodes; i++)
-		{
-			NodalVal0[i] *= pcs_time_step;
-			NodalVal0[i] += pcs->GetNodeValue(nodes[i], idx_pres);
-		}
-		Laplace->multi(NodalVal0, NodalVal, -1.0);
-	}
 
 	//
 	if (H2_mono)
@@ -6699,7 +6628,6 @@ void CFiniteElementStd::AssembleMixedHyperbolicParabolicEquation()
 		// Assemble local RHS vector:
 		// ( [C]/dt - (1.0-theta) [K] non_linear_function ) u0  for static
 		// problems
-		// ( [C] + beta1*dt [K] ) dp  for dynamic problems
 
 		fac_mass = dt_inverse;         //*geo_fac;
 		fac_laplace = -(1.0 - theta);  // * non_linear_function_t0; //*geo_fac;
@@ -6815,12 +6743,6 @@ void CFiniteElementStd::Assemble_strainCPL(const int phase)
 	else                            // Mono
 	    if (pcs_deformation > 100)  // Pls
 		Residual = 1;
-	if (dynamic)
-	{
-		Residual = 2;
-		fac = pcs->m_num->GetDynamicDamping_beta1() * dt;
-		u_n = dm_pcs->GetAuxArray();
-	}
 	if (MediaProp->storage_model == 7)  // RW/WW
 		fac *= MediaProp->storage_model_values[0];
 	else
@@ -7112,7 +7034,7 @@ void CFiniteElementStd::Config()
 	//----------------------------------------------------------------------
 	//----------------------------------------------------------------------
 	// ?2WW
-	if ((D_Flag == 41 && pcs_deformation > 100) || dynamic)
+	if (D_Flag == 41 && pcs_deformation > 100)
 		dm_pcs = (CRFProcessDeformation*)pcs;
 	//----------------------------------------------------------------------
 	// Initialize RHS
