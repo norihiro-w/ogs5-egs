@@ -11,10 +11,10 @@
 
 #include <cfloat>
 
+#include "mathlib.h"
+
 #include "msh_elem.h"
 
-#include "mathlib.h"
-#include "femlib.h"
 #include "rf_pcs.h"
 
 using namespace MeshLib;
