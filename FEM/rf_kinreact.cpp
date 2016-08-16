@@ -3374,7 +3374,7 @@ int CKinReact::GetPhase(int species)
 //// Get process
 // m_pcs = PCSGet("MASS_TRANSPORT",cp_vec[comp]->compname); //SB todo check
 // m_pcs = pcs_vector[m_krd->sp_pcsind[comp]];
-// theta = m_pcs->m_num->ls_theta;
+// theta = m_pcs->m_num->time_theta;
 // phase = cp_vec[comp]->transport_phase;
 //
 //// Get material properties of element
@@ -3413,7 +3413,7 @@ double CKinReact::GetReferenceVolume(int comp, long index)
 {
 	// Get process
 	CRFProcess const* const pcs(cp_vec[comp]->getProcess());
-	double theta(pcs->m_num->ls_theta), refvol;
+	double theta(pcs->m_num->time_theta), refvol;
 	long phase = cp_vec[comp]->transport_phase;
 
 	if (phase == 0)
@@ -3585,7 +3585,7 @@ double CKinReact::GetDensity(int comp, long index)
 	group = index;  // avoid warning
 	                // Get process
 	// WW m_pcs = PCSGet("MASS_TRANSPORT", cp_vec[comp]->compname);
-	// theta = m_pcs->m_num->ls_theta;
+	// theta = m_pcs->m_num->time_theta;
 	phase = cp_vec[comp]->transport_phase;
 
 	// Get material properties of element
@@ -4531,7 +4531,7 @@ double CKinReact::GetNodePoreVelocity(long node_number)
 	double vel_nod[3], vel_ele[3];
 	double distance, weight, sum_w(0);
 	double PoreVel(0), poro(0), satu = 1.0;  // default
-	double theta = pcs->m_num->ls_theta;
+	double theta = pcs->m_num->time_theta;
 
 	// Get node saturation of mobile (water) phase
 	if (pcs->getProcessType() == FiniteElement::TWO_PHASE_FLOW)

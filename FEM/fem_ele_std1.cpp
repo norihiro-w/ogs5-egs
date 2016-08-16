@@ -81,7 +81,7 @@ void CFiniteElementStd::ComputeAdditionalJacobi_H2()
 		ComputeShapefct(1);      // Linear interpolation function
 		ComputeGradShapefct(1);  // Linear interpolation function
 
-		// poro = MediaProp->Porosity(Index,pcs->m_num->ls_theta);
+		// poro = MediaProp->Porosity(Index,pcs->m_num->time_theta);
 		tensor = MediaProp->PermeabilityTensor(Index);
 		PG = interpolate(NodalVal1);
 		PG2 = interpolate(p2);

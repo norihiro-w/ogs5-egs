@@ -4172,7 +4172,7 @@ void CRFProcess::AddFCT_CorrectionVector()
 {
 	int idx0 = 0;
 	int idx1 = idx0 + 1;
-	const double theta = this->m_num->ls_theta;
+	const double theta = this->m_num->time_theta;
 	const size_t node_size = m_msh->GetNodesNumber(false);
 	SparseMatrixDOK::mat_t& fct_f = this->FCT_AFlux->GetRawData();
 	SparseMatrixDOK::col_t* col;
