@@ -76,7 +76,7 @@ void writeNodeData(COutput* output, std::string const& filename)
 		vec_pcs_value_index.push_back(value_id);
 	}
 
-	auto const n_nodal_values = vec_output_val_name.size();
+	auto const n_nodal_values = vec_pcs_value_index.size();
 
 	std::string const delim = ", ";
 	// header
