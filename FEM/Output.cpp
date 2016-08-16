@@ -1370,7 +1370,10 @@ double COutput::NODWritePLYDataTEC(int number)
 	if (getProcessType() != FiniteElement::INVALID_PROCESS)
 		tec_file_name += "_" + convertProcessTypeToString(getProcessType());
 	if (msh_type_name.size() > 0) tec_file_name += "_" + msh_type_name;
-	tec_file_name += TEC_FILE_EXTENSION;
+	if (dat_type_name.compare("CSV") == 0)
+		tec_file_name += ".csv";
+	else
+		tec_file_name += TEC_FILE_EXTENSION;
 
 	if (!_new_file_opened)
 		remove(tec_file_name.c_str());
