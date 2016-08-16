@@ -59,7 +59,6 @@ private:
 
 public:
 
-	std::string method_name;
 	std::string pcs_type_name;
 
 	//
@@ -76,6 +75,7 @@ public:
 	bool petsc_split_fields;
 	bool petsc_use_snes;
 #endif
+
 
 	// NLS - Non-linear Solver
 	std::string nls_method_name;
