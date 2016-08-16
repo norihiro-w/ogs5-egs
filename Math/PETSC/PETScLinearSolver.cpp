@@ -197,15 +197,17 @@ void PETScLinearSolver::CreateMatrixVectors(SparseIndex& sparse_index)
 	PetscInt m, n;
 	MatGetLocalSize(A, &m, &n);
 	ScreenMessage2("-> matrix: local nrows=%d, ncols=%d\n", m, n);
-	CHKERRCONTINUE(ierr);
+	CHKERRABORT(PETSC_COMM_WORLD, ierr);
 
 	MatSetType(A, MATMPIAIJ);
 	MatSetFromOptions(A);
 #if 1
 	ScreenMessage2("-> preallocate PETSc matrix with d_nz=%d and o_nz=%d\n", sparse_index.d_nz, sparse_index.o_nz);
-	MatMPIAIJSetPreallocation(A, sparse_index.d_nz, sparse_index.d_nnz.empty() ? PETSC_NULL : &sparse_index.d_nnz[0],
+	ierr = MatMPIAIJSetPreallocation(A, sparse_index.d_nz, sparse_index.d_nnz.empty() ? PETSC_NULL : &sparse_index.d_nnz[0],
 							  sparse_index.o_nz, sparse_index.o_nnz.empty() ? PETSC_NULL : &sparse_index.o_nnz[0]);
-	MatSeqAIJSetPreallocation(A, sparse_index.d_nz, sparse_index.d_nnz.empty() ? PETSC_NULL : &sparse_index.d_nnz[0]);
+	CHKERRABORT(PETSC_COMM_WORLD, ierr);
+	ierr = MatSeqAIJSetPreallocation(A, sparse_index.d_nz, sparse_index.d_nnz.empty() ? PETSC_NULL : &sparse_index.d_nnz[0]);
+	CHKERRABORT(PETSC_COMM_WORLD, ierr);
 	MatSetOption(A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE);
 	MatSetOption(A, MAT_NO_OFF_PROC_ENTRIES, PETSC_TRUE);
 
