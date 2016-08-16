@@ -427,6 +427,15 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 		}
 		//....................................................................
 		// subkeyword found
+		if (line_string.find("$PETSC_LINEAR_SOLVER") != string::npos)
+		{
+			line.str(GetLineFromFile1(num_file));
+			line >> lsover_name >> pres_name >> ls_error_tolerance >> ls_max_iterations;
+			line.clear();
+			continue;
+		}
+		//....................................................................
+		// subkeyword found
 		if (line_string.find("$TIME_THETA") != string::npos)
 		{
 			line.str(GetLineFromFile1(num_file));
