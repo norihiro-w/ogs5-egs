@@ -6325,17 +6325,17 @@ void CSolidProperties::CalPrimaryVariable(vector<string>& pcs_name_vector)
 		{
 			primary_variable_t0[i] = Fem_Ele_Std->interpolate(nidx0, m_pcs);
 			primary_variable_t1[i] = Fem_Ele_Std->interpolate(nidx1, m_pcs);
-			primary_variable[i] = (1. - Fem_Ele_Std->pcs->m_num->ls_theta) *
+			primary_variable[i] = (1. - Fem_Ele_Std->pcs->m_num->time_theta) *
 			                          Fem_Ele_Std->interpolate(nidx0, m_pcs) +
-			                      Fem_Ele_Std->pcs->m_num->ls_theta *
+			                      Fem_Ele_Std->pcs->m_num->time_theta *
 			                          Fem_Ele_Std->interpolate(nidx1, m_pcs);
 		}
 		else if (mode == 2)  // Element average value
 		{
 			primary_variable[i] =
-			    (1. - Fem_Ele_Std->pcs->m_num->ls_theta) *
+			    (1. - Fem_Ele_Std->pcs->m_num->time_theta) *
 			        Fem_Ele_Std->elemnt_average(nidx0, m_pcs) +
-			    Fem_Ele_Std->pcs->m_num->ls_theta *
+			    Fem_Ele_Std->pcs->m_num->time_theta *
 			        Fem_Ele_Std->elemnt_average(nidx1, m_pcs);
 			primary_variable_t0[i] = Fem_Ele_Std->elemnt_average(nidx0, m_pcs);
 			primary_variable_t1[i] = Fem_Ele_Std->elemnt_average(nidx1, m_pcs);

@@ -68,7 +68,7 @@ public:
 	int ls_max_iterations;
 	int ls_error_method;
 	double ls_error_tolerance;
-	double ls_theta;
+	double time_theta;
 	int ls_precond;
 	int ls_storage_method;
 	std::string ls_extra_arg;

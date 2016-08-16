@@ -49,7 +49,7 @@ CNumerics::CNumerics(string const& name)
 	ls_max_iterations = 1000;
 	ls_error_method = 1;
 	ls_error_tolerance = 1e-12;
-	ls_theta = 1.0;
+	time_theta = 1.0;
 	ls_precond = 1;
 	ls_storage_method = 2;
 	ls_extra_arg = "";
@@ -410,7 +410,7 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 			if (str_buf.find("petsc") != string::npos)  // 03.2012. WW
 			{
 				line >> str_buf >> lsover_name >> pres_name >>
-				    ls_error_tolerance >> ls_max_iterations >> ls_theta;
+				    ls_error_tolerance >> ls_max_iterations >> time_theta;
 			}
 			else
 			{
@@ -418,7 +418,7 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 				line >> ls_error_method;
 				line >> ls_error_tolerance;
 				line >> ls_max_iterations;
-				line >> ls_theta;
+				line >> time_theta;
 				line >> ls_precond;
 				line >> ls_storage_method;
 			}
@@ -682,7 +682,7 @@ void CNumerics::Write(fstream* num_file)
 	*num_file << " " << ls_error_method;
 	*num_file << " " << ls_error_tolerance;
 	*num_file << " " << ls_max_iterations;
-	*num_file << " " << ls_theta;
+	*num_file << " " << time_theta;
 	*num_file << " " << ls_precond;
 	*num_file << " " << ls_storage_method;
 	*num_file << endl;
