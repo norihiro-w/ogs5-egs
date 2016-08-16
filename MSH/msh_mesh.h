@@ -35,10 +35,13 @@ namespace MeshLib
 #if defined(USE_PETSC)
 typedef struct
 {
-	int index;
-	double x;
-	double y;
-	double z;
+	int global_id = -1;
+	int dom_id = -1;
+	int eqs_id = -1;
+	int eqs_id_Q = -1;
+	double x = 0.0;
+	double y = 0.0;
+	double z = 0.0;
 } MeshNodes;
 
 #endif
@@ -471,6 +474,7 @@ public:
 
 private:
 	std::vector<std::pair<std::size_t, std::size_t> > _global_local_nodeids;
+	std::vector<std::size_t > _vec_node_dom_ids;
 
 	class CompareGlobalNodeID
 	{

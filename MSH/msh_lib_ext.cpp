@@ -118,6 +118,7 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 		//-------------------------------------------------------------------------
 		// Node
 		int n_subdomain_nodes = mesh_header[0];
+		const bool hasQuadraticNodes = (mesh_header[0] != mesh_header[1]);
 		s_nodes = (MeshNodes*)realloc(s_nodes, sizeof(MeshNodes) * n_subdomain_nodes);
 
 		if (i > 0) // no need to broadcast if rank i is root
@@ -129,7 +130,9 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 			for (int k = 0; k < n_subdomain_nodes; k++)
 			{
 				MeshNodes* anode = &s_nodes[k];
-				is >> anode->index;
+				is >> anode->global_id >> anode->dom_id >> anode->eqs_id;
+				if (hasQuadraticNodes)
+					is >> anode->eqs_id_Q;
 				is >> anode->x >> anode->y >> anode->z >> ws;
 			}
 			if (i == 0)
@@ -286,6 +289,7 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	//-------------------------------------------------------------------------------------
+#if 0
 	if (mesh->hasHigherOrderNodes())
 	{
 		// assign global equation IDs to local nodes. IDs should be continuous even for quadratic nodes
@@ -381,6 +385,7 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 		}
 
 	}
+#endif
 
 	//-------------------------------------------------------------------------------------
 	mesh->ConstructGrid();
@@ -427,14 +432,18 @@ void CFEMesh::setSubdomainNodes(int* header, const MeshNodes* s_nodes)
 
 	nod_vector.resize(header[0]);
 	_global_local_nodeids.reserve(header[0]);
+	_vec_node_dom_ids.reserve(header[0]);
 	for (k = 0; k < header[0]; k++)
 	{
 		const MeshNodes* anode = &s_nodes[k];
 		CNode* new_node = new CNode(k, anode->x, anode->y, anode->z);
-		new_node->SetEquationIndex(anode->index);
+		new_node->SetGlobalIndex(anode->global_id);
+		new_node->SetEquationIndex(anode->eqs_id, false);
+		new_node->SetEquationIndex(anode->eqs_id_Q, true);
 		nod_vector[k] = new_node;
 		_global_local_nodeids.push_back(
-		    std::make_pair((std::size_t)anode->index, (std::size_t)k));
+		    std::make_pair((std::size_t)anode->global_id, (std::size_t)k));
+		_vec_node_dom_ids.push_back(anode->dom_id);
 	}
 }
 
@@ -745,19 +754,22 @@ int CFEMesh::getMaxNumConnectedElements() const
 
 void BuildNodeStruc(MeshNodes* anode, MPI_Datatype* MPI_Node_ptr)
 {
-	MPI_Datatype my_comp_type[4];
-	int nblocklen[4];
-	MPI_Aint disp[4], base;
-	int j;
+	static const int ncomp = 7;
+	MPI_Datatype my_comp_type[ncomp];
+	int nblocklen[ncomp];
+	MPI_Aint disp[ncomp], base;
 
-	my_comp_type[0] = MPI_INT;
-	my_comp_type[1] = MPI_DOUBLE;
-	my_comp_type[2] = MPI_DOUBLE;
-	my_comp_type[3] = MPI_DOUBLE;
-	nblocklen[0] = 1;
-	nblocklen[1] = 1;
-	nblocklen[2] = 1;
-	nblocklen[3] = 1;
+	int counter = 0;
+	my_comp_type[counter++] = MPI_INT;
+	my_comp_type[counter++] = MPI_INT;
+	my_comp_type[counter++] = MPI_INT;
+	my_comp_type[counter++] = MPI_INT;
+	my_comp_type[counter++] = MPI_DOUBLE;
+	my_comp_type[counter++] = MPI_DOUBLE;
+	my_comp_type[counter++] = MPI_DOUBLE;
+	counter = 0;
+	for (int i=0; i<ncomp; i++)
+		nblocklen[counter++] = 1;
 
 // Compute displacement of struct MeshNodes
 
@@ -778,11 +790,14 @@ for (j=0; j <3; j++)
 
 #ifndef __MPIUNI_H
 	MPI_Get_address(anode, disp);
-	MPI_Get_address(&(anode[0].x), disp + 1);
-	MPI_Get_address(&(anode[0].y), disp + 2);
-	MPI_Get_address(&(anode[0].z), disp + 3);
+	MPI_Get_address(&anode->dom_id, disp + 1);
+	MPI_Get_address(&anode->eqs_id, disp + 2);
+	MPI_Get_address(&anode->eqs_id_Q, disp + 3);
+	MPI_Get_address(&(anode[0].x), disp + 4);
+	MPI_Get_address(&(anode[0].y), disp + 5);
+	MPI_Get_address(&(anode[0].z), disp + 6);
 	base = disp[0];
-	for (j = 0; j < 4; j++)
+	for (int j = 0; j < ncomp; j++)
 	{
 		disp[j] -= base;
 
@@ -792,6 +807,6 @@ for (j=0; j <3; j++)
 #endif
 
 	// build datatype describing structure
-	MPI_Type_create_struct(4, nblocklen, disp, my_comp_type, MPI_Node_ptr);
+	MPI_Type_create_struct(ncomp, nblocklen, disp, my_comp_type, MPI_Node_ptr);
 	MPI_Type_commit(MPI_Node_ptr);
 }

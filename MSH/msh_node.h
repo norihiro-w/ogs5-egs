@@ -109,6 +109,13 @@ public:
 			eqs_index_quadratic = eqIndex;
 	}
 
+	int GetGlobalIndex() const { return global_index; }
+
+	void SetGlobalIndex(long index)
+	{
+		global_index = index;
+	}
+
 	// Output
 	void Write(std::ostream& os = std::cout) const;
 
@@ -133,6 +140,7 @@ public:
 
 private:
 	double coordinate[3];
+	long global_index = -1;
 	long eqs_index = -1;
 	long eqs_index_quadratic = -1;
 	std::vector<size_t> _connected_nodes;
