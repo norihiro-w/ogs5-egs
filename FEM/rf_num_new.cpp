@@ -426,6 +426,15 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 			continue;
 		}
 		//....................................................................
+		// subkeyword found
+		if (line_string.find("$TIME_THETA") != string::npos)
+		{
+			line.str(GetLineFromFile1(num_file));
+			line >> time_theta;
+			line.clear();
+			continue;
+		}
+		//....................................................................
 		// JT subkeyword found
 		if (line_string.find("$COUPLING_ITERATIONS") != string::npos)
 		{
