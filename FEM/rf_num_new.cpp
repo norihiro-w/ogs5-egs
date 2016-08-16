@@ -405,9 +405,9 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 		// subkeyword found
 		if (line_string.find("$LINEAR_SOLVER") != string::npos)
 		{
-			std::string str_buf = GetLineFromFile1(num_file);  // WW
+			std::string str_buf = GetLineFromFile1(num_file);
 			line.str(str_buf);
-			if (str_buf.find("petsc") != string::npos)  // 03.2012. WW
+			if (str_buf.find("petsc") != string::npos)
 			{
 				line >> str_buf >> lsover_name >> pres_name >>
 				    ls_error_tolerance >> ls_max_iterations >> time_theta;
@@ -421,6 +421,22 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 				line >> time_theta;
 				line >> ls_precond;
 				line >> ls_storage_method;
+#ifdef USE_PETSC
+				lsover_name = "bcgs";
+				pres_name = "bjacobi";
+				if (ls_method == 4)
+					lsover_name = "bcgs";
+				else if (ls_method == 9)
+					lsover_name = "gmres";
+				if (ls_precond == 1)
+					pres_name = "bjacobi";
+				else if (ls_precond == 2) // ILU
+					pres_name = "bjacobi";
+				else if (ls_precond == 9) // ILUT
+					pres_name = "bjacobi";
+
+				ScreenMessage("-> configure linear solver from Lis options (solver=%s, precon=%s)\n", lsover_name.data(), pres_name.data());
+#endif
 			}
 			line.clear();
 			continue;
