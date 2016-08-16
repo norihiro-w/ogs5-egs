@@ -269,7 +269,7 @@ void CSparseMatrix::operator-=(const CSparseMatrix& m)
 void CSparseMatrix::Write(std::ostream& os)
 {
 	//
-	long i, k, ii, jj, row_in_parse_table, counter;
+	long i, k, ii, jj;
 	os << "*** Non-zero entries of matrix:  "
 	   << "\n";
 	os.width(14);
