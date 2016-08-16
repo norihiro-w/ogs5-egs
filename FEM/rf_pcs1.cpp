@@ -243,6 +243,15 @@ void CreateEQS_LinearSolver()
 		std::vector<int> vec_n_connected_ghost_nodes;
 		const int max_connected_ghost_nodes = mesh->calMaximumConnectedGhostNodes(quadratic, vec_n_connected_ghost_nodes);
 
+		//ScreenMessage2("-> nr. connected local nodes = %d\n", vec_n_connected_local_nodes.size());
+		//ScreenMessage2("-> nr. connected ghost nodes = %d\n", vec_n_connected_local_nodes.size());
+
+//		std::stringstream ss;
+//		for (size_t j=0; j<vec_n_connected_local_nodes.size(); j++) {
+//			ss << j << " " << vec_n_connected_local_nodes[j] << " " << vec_n_connected_ghost_nodes[j] << "\n";
+//		}
+//		ScreenMessage2("-> d_nnz, o_nnz\n%s", ss.str().data());
+
 //		const int max_connected_eles = mesh->getMaxNumConnectedElements(); // (dim < 3) ? 4 : 8;
 //		const int max_ele_nodes = mesh->getMaxNumNodesOfElement(quadratic); //(dim < 3) ? 9 : 20;
 //		ScreenMessage("-> max. number of connected elements = %d\n", max_connected_eles);
@@ -255,12 +264,12 @@ void CreateEQS_LinearSolver()
 			eqs->sparse_index.d_nnz.resize(vec_n_connected_local_nodes.size() * ndof);
 			for (size_t j=0; j<vec_n_connected_local_nodes.size(); j++) {
 				for (int ii=0; ii<ndof; ii++)
-					eqs->sparse_index.d_nnz[j*ndof + ii] = (vec_n_connected_local_nodes[j] + 1) * 3;
+					eqs->sparse_index.d_nnz[j*ndof + ii] = (vec_n_connected_local_nodes[j] + 1) * ndof;
 			}
 			eqs->sparse_index.o_nnz.resize(vec_n_connected_ghost_nodes.size() * ndof);
 			for (size_t j=0; j<vec_n_connected_ghost_nodes.size(); j++) {
 				for (int ii=0; ii<ndof; ii++)
-					eqs->sparse_index.o_nnz[j*ndof + ii] = vec_n_connected_ghost_nodes[j] * 3;
+					eqs->sparse_index.o_nnz[j*ndof + ii] = vec_n_connected_ghost_nodes[j] * ndof;
 			}
 //			for (int ii=0; ii<ndof; ii++) {
 //				std::copy(vec_n_connected_local_nodes.begin(), vec_n_connected_local_nodes.end(),  eqs->sparse_index.d_nnz.begin() + ii*vec_n_connected_local_nodes.size());
@@ -282,6 +291,13 @@ void CreateEQS_LinearSolver()
 				global_eqs_dim += n_global_linear_nodes;
 				ScreenMessage("***error: DEFORMATION_FLOW not supported in CreateEQS_LinearSolver()\n");
 			}
+
+//			ScreenMessage2("-> dof = %d, local rows = %d\n", ndof, eqs->sparse_index.d_nnz.size());
+//			std::stringstream ss;
+//			for (size_t j=0; j<eqs->sparse_index.d_nnz.size(); j++) {
+//				ss << j << " " << eqs->sparse_index.d_nnz[j] << " " << eqs->sparse_index.o_nnz[j] << "\n";
+//			}
+//			ScreenMessage2("-> d_nnz, o_nnz\n%s", ss.str().data());
 
 			// number of nonzeros per row in DIAGONAL portion
 			eqs->sparse_index.d_nz = max_connected_local_nodes * ndof; // max_connected_nodes * dim;
