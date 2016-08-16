@@ -303,8 +303,161 @@ void writeElementData(COutput* output, std::string const& filename)
 	}
 }
 
+#ifdef USE_PETSC
+void writeNodeDataMPI(COutput* output, std::string const& filename)
+{
+	if (output->_nod_value_vector.empty())
+		return;
+
+	std::ofstream* p_os = nullptr;
+	if (myrank == 0)
+	{
+		p_os = new std::ofstream(filename);
+		if (!*p_os) {
+			ScreenMessage2("***Error: cannot open %s for writing\n", filename.data());
+			return;
+		}
+		p_os->setf(ios::scientific, std::ios::floatfield);
+		p_os->precision(12);
+	}
+	std::ofstream &os = *p_os;
+
+
+	//
+	std::vector<std::string> vec_output_val_name;
+	vec_output_val_name.push_back("NodeID");
+	std::vector<CRFProcess*> vec_pcs;
+	std::vector<int> vec_pcs_value_index;
+	for (size_t i=0; i<output->_nod_value_vector.size(); i++)
+	{
+		auto& value_name = output->_nod_value_vector[i];
+		auto pcs = PCSGet(value_name, true);
+		if (!pcs)
+			continue;
+		auto value_id = pcs->GetNodeValueIndex(value_name);
+		if (value_id<0)
+			continue;
+		vec_output_val_name.push_back(value_name);
+		vec_pcs.push_back(pcs);
+		vec_pcs_value_index.push_back(value_id);
+	}
+
+	auto const n_nodal_values = vec_pcs_value_index.size();
+
+	std::string const delim = ", ";
+	// header
+	if (myrank == 0)
+		writeLine(os, vec_output_val_name, delim);
+
+	// values
+	MeshLib::CFEMesh* msh = output->getMesh();
+	std::vector<double> global_node_id_values;
+
+	if (myrank == 0)
+	{
+		global_node_id_values.resize(msh->getNumNodesGlobal() * n_nodal_values);
+		for (size_t i=0; i<msh->GetNodesNumber(false); i++)
+		{
+			if (!msh->isNodeLocal(i))
+				continue;
+			MeshLib::CNode* node = msh->getNodeVector()[i];
+			for (size_t j=0; j<n_nodal_values; j++)
+			{
+				auto pcs = vec_pcs[j];
+				global_node_id_values[node->GetGlobalIndex()*n_nodal_values + j] = pcs->GetNodeValue(i, vec_pcs_value_index[j]);
+			}
+		}
+
+		for (int i=1; i<mysize; i++)
+		{
+			int n_dom_nodes = 0;
+			MPI_Recv(&n_dom_nodes, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			std::vector<int> dom_global_node_ids(n_dom_nodes);
+			MPI_Recv(&dom_global_node_ids[0], dom_global_node_ids.size(), MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			std::vector<double> tmp_values(n_nodal_values * n_dom_nodes);
+			MPI_Recv(&tmp_values[0], tmp_values.size(), MPI_DOUBLE, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			for (size_t j=0; j<dom_global_node_ids.size(); j++)
+			{
+				for (size_t k=0; k<n_nodal_values; k++)
+				{
+					global_node_id_values[dom_global_node_ids[j]*n_nodal_values + k] = tmp_values[j*n_nodal_values + k];
+				}
+			}
+		}
+	} else {
+		int n_local_nodes = msh->getNumNodesLocal();
+		MPI_Send(&n_local_nodes, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+		std::vector<int> vec_local_node_ids;
+		vec_local_node_ids.reserve(n_local_nodes);
+		for (size_t i=0; i<msh->GetNodesNumber(false); i++)
+		{
+			if (!msh->isNodeLocal(i))
+				continue;
+			vec_local_node_ids.push_back(msh->getNodeVector()[i]->GetGlobalIndex());
+		}
+		MPI_Send(&vec_local_node_ids[0], vec_local_node_ids.size(), MPI_INT, 0, 0, MPI_COMM_WORLD);
+
+		std::vector<double> tmp_values(n_nodal_values * n_local_nodes);
+		int counter = 0;
+		for (size_t i=0; i<msh->GetNodesNumber(false); i++)
+		{
+			if (!msh->isNodeLocal(i))
+				continue;
+			for (size_t j=0; j<vec_pcs_value_index.size(); j++)
+			{
+				auto pcs = vec_pcs[j];
+				tmp_values[counter*n_nodal_values + j] = pcs->GetNodeValue(i, vec_pcs_value_index[j]);
+			}
+			counter++;
+		}
+		MPI_Send(&tmp_values[0], tmp_values.size(), MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+	}
+
+	if (myrank == 0)
+	{
+		std::vector<double> tmp_values(n_nodal_values);
+		for (long i=0; i<msh->getNumNodesGlobal(); i++)
+		{
+			for (size_t j=0; j<n_nodal_values; j++)
+				tmp_values[j] = global_node_id_values[i*n_nodal_values + j];
+
+			os << i << delim;
+			if (myrank == 0)
+				writeLine(os, tmp_values, delim);
+		}
+	}
+
+	delete p_os;
+}
+#endif
+
 } // namespace
 
+#ifdef USE_PETSC
+
+void CSVOutput::writeDomain(COutput* output,
+                      int timestep_number,
+                      double /*current_time*/,
+                      std::string const& baseFilename)
+{
+	std::string filename_base = baseFilename;
+	if (output->getProcessType() != FiniteElement::INVALID_PROCESS)
+		filename_base += "_" + FiniteElement::convertProcessTypeToString(output->getProcessType());
+
+	std::string filename_node_data = filename_base + "_node";
+	filename_node_data += "_" + std::to_string(timestep_number);
+	filename_node_data += ".csv";
+
+	writeNodeDataMPI(output, filename_node_data);
+
+//	std::string filename_ele_data = filename_base + "_ele";
+//	filename_ele_data += "_" + std::to_string(timestep_number);
+//	filename_ele_data += ".csv";
+//	writeElementData(output, filename_ele_data);
+
+}
+
+#else
 void CSVOutput::writeDomain(COutput* output,
                       int timestep_number,
                       double /*current_time*/,
