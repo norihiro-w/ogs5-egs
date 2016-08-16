@@ -3456,6 +3456,53 @@ double MXPGaussFkt(long grd, long pkt)
 	return 0.0;
 }
 
+
+/***************************************************************************
+   ROCKFLOW - Funktion: MXPGaussFktTri
+   Aufgabe:
+   X Punkt Gauss-Integration Dreieck
+           bestimmtes Integral
+           1/           X
+ | P(x)dx = Sigma  Fi*P(xi)
+ |
+          -1/          i=1
+   Formalparameter:
+           E: int anzgp:     Anzahl der Gauspunkte im Dreieck
+   E: long pkt:      Nr des Gauspunktes
+   return : Wichtung des Gauspunktes
+   Ergebnis:  double: Wichtung des Gauspunktes
+
+   Aenderungen/Korrekturen:
+   07/2003     mb        Erste Version
+
+ **************************************************************************/
+double MXPGaussFktTri(int anzgp, long pkt)
+{
+	if (anzgp == 1)
+		return 0.5;
+	else if (anzgp == 3)
+		return 0.166666666666666;
+	else if (anzgp == 4)
+	{
+		switch (pkt)
+		{
+			case 0:
+				return -0.281250000000000;
+				break;
+			case 1:
+				return 0.260416666666667;
+				break;
+			case 2:
+				return 0.260416666666667;
+				break;
+			case 3:
+				return 0.260416666666667;
+				break;
+		}
+	}
+	return 0.0;
+}
+
 ///////////////////////////////////////////////////////////////////
 
 //--------------------------------------------------------------------------
