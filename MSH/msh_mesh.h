@@ -472,6 +472,8 @@ public:
 		return -1;
 	}
 
+	//std::vector<std::size_t > _vec_globalNodeID2domID;
+
 private:
 	std::vector<std::pair<std::size_t, std::size_t> > _global_local_nodeids;
 	std::vector<std::size_t > _vec_node_dom_ids;

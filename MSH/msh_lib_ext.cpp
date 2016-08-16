@@ -103,12 +103,17 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 			for (int j = 0; j < nheaders; j++)
 				is >> mesh_header[j];
 			is >> ws;
+
+			//if (mesh->_vec_globalNodeID2domID.empty())
+			//{
+			//	mesh->_vec_globalNodeID2domID.resize(mesh_header[7], -1); // global nnodes
+			//}
 		}
 		MPI_Bcast(mesh_header, nheaders, MPI_INT, 0, MPI_COMM_WORLD);
 
+		// debug output
 		if (i == myrank)
 		{
-			// debug output
 			std::stringstream ss;
 			for (int j = 0; j < nheaders; j++)
 				ss << mesh_header[j] << " ";
@@ -134,6 +139,8 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 				if (hasQuadraticNodes)
 					is >> anode->eqs_id_Q;
 				is >> anode->x >> anode->y >> anode->z >> ws;
+
+				//mesh->_vec_globalNodeID2domID[anode->global_id] = anode->dom_id;
 			}
 			if (i == 0)
 			{
