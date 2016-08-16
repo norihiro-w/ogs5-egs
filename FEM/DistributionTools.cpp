@@ -59,8 +59,7 @@ void getNodesOnDistribution(DistributionData& dis_data,
 	}
 	else if (dis_data.geo_type == GEOLIB::SURFACE)
 	{
-		ScreenMessage2d("-> looking for nodes on SURFACE %s\n",
-		                dis_data.geo_name.c_str());
+		//ScreenMessage2("-> looking for nodes on SURFACE %s\n", dis_data.geo_name.c_str());
 		GEOLIB::Surface const* sfc(
 		    static_cast<const GEOLIB::Surface*>(dis_data.geo_obj));
 

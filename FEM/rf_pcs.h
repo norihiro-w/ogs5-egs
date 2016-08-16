@@ -520,7 +520,7 @@ public:
 	//  and it is related to ST, BC, IC, TIM and OUT. WW
 	void SetOBJNames();
 	// ST
-	void IncorporateSourceTerms(const int rank = -1);
+	void IncorporateSourceTerms();
 	void IncorporateBoundaryConditions(const int rank = -1,
 	                                   bool updateA = true,
 	                                   bool updateRHS = true,

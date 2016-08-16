@@ -2673,8 +2673,7 @@ void CRFProcess::ConfigDeformation()
 				  m_msh->GetNodesNumber(true) - m_msh->GetNodesNumber(false), m_msh->GetNodesNumber(true));
 #endif
 	type = 4;
-	//	if (_pcs_type_name.find("DEFORMATION") != string::npos
-	//			&& _pcs_type_name.find("FLOW") != string::npos) {
+
 	if (getProcessType() == FiniteElement::DEFORMATION_FLOW ||
 	    getProcessType() == FiniteElement::DEFORMATION_H2)
 	{
@@ -2702,28 +2701,19 @@ void CRFProcess::ConfigDeformation()
 		}
 	}
 
-	// Prepare for restart
-	// RFConfigRenumber();
-
 	// NUM
 	pcs_sol_name = "LINEAR_SOLVER_PROPERTIES_DISPLACEMENT1";
 	pcs_num_name[0] = "DISPLACEMENT0";
 	pcs_num_name[1] = "PRESSURE0";
-	if (pcs_type_name_vector[0].find("DYNAMIC") != string::npos)
-		VariableDynamics();
-	else
-		VariableStaticProblem();
-	// OBJ names are set to PCS name
-	// Geometry dimension
-	problem_dimension_dm =
-	    m_msh->GetMaxElementDim();  // m_msh->GetCoordinateFlag() / 10;
+	VariableStaticProblem();
+
+	problem_dimension_dm = m_msh->GetMaxElementDim();  // m_msh->GetCoordinateFlag() / 10;
 
 	// Coupling
 	int i;
 	for (i = 0; i < problem_dimension_dm; i++)
 		Shift[i] = i * m_msh->GetNodesNumber(true);
 
-	/// 11-20.08.2010 WW
 	long nn_H = (long)m_msh->GetNodesNumber(true);
 	if (type == 4)
 	{
@@ -2759,8 +2749,7 @@ void CRFProcess::ConfigDeformation()
 	}
 
 	if (type / 10 == 4)
-		SetOBJNames();  // if(type==41) SetOBJNames(); //OK->WW please put to
-	                    // Config()
+		SetOBJNames();
 }
 
 /**************************************************************************
@@ -2869,136 +2858,6 @@ void CRFProcess::VariableStaticProblem()
 
 		// Output material parameters
 		configMaterialParameters();
-	}
-}
-
-/**************************************************************************
-   FEMLib-Method: Dynamic problems
-   Task:
-   Programing:
-   05/2005 WW/LD Implementation
-   last modified:
-**************************************************************************/
-void CRFProcess::VariableDynamics()
-{
-	//----------------------------------------------------------------------
-	// NOD Primary functions
-	pcs_number_of_primary_nvals = 2;
-	pcs_primary_function_name[0] = "ACCELERATION_X1";
-	pcs_primary_function_name[1] = "ACCELERATION_Y1";
-	pcs_primary_function_unit[0] = "m/s^2";
-	pcs_primary_function_unit[1] = "m/s^2";
-	if (max_dim == 2)
-	{
-		pcs_number_of_primary_nvals = 3;
-		pcs_primary_function_name[2] = "ACCELERATION_Z1";
-		pcs_primary_function_unit[2] = "m/s^2";
-	}
-	pcs_primary_function_name[pcs_number_of_primary_nvals] = "PRESSURE_RATE1";
-	pcs_primary_function_unit[pcs_number_of_primary_nvals] = "Pa/s";
-	pcs_number_of_primary_nvals++;
-
-	//----------------------------------------------------------------------
-	// NOD Secondary functions
-	pcs_number_of_secondary_nvals = 0;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRESS_XX";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRESS_XY";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRESS_YY";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRESS_ZZ";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	//  pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-	//  "POROPRESSURE0";
-	//  pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-	//  pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	//  pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRAIN_XX";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "-";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRAIN_XY";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "-";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRAIN_YY";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "-";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRAIN_ZZ";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "-";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRAIN_PLS";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "-";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-	    "DISPLACEMENT_X1";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "m";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-	    "DISPLACEMENT_Y1";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "m";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-	    "VELOCITY_DM_X";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "m/s";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-	    "VELOCITY_DM_Y";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "m/s";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "PRESSURE1";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	// 3D
-	if (max_dim == 2)  // 3D
-	{
-		pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-		    "STRESS_XZ";
-		pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-		pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-		pcs_number_of_secondary_nvals++;
-		pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-		    "STRESS_YZ";
-		pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-		pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-		pcs_number_of_secondary_nvals++;
-		pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-		    "STRAIN_XZ";
-		pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "-";
-		pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-		pcs_number_of_secondary_nvals++;
-		pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-		    "STRAIN_YZ";
-		pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "-";
-		pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-		pcs_number_of_secondary_nvals++;
-		pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-		    "DISPLACEMENT_Z1";
-		pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "m";
-		pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-		pcs_number_of_secondary_nvals++;
-		pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-		    "VELOCITY_DM_Z";
-		pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "m/s";
-		pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-		pcs_number_of_secondary_nvals++;
 	}
 }
 
@@ -4983,10 +4842,19 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 
 			//----------------------------------------------------------------
 #if defined(USE_PETSC)
-			int eqs_id = m_msh->nod_vector[bc_msh_node]->GetEquationIndex();
+			MeshLib::CNode* node = m_msh->nod_vector[bc_msh_node];
+			int eqs_id = node->GetEquationIndex();
 			if (isDisplacementBC)
-				eqs_id = m_msh->nod_vector[bc_msh_node]->GetEquationIndex(true);
+				eqs_id = node->GetEquationIndex(true);
 
+//			{
+//				static int cnt = 0;
+//				if (cnt < 3)
+//				{
+//					cnt++;
+//					ScreenMessage2("-> BC: node %d, msh_node_num=%d, shift=%d, eqs_id=%d\n", node->GetIndex(), m_bc_node->msh_node_number, shift, eqs_id);
+//				}
+//			}
 			bc_eqs_id.push_back(eqs_id * dof_per_node + shift);
 			bc_eqs_value.push_back(bc_value);
 			if (m_num->petsc_split_fields)
@@ -5532,7 +5400,7 @@ void CRFProcess::IncorporateBoundaryConditionsFM(const int rank, const int axis)
    05/2006 WW DDC
    08/2006 YD FCT use
 **************************************************************************/
-void CRFProcess::IncorporateSourceTerms(const int rank)
+void CRFProcess::IncorporateSourceTerms()
 {
 	double value = 0, fac = 1.0, time_fac;
 	int interp_method = 0;
@@ -5544,60 +5412,43 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 	vector<vector<int> > dof_node_id(this->GetPrimaryVNumber());
 	vector<vector<double> > dof_node_value(this->GetPrimaryVNumber());
 #else
-	double* eqs_rhs = NULL;
+	double* eqs_rhs = eqs_new->b;
 	long bc_eqs_index = -1;
 #endif
 	bool is_valid;
 	CFunction* m_fct = NULL;
 
 	double Scaling = 1.0;
-#if defined(USE_PETSC)
-	bool isQuadratic = false;
-#endif
 	if (type == 4 || type / 10 == 4)
 	{
 		fac = Scaling;
-
-#if defined(USE_PETSC)
-		isQuadratic = true;
-#endif
 	}
-
-	CNodeValue* cnodev = NULL;
-	CSourceTerm* m_st = NULL;
-	//
-	long begin = 0;
-	long end = 0;
-	long gindex = 0;
 
 	//====================================================================
 	// Look for active boundary elements if constrain is given
-	for (unsigned i = 0; i < st_vector.size(); i++)
+	for (CSourceTerm* st : st_vector)
 	{
-		CSourceTerm* st = st_vector[i];
 		if (!st->has_constrain) continue;
 
 		CSourceTermGroup m_st_group;
-		m_st_group.pcs_type_name =
-		    FiniteElement::convertProcessTypeToString(st->getProcessType());
-		m_st_group.pcs_pv_name = FiniteElement::convertPrimaryVariableToString(
-		    st->getProcessPrimaryVariable());
+		m_st_group.pcs_type_name = FiniteElement::convertProcessTypeToString(st->getProcessType());
+		m_st_group.pcs_pv_name = FiniteElement::convertPrimaryVariableToString(st->getProcessPrimaryVariable());
 		int idx = GetNodeValueIndex(m_st_group.pcs_pv_name) / 2;
 		m_st_group.Set(this, Shift[idx]);
 	}
 
-	for (size_t is = 0; is < st_node_value.size(); is++)
+	CNodeValue* cnodev = NULL;
+	//
+	long gindex = 0;
+
+	for (size_t is = 0; is < st_vector.size(); is++)
 	{
-		m_st = NULL;
-		if (is < st_vector.size()) m_st = st_vector[is];
-		if (rank == -1)
-		{
-			begin = 0;
-			end = (long)st_node_value[is].size();
-#ifdef NEW_EQS
-			eqs_rhs = eqs_new->b;
+		CSourceTerm* m_st = st_vector[is];
+		long const begin = 0;
+		long const end = (long)st_node_value[is].size();
+#if defined(USE_PETSC)
+		bool const isQuadratic = FiniteElement::isPrimaryVariableDisplacement(m_st->getProcessPrimaryVariable());
 #endif
-		}
 		std::vector<bool> active_elements;
 
 		// constrain
@@ -5745,7 +5596,7 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 		{
 			gindex = i;
 
-			cnodev = st_node_value[is][gindex];
+			CNodeValue* cnodev = st_node_value[is][gindex];
 
 #if defined(USE_PETSC)
 			msh_node_id = cnodev->geo_node_number;
@@ -5760,11 +5611,11 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 			}
 			else
 			{
-				if (msh_node_id < static_cast<long>(m_msh->GetNodesNumber(false)))
-					dof_per_node = pcs_number_of_primary_nvals;
-				else
-					dof_per_node = m_msh->GetMaxElementDim();
-				shift = cnodev->msh_node_number / m_msh->GetNodesNumber(true);
+//				if (msh_node_id < static_cast<long>(m_msh->GetNodesNumber(false)))
+//					dof_per_node = pcs_number_of_primary_nvals;
+//				else
+				dof_per_node = m_msh->GetMaxElementDim();
+				shift = cnodev->msh_node_number / m_msh->GetNodesNumber(isQuadratic);
 			}
 
 #else
@@ -5844,13 +5695,11 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 			value *= time_fac * fac;
 			if (scaleEQS)
 			{
-				if (m_st->getProcessPrimaryVariable() ==
-				    FiniteElement::PRESSURE)
+				if (m_st->getProcessPrimaryVariable() == FiniteElement::PRESSURE)
 				{
 					value *= vec_scale_eqs[0];
 				}
-				else if (m_st->getProcessPrimaryVariable() ==
-				         FiniteElement::TEMPERATURE)
+				else if (m_st->getProcessPrimaryVariable() == FiniteElement::TEMPERATURE)
 				{
 					value *= vec_scale_eqs[1];
 				}
@@ -5858,20 +5707,23 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 			//------------------------------------------------------------------
 			// EQS->RHS
 #if defined(USE_PETSC)
-			int eqs_id = m_msh->nod_vector[msh_node_id]->GetEquationIndex();
-			if (FiniteElement::isPrimaryVariableDisplacement(m_st->getProcessPrimaryVariable()))
-				eqs_id = m_msh->nod_vector[msh_node_id]->GetEquationIndex(true);
+			MeshLib::CNode* node = m_msh->nod_vector[msh_node_id];
+			int global_node_id = node->GetEquationIndex(isQuadratic);
+//			{
+//				static int cnt = 0;
+//				if (cnt < 3)
+//				{
+//					cnt++;
+//					ScreenMessage2("-> ST: node %d, msh_node_num=%d, shift=%d, eqs_id=%d\n", node->GetIndex(), cnodev->msh_node_number, shift, global_node_id);
+//				}
+//			}
 
-			st_eqs_id.push_back(eqs_id * dof_per_node + shift);
+			st_eqs_id.push_back(global_node_id * dof_per_node + shift);
 			st_eqs_value.push_back(value);
 			if (m_num->petsc_split_fields)
 			{
-				int dof_id =
-				    m_st->getProcessPrimaryVariable() == FiniteElement::PRESSURE
-				        ? 0
-				        : 1;  // TODO
-				dof_node_id[dof_id].push_back(static_cast<int>(
-				    m_msh->nod_vector[msh_node_id]->GetEquationIndex()));
+				int dof_id = m_st->getProcessPrimaryVariable() == FiniteElement::PRESSURE ? 0 : 1;  // TODO
+				dof_node_id[dof_id].push_back(static_cast<int>(node->GetEquationIndex()));
 				dof_node_value[dof_id].push_back(value);
 			}
 

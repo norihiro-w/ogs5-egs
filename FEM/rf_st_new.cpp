@@ -182,10 +182,6 @@ const std::string& CSourceTerm::getGeoName() const
 	return geo_name;
 }
 
-double CSourceTerm::getCoupLeakance() const
-{
-	return _coup_leakance;
-}
 
 /**************************************************************************
  FEMLib-Method:
@@ -751,34 +747,6 @@ bool STRead(const std::string& file_base_name,
 	return true;
 }
 
-/**************************************************************************
- FEMLib-Method:
- Task: ST to right-hand-side vector
- Programing:
- 01/2004 OK Implementation
- **************************************************************************/
-void ST2RHS(std::string pcs_function, double* rhs_vector)
-{
-	int j;
-	long i;
-	long node_number_vector_length;
-	CSourceTerm* m_st = NULL;
-	long no_st = (long)st_vector.size();
-	for (j = 0; j < no_st; j++)
-	{
-		m_st = st_vector[j];
-		if (pcs_function.compare(convertPrimaryVariableToString(
-		        m_st->getProcessPrimaryVariable())) == 0)
-		{
-			node_number_vector_length = (long)m_st->node_number_vector.size();
-			for (i = 0; i < node_number_vector_length; i++)
-			{
-				rhs_vector[m_st->node_number_vector[i]] =
-				    m_st->node_value_vector[i];
-			}
-		}
-	}
-}
 
 /**************************************************************************
  FEMLib-Method:
@@ -1191,17 +1159,6 @@ void CSourceTermGroup::Set(CRFProcess* m_pcs, const int ShiftInNodeVector,
 			{
 				st->DomainIntegration(m_msh, nodes_vector, node_value);
 			}
-		}
-		else if (st->getProcessDistributionType() ==
-		             FiniteElement::CRITICALDEPTH ||
-		         st->getProcessDistributionType() ==
-		             FiniteElement::NORMALDEPTH ||
-		         st->getProcessDistributionType() == FiniteElement::ANALYTICAL)
-		{
-			st->node_value_vectorArea.resize(nodes_vector.size());
-			for (size_t i = 0; i < st->node_value_vectorArea.size(); i++)
-				st->node_value_vectorArea[i] = 1.0;  // Element width !
-			st->EdgeIntegration(m_msh, nodes_vector, st->node_value_vectorArea);
 		}
 
 		//------------------------------------------------------------------
@@ -1713,151 +1670,23 @@ void CSourceTerm::FaceIntegration(CFEMesh* msh,
 	}
 
 	long i, j, k, l;
-	int nfaces;  //, nfn;
-	int nodesFace[8];
-	double nodesFVal[8];
 
-//----------------------------------------------------------------------
-// Interpolation of polygon values to nodes_on_sfc
-#if 0
-	bool Const = false;
-	if (this->getProcessDistributionType() == FiniteElement::CONSTANT ||
-	    this->getProcessDistributionType() == FiniteElement::CONSTANT_NEUMANN)
-		//	if (dis_type_name.find("CONSTANT") != std::string::npos)
-		Const = true;
+	const long n_sfc_nodes = (long)nodes_on_sfc.size();
+	const long n_msh_nodes = (long)msh->nod_vector.size();
 
-   if (!Const)                                    // Get node BC by interpolation with surface
-   {
-      int nPointsPly = 0;
-      double Area1, Area2;
-      double Tol = 1.0e-9;
-      bool Passed;
-      const int Size = (int) nodes_on_sfc.size();
-      double gC[3], p1[3], p2[3], vn[3], unit[3], NTri[3];
 
-      CGLPolyline* m_polyline = NULL;
-      Surface *m_surface = NULL;
-      m_surface = GEOGetSFCByName(geo_name);      //CC
-
-      // list<CGLPolyline*>::const_iterator p = m_surface->polyline_of_surface_list.begin();
-      std::vector<CGLPolyline*>::iterator p =
-         m_surface->polyline_of_surface_vector.begin();
-
-      for (j = 0; j < Size; j++)
-      {
-    	  double const*const pn (msh->nod_vector[nodes_on_sfc[j]]->getData());
-//         pn[0] = msh->nod_vector[nodes_on_sfc[j]]->X();
-//         pn[1] = msh->nod_vector[nodes_on_sfc[j]]->Y();
-//         pn[2] = msh->nod_vector[nodes_on_sfc[j]]->Z();
-         node_value_vector[j] = 0.0;
-         Passed = false;
-         // nodes close to first polyline
-         p = m_surface->polyline_of_surface_vector.begin();
-         while (p != m_surface->polyline_of_surface_vector.end())
-         {
-            m_polyline = *p;
-            // Grativity center of this polygon
-            for (i = 0; i < 3; i++)
-               gC[i] = 0.0;
-            vn[2] = 0.0;
-            nPointsPly = (int) m_polyline->point_vector.size();
-            for (i = 0; i < nPointsPly; i++)
-            {
-               gC[0] += m_polyline->point_vector[i]->x;
-               gC[1] += m_polyline->point_vector[i]->y;
-               gC[2] += m_polyline->point_vector[i]->z;
-
-               vn[2] += m_polyline->point_vector[i]->getPropert();
-            }
-            for (i = 0; i < 3; i++)
-               gC[i] /= (double) nPointsPly;
-            // BC value at center is an average of all point values of polygon
-            vn[2] /= (double) nPointsPly;
-
-            // Area of this polygon by the grativity center
-            for (i = 0; i < nPointsPly; i++)
-            {
-               p1[0] = m_polyline->point_vector[i]->x;
-               p1[1] = m_polyline->point_vector[i]->y;
-               p1[2] = m_polyline->point_vector[i]->z;
-               k = i + 1;
-               if (i == nPointsPly - 1)
-                  k = 0;
-               p2[0] = m_polyline->point_vector[k]->x;
-               p2[1] = m_polyline->point_vector[k]->y;
-               p2[2] = m_polyline->point_vector[k]->z;
-
-               vn[0] = m_polyline->point_vector[i]->getPropert();
-               vn[1] = m_polyline->point_vector[k]->getPropert();
-
-               Area1 = fabs(ComputeDetTri(p1, gC, p2));
-
-               Area2 = 0.0;
-               // Check if pn is in the triangle by points (p1, gC, p2)
-               Area2 = fabs(ComputeDetTri(p2, gC, pn));
-               unit[0] = fabs(ComputeDetTri(gC, p1, pn));
-               unit[1] = fabs(ComputeDetTri(p1, p2, pn));
-               Area2 += unit[0] + unit[1];
-               if (fabs(Area1 - Area2) < Tol)
-               {
-                  // Intopolation whin triangle (p1,p2,gC)
-                  // Shape function
-                  for (l = 0; l < 2; l++)
-                     unit[l] /= Area1;
-                  ShapeFunctionTri(NTri, unit);
-                  for (l = 0; l < 3; l++)
-                     node_value_vector[j] += vn[l] * NTri[l];
-                  Passed = true;
-                  break;
-               }
-
-            }
-            //
-            p++;
-            if (Passed)
-               break;
-         }                                        // while
-      }                                           //j
-   }
-#endif
-
-	int Axisymm = 1;  // ani-axisymmetry
-	// CFEMesh* msh = m_pcs->m_msh;
-	if (msh->isAxisymmetry()) Axisymm = -1;  // Axisymmetry is true
-	CElem* elem = NULL;
-	//   CElem* face = new CElem(1);
-	CElement* fem = new CElement(Axisymm * msh->GetCoordinateFlag());
-	CNode* e_node = NULL;
-	CElem* e_nei = NULL;
-	// vec<CNode*> e_nodes(20);
-	// vec<CElem*> e_neis(6);
-
-	const long this_number_of_nodes = (long)nodes_on_sfc.size();
-	const long nSize = (long)msh->nod_vector.size();
-	std::vector<long> G2L(nSize, -1);
-	std::vector<double> NVal(this_number_of_nodes, .0);
-
-#pragma omp parallel for
-	for (i = 0; i < nSize; i++)
+	//----------------------------------------------------------------------
+	// search element faces on the surface
+	//----------------------------------------------------------------------
+	#pragma omp parallel for
+	for (i = 0; i < n_msh_nodes; i++)
 	{
 		msh->nod_vector[i]->SetMark(false);
 	}
 
-#pragma omp parallel for private(k)
-	for (i = 0; i < this_number_of_nodes; i++)
-	{
-		k = nodes_on_sfc[i];
-		G2L[k] = i;
-	}
-
-	//----------------------------------------------------------------------
-	// NW 15.01.2010
-	// 1) search element faces on the surface
-	// 2) face integration
-
 	// init
 	const long n_ele = (long)msh->ele_vector.size();
-#pragma omp parallel for
+	#pragma omp parallel for
 	for (i = 0; i < n_ele; i++)
 	{
 		msh->ele_vector[i]->selected = 0;  // TODO can use a new variable
@@ -1881,11 +1710,10 @@ void CSourceTerm::FaceIntegration(CFEMesh* msh,
 	          << "\n";
 #endif
 
-// filtering elements: elements should have nodes on the surface
-// Notice: node-elements relation has to be constructed beforehand
-#pragma omp parallel for default(none) private(k, j, l) shared(msh, \
-                                                               nodes_on_sfc)
-	for (i = 0; i < this_number_of_nodes; i++)
+	// filtering elements: elements should have nodes on the surface
+	// Notice: node-elements relation has to be constructed beforehand
+	#pragma omp parallel for default(none) private(k, j, l) shared(msh, nodes_on_sfc)
+	for (i = 0; i < n_sfc_nodes; i++)
 	{
 		k = nodes_on_sfc[i];
 		CNode* nod = msh->nod_vector[k];
@@ -1894,17 +1722,19 @@ void CSourceTerm::FaceIntegration(CFEMesh* msh,
 		{
 			l = nod->getConnectedElementIDs()[j];
 			CElem* e = msh->ele_vector[l];
-#pragma omp atomic
+			#pragma omp atomic
 			e->selected++;  // remember how many nodes of an element are on the
 			                // surface
 		}
 	}
+
 	long n_selected_ele = 0;
-#pragma omp parallel for reduction(+ : n_selected_ele)
+	#pragma omp parallel for reduction(+ : n_selected_ele)
 	for (i = 0; i < n_ele; i++)
 	{
 		if (msh->ele_vector[i]->selected > 0) n_selected_ele++;
 	}
+
 	std::vector<long> vec_possible_elements;
 	vec_possible_elements.reserve(n_selected_ele);
 	for (i = 0; i < n_ele; i++)
@@ -1938,17 +1768,32 @@ void CSourceTerm::FaceIntegration(CFEMesh* msh,
 	}
 #endif
 
+	//----------------------------------------------------------------------
+	// face integration
+	//----------------------------------------------------------------------
 //#define ST_OMP
-
 #ifdef _OPENMP
 	std::cout << "[CSourceTerm::FaceIntegration] face integration ... "
 	          << std::flush;
 	//double begin_int = omp_get_wtime();
 #endif
+	std::vector<long> mshNodeId2sfcNodeId(n_msh_nodes, -1); // msh node id -> sfc node index
+	#pragma omp parallel for private(k)
+	for (i = 0; i < n_sfc_nodes; i++)
+	{
+		k = nodes_on_sfc[i];
+		mshNodeId2sfcNodeId[k] = i;
+	}
+	std::vector<double> sfc_node_values(n_sfc_nodes, .0);
+
+	const int Axisymm_sign = msh->isAxisymmetry() ? -1 : 1;
+	CElement* fem = new CElement(Axisymm_sign * msh->GetCoordinateFlag());
 	CElem face(1);
 	face.SetFace();
 	// search elements & face integration
 	const long n_vec_possible_elements = vec_possible_elements.size();
+	int face_nodes_local_index[8];
+	double face_node_values[8];
 //#define ST_OMP
 #ifdef ST_OMP
 #pragma omp parallel for default(none)                                         \
@@ -1959,80 +1804,89 @@ void CSourceTerm::FaceIntegration(CFEMesh* msh,
 #endif
 	for (i = 0; i < n_vec_possible_elements; i++)
 	{
-		elem = msh->ele_vector[vec_possible_elements[i]];
-		if (!elem->GetMark()) continue;
-		if (elem->GetDimension() < 3) continue;
-		if (active_elements && !(*active_elements)[i]) continue;
-		nfaces = elem->GetFacesNumber();
+		CElem* elem = msh->ele_vector[vec_possible_elements[i]];
+		if (!elem->GetMark())
+			continue;
+		if (elem->GetDimension() < 3)
+			continue;
+		if (active_elements && !(*active_elements)[i])
+			continue;
+
 		elem->SetOrder(msh->getOrder());
+
+		const int nfaces = elem->GetFacesNumber();
 		for (j = 0; j < nfaces; j++)
 		{
-			e_nei = elem->GetNeighbor(j);
-			const int nfn = elem->GetElementFaceNodes(j, nodesFace);
+			const int n_face_nodes = elem->GetElementFaceNodes(j, face_nodes_local_index);
 			// 1st check
-			if (elem->selected < nfn) continue;
+			if (elem->selected < n_face_nodes) continue;
 			// 2nd check: if all nodes of the face are on the surface
 			int count = 0;
-			for (k = 0; k < nfn; k++)
+			for (k = 0; k < n_face_nodes; k++)
 			{
-				e_node = elem->GetNode(nodesFace[k]);
+				CNode* face_node = elem->GetNode(face_nodes_local_index[k]);
 #ifdef UNIQUE_OMP
 				if (std::binary_search(unique_nodes_on_sfc.begin(),
 				                       unique_nodes_on_sfc.end(),
-				                       e_node->GetIndex()))
+				                       face_node->GetIndex()))
 //            if (std::find(unique_nodes_on_sfc.begin(),
 //            unique_nodes_on_sfc.end(), e_node->GetIndex()) !=
 //            unique_nodes_on_sfc.end())
 #else
-				if (set_nodes_on_sfc.count(e_node->GetIndex()) > 0)
+				if (set_nodes_on_sfc.count(face_node->GetIndex()) > 0)
 #endif
 				{
 					count++;
 				}
 			}
-			if (count != nfn) continue;
+			if (count != n_face_nodes)
+				continue;
+
 			// face integration
-			for (k = 0; k < nfn; k++)
+			for (k = 0; k < n_face_nodes; k++)
 			{
-				e_node = elem->GetNode(nodesFace[k]);
-				nodesFVal[k] = node_value_vector[G2L[e_node->GetIndex()]];
+				CNode* face_node = elem->GetNode(face_nodes_local_index[k]);
+				face_node_values[k] = node_value_vector[mshNodeId2sfcNodeId[face_node->GetIndex()]];
 			}
 			double fac = 1.0;
 			// Not a surface face
-			if (elem->GetDimension() == e_nei->GetDimension()) fac = 0.5;
+			CElem* e_neighbor = elem->GetNeighbor(j);
+			if (elem->GetDimension() == e_neighbor->GetDimension())
+				fac = 0.5;
+
 			CElem* face = new CElem(1);
 			face->SetOrder(msh->getOrder());
 			face->SetFace(elem, j);
 			face->ComputeVolume();
-			if (active_elements == NULL) st_boundary_elements.push_back(face);
+			if (active_elements == NULL)
+				st_boundary_elements.push_back(face);
 			fem->setOrder(msh->getOrder() ? 2 : 1);
 			fem->ConfigElement(face, true);
-			fem->FaceIntegration(nodesFVal);
+			fem->FaceIntegration(face_node_values);
+
 			if (this->is_transfer_bc)
 			{
-				for (k = 0; k < nfn; k++)
-					nodesFVal[k] *=
-					    this->transfer_h_values[face->GetPatchIndex()];
+				for (k = 0; k < n_face_nodes; k++)
+					face_node_values[k] *= this->transfer_h_values[face->GetPatchIndex()];
 			}
-			for (k = 0; k < nfn; k++)
+
+			for (k = 0; k < n_face_nodes; k++)
 			{
-				e_node = elem->GetNode(nodesFace[k]);
-				long id = G2L[e_node->GetIndex()];
-#pragma omp atomic
-				NVal[id] += fac * nodesFVal[k];
+				CNode* face_node = elem->GetNode(face_nodes_local_index[k]);
+				long id = mshNodeId2sfcNodeId[face_node->GetIndex()];
+				#pragma omp atomic
+				sfc_node_values[id] += fac * face_node_values[k];
 			}
 		}
 	}
 
-#pragma omp for
-	for (i = 0; i < this_number_of_nodes; i++)
-		node_value_vector[i] = NVal[i];
-#pragma omp for
-	for (i = 0; i < nSize; i++)
+	#pragma omp for
+	for (i = 0; i < n_sfc_nodes; i++)
+		node_value_vector[i] = sfc_node_values[i];
+	#pragma omp for
+	for (i = 0; i < n_msh_nodes; i++)
 		msh->nod_vector[i]->SetMark(true);
 
-	NVal.clear();
-	G2L.clear();
 	delete fem;
 	// delete face;
 }
@@ -2196,118 +2050,6 @@ CSourceTermGroup* STGetGroup(std::string pcs_type_name, std::string pcs_pv_name)
 	}
 	return NULL;
 }
-
-/**************************************************************************
- FEMLib-Method:
- Task:
- Programing:
- 02/2006 MB Implementation
- **************************************************************************/
-// WW
-double GetConditionalNODValue(CSourceTerm* st, CNodeValue* cnodev)
-{
-	int nidx;
-	double value_cond = 0.0;
-	double NodeReachLength;
-	CRFProcess* pcs_cond(PCSGet(st->pcs_type_name_cond));
-	long node_cond;
-
-	// WW  node_cond = group_vector[i]->msh_node_number_conditional;
-	// WW
-	node_cond = cnodev->msh_node_number_conditional;
-	nidx = pcs_cond->GetNodeValueIndex(st->pcs_pv_name_cond) + 1;
-	value_cond = pcs_cond->GetNodeValue(node_cond, nidx);
-
-	if (st->pcs_pv_name_cond.find("FLUX") != std::string::npos)
-	{
-		// WW    NodeReachLength = group_vector[i]->node_value;
-		NodeReachLength = cnodev->node_value;  // WW
-		value_cond = value_cond * NodeReachLength;
-	}
-
-	return value_cond;
-}
-
-/**************************************************************************
- FEMLib-Method:
- Task: Calculate Philips (1957) two-term infiltration flux term
- calculated separately for each node
- Programing:
- 05/2007 JOD Implementation
- 09/2010 KR cleaned up code
- **************************************************************************/
-void GetPhilipNODValue(double& value, const CSourceTerm* m_st)
-{
-	double infiltration =
-	    m_st->constant + m_st->sorptivity / sqrt(aktuelle_zeit);
-	infiltration = std::min(m_st->rainfall, infiltration);
-	value = infiltration * (-value);
-}
-
-/**************************************************************************
- FEMLib-Method:
- Task: Calculate Green-Ampt infiltration flux term
- for homogeneous soil, includes water depth
- writes cumulative infiltration in COUPLINGFLUX
- solution is sensitive to time step
- infiltration is estimated with first order derivative
- of cumulative infiltration
- Programing:
- 05/2007 JOD Implementation
-
-**************************************************************************/
-void GetGreenAmptNODValue(double& value, CSourceTerm* m_st, long msh_node)
-{
-	double F, Fiter, Fold, infiltration;
-	double conductivity, suction, Theta, wdepth;
-	double a, b;
-	CFEMesh* m_msh = NULL;
-	CRFProcess* m_pcs_this = NULL;
-	m_pcs_this = PCSGet(convertProcessTypeToString(m_st->getProcessType()));
-	m_msh = m_pcs_this->m_msh;
-
-	double area = value;
-
-	wdepth =
-	    std::max(0., m_pcs_this->GetNodeValue(
-	                     msh_node, m_pcs_this->GetNodeValueIndex("HEAD") + 1) -
-	                     m_msh->nod_vector[msh_node]->getData()[2]);
-	conductivity = m_st->constant;
-	suction = m_st->sorptivity + wdepth;  // water depth included
-	Theta = m_st->moistureDeficit * suction;
-
-	Fold = m_pcs_this->GetNodeValue(msh_node,
-	                                m_pcs_this->GetNodeValueIndex("COUPLING"));
-	F = Fold;
-
-	do  // Newton iteration loop
-	{
-		Fiter = F;
-		if (Fiter == 0)  // avoids a = 0
-			Fiter = 1.e-5;
-		a = 1 - Theta / (Fiter + Theta);
-
-		b = Fold - Fiter + Theta * log((Fiter + Theta) / (Fold + Theta)) +
-		    conductivity * dt;  // dt = timeStep
-		F = Fiter + b / a;
-	} while (fabs(F - Fiter) > 1.e-10);
-
-	infiltration = (F - Fold) / dt;
-
-	if (infiltration > m_st->rainfall)  // + wdepth / timestep )   // compare
-		                                // with available water
-		infiltration = m_st->rainfall;  //  +  wdepth / timestep ;
-
-	F = infiltration * dt + Fold;
-
-	m_pcs_this->SetNodeValue(msh_node,
-	                         // output is cumulative infiltration
-	                         m_pcs_this->GetNodeValueIndex("COUPLING") + 1, F);
-
-	infiltration *= -area;
-	value = infiltration;
-}
-
 
 /**************************************************************************
  FEMLib-Method:
@@ -2558,38 +2300,6 @@ void CSourceTermGroup::SetDMN(CSourceTerm *m_st, const int ShiftInNodeVector)
 }
 #endif
 
-/**************************************************************************
- FEMLib-Method:
- Task:
- Programing:
- 02/2008 JOD Implementation
- **************************************************************************/
-void CSourceTermGroup::SetCOL(CSourceTerm* m_st, const int ShiftInNodeVector)
-{
-	long number_of_nodes;
-	std::vector<long> col_nod_vector;
-	std::vector<double> col_nod_val_vector;
-	std::vector<long> col_nod_vector_cond;
-
-	long i = 0;
-	if (m_st->geo_name == "BOTTOM") i = m_msh->getNumberOfMeshLayers() - 1;
-
-	while (i < (long)m_msh->nod_vector.size())
-	{
-		col_nod_vector.push_back(i);
-		i += m_msh->getNumberOfMeshLayers();
-	}
-	number_of_nodes = (long)col_nod_vector.size();
-	col_nod_val_vector.resize(number_of_nodes);
-
-	for (long i = 0; i < number_of_nodes; i++)
-		col_nod_val_vector[i] = 1;
-
-	m_st->SetSurfaceNodeVectorConditional(col_nod_vector, col_nod_vector_cond);
-
-	m_st->SetNodeValues(col_nod_vector, col_nod_vector_cond, col_nod_val_vector,
-	                    ShiftInNodeVector);
-}
 
 /**************************************************************************
  FEMLib-Method:
@@ -3244,151 +2954,6 @@ void CSourceTerm::DirectAssign(long ShiftInNodeVector)
 	}
 }
 
-/**************************************************************************
-GeoSys source term function:
-03/2010 WW Implementation
-**************************************************************************/
-std::string CSourceTerm::DirectAssign_Precipitation(double current_time)
-{
-	int i, size;
-	double stepA, stepB, tim_val;
-
-	long l, nbc_node, n_index, osize = 0;
-	double n_val;
-
-	std::string fileA, fileB;
-
-	CRFProcess* m_pcs = NULL;
-	CNodeValue* m_nod_val = NULL;
-	// PCSGet(pcs_type_name);
-	m_pcs = PCSGet(convertProcessTypeToString(getProcessType()));
-
-	if (start_pos_in_st < 0) osize = -1;  // TODO (long)m_pcs->st_node.size();
-
-	size = (int)precip_times.size();
-	stepA = 0.;
-	stepB = 0.;
-	if (current_time < m_pcs->GetTimeStepping()->time_start ||
-	    fabs(current_time - m_pcs->GetTimeStepping()->time_start) < DBL_MIN)
-	{
-		fileA = precip_files[0];
-		stepB = -1.;
-	}
-	else if (current_time > precip_times[size - 1] ||
-	         fabs(current_time - precip_times[size - 1]) < DBL_MIN)
-	{
-		fileA = precip_files[size - 1];
-		stepB = -1.;
-	}
-	else
-	{
-		double step_b = DBL_MAX;
-		double step_f = DBL_MAX;
-
-		for (i = 0; i < size; i++)
-		{
-			tim_val = precip_times[i];
-			if (current_time > tim_val)
-			{
-				if ((current_time - tim_val) < step_b)
-				{
-					step_b = current_time - tim_val;
-					stepA = tim_val;
-					fileA = precip_files[i];
-				}
-			}
-			else
-			{
-				if ((tim_val - current_time) < step_f)
-				{
-					step_f = tim_val - current_time;
-					stepB = tim_val;
-					fileB = precip_files[i];
-				}
-			}
-		}
-		if (fabs(stepA - current_time) < DBL_MIN) stepB = -1.;
-		if (fabs(current_time - stepB) < DBL_MIN)
-		{
-			fileA = fileB;
-			stepB = -1.;
-		}
-		if (fabs(stepA - stepB) < DBL_MIN) stepB = -1.;
-	}
-
-	fileA = FilePath + fileA;
-	std::ifstream bin_sA(fileA.c_str(), std::ios::binary);
-	std::ifstream bin_sB;
-
-	if (!bin_sA.good())
-	{
-		std::cout << "Could not find file " << fileA << "\n";
-		exit(0);
-	}
-	bin_sA.setf(std::ios::scientific, std::ios::floatfield);
-	bin_sA.precision(14);
-
-	/*
-	if(stepB>0.)
-	{
-	   fileB = FilePath + fileB;
-	   bin_sB.open(fileB.c_str(), ios::binary);
-	   if(!bin_sB.good())
-	   {
-	       cout<<"Could not find file "<< fileB<<endl;
-	       exit(0);
-	   }
-	   bin_sB.setf(ios::scientific,ios::floatfield);
-	bin_sB.precision(14);
-	bin_sB.read((char*)(&nbc_node), sizeof(nbc_node));
-	}
-	*/
-
-	bin_sA.read((char*)(&nbc_node), sizeof(nbc_node));
-
-	double valA;  //, valB = 0.;
-	for (l = 0; l < nbc_node; l++)
-	{
-		bin_sA.read((char*)(&n_index), sizeof(n_index));
-		bin_sA.read((char*)(&valA), sizeof(valA));
-		/*
-		if( stepB>0.)
-		{
-		   bin_sB.read((char*)(&n_index), sizeof(n_index));
-		   bin_sB.read((char*)(&valB), sizeof(valB));
-		   n_val = valA + (current_time - stepA)*(valB-valA)/(stepB-stepA);
-		}
-		else
-		*/
-		n_val = valA;
-
-//
-#if 0  // TODO
-      if(start_pos_in_st<0)
-      {
-         m_nod_val = new CNodeValue();
-         m_pcs->st_node_value.push_back(m_nod_val);
-//         m_pcs->st_node.push_back(this);
-      }
-      else
-         m_nod_val = m_pcs->st_node_value[l+start_pos_in_st];
-#endif
-		m_nod_val->msh_node_number = n_index;
-		m_nod_val->geo_node_number = n_index;
-		// node_distype = dis_type;
-		m_nod_val->setProcessDistributionType(getProcessDistributionType());
-		m_nod_val->node_value = n_val;
-		m_nod_val->CurveIndex = CurveIndex;
-		//
-	}  //
-
-	if (start_pos_in_st < 0) start_pos_in_st = osize;
-
-	bin_sA.close();
-	// bin_sB.close();
-
-	return fileA;
-}
 
 /**************************************************************************
  FEMLib-Method:
