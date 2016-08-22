@@ -164,6 +164,7 @@ FUNCTION (ADD_BENCHMARK authorName benchmarkName ogsConfiguration numProcesses)
 	FOREACH (entry ${ARGN})
 		LIST (APPEND OUTPUT_FILES ${entry})
 	ENDFOREACH (entry ${ARGN})
+	string (REPLACE ";" " " OUTPUT_FILES "${OUTPUT_FILES}")
 
 	# Adds a benchmark run. This calls AddTest.cmake to execute several steps.
 	ADD_TEST (
