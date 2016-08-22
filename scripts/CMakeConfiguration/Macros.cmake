@@ -97,38 +97,17 @@ ENDMACRO(COPY_FILE_INTO_EXECUTABLE_DIRECTORY)
 # Additional arguments add output files to compare
 FUNCTION (ADD_BENCHMARK authorName benchmarkName ogsConfiguration numProcesses)
 
-  SET (CONFIG_MATCH FALSE)
-  IF (${ogsConfiguration} STREQUAL "OGS_FEM" AND OGS_FEM)
-	SET (CONFIG_MATCH TRUE)
-  ENDIF (${ogsConfiguration} STREQUAL "OGS_FEM" AND OGS_FEM)
-  IF (${ogsConfiguration} STREQUAL "OGS_FEM_SP" AND OGS_FEM_SP)
-	SET (CONFIG_MATCH TRUE)
-  ENDIF (${ogsConfiguration} STREQUAL "OGS_FEM_SP" AND OGS_FEM_SP)
-  IF (${ogsConfiguration} STREQUAL "OGS_FEM_GEMS" AND OGS_FEM_GEMS)
-	SET (CONFIG_MATCH TRUE)
-  ENDIF (${ogsConfiguration} STREQUAL "OGS_FEM_GEMS" AND OGS_FEM_GEMS)
-  IF (${ogsConfiguration} STREQUAL "OGS_FEM_BRNS" AND OGS_FEM_BRNS)
-	SET (CONFIG_MATCH TRUE)
-  ENDIF (${ogsConfiguration} STREQUAL "OGS_FEM_BRNS" AND OGS_FEM_BRNS)
-  IF (${ogsConfiguration} STREQUAL "OGS_FEM_PQC" AND OGS_FEM_PQC)
-	SET (CONFIG_MATCH TRUE)
-  ENDIF (${ogsConfiguration} STREQUAL "OGS_FEM_PQC" AND OGS_FEM_PQC)
-  IF (UNIX) # Only supported on Linux
-	IF (${ogsConfiguration} STREQUAL "OGS_FEM_LIS" AND OGS_FEM_LIS)
-	  SET (CONFIG_MATCH TRUE)
-	ENDIF (${ogsConfiguration} STREQUAL "OGS_FEM_LIS" AND OGS_FEM_LIS)
-	IF (${ogsConfiguration} STREQUAL "OGS_FEM_MKL" AND OGS_FEM_MKL)
-	  SET (CONFIG_MATCH TRUE)
-	ENDIF (${ogsConfiguration} STREQUAL "OGS_FEM_MKL" AND OGS_FEM_MKL)
-	IF (${ogsConfiguration} STREQUAL "OGS_FEM_MPI" AND OGS_FEM_MPI)
-	  SET (CONFIG_MATCH TRUE)
-	ENDIF (${ogsConfiguration} STREQUAL "OGS_FEM_MPI" AND OGS_FEM_MPI)
-	IF (${ogsConfiguration} STREQUAL "OGS_FEM_PETSC" AND OGS_FEM_PETSC)
+	SET (CONFIG_MATCH FALSE)
+	IF (OGS_FEM_LIS)
 		SET (CONFIG_MATCH TRUE)
+		SET (OGS_BUILD_CONFIG "OGS_FEM_LIS")
 	ENDIF ()
-  ENDIF (UNIX)
+	IF (OGS_FEM_PETSC)
+		SET (CONFIG_MATCH TRUE)
+		SET (OGS_BUILD_CONFIG "OGS_FEM_PETSC")
+	ENDIF ()
 
-  IF (CONFIG_MATCH)
+#  IF (CONFIG_MATCH)
 	IF (WIN32)
 	  SET (ogsExe ${EXECUTABLE_OUTPUT_PATH}/Release/ogs)
 	ELSE (WIN32)
@@ -182,7 +161,7 @@ FUNCTION (ADD_BENCHMARK authorName benchmarkName ogsConfiguration numProcesses)
 		-DGPROF_PATH=${GPROF_PATH}
 		-DDOT_TOOL_PATH=${DOT_TOOL_PATH}
 		-DBENCHMARK_TIMEOUT=${THIS_BENCHMARK_TIMEOUT}
-		-DOGS_FEM_CONFIG=${ogsConfiguration}
+		-DOGS_FEM_CONFIG=${OGS_BUILD_CONFIG} #${ogsConfiguration}
 		-DNUM_PROCESSES=${numProcesses}
 		-DBENCHMARK_DIR_FOUND=${BENCHMARK_DIR_FOUND}
 		-P ${PROJECT_SOURCE_DIR}/scripts/CMakeConfiguration/AddBenchmark.cmake
@@ -236,7 +215,7 @@ FUNCTION (ADD_BENCHMARK authorName benchmarkName ogsConfiguration numProcesses)
 	ENDFOREACH (entry ${ARGN})
   ENDIF (COPY_BENCHMARKS_TO_REF)
 
-  ENDIF (CONFIG_MATCH)
+#  ENDIF (CONFIG_MATCH)
 
 ENDFUNCTION (ADD_BENCHMARK authorName benchmarkName ogsConfiguration filesToCompare numProcesses)
 
