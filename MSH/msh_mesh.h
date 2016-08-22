@@ -44,6 +44,37 @@ typedef struct
 	double z = 0.0;
 } MeshNodes;
 
+struct MeshHeader
+{
+	int n_dom_nodes_Q;
+	int n_dom_nodes_L;
+	int n_inner_elements;
+	int n_ghost_elements;
+	int n_inner_nodes_L;
+	int n_inner_nodes_Q;
+	int n_global_nodes_L;
+	int n_global_nodes_Q;
+	int n_global_elements;
+	int n_element_integers;
+	int n_ghost_element_integers;
+
+	void set(int *array)
+	{
+		int i = 0;
+		n_dom_nodes_Q = array[i++];
+		n_dom_nodes_L = array[i++];
+		n_inner_elements = array[i++];
+		n_ghost_elements = array[i++];
+		n_inner_nodes_L = array[i++];
+		n_inner_nodes_Q = array[i++];
+		n_global_nodes_L = array[i++];
+		n_global_nodes_Q = array[i++];
+		n_global_elements = array[i++];
+		n_element_integers = array[i++];
+		n_ghost_element_integers = array[i++];
+	}
+};
+
 #endif
 
 //------------------------------------------------------------------------
@@ -150,20 +181,22 @@ public:
 	 @param header  : mesh header
 	 @param s_nodes : mesh nodes
 	 */
-	void setSubdomainNodes(int* header, const MeshNodes* s_nodes);
+	void setSubdomainNodes(MeshHeader const& header, const MeshNodes* s_nodes);
 	/*!
 	 Fill data for subdomain mesh
 	 @param header    : mesh header
 	 @param elem_info : element information
 	 @param inside    : indicator for elements that are inside the subdomain
 	 */
-	void setSubdomainElements(int* header, const int* elem_info,
+	void setSubdomainElements(MeshHeader const& header, const int* elem_info,
 	                          const bool inside);
 	int calMaximumConnectedNodes();
 	int calMaximumConnectedLocalNodes(bool quadratic, std::vector<int> &d_nnz);
 	int calMaximumConnectedGhostNodes(bool quadratic, std::vector<int> &o_nnz);
 	int getMaxNumNodesOfElement(bool quadratic) const;
 	int getMaxNumConnectedElements() const;
+	/// Get number of elements of the entire mesh
+	int getNumElementsGlobal() const { return glb_ElementsNumber; }
 	/// Get number of nodes of the entire mesh
 	int getNumNodesGlobal() const { return glb_NodesNumber_Linear; }
 	/// Get number of nodes of the entire mesh of quadratic elements
@@ -429,6 +462,7 @@ private:
 	size_t NodesNumber_Linear;
 	size_t NodesNumber_Quadratic;
 #if defined(USE_PETSC)
+	int glb_ElementsNumber;
 	int glb_NodesNumber_Linear;
 	int glb_NodesNumber_Quadratic;
 	int loc_NodesNumber_Linear;  // index of shadow nodes starts from this
