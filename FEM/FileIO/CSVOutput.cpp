@@ -280,7 +280,7 @@ void writeElementData(COutput* output, std::string const& filename)
 			fem->ComputeShapefct(1);
 			CMediumProperties* mmp = mmp_vector[ele->GetPatchIndex()];
 			double mat_value = ELEMENT_MMP_VALUES::getValue(
-				mmp, vec_mmp_id[i], i, gp, theta);
+				mmp, vec_mmp_id[j], i, gp, theta);
 			tmp_values[j + shift] = mat_value;
 		}
 		shift += vec_mmp_id.size();
