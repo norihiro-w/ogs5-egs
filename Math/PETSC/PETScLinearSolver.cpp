@@ -746,7 +746,7 @@ void PETScLinearSolver::EQSV_Viewer(const std::string& file_name, bool ascii)
 //"true" : "false");
 
 // PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_VTK);
-#if 0
+#if 1
 	  PetscObjectSetName((PetscObject)A,"Stiffness_matrix");
 	  MatView(A,viewer);
 #if 1
