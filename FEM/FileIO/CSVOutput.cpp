@@ -209,6 +209,7 @@ void writeElementData(COutput* output, std::string const& filename)
 
 	//
 	std::vector<std::string> vec_output_val_name;
+	vec_output_val_name.push_back("ElementID");
 	std::vector<CRFProcess*> vec_pcs;
 	std::vector<int> vec_pcs_value_index;
 	for (auto const& value_name : output->getElementValueVector())
@@ -245,7 +246,7 @@ void writeElementData(COutput* output, std::string const& filename)
 		vec_mfp_id.push_back(mfp_id);
 	}
 
-	auto const n_output_values = vec_output_val_name.size();
+	auto const n_output_values = vec_output_val_name.size() - 1; // exclude elemnt ID
 
 	std::string const delim = ", ";
 	// header
@@ -297,6 +298,7 @@ void writeElementData(COutput* output, std::string const& filename)
 			tmp_values[j + shift] = mat_value;
 		}
 		// output
+		os << i << delim;
 		writeLine(os, tmp_values, delim);
 	}
 }
