@@ -1494,7 +1494,6 @@ double COutput::NODWritePLYDataTEC(int number)
 	// Write data
 	//======================================================================
 	double flux_sum = 0.0;  // OK
-	double flux_nod;
 
 	m_msh->SwitchOnQuadraticNodes(false);  // WW
 	// NOD at PLY
