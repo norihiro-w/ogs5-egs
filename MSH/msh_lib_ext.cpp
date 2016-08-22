@@ -68,8 +68,7 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 			else
 			{
 				ScreenMessage("-> cannot find a partitioned mesh file\n");
-				PetscFinalize();
-				exit(1);
+				MPI_Abort(MPI_COMM_WORLD, 1);
 			}
 		}
 		getline(is, str_var);
