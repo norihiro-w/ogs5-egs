@@ -485,6 +485,8 @@ void CSVOutput::writeDomain(COutput* output,
 
 }
 
+#endif
+
 void CSVOutput::writePoyline(COutput* output,
 							   int timestep_number,
 							   double /*current_time*/,
