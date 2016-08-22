@@ -458,7 +458,7 @@ void CFEMesh::setSubdomainElements(MeshHeader const& header, const int* elem_inf
 	int ne = inside ? header.n_inner_elements : header.n_ghost_elements;
 
 	// Element
-	std::stringstream ss;
+	//std::stringstream ss;
 	for (int i = 0; i < ne; i++)
 	{
 		CElem* new_elem = new CElem(ele_vector.size());
@@ -557,9 +557,9 @@ void CFEMesh::setSubdomainElements(MeshHeader const& header, const int* elem_inf
 
 		new_elem->InitializeMembers();
 
-		new_elem->WriteIndex(ss);
+		//new_elem->WriteIndex(ss);
 	}
-	ScreenMessage2("\n%s\n", ss.str().data());
+	//ScreenMessage2("\n%s\n", ss.str().data());
 }
 
 /*!
