@@ -313,12 +313,24 @@ void CreateEQS_LinearSolver()
 		}
 		else
 		{
-			if (a_pcs->GetPrimaryVNumber() > 1) {
-				for (size_t j=0; j<eqs->sparse_index.d_nnz.size(); j++)
-					eqs->sparse_index.d_nnz[j] *= a_pcs->GetPrimaryVNumber();
-				for (size_t j=0; j<eqs->sparse_index.o_nnz.size(); j++)
-					eqs->sparse_index.o_nnz[j] *= a_pcs->GetPrimaryVNumber();
+			const int ndof = a_pcs->GetPrimaryVNumber();
+			eqs->sparse_index.d_nnz.resize(vec_n_connected_local_nodes.size() * ndof);
+			for (size_t j=0; j<vec_n_connected_local_nodes.size(); j++) {
+				for (int ii=0; ii<ndof; ii++)
+					eqs->sparse_index.d_nnz[j*ndof + ii] = (vec_n_connected_local_nodes[j] + 1) * ndof;
 			}
+			eqs->sparse_index.o_nnz.resize(vec_n_connected_ghost_nodes.size() * ndof);
+			for (size_t j=0; j<vec_n_connected_ghost_nodes.size(); j++) {
+				for (int ii=0; ii<ndof; ii++)
+					eqs->sparse_index.o_nnz[j*ndof + ii] = vec_n_connected_ghost_nodes[j] * ndof;
+			}
+
+//			if (a_pcs->GetPrimaryVNumber() > 1) {
+//				for (size_t j=0; j<eqs->sparse_index.d_nnz.size(); j++)
+//					eqs->sparse_index.d_nnz[j] *= a_pcs->GetPrimaryVNumber();
+//				for (size_t j=0; j<eqs->sparse_index.o_nnz.size(); j++)
+//					eqs->sparse_index.o_nnz[j] *= a_pcs->GetPrimaryVNumber();
+//			}
 
 			eqs->sparse_index.d_nz = max_connected_local_nodes * a_pcs->GetPrimaryVNumber();
 			eqs->sparse_index.o_nz = max_connected_ghost_nodes * a_pcs->GetPrimaryVNumber();
