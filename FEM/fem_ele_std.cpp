@@ -3016,14 +3016,14 @@ void CFiniteElementStd::CalcMass()
 	}      // loop gauss points
 
 // WW/CB //NW
-#ifndef USE_PETSC
+//#ifndef USE_PETSC
 	if (PcsType != T && pcs->m_num->ele_supg_method == 0)
 	{
 		for (i = 0; i < nnodes; i++)
 			for (j = 0; j < nnodes; j++)
 				if (j > i) (*Mass)(i, j) = (*Mass)(j, i);
 	}
-#endif
+//#endif
 	// Test Output
 	// Mass->Write();
 }
