@@ -875,7 +875,13 @@ void CBoundaryCondition::SetByElementValues(long ShiftInNodeVector)
 	}
 
 	CRFProcess* pcs = this->getProcess();
-	// MeshLib::CFEMesh* msh = pcs->m_msh;
+	MeshLib::CFEMesh* msh = pcs->m_msh;
+#ifdef USE_PETSC
+	std::map<size_t, size_t> map_global2local_ele_id;
+	for (size_t i=0; i<map_global2local_ele_id.size(); i++)
+		map_global2local_ele_id.insert(std::make_pair((size_t)msh->getElementVector()[i]->GetGlobalIndex(), i));
+#endif
+
 	// read element values
 	std::vector<long> bc_ele_ids;
 	std::map<long, double> map_eleId_val;
@@ -890,9 +896,15 @@ void CBoundaryCondition::SetByElementValues(long ShiftInNodeVector)
 
 		in.str(line_string);
 		in >> ele_id >> val;
+		in.clear();
+#ifdef USE_PETSC
+		auto itr = map_global2local_ele_id.find(ele_id);
+		if (itr == map_global2local_ele_id.end())
+			continue;
+		ele_id = itr->second;
+#endif
 		map_eleId_val[ele_id] = val;
 		bc_ele_ids.push_back(ele_id);
-		in.clear();
 	}
 
 	// get a list of nodes connecting elements
