@@ -5905,6 +5905,9 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 		// exchange condition needs to update a coefficient matrix
 		if (m_st->is_transfer_bc)
 		{
+			if (st_node_value[is].empty())
+				continue;
+
 			// only Neumann BC
 			if (m_st->getSTType() != FiniteElement::NEUMANN) continue;
 
@@ -5913,8 +5916,7 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 			{
 				if (m_st->has_constrain && !active_elements[0]) continue;
 				cnodev = st_node_value[is][0];
-				const int k_eqs_id = m_msh->nod_vector[cnodev->geo_node_number]
-				                         ->GetEquationIndex();
+				const int k_eqs_id = m_msh->nod_vector[cnodev->geo_node_number]->GetEquationIndex();
 #if defined(USE_PETSC)
 				eqs_new->addMatrixEntry(k_eqs_id, k_eqs_id,
 				                        m_st->transfer_h_values[0]);
