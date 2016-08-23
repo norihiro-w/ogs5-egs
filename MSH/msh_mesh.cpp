@@ -814,7 +814,6 @@ void CFEMesh::ConstructGrid()
 #ifdef USE_PETSC
 	ScreenMessage2d("-> coordinate system = %d\n", coordinate_system);
 	MPI_Allreduce(&coordinate_system, &coordinate_system, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-	ScreenMessage2d("-> coordinate system = %d\n", coordinate_system);
 	ScreenMessage("-> coordinate system = %d\n", coordinate_system);
 #endif
 
