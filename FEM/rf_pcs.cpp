@@ -4398,6 +4398,32 @@ void CRFProcess::GlobalAssembly()
 
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012.
 	eqs_new->AssembleRHS_PETSc(false);
+
+	const bool compress_eqs = (type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
+	if (compress_eqs)
+	{
+		ScreenMessage("-> set deactivated DOFs in a PETSc equation system\n");
+		eqs_new->AssembleMatrixPETSc(MAT_FLUSH_ASSEMBLY);
+		const auto ndof = GetPrimaryVNumber();
+		for (CNode* node : m_msh->getNodeVector())
+		{
+			if (node->GetMark())
+				continue;
+			if (!m_msh->isNodeLocal(node->GetIndex()))
+				continue;
+
+			for (size_t ii=0; ii<ndof; ii++)
+			{
+				double prev_value = GetNodeValue(node->GetIndex(), ii*ndof);
+				int eqs_id = node->GetEquationIndex(m_msh->getOrder()) * ndof + ii;
+				MatSetValue(eqs_new->A, eqs_id, eqs_id, 1, INSERT_VALUES);
+				VecSetValue(eqs_new->b, eqs_id, prev_value, INSERT_VALUES);
+			}
+		}
+		eqs_new->AssembleRHS_PETSc(false);
+	}
+
+
 	//		ScreenMessage("-> assemble a global matrix\n");
 	eqs_new->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY);
 #endif
