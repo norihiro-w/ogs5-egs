@@ -1130,9 +1130,9 @@ void CSolidProperties::HeatConductivityTensor(const int dim, double* tensor,
 	// check
 	if (thermal_conductivity_tensor_type > 0 &&
 	    dim != thermal_conductivity_tensor_dim)
-		cout << "***Error in CSolidProperties::HeatConductivityTensor(): "
-		        "problem dimension and the given tensor dimension are not same."
-		     << endl;
+		ScreenMessage("***Error in CSolidProperties::HeatConductivityTensor(): "
+		        "problem dimension (%d) and the given tensor dimension (%d) are not same.\n", dim, thermal_conductivity_tensor_dim);
+
 	// reset
 	for (i = 0; i < 9; i++)
 		tensor[i] = 0.0;
