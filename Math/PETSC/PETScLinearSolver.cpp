@@ -191,13 +191,6 @@ void PETScLinearSolver::CreateMatrixVectors(SparseIndex& sparse_index)
 
 	ierr = MatSetSizes(A, sparse_index.m_size_loc, sparse_index.m_size_loc, PETSC_DECIDE, PETSC_DECIDE);
 	//ierr = MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, n_global_rows, n_global_cols);
-	PetscInt M, N;
-	MatGetSize(A, &M, &N);
-	ScreenMessage("-> matrix: global nrows=%d, ncols=%d\n", M, N);
-	PetscInt m, n;
-	MatGetLocalSize(A, &m, &n);
-	//ScreenMessage2("-> matrix: local nrows=%d, ncols=%d\n", m, n);
-	CHKERRABORT(PETSC_COMM_WORLD, ierr);
 
 	MatSetType(A, MATMPIAIJ);
 	MatSetFromOptions(A);
@@ -219,6 +212,14 @@ void PETScLinearSolver::CreateMatrixVectors(SparseIndex& sparse_index)
 	MatSetUp(A);
 #endif
 	MatSetOption(A, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);  // for MatZeroRows()
+
+	PetscInt M, N;
+	MatGetSize(A, &M, &N);
+	ScreenMessage("-> matrix: global nrows=%d, ncols=%d\n", M, N);
+	PetscInt m, n;
+	MatGetLocalSize(A, &m, &n);
+	ScreenMessage2("-> matrix: local nrows=%d, ncols=%d\n", m, n);
+
 	MatGetOwnershipRange(A, &i_start, &i_end);
 	ScreenMessage2d("-> PETSc linear solver range: start=%d, end=%d\n", i_start,
 	                i_end);
