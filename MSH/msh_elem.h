@@ -274,10 +274,7 @@ public:
 
 	//------------------------------------------------------------------
 	// MAT
-	Math_Group::Vector mat_vector;  // OKWW
-#ifndef OGS_ONLY_TH
-	int matgroup_view;  // TK
-#endif
+	Math_Group::Vector mat_vector;
 	//------------------------------------------------------------------
 	// Operator
 	// virtual void operator = (const CElem& elem);
@@ -297,12 +294,6 @@ public:
 	double courant;
 	double neumann;  // MSH topology
 
-	int GetExcavState() { return excavated; }  // WX:01.2011 get excavation
-	                                           // state
-	void SetExcavState(const int ExcavState)
-	{
-		excavated = ExcavState;
-	}  // WX:01.2011 set excavation state
 #endif
 #if defined(USE_PETSC)
 	bool isOverlapped() const { return g_index != NULL; }
@@ -336,9 +327,6 @@ private:
 	int face_index;  // Local face index for the instance for face
 	double volume;
 	double gravity_center[3];
-#ifndef OGS_ONLY_TH
-	int grid_adaptation;  // Flag for grid adapting.
-#endif
 	size_t patch_index;
 	double area;  // Flux area
 	//
@@ -347,7 +335,6 @@ private:
 	Math_Group::vec<CElem*> neighbors;
 #ifndef OGS_ONLY_TH
 	double* angle;
-	int excavated;
 #endif
 
 	// -- Methods

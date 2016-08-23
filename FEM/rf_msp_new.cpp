@@ -18,6 +18,7 @@
 
 #include "Curve.h"
 
+#include "ElementValueDM.h"
 #include "fem_ele_std.h"
 #include "fem_ele_vec.h"
 #include "rf_pcs.h"

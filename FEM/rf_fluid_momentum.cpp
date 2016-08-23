@@ -218,7 +218,6 @@ void CFluidMomentum::SolveDarcyVelocityOnNode()
 				}
 			}
 
-			//		MXDumpGLS("rf_pcs.txt",1,m_pcs->eqs->b,m_pcs->eqs->x);
 			m_pcs->IncorporateBoundaryConditions(-1, d);
 // Solve for velocity
 #ifdef NEW_EQS

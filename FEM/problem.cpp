@@ -30,6 +30,7 @@
 #include "msh_lib.h"
 #include "msh_node.h"
 
+#include "ElementValue.h"
 #include "fem_ele_std.h"
 #include "files0.h"
 #include "Output.h"

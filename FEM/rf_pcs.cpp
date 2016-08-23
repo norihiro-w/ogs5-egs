@@ -43,6 +43,7 @@
 
 // FEM
 #include "DistributionTools.h"
+#include "ElementValue.h"
 #include "eos.h"
 #include "fct_mpi.h"
 #include "FEMEnums.h"
@@ -3508,11 +3509,6 @@ double CRFProcess::Execute()
 	if (myrank == 0)
 #endif
 		cout << "Calling linear solver..." << endl;
-#ifdef CHECK_EQS
-	std::string eqs_name =
-	    convertProcessTypeToString(this->getProcessType()) + "_EQS.txt";
-	MXDumpGLS((char*)eqs_name.c_str(), 1, eqs->b, eqs->x);
-#endif
 //----------------------------------------------------------------------
 // Execute linear solver
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
@@ -3631,12 +3627,6 @@ double CRFProcess::Execute()
 #endif
 
 // Solve the algebra
-#ifdef CHECK_EQS
-		string eqs_name = convertProcessTypeToString(this->getProcessType()) +
-		                  "_EQS" + number2str(aktueller_zeitschritt) + ".txt";
-		MXDumpGLS((char*)eqs_name.c_str(), 1, eqs->b, eqs->x);
-#endif
-
 #if defined(USE_PETSC)
 		//		std::string eqs_output_file = FileName +
 		// number2str(aktueller_zeitschritt);
@@ -4295,8 +4285,6 @@ void CRFProcess::GlobalAssembly()
 		ScreenMessage("start local assembly for %d elements...\n",
 		              m_msh->ele_vector.size());
 	// const long n_eles = (long)m_msh->ele_vector.size();
-	const bool isTimeControlNeumann =
-	    (Tim->time_control_type == TimeControlType::NEUMANN);
 
 #ifdef USE_PETSC
 	for (size_t i = 0; i < eqs_new->vec_subRHS.size(); i++)
@@ -4315,27 +4303,11 @@ void CRFProcess::GlobalAssembly()
 			if (print_progress && (i + 1) % dn == 0) ScreenMessage("* ");
 			// ScreenMessage("%d \%\n", ((i+1)*100/n_eles));
 			elem = m_msh->ele_vector[i];
-// Marked for use //WX: modified for coupled excavation
-#ifndef OGS_ONLY_TH
-			if (elem->GetMark() && elem->GetExcavState() == -1)
-#else
-				if (elem->GetMark())
-#endif
+			if (elem->GetMark())
 			{
 				elem->SetOrder(false);
 				fem->ConfigElement(elem, Check2D3D);
 				fem->Assembly();
-				// NEUMANN CONTROL---------
-				if (isTimeControlNeumann)
-				{
-					Tim->time_step_length_neumann =
-					    MMin(Tim->time_step_length_neumann, timebuffer);
-					Tim->time_step_length_neumann *=
-					    0.5 * elem->GetVolume() * elem->GetVolume();
-					if (Tim->time_step_length_neumann < MKleinsteZahl)
-						Tim->time_step_length_neumann = 1.0e-5;
-				}
-				//------------------------------
 			}
 		}
 	}
@@ -4352,7 +4324,7 @@ void CRFProcess::GlobalAssembly()
 	eqs_new->AssembleRHS_PETSc();
 #endif
 
-	if (femFCTmode)  // NW
+	if (femFCTmode)
 		AddFCT_CorrectionVector();
 
 	if (write_leqs)
@@ -4367,12 +4339,9 @@ void CRFProcess::GlobalAssembly()
 		Dum.close();
 #elif defined(USE_PETSC)
 			eqs_new->EQSV_Viewer(fname);
-#else
-			MXDumpGLS(fname.c_str(), 1, eqs->b, eqs->x);
 #endif
 	}
 
-	//	          MXDumpGLS("rf_pcs1.txt",1,eqs->b,eqs->x); //abort();
 	// eqs_new->Write();
 	ScreenMessage("-> impose Neumann BC and source/sink terms\n");
 	IncorporateSourceTerms();
@@ -4388,12 +4357,8 @@ void CRFProcess::GlobalAssembly()
 		Dum.close();
 #elif defined(USE_PETSC)
 			eqs_new->EQSV_Viewer(fname);
-#else
-			MXDumpGLS(fname.c_str(), 1, eqs->b, eqs->x);
 #endif
 	}
-
-// MXDumpGLS("rf_pcs1.txt",1,eqs->b,eqs->x); //abort();
 
 
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012.
@@ -4443,9 +4408,7 @@ void CRFProcess::GlobalAssembly()
 		eqs_new->Write(Dum);
 		Dum.close();
 #elif defined(USE_PETSC)
-			eqs_new->EQSV_Viewer(fname);
-#else
-			MXDumpGLS(fname.c_str(), 1, eqs->b, eqs->x);
+		eqs_new->EQSV_Viewer(fname);
 #endif
 	}
 
@@ -4463,7 +4426,6 @@ void CRFProcess::GlobalAssembly()
 //
 //
 
-//		  MXDumpGLS("rf_pcs1.txt",1,eqs->b,eqs->x); //abort();
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012.
 	MPI_Barrier(MPI_COMM_WORLD);
 //	eqs_new->AssembleRHS_PETSc();
@@ -4508,27 +4470,15 @@ void CRFProcess::CalIntegrationPointValue()
 	CElem* elem = NULL;
 	cal_integration_point_value = false;
 	continuum = 0;  // 15.02.2007/
-	//  cal_integration_point_value = true;
-	// Currently, extropolation only valid for liquid and Richards flow.
-	//	if (_pcs_type_name.find("LIQUID") != string::npos ||
-	//_pcs_type_name.find(
-	//			"RICHARD") != string::npos || _pcs_type_name.find(
-	//			"MULTI_PHASE_FLOW") != string::npos || _pcs_type_name.find(
-	//			"GROUNDWATER_FLOW") != string::npos || _pcs_type_name.find(
-	//			"TWO_PHASE_FLOW") != string::npos
-	//			|| _pcs_type_name.find("AIR_FLOW") != string::npos
-	//			|| _pcs_type_name.find("PS_GLOBAL") != string::npos) //WW/CB
 	if (getProcessType() == FiniteElement::LIQUID_FLOW ||
 	    getProcessType() == FiniteElement::RICHARDS_FLOW ||
 	    getProcessType() == FiniteElement::MULTI_PHASE_FLOW ||
 	    getProcessType() == FiniteElement::GROUNDWATER_FLOW ||
 	    getProcessType() == FiniteElement::TWO_PHASE_FLOW ||
-	    getProcessType() == FiniteElement::DEFORMATION_H2  // 07.2011. WW
-	    ||
+	    getProcessType() == FiniteElement::DEFORMATION_H2 ||
 	    getProcessType() == FiniteElement::AIR_FLOW ||
 	    getProcessType() == FiniteElement::PS_GLOBAL ||
-	    getProcessType() == FiniteElement::DEFORMATION_FLOW  // NW
-	    ||
+	    getProcessType() == FiniteElement::DEFORMATION_FLOW  ||
 	    getProcessType() == FiniteElement::TH_MONOLITHIC)
 		cal_integration_point_value = true;
 	if (!cal_integration_point_value) return;
@@ -4536,16 +4486,15 @@ void CRFProcess::CalIntegrationPointValue()
 	for (size_t i = 0; i < mesh_ele_vector_size; i++)
 	{
 		elem = m_msh->ele_vector[i];
-		if (elem->GetMark())  // Marked for use
+		if (elem->GetMark())
 		{
 			fem->ConfigElement(elem);
-			fem->Config();  // OK4709
+			fem->Config();
 			// fem->m_dom = NULL; // To be used for parallization
 			fem->Cal_Velocity();
 		}
 	}
-	//	if (_pcs_type_name.find("TWO_PHASE_FLOW") != string::npos) //WW/CB
-	if (getProcessType() == FiniteElement::TWO_PHASE_FLOW)  // WW/CB
+	if (getProcessType() == FiniteElement::TWO_PHASE_FLOW)
 		cal_integration_point_value = false;
 }
 

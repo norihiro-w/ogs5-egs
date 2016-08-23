@@ -23,8 +23,10 @@
 #include "FileToolsRF.h"
 
 #include "Curve.h"
-
 #include "mathlib.h"
+
+#include "ElementValue.h"
+#include "ElementValueDM.h"
 #include "fem_ele_std.h"
 #include "fem_ele_vec.h"
 #include "rfmat_cp.h"

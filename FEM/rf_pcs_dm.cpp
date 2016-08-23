@@ -22,21 +22,22 @@
 #include "StringTools.h"
 
 #include "Curve.h"
+#include "mathlib.h"
+#if defined(NEW_EQS)
+#include "equation_class.h"
+#endif
+#ifdef USE_PETSC
+#include "PETSC/PETScLinearSolver.h"
+#endif
 
 #include "geo_sfc.h"
 
 #include "msh_elem.h"
 
-#include "mathlib.h"
-#if defined(NEW_EQS)
-#include "equation_class.h"
-#endif
+#include "ElementValueDM.h"
 #include "FEMEnums.h"
 #include "fem_ele_std.h"
 #include "fem_ele_vec.h"
-#ifdef USE_PETSC
-#include "PETSC/PETScLinearSolver.h"
-#endif
 #include "rf_bc_new.h"
 #include "rf_ic_new.h"
 #include "rf_node.h"

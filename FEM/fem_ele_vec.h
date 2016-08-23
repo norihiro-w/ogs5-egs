@@ -34,47 +34,7 @@ using namespace MeshLib;
 namespace FiniteElement
 {
 
-class ElementValue_DM
-{
-public:
-	ElementValue_DM(CElem* ele, const int NGP, bool HM_Staggered);
-	~ElementValue_DM();
-	void ResetStress(bool cpl_loop);
-	void Write_BIN(std::fstream& os);
-	void Read_BIN(std::fstream& is);
-	void ReadElementStressASCI(std::fstream& is);
-	double MeanStress(const int gp)
-	{
-		return (*Stress)(0, gp) + (*Stress)(1, gp) + (*Stress)(2, gp);
-	}
-
-private:
-	// Friend class
-	friend class SolidProp::CSolidProperties;
-	friend class ::CRFProcessDeformation;
-	friend class ::CMediumProperties;
-	friend class CFiniteElementVec;
-	Matrix* Stress0;  // Initial stress
-	Matrix* Stress;
-	Matrix* Stress_i;
-	Matrix* Stress_j;
-	Matrix* Strain;
-	Matrix* pStrain;
-	Matrix* y_surface;
-	// Preconsolidation pressure
-	Matrix* prep0;
-	Matrix* e_i;  // Void ratio
-	// Variables of single yield surface model
-	Matrix* xi;    // Rotational hardening variables
-	Matrix* MatP;  // Material parameters
-
-	// Discontinuity
-	double disp_j;
-	double tract_j;
-	bool Localized;
-	Matrix* NodesOnPath;
-	double* orientation;
-};
+class ElementValue_DM;
 
 // Derived element for deformation caculation
 class CFiniteElementVec : public CElement
@@ -249,5 +209,4 @@ private:
 };
 }  // end namespace
 
-extern std::vector<FiniteElement::ElementValue_DM*> ele_value_dm;
 #endif

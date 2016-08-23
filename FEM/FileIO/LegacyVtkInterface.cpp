@@ -9,19 +9,24 @@
 // ** INCLUDES **
 #include "LegacyVtkInterface.h"
 
-#include "display.h"
-#include "FEMEnums.h"
-#include "ProcessInfo.h"
-#include "fem_ele_std.h"
-#include "matrix_class.h"
-#include "msh_lib.h"
-#include "msh_mesh.h"
-#include "rf_mmp_new.h"  // this is for class CMediumProperties, what else???
-#include "rf_pcs.h"
-#include "rf_pcs.h"
-
 #include <string>
 #include <iomanip>
+
+#include "display.h"
+#include "makros.h"
+
+#include "matrix_class.h"
+
+#include "msh_lib.h"
+#include "msh_mesh.h"
+
+#include "FEMEnums.h"
+#include "fem_ele_std.h"
+#include "ProcessInfo.h"
+#include "ElementValue.h"
+#include "rf_mmp_new.h"
+#include "rf_pcs.h"
+
 
 #if defined(VTK_FOUND) && defined(OGS_USE_QT)
 #include "vtkMath.h"
