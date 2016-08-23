@@ -656,9 +656,9 @@ bool readGLIFileV4(const std::string& fname, GEOObjects* geo,
 		                   *pnt_vec, path, errors);
 		ScreenMessage("-> ok, %d surfaces read\n", sfc_vec->size());
 	}
-	else
-		ScreenMessage(
-		    "tag #SURFACE not found or input stream error in GEOObjects\n");
+//	else
+//		ScreenMessage(
+//		    "tag #SURFACE not found or input stream error in GEOObjects\n");
 
 	in.close();
 
