@@ -244,6 +244,7 @@ public:
 	void SwitchOnQuadraticNodes(bool quad) { useQuadratic = quad; }
 	bool getOrder() const { return useQuadratic; }
 	bool isAxisymmetry() const { return _axisymmetry; }
+	void isAxisymmetry(bool f) { _axisymmetry = f; }
 
 	size_t GetNodesNumber(const bool quadr) const
 	{

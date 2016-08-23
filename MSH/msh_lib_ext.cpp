@@ -51,6 +51,7 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 	ifstream is; // only root opens the file
 
 	const bool isRoot = (myrank == 0);
+	bool axisymmetric = false;
 	if (isRoot)
 	{
 		std::string str_var = file_base_name + "_partitioned.msh";
@@ -72,9 +73,13 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 				MPI_Abort(MPI_COMM_WORLD, 1);
 			}
 		}
-		getline(is, str_var);
+		std::string str_line;
+		getline(is, str_line);
+		getline(is, str_line);
+		std::stringstream ss(str_line);
 		int num_parts;
-		is >> num_parts >> ws;
+		std::string temp;
+		ss >> num_parts >> temp >> ws;
 		if (num_parts != mysize)
 		{
 			string str_m =
@@ -87,9 +92,17 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 			PetscFinalize();
 			exit(1);
 		}
+		if (temp == "AXISYMMETRY") {
+			axisymmetric = true;
+			ScreenMessage("-> the mesh is axisymmetric\n");
+		}
 	}
 
 	CFEMesh* mesh = new CFEMesh(geo_obj, unique_name);
+	int i_axisymmetric = axisymmetric ? 1 : 0;
+	MPI_Bcast(&i_axisymmetric, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	axisymmetric = (i_axisymmetric!=0);
+	mesh->isAxisymmetry(axisymmetric);
 	mesh_vec.push_back(mesh);
 
 	MPI_Barrier(MPI_COMM_WORLD);
