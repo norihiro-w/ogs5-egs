@@ -3346,14 +3346,18 @@ void CRFProcess::ConfigTH()
 **************************************************************************/
 void CRFProcess::CheckMarkedElement()
 {
-	for (auto elem : m_msh->ele_vector)
+	for (CNode* node : m_msh->nod_vector)
+		node->SetMark(false);
+
+	for (CElem* elem : m_msh->ele_vector)
 	{
 		bool done = false;
 		for (auto mat_id : Deactivated_SubDomain)
 		{
 			if (elem->GetPatchIndex() == (unsigned)mat_id)
 			{
-				elem->MarkingAll(false);
+				elem->SetMark(false);
+				//elem->MarkingAll(false);
 				done = true;
 				break;
 			}
@@ -3367,7 +3371,7 @@ void CRFProcess::CheckMarkedElement()
 
 	for (size_t l = 0; l < m_msh->ele_vector.size(); l++)
 	{
-		auto elem = m_msh->ele_vector[l];
+		CElem* elem = m_msh->ele_vector[l];
 		if (!elem->GetMark()) continue;
 		for (size_t i = 0; i < elem->GetNodesNumber(m_msh->getOrder()); i++)
 		{
