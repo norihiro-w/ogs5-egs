@@ -1183,8 +1183,8 @@ void CFEMesh::FillTransformMatrix()
 **************************************************************************/
 long CFEMesh::GetNODOnPNT(const GEOLIB::Point* const pnt) const
 {
-#if defined(USE_PETSC)  // || defined (other parallel linear solver lib). //WW.
-	                    // 05.2012
+//#if defined(USE_PETSC)
+#if 1
 	long node_id = -1;
 
 	const size_t nodes_in_usage = NodesInUsage();
