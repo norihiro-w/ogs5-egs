@@ -899,14 +899,12 @@ void CFiniteElementVec::LocalAssembly(const int update)
 	// For strain and stress extropolation all element types
 	// Number of elements associated to nodes
 	for (int i = 0; i < nnodes; i++)
-		dbuff[i] =
-		    (double)MeshElement->GetNode(i)->getConnectedElementIDs().size();
+		dbuff[i] = (double)MeshElement->GetNode(i)->getConnectedElementIDs().size();
 
 	// Get displacement_n
 	for (size_t i = 0; i < dim; i++)
 		for (j = 0; j < nnodesHQ; j++)
-			Disp[j + i * nnodesHQ] =
-				pcs->GetNodeValue(nodes[j], Idx_dm0[i]);
+			Disp[j + i * nnodesHQ] = pcs->GetNodeValue(nodes[j], Idx_dm0[i]);
 
 	// Get saturation of element nodes
 	if (Flow_Type > 0 && Flow_Type != 10)
@@ -1144,7 +1142,6 @@ void CFiniteElementVec::add2GlobalMatrixII()
 	os_t << "\n==================================================\n";
 #endif
 
-#if 1
 	m_dim = nnodesHQ * ndof;
 	n_dim = m_dim;
 	local_matrix = Stiffness->getEntryArray();
@@ -1169,122 +1166,6 @@ void CFiniteElementVec::add2GlobalMatrixII()
 	for (int i = 0; i < m_dim; i++)
 		temp_vec[i] = -local_vec[i];  // r -= RHS
 	pcs->eqs_new->setArrayValues(1, m_dim, row_ids, &temp_vec[0]);
-
-#else
-	if (act_nodes_h != nnodesHQ)
-	{
-		m_dim = act_nodes_h * ndof;
-		n_dim = nnodesHQ * ndof;
-
-		const int dim_full = nnodesHQ * ndof;
-		int i_dom, in;
-		double* loc_m = Stiffness->getEntryArray();
-		double* loc_v = RHS->getEntryArray();
-
-		for (int i = 0; i < nnodesHQ; i++)
-		{
-			const int i_buff = MeshElement->GetNode(i)->GetEquationIndex(true) * ndof;
-			for (int k = 0; k < ndof; k++)
-			{
-				col_ids[k * nnodesHQ + i] = i_buff + k;
-			}
-		}
-
-		static std::vector<double> temp_local_vec(60);
-		static std::vector<double> temp_local_matrix(60 * 60);
-		local_matrix = &temp_local_matrix[0];
-		local_vec = &temp_local_vec[0];
-		for (int i = 0; i < m_dim; i++)
-		{
-			i_dom = i / act_nodes_h;
-			in = i % act_nodes_h;
-			int i_full = local_idx[in] + i_dom * nnodesHQ;
-			local_vec[i] = loc_v[i_full];
-			i_full *= dim_full;
-
-			row_ids[i] = MeshElement->GetNode(local_idx[in])->GetEquationIndex(true) * ndof + i_dom;
-
-			for (int j = 0; j < dim_full; j++)
-			{
-				local_matrix[i * dim_full + j] = loc_m[i_full + j];
-#ifdef assmb_petsc_test
-				os_t << "(" << local_idx[in] << ") " << local_matrix[i * dim_full + j] << " ";
-#endif
-			}
-
-#ifdef assmb_petsc_test
-			os_t << "\n";
-#endif
-		}
-	}
-	else
-	{
-		m_dim = nnodesHQ * ndof;
-		n_dim = m_dim;
-		local_matrix = Stiffness->getEntryArray();
-		local_vec = RHS->getEntryArray();
-
-		for (int i = 0; i < nnodesHQ; i++)
-		{
-			const int offset = MeshElement->GetNode(i)->GetEquationIndex(true) * ndof;
-			for (int k = 0; k < ndof; k++)
-			{
-				const int ki = k * nnodesHQ + i;
-				row_ids[ki] = offset + k;
-				col_ids[ki] = row_ids[ki];
-			}
-		}
-	}
-
-// TEST
-#ifdef assmb_petsc_test
-	{
-		os_t << "\n------------------" << act_nodes* dof << "\n";
-		Stiffness->Write(os_t);
-		RHS->Write(os_t);
-
-		os_t << "Node ID: ";
-		for (i = 0; i < this->nnodesHQ; i++)
-		{
-			os_t << MeshElement->GetNode(i)->GetEquationIndex() << " ";
-		}
-		os_t << "\n";
-		os_t << "Act. Local ID: ";
-		for (i = 0; i < act_nodes; i++)
-		{
-			os_t << local_idx[i] << " ";
-		}
-		os_t << "\n";
-		os_t << "Act. Global ID:";
-		for (i = 0; i < act_nodes * dof; i++)
-		{
-			os_t << idxm[i] << " ";
-		}
-		os_t << "\n";
-		os_t << "All Global ID:";
-		for (i = 0; i < nnodesHQ * dof; i++)
-		{
-			os_t << idxn[i] << " ";
-		}
-		os_t << "\n";
-	}
-	os_t.close();
-#endif  // ifdef assmb_petsc_test
-
-	petsc_group::PETScLinearSolver* eqs = pcs->eqs_new;
-	//	ScreenMessage2("-> addMatrixEntries begin\n");
-	eqs->addMatrixEntries(m_dim, row_ids, n_dim, col_ids, &local_matrix[0]);
-	//	ScreenMessage2("-> addMatrixEntries end\n");
-	//	ScreenMessage2("-> setArrayValues begin\n");
-
-	static double temp_vec[100];
-	for (int i = 0; i < m_dim; i++)
-		temp_vec[i] = -local_vec[i];  // r -= RHS
-	eqs->setArrayValues(1, m_dim, row_ids, &temp_vec[0]);
-	//	ScreenMessage2("-> add2petsc end\n");
-	// eqs->AssembleRHS_PETSc();
-	// eqs->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY );
-#endif
 
 }
 #endif
@@ -1499,10 +1380,8 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 	gp_t = 0;
 	double fkt = 0.0;
 
-	// WW double *DevStress ;
 	const int PModel = smat->Plasticity_type;
 	double dPhi = 0.0;  // Sclar factor for the plastic strain
-	//  double J2=0.0;
 	double dS = 0.0;
 
 	double ThermalExpansion = 0.0;
@@ -1515,32 +1394,26 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 	if (smat->Thermal_Expansion() > 0.0)
 		ThermalExpansion = smat->Thermal_Expansion();
 
-	// Get porosity model
-	// ---- Material properties
 	// For swelling pressure;
 	double deporo = 0.0;
-	// OK_MMP
-	//--------------------------------------------------------------------
-	// MMP medium properties
 	int PoroModel = m_mmp->porosity_model;
 	if (PoroModel == 4)
-		// OK deporo =  PCSGetElementPorosityChangeRate(index)/(double)ele_dim;
-		// MX  deporo =
-		// PCSGetELEValue(index,NULL,1.0,"n_sw_Rate")/(double)ele_dim;
 		deporo = h_pcs->GetElementValue(
 		             Index, h_pcs->GetElementValueIndex("n_sw_rate")) /
 		         (double)ele_dim;
+
 	if (T_Flag)
+	{
 		for (i = 0; i < nnodes; i++)
 		{
 			T1[i] = t_pcs->GetNodeValue(nodes[i], idx_T1);
 			Temp[i] = t_pcs->GetNodeValue(nodes[i], idx_T1) -
 			          t_pcs->GetNodeValue(nodes[i], idx_T0);
 		}
+	}
 	//
 
-	if (PModel == 1 || PModel == 10 ||
-	    PModel == 11)  // WX:modified for DP with tension cutoff
+	if (PModel == 1 || PModel == 10 || PModel == 11)
 		smat->CalulateCoefficent_DP();
 	//
 	if (PModel != 3 && smat->Youngs_mode != 2)  // modified due to transverse
@@ -1549,19 +1422,14 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 	{
 		if (smat->Youngs_mode < 10 || smat->Youngs_mode > 13)
 		{
-#ifdef RFW_FRACTURE
-			smat->Calculate_Lame_Constant(GetMeshElement());
-#else
 			smat->Calculate_Lame_Constant();
-#endif
-			//
 			smat->ElasticConsitutive(ele_dim, De);
 		}
 		else
 			*De = *(smat->getD_tran());  // UJG/WW
 	}
 
-	if (PModel == 5) smat->CalculateCoefficent_HOEKBROWN();  // WX:02.2011
+	if (PModel == 5) smat->CalculateCoefficent_HOEKBROWN();
 	                                                         /*
 	                                                            string fname=FileName+"_D.txt";
 	                                                            ofstream out_f(fname.c_str());
