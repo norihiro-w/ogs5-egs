@@ -61,11 +61,6 @@ public:
 	// Get strain
 	double* GetStrain() const { return dstrain; }
 
-	//----------- Enhanced element -----------------------
-	// Geometry related
-	bool LocalAssembly_CheckLocalization(CElem* MElement);
-	int IntersectionPoint(const int O_edge, const double* NodeA, double* NodeB);
-	//----------- End of enhanced element ----------------
 private:
 	CRFProcessDeformation* pcs;
 	CRFProcess* h_pcs;
@@ -137,24 +132,8 @@ private:
 	// Element value
 	ElementValue_DM* eleV_DM;
 
-	//------ Enhanced element ------
-	// Jump flag of element nodes
-	bool* NodesInJumpedA;
-	// Regular enhanced strain matrix
-	Matrix* Ge;
-	// Singular enhanced strain matrix
-	Matrix* Pe;
-	// Additional node. Normally, the gravity center
-	double* X0;
-	// Normal to the discontinuity surface
-	double* n_jump;
-	// principle stresses
-	double* pr_stress;
 	// Compute principle stresses
-	double ComputePrincipleStresses(const double* Stresses);
-	// Compute principle stresses
-	double ComputeJumpDirectionAngle(const double* Mat);
-	//------ End of enhanced element ------
+	double ComputePrincipleStresses(const double* Stresses, double* pr_stress);
 
 	// Form B matric
 	void setB_Matrix(const int LocalIndex);
@@ -165,8 +144,6 @@ private:
 
 	// Temporarily used variables
 	double* Sxx, *Syy, *Szz, *Sxy, *Sxz, *Syz, *pstr;
-	// 2. For enhanced strain approach
-	Matrix* BDG, *PDB, *DtD, *PeDe;  // For enhanced strain element
 
 	/// Extropolation
 	bool RecordGuassStrain(const int gp, const int gp_r, const int gp_s,
@@ -188,13 +165,6 @@ private:
 #ifdef USE_PETSC
 	void add2GlobalMatrixII();
 #endif
-
-	//----------- Enhanced element ----------------
-	void CheckNodesInJumpedDomain();
-	// Compute the regular enhanced strain matrix
-	void ComputeRESM(const double* tangJump = NULL);
-	// Compute the singular enhanced strain matrix
-	void ComputeSESM(const double* tangJump = NULL);
 
 	friend class ::CRFProcessDeformation;
 

@@ -1385,10 +1385,6 @@ bool PCSRead(std::string file_base_name)
 **************************************************************************/
 CRFProcess* CRFProcess::CopyPCStoDM_PCS()
 {
-	// Numerics
-	if (num_type_name.compare("STRONG_DISCONTINUITY") == 0)
-		enhanced_strain_dm = 1;
-
 	CRFProcessDeformation* dm_pcs(new CRFProcessDeformation());
 	dm_pcs->setProcessType(this->getProcessType());
 	dm_pcs->pcs_type_name_vector.push_back(pcs_type_name_vector[0].data());

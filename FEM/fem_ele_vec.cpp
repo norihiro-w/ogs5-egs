@@ -53,7 +53,6 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 	t_pcs = NULL;
 
 	AuxNodal2 = NULL;
-	X0 = n_jump = pr_stress = NULL;
 	//
 	dim = pcs->m_msh->GetMaxElementDim();  // overwrite dim in CElement
 	ns = 4;
@@ -120,13 +119,6 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 				break;
 		}
 	}
-	//  10.11.2010. WW
-	if (enhanced_strain_dm)
-	{
-		X0 = new double[3];
-		n_jump = new double[3];
-		pr_stress = new double[3];
-	}
 
 	//
 	switch (dim)
@@ -154,17 +146,6 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 			Sxz = NULL;
 			Syz = NULL;
 
-			if (enhanced_strain_dm)
-			{
-				NodesInJumpedA = new bool[9];
-				Ge = new Matrix(4, 2);
-				Pe = new Matrix(2, 4);
-				PeDe = new Matrix(2, 4);
-
-				BDG = new Matrix(2, 18);
-				PDB = new Matrix(18, 2);
-				DtD = new Matrix(2, 2);
-			}
 			break;
 		case 3:
 			ns = 6;
@@ -359,25 +340,6 @@ CFiniteElementVec::~CFiniteElementVec()
 		RHS = NULL;
 	}
 
-	if (enhanced_strain_dm)
-	{
-		delete NodesInJumpedA;
-		delete Ge;
-		delete Pe;
-		delete PeDe;
-		delete BDG;
-		delete PDB;
-		delete DtD;
-
-		NodesInJumpedA = NULL;
-		Ge = NULL;
-		Pe = NULL;
-		PeDe = NULL;
-		BDG = NULL;
-		PDB = NULL;
-		DtD = NULL;
-	}
-
 	// 11.07.2011. WW
 	if (PressureC) delete PressureC;
 	if (PressureC_S) delete PressureC_S;
@@ -401,11 +363,6 @@ CFiniteElementVec::~CFiniteElementVec()
 	Sxz = NULL;
 	Syz = NULL;
 	pstr = NULL;
-	//  10.11.2010. WW
-	if (X0) delete[] X0;
-	if (n_jump) delete[] n_jump;
-	if (pr_stress) delete[] pr_stress;
-	X0 = n_jump = pr_stress = NULL;
 	delete[] AuxNodal;
 	delete[] AuxNodal0;
 	delete[] AuxNodal_S0;
@@ -2295,129 +2252,6 @@ void CFiniteElementVec::ExtropolateGuassStress()
 	}
 }
 
-//==========================================================================
-// Enhanced strain element
-/***************************************************************************
-   GeoSys - Funktion:
-        CFiniteElementVec::CheckNodesInJumpedDomain(const double *tangJump)
-
-   Aufgabe:
-         Compute the regular enhanced strain matrix (Only 2D)
-          Ge: (See the related references)
-      (Prorior: element nodes is fetched )
-
-   Formalparameter:
-         E:
-   const double *tangJump   : Tangential to the jump surface
-
-   Programming:
-   06/2004     WW        Erste Version
- **************************************************************************/
-void CFiniteElementVec::CheckNodesInJumpedDomain()
-{
-	int i;
-	double cdotpdt;
-	//	static double dphi_e[3];
-
-	// 2D
-	// Get the center of the discontinuity
-
-	X0[0] =
-	    0.5 * ((*eleV_DM->NodesOnPath)(0, 0) + (*eleV_DM->NodesOnPath)(0, 1));
-	X0[1] =
-	    0.5 * ((*eleV_DM->NodesOnPath)(1, 0) + (*eleV_DM->NodesOnPath)(1, 1));
-	X0[2] =
-	    0.5 * ((*eleV_DM->NodesOnPath)(2, 0) + (*eleV_DM->NodesOnPath)(2, 1));
-
-	// Determine nodes in the jumping part
-	for (i = 0; i < nnodesHQ; i++)
-	{
-		NodesInJumpedA[i] = false;
-		cdotpdt = 0.0;
-		cdotpdt += n_jump[0] * (X[i] - X0[0]);
-		cdotpdt += n_jump[1] * (Y[i] - X0[1]);
-		if (ele_dim == 3) cdotpdt += n_jump[2] * (Z[i] - X0[2]);
-		if (cdotpdt > 0.0) NodesInJumpedA[i] = true;  // Nodes in $\Omega_+$
-	}
-}
-
-/***************************************************************************
-   GeoSys - Funktion:
-           CFiniteElementVec::ComputeRESM(double * normJump)
-
-   Aufgabe:
-         Compute the regular enhanced strain matrix (Only 2D)
-          Ge: (See the related references)
-      (Prorior: element nodes is fetched )
-
-   Formalparameter:
-         E:
-   const double *tangJump   : Tangential to the jump surface
-
-   Programming:
-   06/2004     WW        Erste Version
- **************************************************************************/
-void CFiniteElementVec::ComputeRESM(const double* tangJump)
-{
-	static double dphi_e[3];
-
-	for (size_t i = 0; i < ele_dim; i++)
-	{
-		dphi_e[i] = 0.0;
-		for (int j = 0; j < nnodesHQ; j++)
-			//        for(int j=0; j<nnodes; j++)
-
-			if (NodesInJumpedA[j]) dphi_e[i] += dshapefctHQ[i * nnodesHQ + j];
-		//               dphi_e[i] += dshapefct[i*nnodes+j];
-	}
-	// !!! Only for 2D up to now
-	tangJump = tangJump;
-	// Column 1
-	(*Ge)(0, 0) = n_jump[0] * dphi_e[0];
-	(*Ge)(1, 0) = n_jump[1] * dphi_e[1];
-	(*Ge)(2, 0) = 0.0;
-	(*Ge)(3, 0) = n_jump[0] * dphi_e[1] + n_jump[1] * dphi_e[0];
-
-	// Column 2
-	(*Ge)(0, 1) = -n_jump[1] * dphi_e[0];
-	(*Ge)(1, 1) = n_jump[0] * dphi_e[1];
-	(*Ge)(2, 1) = 0.0;
-	(*Ge)(3, 1) = -n_jump[1] * dphi_e[1] + n_jump[0] * dphi_e[0];
-}
-
-/***************************************************************************
-   GeoSys - Funktion:
-           CFiniteElementVec::ComputeSESM(double * normJump)
-
-   Aufgabe:
-         Compute the singular enhanced strain matrix (Only 2D)
-          Ge: (See the related references)
-      (Prorior: element nodes is fetched )
-
-   Formalparameter:
-         E:
-   const double *tangJump   : Tangential to the jump surface
-
-   Programming:
-   06/2004     WW        Erste Version
- **************************************************************************/
-void CFiniteElementVec::ComputeSESM(const double* tangJump)
-{
-	// !!! Only for 2D up to now
-	tangJump = tangJump;
-	// Column 1
-	(*Pe)(0, 0) = n_jump[0] * n_jump[0];
-	(*Pe)(0, 1) = n_jump[1] * n_jump[1];
-	(*Pe)(0, 2) = 0.0;
-	(*Pe)(0, 3) = 2.0 * n_jump[0] * n_jump[1];
-
-	// Column 2
-	(*Pe)(1, 0) = -n_jump[0] * n_jump[1];
-	(*Pe)(1, 1) = n_jump[1] * n_jump[0];
-	(*Pe)(1, 2) = 0.0;
-	(*Pe)(1, 3) = n_jump[0] * n_jump[0] - n_jump[1] * n_jump[1];
-}
-
 /***************************************************************************
    GeoSys - Funktion:
       CFiniteElementVec::ComputePrincipleStresses(double *dEStress)
@@ -2434,7 +2268,7 @@ void CFiniteElementVec::ComputeSESM(const double* tangJump)
    Programming:
    06/2004     WW        Erste Version
  **************************************************************************/
-double CFiniteElementVec::ComputePrincipleStresses(const double* Stresses)
+double CFiniteElementVec::ComputePrincipleStresses(const double* Stresses, double* pr_stress)
 {
 	double prin_ang, var;
 	// Angle of the principle plane
@@ -2462,306 +2296,6 @@ double CFiniteElementVec::ComputePrincipleStresses(const double* Stresses)
 	}
 	// if(pr_stress[0]<0.0) prin_ang += pai;
 	return prin_ang;
-}
-/***************************************************************************
-   GeoSys - Funktion:
-      CFiniteElementVec::ComputeJumpDirectionAngle(const double *Stresses,
- double *Mat)
-      (2D Drucker-Prager plasticity only.
-       cf. K. Runesson, D. Peric and S. Sture,
-      Discontinuous bifucations of elasto-plastic solutions at plane stress
-      and plane strain, Int. J. Plasticity 7(1991) 2087-2105)
-   Aufgabe:
-
-   Formalparameter:
-         E:
-   const double *Stresses: Stresses
-   const double *Mat     : Material parameters
-   0, dilatancy
-   1, frictional
-   2, Poission ratio
-   Return: Angle of maxium principle stress component to x direction
-
-   Programming:
-   06/2004     WW        Erste Version
- **************************************************************************/
-double CFiniteElementVec::ComputeJumpDirectionAngle(const double* Mat)
-{
-	double NormS, c1, c2;
-	DeviatoricStress(pr_stress);
-	NormS = sqrt(TensorMutiplication2(pr_stress, pr_stress, ele_dim));
-	c1 = pr_stress[1] + Mat[2] * pr_stress[2] +
-	     0.5 * (1.0 + Mat[2]) * (Mat[0] + Mat[1]) * NormS;
-	c2 = pr_stress[0] + Mat[2] * pr_stress[2] +
-	     0.5 * (1.0 + Mat[2]) * (Mat[0] + Mat[1]) * NormS;
-
-	if (c1 >= 0.0 || c2 <= 0.0)
-		NormS = -1.0;
-	else
-		NormS = atan(sqrt(-c2 / c1));
-
-	return NormS;  // The angle return through NormS
-}
-
-/**************************************************************************
-   GeoSys - Funktion:
-    void CFiniteElementVec::LocalAssembly_CheckLocalization
-
-   Aufgabe:
-     Trace discontinuity surface and determine the normal direction to it
-     element-wisely. (Material related)
-    (Drucker-Prager model and 2D only)
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E :
-
-   Programmaenderungen:
-   06/2004   WW  Erste Version
-**************************************************************************/
-bool CFiniteElementVec::LocalAssembly_CheckLocalization(CElem* MElement)
-{
-	int i, j, k;
-	int MatGroup;
-
-	double ep, p, normXi, n2;
-
-	// For enhanced strain element
-	double h_loc, detA, h_tol = 1.0e-5;
-	double pr_stress_ang, loc_ang;
-	static double OriJ[2], Nj[2], Aac[4], Mat[3];
-	bool LOCed = false;
-	//
-	MeshElement = MElement;
-	eleV_DM = ele_value_dm[MeshElement->GetIndex()];
-
-	p = 0.0;
-	// Get the total effective plastic strain
-	ep = 0.0;
-	for (i = 0; i < nGaussPoints; i++)
-		ep += (*eleV_DM->pStrain)(i);
-	ep /= (double)nGaussPoints;
-
-	if (ep > 0.0)  // in yield status
-	{
-		if (!eleV_DM->Localized)
-		{
-#ifdef RFW_FRACTURE
-			smat->Calculate_Lame_Constant(MeshElement);
-#endif
-#ifndef RFW_FRACTURE
-			smat->Calculate_Lame_Constant();
-#endif
-			smat->CalulateCoefficent_DP();
-
-			MatGroup = MeshElement->GetPatchIndex();
-			smat = msp_vector[MatGroup];
-
-			Mat[0] = smat->Al;
-			Mat[1] = smat->Xi;
-			Mat[2] = smat->Poisson_Ratio();
-
-			// Compute the average stress of this element
-			for (i = 0; i < ns; i++)
-				dstress[i] = 0.0;
-			for (i = 0; i < nGaussPoints; i++)
-				for (j = 0; j < ns; j++)
-					dstress[j] += (*eleV_DM->Stress)(j, i);
-			for (i = 0; i < ns; i++)
-				dstress[i] /= (double)nGaussPoints;
-
-			// Get the converged stresses of the previous step
-			//--- Compute the determinate of the acoustic tensor
-			pr_stress_ang = ComputePrincipleStresses(dstress);
-			loc_ang = ComputeJumpDirectionAngle(Mat);
-
-			normXi = sqrt(TensorMutiplication2(pr_stress, pr_stress, ele_dim));
-
-			// Compute the localization condition
-			h_loc = pr_stress[2] / normXi + 0.5 * (smat->Al + smat->Xi) -
-			        0.5 * sqrt(2.0 / (1.0 - smat->Poisson_Ratio())) *
-			            (smat->Al - smat->Xi);
-			detA = 1.0e8;
-
-			// Two possible jump orientation, i.e. pr_stress_ang+/-loc_ang
-			OriJ[0] = pr_stress_ang - loc_ang + 0.5 * pai;
-			OriJ[1] = pr_stress_ang + loc_ang + 0.5 * pai;
-
-			// Compute the acoustic matrix
-			DeviatoricStress(dstress);
-			normXi = sqrt(TensorMutiplication2(dstress, dstress, ele_dim));
-			if (loc_ang > 0.0)
-			{
-				for (i = 0; i < ns; i++)
-					dstress[i] /= normXi;
-				for (k = 0; k < 2; k++)
-				{
-					n_jump[0] = cos(OriJ[k]);
-					n_jump[1] = sin(OriJ[k]);
-					//
-					Nj[0] = dstress[0] * n_jump[0] + dstress[3] * n_jump[1];
-					Nj[1] = dstress[3] * n_jump[0] + dstress[1] * n_jump[1];
-
-					for (i = 0; i < 4; i++)
-						Aac[i] = 0.0;
-					for (i = 0; i < 2; i++)
-					{
-						Aac[i * 2 + i] = smat->G;
-						for (j = 0; j < 2; j++)
-							Aac[i * 2 + j] +=
-							    (smat->K + smat->G / 3.0) * n_jump[i] *
-							        n_jump[j] -
-							    (4.5 * smat->Al * smat->Xi * smat->K * smat->K *
-							         n_jump[i] * n_jump[j] +
-							     3.0 * smat->G * smat->K *
-							         (smat->Al * Nj[i] * n_jump[j] +
-							          smat->Xi * Nj[j] * n_jump[i]) +
-							     2.0 * smat->G * smat->G * Nj[i] * Nj[j]) /
-							        (4.5 * smat->Al * smat->Xi * smat->K +
-							         smat->G);
-					}
-					detA = Aac[0] * Aac[3] - Aac[1] * Aac[2];
-					if (detA <= 0.0)
-					{
-						LOCed = true;
-						break;
-					}
-				}
-				for (i = 0; i < ns; i++)
-					dstress[i] *= normXi;
-			}
-			//
-			if (fabs(h_loc) < h_tol) LOCed = true;
-
-			if (LOCed)
-			{
-				eleV_DM->orientation = new double[ele_dim];
-				for (i = 0; i < 2; i++)
-					eleV_DM->orientation[i] = OriJ[i];
-				eleV_DM->Localized = true;
-
-				// Choose one orientation. Empirical formular. 2D
-				if (!Localizing)
-				{
-					for (i = 0; i < 3; i++)
-						dstress[i] += p / 3.0;
-					// WW n1 =
-					// (dstress[0]*cos(0.5*pai+OriJ[0])+dstress[1]*sin(0.5*pai+OriJ[0]))/normXi;
-					n2 = (dstress[0] * cos(0.5 * pai + OriJ[1]) +
-					      dstress[1] * sin(0.5 * pai + OriJ[1])) /
-					     normXi;
-					if (n2 > 0.0)
-					{
-						// Always use orientation[0]
-						eleV_DM->orientation[0] = OriJ[1];
-						eleV_DM->orientation[1] = OriJ[0];
-					}
-				}
-			}
-		}
-	}
-	return LOCed;
-}
-
-/**************************************************************************
-   GeoSys - Funktion:
-    void CFiniteElementVec::IntersectionPoint(const int O_edge, const double k,
-                                       const double *NodeA, double nodeB  )
-    2D only
-   Aufgabe:
-        Determine the second intersection point of a line and the element.
-        2D only (Geometry)
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E :
-          const int O_edge       :   Edge will the departure point on
-   const double *NodeA    :   original node
-   double nodeB           :   Intersection point
-
-   Programmaenderungen:
-   06/2004   WW  Erste Version
-**************************************************************************/
-int CFiniteElementVec::IntersectionPoint(const int O_edge, const double* NodeA,
-                                         double* NodeB)
-{
-	int i, j, k, numf;  //, nfnode;
-
-	static double k1, k2, n1, n2, xA[3], xB[3];
-	static int Face_node[8];  // Only 2D
-
-	double Tol = 1.0e-12;
-	double area0, area1;
-	area0 = MeshElement->GetVolume();
-
-	k = -1;
-
-	eleV_DM = ele_value_dm[Index];
-
-	numf = MeshElement->GetFacesNumber();
-	for (i = 0; i < numf; i++)
-	{
-		k = -1;
-		if (i != O_edge)
-		{
-			// WW nfnode =
-			MeshElement->GetElementFaceNodes(i, Face_node);
-
-			xA[0] = X[Face_node[0]];
-			xA[1] = Y[Face_node[0]];
-			xA[2] = Z[Face_node[0]];
-			xB[0] = X[Face_node[1]];
-			xB[1] = Y[Face_node[1]];
-			xB[2] = Z[Face_node[1]];
-
-			n1 = cos(eleV_DM->orientation[0]);
-			n2 = sin(eleV_DM->orientation[0]);
-
-			// parallel
-			if (fabs((xB[0] - xA[0]) * n1 + (xB[1] - xA[1]) * n2) < Tol)
-				continue;
-
-			if (fabs(n2) < Tol)
-			{
-				NodeB[0] = NodeA[0];
-				NodeB[1] =
-				    (NodeA[0] - xA[0]) * (xB[1] - xA[1]) / (xB[0] - xA[0]) +
-				    xA[1];
-			}
-			else if (fabs(xB[0] - xA[0]) < Tol)
-			{
-				NodeB[0] = xA[0];
-				NodeB[1] = -n1 * (xA[0] - NodeA[0]) / n2 + NodeA[1];
-			}
-			else
-			{
-				k1 = (xB[1] - xA[1]) / (xB[0] - xA[0]);
-				k2 = -n1 / n2;
-				NodeB[0] =
-				    (NodeA[1] - xA[1] + k1 * xA[0] - k2 * NodeA[0]) / (k1 - k2);
-				NodeB[1] = k1 * (NodeB[0] - xA[0]) + xA[1];
-			}
-			k = i;
-		}
-
-		// Check if this point is on an edge of this element.
-		if (k >= 0)  // Has intersection
-		{
-			area1 = 0.0;
-			for (j = 0; j < numf; j++)
-			{
-				if (j == k) continue;
-				// WW nfnode =
-				MeshElement->GetElementFaceNodes(j, Face_node);
-				xA[0] = X[Face_node[0]];
-				xA[1] = Y[Face_node[0]];
-				xA[2] = Z[Face_node[0]];
-				xB[0] = X[Face_node[1]];
-				xB[1] = Y[Face_node[1]];
-				xB[2] = Z[Face_node[1]];
-				area1 += ComputeDetTri(xA, xB, NodeB);
-			}
-			if (fabs(area0 - area1) < Tol) break;
-		}
-	}
-	return k;  // Local index of other intersection point
 }
 
 /***************************************************************************

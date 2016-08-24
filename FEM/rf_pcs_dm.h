@@ -123,9 +123,6 @@ private:
 	//
 	double norm_du0_pre_cpl_itr;
 
-	// For strong discontinuity approach
-	void Trace_Discontinuity();
-	long MarkBifurcatedNeighbor(const int PathIndex);
 	double getNormOfDisplacements();
 };
 
@@ -135,7 +132,6 @@ extern void CalMaxiumStressInvariants(double* StressInv);
 extern double LoadFactor;
 extern double Tolerance_global_Newton;
 extern double Tolerance_Local_Newton;
-extern int enhanced_strain_dm;
 extern int number_of_load_steps;
 extern int problem_dimension_dm;
 extern int PreLoad;
