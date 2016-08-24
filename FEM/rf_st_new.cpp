@@ -2001,8 +2001,8 @@ void CSourceTerm::FaceIntegration(CFEMesh* msh,
 			// Not a surface face
 			if (elem->GetDimension() == e_nei->GetDimension()) fac = 0.5;
 			CElem* face = new CElem(1);
-			face->SetFace(elem, j);
 			face->SetOrder(msh->getOrder());
+			face->SetFace(elem, j);
 			face->ComputeVolume();
 			if (active_elements == NULL) st_boundary_elements.push_back(face);
 			fem->setOrder(msh->getOrder() ? 2 : 1);
