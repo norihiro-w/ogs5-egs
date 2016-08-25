@@ -750,16 +750,16 @@ void PETScLinearSolver::EQSV_Viewer(const std::string& file_name, bool ascii)
 
 // PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_VTK);
 #if 1
-	  PetscObjectSetName((PetscObject)A,"Stiffness_matrix");
-	  MatView(A,viewer);
+		PetscObjectSetName((PetscObject)A,"Stiffness_matrix");
+		MatView(A,viewer);
 #if 1
-	  for (size_t i=0; i<vec_subA.size(); i++) {
-		  std::string name = "SubMatrix" + number2str(i);
+		for (size_t i=0; i<vec_subA.size(); i++) {
+			std::string name = "SubMatrix" + number2str(i);
 //		  PetscOptionsGetBool(((PetscObject) vec_subA[i])->prefix, "-mat_ascii_output_large", &flg,NULL);
 //		  ScreenMessage2("subA[%d]: mat_ascii_output_large found: %s\n", i, flg==PETSC_TRUE ? "true" : "false");
-		  PetscObjectSetName((PetscObject)vec_subA[i],name.c_str());
-		  MatView(vec_subA[i],viewer);
-	  }
+			PetscObjectSetName((PetscObject)vec_subA[i],name.c_str());
+			MatView(vec_subA[i],viewer);
+		}
 #endif
 #endif
 		for (size_t i = 0; i < vec_subRHS.size(); i++)
@@ -781,9 +781,9 @@ void PETScLinearSolver::EQSV_Viewer(const std::string& file_name, bool ascii)
 		if (vec_subRHS.empty())
 		{
 			PetscObjectSetName((PetscObject)b, "RHS");
-			PetscObjectSetName((PetscObject)x, "Solution");
+			//PetscObjectSetName((PetscObject)x, "Solution");
 			VecView(b, viewer);
-			VecView(x, viewer);
+			//VecView(x, viewer);
 		}
 
 //#define  EXIT_TEST
