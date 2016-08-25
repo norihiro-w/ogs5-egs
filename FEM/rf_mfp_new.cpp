@@ -186,7 +186,15 @@ std::ios::pos_type CFluidProperties::Read(std::ifstream* mfp_file)
 		}
 		//....................................................................
 		// NB Oct-2009
-		if (line_string.find("$COMPRESSIBILITY") != string::npos)
+		if (line_string == "$COMPRESSIBILITY_P")
+		{
+			in.str(GetLineFromFile1(mfp_file));
+			in >> compressibility_model_pressure;  // sub_line 1 for first phase
+			in >> compressibility_pressure;        // sub_line 1
+			in.clear();
+			continue;
+		}
+		if (line_string == "$COMPRESSIBILITY")
 		{
 			in.str(GetLineFromFile1(mfp_file));
 			in >> compressibility_model_pressure;  // sub_line 1 for first phase
