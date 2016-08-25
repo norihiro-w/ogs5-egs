@@ -949,7 +949,7 @@ void CFiniteElementVec::LocalAssembly(const int update)
 		// Output matrices
 		if (pcs->Write_Matrix)
 		{
-			(*pcs->matrix_file) << "### Element: " << Index << "\n";
+			(*pcs->matrix_file) << "### Element: " << MeshElement->GetGlobalIndex() << "\n";
 			(*pcs->matrix_file) << "---Stiffness matrix: "
 			                    << "\n";
 			Stiffness->Write(*pcs->matrix_file);

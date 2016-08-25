@@ -109,7 +109,14 @@ public:
 			eqs_index_quadratic = eqIndex;
 	}
 
-	int GetGlobalIndex() const { return global_index; }
+	int GetGlobalIndex() const
+	{
+#ifdef USE_PETSC
+		return global_index;
+#else
+		return GetIndex();
+#endif
+	}
 
 	void SetGlobalIndex(long index)
 	{

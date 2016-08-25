@@ -9041,7 +9041,8 @@ void CRFProcess::WriteBC()
 			//            std::setw(14)
 			//            << bc_node_value[i]->node_value << endl;
 			double const* const pnt(m_msh->nod_vector[nindex]->getData());
-			os << nindex << "  " << bc_node_value[i]->pcs_pv_name << " "
+			os << m_msh->nod_vector[nindex]->GetGlobalIndex();
+			os << "  " << bc_node_value[i]->pcs_pv_name << " "
 			   << std::setw(14) << pnt[0] << " " << std::setw(14) << pnt[1]
 			   << " " << std::setw(14) << pnt[2] << " " << std::setw(14)
 			   << bc_node_value[i]->node_value << endl;

@@ -299,6 +299,8 @@ public:
 	bool isOverlapped() const { return g_index != NULL; }
 	int* getGhostNodeIndices() { return g_index; }
 	long GetGlobalIndex() const { return global_index; }
+#else
+	long GetGlobalIndex() const { return this->GetIndex(); }
 #endif
 private:
 	// Members
