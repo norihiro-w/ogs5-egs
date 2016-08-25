@@ -928,16 +928,12 @@ double CFiniteElementStd::CalCoefMass()
 			// drho/dp    ::    alpha = 1 - K/Ks
 			// Second term (of Se) below vanishes for incompressible grains
 			// WW if(D_Flag > 0  && rho_val > MKleinsteZahl)
-			if (dm_pcs &&
-			    MediaProp->storage_model ==
-			        7)  // Add MediaProp->storage_model.  29.09.2011. WW
+			if (dm_pcs && MediaProp->storage_model == 7)
 			{
 				biot_val = SolidProp->biot_const;
 				poro_val = MediaProp->Porosity(Index, pcs->m_num->time_theta);
-				val = 0.;  // WX:04.2013
+				val = 0.;
 
-				// WW if(SolidProp->K == 0) //WX: if HM Partitioned, K still 0
-				// here
 				if (fabs(SolidProp->K) < DBL_MIN)  // WW 29.09.2011
 				{
 					if (SolidProp->Youngs_mode < 10 ||
@@ -973,7 +969,9 @@ double CFiniteElementStd::CalCoefMass()
 					}
 				}
 				val += poro_val * drho_dp_rho +
-				       (biot_val - poro_val) * (1.0 - biot_val) / SolidProp->K;
+				       (biot_val - poro_val) / SolidProp->K;
+//				val += poro_val * drho_dp_rho +
+//				       (biot_val - poro_val) * (1.0 - biot_val) / SolidProp->K;
 				// Will handle the dual porosity version later...
 			}
 			else if (MediaProp->storage_model != 1)
