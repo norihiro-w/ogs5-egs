@@ -950,6 +950,16 @@ void CFiniteElementVec::LocalAssembly(const int update)
 		if (pcs->Write_Matrix)
 		{
 			(*pcs->matrix_file) << "### Element: " << MeshElement->GetGlobalIndex() << "\n";
+#if 0
+			(*pcs->matrix_file) << "---Nodes:\n";
+			pcs->matrix_file->setf(std::ios::scientific, std::ios::floatfield);
+			pcs->matrix_file->precision(12);
+			for (int i=0; i<nnodesHQ; i++)
+			{
+				CNode* node = MeshElement->GetNode(i);
+				(*pcs->matrix_file) << node->GetGlobalIndex() << ": " << (*node)[0] << "," << (*node)[1] << ", " << (*node)[2] << "\n";
+			}
+#endif
 			(*pcs->matrix_file) << "---Stiffness matrix: "
 			                    << "\n";
 			Stiffness->Write(*pcs->matrix_file);
