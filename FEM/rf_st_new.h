@@ -356,7 +356,7 @@ extern CSourceTermGroup* STGetGroup(std::string pcs_type_name,
                                     std::string pcs_pv_name);
 extern std::list<CSourceTermGroup*> st_group_list;
 
-class DistributionData;
+struct DistributionData;
 void setDistributionData(CSourceTerm* st, DistributionData& distData);
 
 /**

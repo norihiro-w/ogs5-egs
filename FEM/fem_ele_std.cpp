@@ -2987,7 +2987,7 @@ void CFiniteElementStd::Cal_Velocity()
 		// NW
 		if (k == 2 && (!HEAD_Flag) && FluidProp->CheckGravityCalculation())
 		{
-			if ((FluidProp->density_model == 14))
+			if (FluidProp->density_model == 14)
 			{
 				dens_arg[0] = interpolate(NodalVal1);
 				dens_arg[1] = interpolate(NodalValC) + T_KILVIN_ZERO;

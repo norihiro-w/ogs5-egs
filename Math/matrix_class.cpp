@@ -775,14 +775,9 @@ void vec<T*>::operator=(const vec<T*>& v)
 		_entry[i] = v._entry[i];
 }
 
-}  // Namespace
-
-using Math_Group::vec;
-using Math_Group::SymMatrix;
-
 template class vec<int>;
 template class vec<long>;
 template class vec<double>;
 
-// End of class Matrix
-//==========================================================================
+}  // Namespace
+
