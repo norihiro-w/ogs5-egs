@@ -383,21 +383,6 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 			}
 #endif
 
-			if (write_leqs)
-			{
-				std::string fname = FileName + "_" +
-									convertProcessTypeToString(this->getProcessType()) +
-									number2str(aktueller_zeitschritt) + "_" +
-									number2str(ite_steps) + "_leqs_assembly.txt";
-#if defined(NEW_EQS)
-				std::ofstream Dum(fname.c_str(), ios::out);
-				eqs_new->Write(Dum);
-				Dum.close();
-#elif defined(USE_PETSC)
-					eqs_new->EQSV_Viewer(fname);
-#endif
-			}
-
 			// init solution vector
 			if (isLinearProblem && type != 41)
 #if defined(USE_PETSC)
@@ -1481,6 +1466,22 @@ void CRFProcessDeformation::GlobalAssembly()
 #endif
 	}
 
+	if (write_leqs)
+	{
+		std::string fname = FileName + "_" +
+							convertProcessTypeToString(this->getProcessType()) +
+							number2str(aktueller_zeitschritt) + "_" +
+							number2str(ite_steps) + "_leqs_assembly.txt";
+#if defined(NEW_EQS)
+		std::ofstream Dum(fname.c_str(), ios::out);
+		eqs_new->Write(Dum);
+		Dum.close();
+#elif defined(USE_PETSC)
+		eqs_new->EQSV_Viewer(fname);
+#endif
+	}
+
+
 	//   RecoverSolution(2);  // p_i-->p_0
 
 
@@ -1507,21 +1508,20 @@ void CRFProcessDeformation::GlobalAssembly()
 	ScreenMessage("-> impose Dirichlet BC\n");
 	IncorporateBoundaryConditions();
 
-#if 0
+	if (write_leqs)
 	{
-		ofstream Dum(std::string("eqs_after_BCST.txt").c_str(), ios::out); // WW
-		this->eqs_new->Write(Dum);
+		std::string fname = FileName + "_" +
+							convertProcessTypeToString(this->getProcessType()) +
+							number2str(aktueller_zeitschritt) + "_" +
+							number2str(ite_steps) + "_leqs_assembly_BCST.txt";
+#if defined(NEW_EQS)
+		std::ofstream Dum(fname.c_str(), ios::out);
+		eqs_new->Write(Dum);
 		Dum.close();
+#elif defined(USE_PETSC)
+			eqs_new->EQSV_Viewer(fname);
+#endif
 	}
-#endif
-
-#define atest_dump
-#ifdef test_dump
-	string fname = FileName + "rf_pcs_omp.txt";
-	ofstream Dum1(fname.c_str(), ios::out);  // WW
-	eqs_new->Write(Dum1);
-	Dum1.close();  //   abort();
-#endif
 
 #define atest_bin_dump
 #ifdef test_bin_dump  // WW
