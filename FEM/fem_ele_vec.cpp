@@ -729,32 +729,33 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 
 	for (i = 0; i < nnodesHQ; i++)
 	{
-		// NW      setTransB_Matrix(i);
 		tmp_B_matrix_T = this->vec_B_matrix_T[i];
+
 		// Local assembly of A*u=int(B^t*sigma) for Newton-Raphson method
-		for (j = 0; j < ele_dim; j++)
-			for (k = 0; k < ns; k++)
-				(*RHS)(j* nnodesHQ + i) +=
-				    (*tmp_B_matrix_T)(j, k) * (dstress[k] - stress0[k]) * fkt;
-		// TEST             (*B_matrix_T)(j,k)*dstress[k]*fkt;
-		if (PreLoad == 11) continue;
+		for (j = 0; j < ele_dim; j++) {
+			for (k = 0; k < ns; k++) {
+				(*RHS)(j* nnodesHQ + i) += (*tmp_B_matrix_T)(j, k) * (dstress[k] - stress0[k]) * fkt;
+			}
+		}
+
+		if (PreLoad == 11)
+			continue;
+
 		(*tmp_AuxMatrix2) = 0.0;
-		// NW
 		tmp_B_matrix_T->multi(*p_D, *tmp_AuxMatrix2);
 		for (j = 0; j < nnodesHQ; j++)
 		{
-			// NW          setB_Matrix(j);
 			tmp_B_matrix = this->vec_B_matrix[j];
 			// Compute stiffness matrix
 			(*tmp_AuxMatrix) = 0.0;
 			tmp_AuxMatrix2->multi(*tmp_B_matrix, *tmp_AuxMatrix);
-			// NW          B_matrix_T->multi(*p_D, *B_matrix, *AuxMatrix);
 
 			// Local assembly of stiffness matrix
-			for (k = 0; k < ele_dim; k++)
-				for (l = 0; l < ele_dim; l++)
-					(*tmp_Stiffness)(i + k * nnodesHQ, j + l * nnodesHQ) +=
-					    (*tmp_AuxMatrix)(k, l) * fkt;
+			for (k = 0; k < ele_dim; k++) {
+				for (l = 0; l < ele_dim; l++) {
+					(*tmp_Stiffness)(i + k * nnodesHQ, j + l * nnodesHQ) += (*tmp_AuxMatrix)(k, l) * fkt;
+				}
+			}
 		}  // loop j
 	}      // loop i
 
@@ -767,12 +768,10 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 	//---------------------------------------------------------
 	// LoadFactor: factor of incremental loading, prescibed in rf_pcs.cpp
 
-	// 07.2011 WW
 	if ((PressureC || PressureC_S || PressureC_S_dp) && !PreLoad)
 	{
 		fac = LoadFactor * fkt;
 
-		// 07.2011. WW
 		if (PressureC_S || PressureC_S_dp)
 		{
 			// Pressure 1
@@ -786,9 +785,11 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 		}
 
 		if (axisymmetry)
+		{
 			for (k = 0; k < nnodesHQ; k++)
 			{
 				for (l = 0; l < nnodes; l++)
+				{
 					for (j = 0; j < ele_dim; j++)
 					{
 						dN_dx = dshapefctHQ[nnodesHQ * j + k];
@@ -802,24 +803,31 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 							(*PressureC_S_dp)(nnodesHQ* j + k, l) +=
 							    f_buff * fac2;
 					}
+				}
 			}
+		}
 		else
+		{
 			for (k = 0; k < nnodesHQ; k++)
 			{
 				for (l = 0; l < nnodes; l++)
+				{
 					for (j = 0; j < ele_dim; j++)
 					{
-						f_buff =
-						    fac * dshapefctHQ[nnodesHQ * j + k] * shapefct[l];
+						f_buff = fac * dshapefctHQ[nnodesHQ * j + k] * shapefct[l];
 						(*PressureC)(nnodesHQ* j + k, l) += f_buff;
+
 						if (PressureC_S)
 							(*PressureC_S)(nnodesHQ* j + k, l) += f_buff * fac1;
 						if (PressureC_S_dp)
 							(*PressureC_S_dp)(nnodesHQ* j + k, l) +=
 							    f_buff * fac2;
 					}
+				}
 			}
+		}
 	}
+
 	//---------------------------------------------------------
 	// Assemble gravity force vector
 	//---------------------------------------------------------
@@ -878,23 +886,19 @@ void CFiniteElementVec::LocalAssembly(const int update)
 	}
 #endif
 
-	// WW
-	{
 #ifdef NEW_EQS
-		b_rhs = pcs->eqs_new->b;
+	b_rhs = pcs->eqs_new->b;
 #endif
-	}
+
 	(*RHS) = 0.0;
 	(*Stiffness) = 0.0;
-	// 07.2011. WW
+
 	if (PressureC) (*PressureC) = 0.0;
 	if (PressureC_S) (*PressureC_S) = 0.0;
 	if (PressureC_S_dp) (*PressureC_S_dp) = 0.0;
-	// WW
-	{
-		for (int i = 0; i < nnodesHQ; i++)
-			eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex();
-	}
+
+	for (int i = 0; i < nnodesHQ; i++)
+		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex();
 
 	// For strain and stress extropolation all element types
 	// Number of elements associated to nodes
@@ -1199,7 +1203,8 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 		if (pcs->type / 10 == 4)  // Monolithic scheme
 		{
 			// If nonlinear deformation
-			if (pcs_deformation > 100) Residual = true;
+			if (pcs_deformation > 100)
+				Residual = true;
 		}
 		else  // Partitioned scheme
 			Residual = true;
@@ -1746,12 +1751,13 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 			ComputeMatrix_RHS(fkt, p_D);
 		}
 		else  // Update stress
-
+		{
 			for (i = 0; i < ns; i++)
 			{
 				(*eleV_DM->Stress)(i, gp) = dstress[i];
 				(*eleV_DM->Strain)(i, gp) += dstrain[i];
 			}
+		}
 	}
 	// The mapping of Gauss point strain to element nodes
 	if (update)
