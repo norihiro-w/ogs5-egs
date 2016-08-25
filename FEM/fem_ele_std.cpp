@@ -2700,7 +2700,8 @@ void CFiniteElementStd::CalcStrainCoupling(int phase)
 				{
 					kl = nnodesHQ * i + l;
 					du = dshapefctHQ[kl];
-					if (i == 0 && axisymmetry) du += shapefctHQ[l] / Radius;
+					if (i == 0 && axisymmetry)
+						du += shapefctHQ[l] / Radius;
 					(*StrainCoupling)(k, kl) += shapefct[k] * du * fkt;
 				}
 		}
@@ -2708,7 +2709,6 @@ void CFiniteElementStd::CalcStrainCoupling(int phase)
 	setOrder(1);
 	// StrainCoupling->Write();
 
-	/// Ouput the matrix, 07.2011. WW
 	if (pcs->matrix_file)
 	{
 		(*pcs->matrix_file) << "---Strain couping matrix: " << endl;
@@ -4425,43 +4425,46 @@ void CFiniteElementStd::AssembleMixedHyperbolicParabolicEquation()
  **************************************************************************/
 void CFiniteElementStd::Assemble_strainCPL(const int phase)
 {
+	if (this->pcs->tim_type == FiniteElement::TIM_STEADY)
+		return;
+
 	int i, j;
-	double* u_n = NULL;  // Dynamic
-	double fac;
 	int Residual = -1;
 
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
+#if !defined(USE_PETSC)
 	int shift_index = problem_dimension_dm + phase;
 #endif
 
-	if (this->pcs->tim_type == FiniteElement::TIM_STEADY) return;
-
-	fac = 1.0 / dt;
-	fac *= SolidProp->biot_const;  // NW
+	double fac = 1.0 / dt;
+	fac *= SolidProp->biot_const;
 
 	if (dm_pcs->type != 41)
-		// if(D_Flag != 41)
 		Residual = 0;
-	else                            // Mono
-	    if (pcs_deformation > 100)  // Pls
-		Residual = 1;
-	if (MediaProp->storage_model == 7)  // RW/WW
+	else // Mono
+		if (pcs_deformation > 100)  // Pls
+			Residual = 1;
+
+#if 0
+	if (MediaProp->storage_model == 7)
 		fac *= MediaProp->storage_model_values[0];
 	else
 		fac *= fabs(SolidProp->biot_const);  // WX:11.2012. biot coeff is
 	                                         // needed, in some case biot is
 	                                         // defined negative
+#endif
 
 	//
 	for (i = nnodes; i < nnodesHQ; i++)
 		nodes[i] = MeshElement->GetNodeIndex(i);
+
 	(*StrainCoupling) = 0.0;
 	CalcStrainCoupling(phase);
+
 	//	if(D_Flag != 41&&aktueller_zeitschritt>1)
 	if (Residual >= 0)
 	{                       // Incorparate this after the first time step
 		if (Residual == 0)  // Partitioned
-
+		{
 			for (i = 0; i < nnodesHQ; i++)
 			{
 				NodalVal2[i] =
@@ -4475,8 +4478,9 @@ void CFiniteElementStd::Assemble_strainCPL(const int phase)
 					    -fac * (dm_pcs->GetNodeValue(nodes[i], Idx_dm1[2]) -
 					            dm_pcs->GetNodeValue(nodes[i], Idx_dm0[2]));
 			}
+		}
 		else if (Residual == 1)  // Mono
-
+		{
 			// du is stored in u_0
 			for (i = 0; i < nnodesHQ; i++)
 			{
@@ -4486,25 +4490,7 @@ void CFiniteElementStd::Assemble_strainCPL(const int phase)
 					NodalVal4[i] =
 					    -fac * pcs->GetNodeValue(nodes[i], Idx_dm0[2]);
 			}
-		else if (Residual == 2)  // Mono dynamic
-
-			// da is stored in a_0
-			// v_{n+1} = v_{n}+a_n*dt+beta1*dt*da
-			// a_n is in dm_pcs->ARRAY
-			for (i = 0; i < nnodesHQ; i++)
-			{
-				NodalVal2[i] = -(pcs->GetNodeValue(nodes[i], idx_vel_disp[0]) +
-				                 fac * pcs->GetNodeValue(nodes[i], Idx_dm0[0]) +
-				                 u_n[nodes[i]] * dt);
-				NodalVal3[i] = -(pcs->GetNodeValue(nodes[i], idx_vel_disp[1]) +
-				                 fac * pcs->GetNodeValue(nodes[i], Idx_dm0[1]) +
-				                 u_n[nodes[i] + NodeShift[1]] * dt);
-				if (dim == 3)  // 3D.
-					NodalVal4[i] =
-					    -(pcs->GetNodeValue(nodes[i], idx_vel_disp[2]) +
-					      fac * pcs->GetNodeValue(nodes[i], Idx_dm0[2]) +
-					      u_n[nodes[i] + NodeShift[2]] * dt);
-			}
+		}
 
 		for (i = 0; i < nnodes; i++)
 		{
