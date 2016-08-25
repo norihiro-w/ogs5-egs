@@ -1139,6 +1139,29 @@ void CFEMesh::GenerateHighOrderNodes()
 	   nod_vector[e]->Write(n_out);
 	   n_out.close();
 	 */
+
+#if 0
+	{
+		std::ofstream os("mesh_q_ogs.txt");
+		os << "--Nodes:\n";
+		os << NodesNumber_Linear << " " << NodesNumber_Quadratic << "\n";
+		for (long i=0; i<NodesNumber_Quadratic; i++)
+		{
+			CNode* node = nod_vector[i];
+			os << i << " " << (*node)[0] << " " << (*node)[1] << " " << (*node)[2] << "\n";
+		}
+		os << "--Elements:\n";
+		for (size_t i=0; i<ele_vector.size(); i++)
+		{
+			CElem* ele = ele_vector[i];
+			os << i;
+			for (int j=0; j<ele->GetNodesNumber(true); j++)
+				os << " " << ele->GetNodeIndex(j);
+			os << "\n";
+		}
+	}
+#endif
+
 }
 
 /**************************************************************************
