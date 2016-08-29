@@ -320,7 +320,8 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 
 	//  Reset stress for each coupling step when partitioned scheme is applied
 	//  to HM
-	if (H_Process && (type / 10 != 4)) ResetCouplingStep();
+	if (H_Process && (type / 10 != 4))
+		ResetCouplingStep();
 
 	//
 	// Compute the maximum ratio of load increment and
@@ -700,37 +701,6 @@ void CRFProcessDeformation::InitGauss(void)
 				}
 				//
 			}
-// Initial condition by LBNL
-////////////////////////////////////////////////////////
-//#define  EXCAVATION
-#ifdef EXCAVATION
-			int gp_r, gp_s, gp_t;
-			double z = 0.0;
-			double xyz[3];
-			for (gp = 0; gp < NGS; gp++)
-			{
-				fem_dm->GetGaussData(gp, gp_r, gp_s, gp_t);
-				fem_dm->ComputeShapefct(2);
-				fem_dm->RealCoordinates(xyz);
-				/*
-				   //THM2
-				   z = 250.0-xyz[1];
-				   (*eleV_DM->Stress)(1, gp) = -2360*9.81*z;
-				   (*eleV_DM->Stress)(2, gp) = 0.5*(*eleV_DM->Stress)(1, gp);
-				   (*eleV_DM->Stress)(0, gp) = 0.6*(*eleV_DM->Stress)(1, gp);
-				 */
-
-				// THM1
-				z = 500 - xyz[2];  // 3D xyz[1]; //2D
-				(*eleV_DM->Stress)(2, gp) = -(0.02 * z + 0.6) * 1.0e6;
-				(*eleV_DM->Stress)(1, gp) = -2700 * 9.81 * z;
-				(*eleV_DM->Stress)(0, gp) = -(0.055 * z + 4.6) * 1.0e6;
-
-				if (eleV_DM->Stress_j)
-					(*eleV_DM->Stress_j) = (*eleV_DM->Stress);
-			}
-#endif
-			////////////////////////////////////////////////////////
 			elem->SetOrder(false);
 		}
 	}
@@ -742,9 +712,8 @@ void CRFProcessDeformation::InitGauss(void)
 		if (type == 41)  // mono-deformation-liquid
 			ReadSolution();
 	}
-	// For excavation simulation. Moved here on 05.09.2007 WW
-	if (num_type_name.find("EXCAVATION") != 0) Extropolation_GaussValue();
-	//
+
+	Extropolation_GaussValue();
 }
 
 
