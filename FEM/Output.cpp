@@ -1039,7 +1039,7 @@ void COutput::WriteTECNodeData(fstream& tec_file)
 							val_n =
 							    m_pcs->GetNodeValue(n_id, NodeIndex[k]);  // WW
 							tec_file << val_n << " ";
-							if ((m_pcs->type == 1212 || m_pcs->type == 42) &&
+							if ((m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || m_pcs->type == 42) &&
 							    _nod_value_vector[k].find("SATURATION") !=
 							        string::npos)  // WW
 								tec_file << 1. - val_n << " ";
@@ -1117,7 +1117,7 @@ void COutput::WriteTECHeader(fstream& tec_file, int e_type, string e_type_name)
 		//-------------------------------------WW
 		pcs = GetPCS(_nod_value_vector[k]);
 		if (pcs != NULL)
-			if ((pcs->type == 1212 || pcs->type == 42) &&
+			if ((pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || pcs->type == 42) &&
 			    _nod_value_vector[k].find("SATURATION") != string::npos)
 				tec_file << ", SATURATION2";
 		//-------------------------------------WW
@@ -1437,7 +1437,7 @@ double COutput::NODWritePLYDataTEC(int number)
 				tec_file << "\"" << _nod_value_vector[k] << "\" ";
 				//-------------------------------------WW
 				m_pcs = GetPCS(_nod_value_vector[k]);
-				if (m_pcs && m_pcs->type == 1212 &&
+				if (m_pcs && m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW &&
 					_nod_value_vector[k].find("SATURATION") != string::npos)
 					tec_file << "SATURATION2 ";
 				//-------------------------------------WW
@@ -1684,7 +1684,7 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 		{
 			tec_file << sep << "\"" << _nod_value_vector[k] << "\"";
 			m_pcs = GetPCS(_nod_value_vector[k]);
-			if (m_pcs && m_pcs->type == 1212 &&
+			if (m_pcs && m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW &&
 			    _nod_value_vector[k].find("SATURATION") != string::npos)
 				tec_file << "SATURATION2 ";
 		}
@@ -1808,7 +1808,7 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 				double val_n = m_pcs->GetNodeValue(msh_node_number, NodeIndex[i]);
 				tec_file << sep << val_n;
 				m_pcs = GetPCS(_nod_value_vector[i]);
-				if (m_pcs->type == 1212 &&
+				if (m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW &&
 				    (_nod_value_vector[i].find("SATURATION") != string::npos))
 					tec_file << 1. - val_n << " ";
 			}

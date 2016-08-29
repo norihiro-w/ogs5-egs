@@ -2661,7 +2661,7 @@ double CMediumProperties::HeatCapacity(long number, double theta,
 			if (FLOW)
 			{
 				PG = assem->interpolate(assem->NodalValC1);
-				if (assem->cpl_pcs->type == 1212)  // Multi-phase WW
+				if (assem->cpl_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)  // Multi-phase WW
 					PG *= -1.0;
 				Sat = SaturationCapillaryPressureFunction(-PG);
 			}
@@ -2782,7 +2782,7 @@ double* CMediumProperties::HeatConductivityTensor(int number, double* variables)
 		if (FLOW)  // WW
 		{
 			if (Fem_Ele_Std->cpl_pcs &&
-			    Fem_Ele_Std->cpl_pcs->type == 1212)  // Multi-phase WW
+			    Fem_Ele_Std->cpl_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)  // Multi-phase WW
 			{
 				double PG = Fem_Ele_Std->interpolate(
 				    Fem_Ele_Std->NodalValC1);  // Capillary pressure

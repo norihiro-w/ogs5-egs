@@ -47,7 +47,7 @@ ElementValue::ElementValue(CRFProcess* m_pcs, CElem* ele) : pcs(m_pcs)
 	Velocity0.resize(3, NGPoints);
 	Velocity0 = 0.0;
 	// 15.3.2007 Multi-phase flow WW
-	if (pcs->type == 1212 || pcs->type == 1313 || m_pcs->type == 42)
+	if (pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || pcs->getProcessType() == FiniteElement::PS_GLOBAL || m_pcs->type == 42)
 	{
 		Velocity_g.resize(3, NGPoints);
 		Velocity_g = 0.0;

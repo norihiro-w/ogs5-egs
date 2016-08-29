@@ -823,7 +823,7 @@ void CFiniteElementStd::SetMaterial(int /*phase*/)
 	// 03.2009 PCH
 	// or JFNK. 10.08.2010. WW
 	if ((PCSGet("RICHARDS_FLOW") && PCSGet("HEAT_TRANSPORT")) ||
-	    pcs->type == 1212 || pcs->type == 1313 || pcs->type == 42)
+	    pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || pcs->getProcessType() == FiniteElement::PS_GLOBAL || pcs->type == 42)
 	{
 		FluidProp = MFPGet("LIQUID");
 		FluidProp->Fem_Ele_Std = this;
@@ -2365,7 +2365,7 @@ void CFiniteElementStd::CalcAdvection()
 	bool multiphase = false;
 	// 18.02.2008, 04.09.2008 WW
 	if (!cpl_pcs && (pcs->type != 2) && (pcs->type != 5)) return;
-	if (cpl_pcs && cpl_pcs->type == 1212)
+	if (cpl_pcs && cpl_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)
 	{
 		multiphase = true;
 		m_mfp_g = mfp_vector[1];
@@ -4765,7 +4765,7 @@ void CFiniteElementStd::Config()
 		{
 			NodalValC[i] = cpl_pcs->GetNodeValue(nodes[i], idx_c0);
 			NodalValC1[i] = cpl_pcs->GetNodeValue(nodes[i], idx_c1);
-			if (cpl_pcs->type == 1212 || cpl_pcs->type == 42)
+			if (cpl_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || cpl_pcs->type == 42)
 			{
 				NodalVal_p2[i] = cpl_pcs->GetNodeValue(nodes[i], idx_c1 + 2);
 				NodalVal_p20[i] = cpl_pcs->GetNodeValue(nodes[i], idx_c0 + 2);
@@ -5114,7 +5114,7 @@ void CFiniteElementStd::ExtropolateGauss(CRFProcess* m_pcs, const int idof)
 	MshElemType::type ElementType = MeshElement->GetElementType();
 
 	// Multi-phase flow 03.2009 PCH
-	if (m_pcs->type == 1212 || m_pcs->type == 1313 || m_pcs->type == 42)
+	if (m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || m_pcs->getProcessType() == FiniteElement::PS_GLOBAL || m_pcs->type == 42)
 	{
 		switch (idof)
 		{
@@ -5154,7 +5154,7 @@ void CFiniteElementStd::ExtropolateGauss(CRFProcess* m_pcs, const int idof)
 		//
 		//
 		// PCH 05.2009
-		if (m_pcs->type == 1212 || m_pcs->type == 1313 || m_pcs->type == 42)
+		if (m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || m_pcs->getProcessType() == FiniteElement::PS_GLOBAL || m_pcs->type == 42)
 			NodalVal2[i] = gp_ele->Velocity_g(idof, gp) * time_unit_factor;
 	}
 
@@ -5182,7 +5182,7 @@ void CFiniteElementStd::ExtropolateGauss(CRFProcess* m_pcs, const int idof)
 	{
 		// average
 		avgEV = CalcAverageGaussPointValues(NodalVal1);
-		if (m_pcs->type == 1212 || m_pcs->type == 1313)
+		if (m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || m_pcs->getProcessType() == FiniteElement::PS_GLOBAL)
 			avgEV1 = CalcAverageGaussPointValues(NodalVal2);
 	}
 
@@ -5212,7 +5212,7 @@ void CFiniteElementStd::ExtropolateGauss(CRFProcess* m_pcs, const int idof)
 		m_pcs->SetNodeValue(nodes[i], idx_vel[idof], EV);
 		//
 		// Multi-phase flow PCH 05.2009
-		if (m_pcs->type == 1212 || m_pcs->type == 1313 || m_pcs->type == 42)
+		if (m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || m_pcs->getProcessType() == FiniteElement::PS_GLOBAL || m_pcs->type == 42)
 		{
 			// Calculate values at nodes
 			if (this->GetExtrapoMethod() == ExtrapolationMethod::EXTRAPO_LINEAR)
@@ -5277,7 +5277,7 @@ void CFiniteElementStd::CalcSatution()
 		idx_cp = pcs->GetNodeValueIndex("PRESSURE2") + 1;
 		idx_S = pcs->GetNodeValueIndex("SATURATION2") + 1;
 	}
-	if (pcs->type == 1212 || pcs->type == 42) sign = 1.0;
+	if (pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || pcs->type == 42) sign = 1.0;
 	//
 	for (i = 0; i < nnodes; i++)
 	{
@@ -5396,7 +5396,7 @@ void CFiniteElementStd::CalcNodeMatParatemer()
 		{
 			NodalValC[i] = cpl_pcs->GetNodeValue(nodes[i], idx_c0);
 			NodalValC1[i] = cpl_pcs->GetNodeValue(nodes[i], idx_c1);
-			if (cpl_pcs->type == 1212)
+			if (cpl_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)
 				NodalVal_p2[i] = cpl_pcs->GetNodeValue(nodes[i], idx_c1 + 2);
 			// AKS
 			NodalVal_p20[i] = pcs->GetNodeValue(nodes[i], idx_c0 + 2);

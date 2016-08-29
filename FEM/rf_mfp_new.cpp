@@ -2106,7 +2106,7 @@ double MFPCalcFluidsHeatCapacity(CFiniteElementStd* assem, double* var)
 	{
 		//
 		// if (m_pcs->pcs_type_name.find("MULTI_PHASE_FLOW")!=string::npos)
-		if (m_pcs && m_pcs->type == 1212)  // non-isothermal multi-phase flow
+		if (m_pcs && m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)  // non-isothermal multi-phase flow
 		{
 			// Capillary pressure
 			PG = assem->interpolate(assem->NodalValC1);

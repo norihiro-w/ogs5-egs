@@ -5782,10 +5782,10 @@ void CRFProcess::CalcSecondaryVariables(bool initial)
 		case FiniteElement::PS_GLOBAL:
 			CalcSecondaryVariablesPSGLOBAL();  // WW
 			break;
+		case FiniteElement::MULTI_PHASE_FLOW:
+			CalcSecondaryVariablesUnsaturatedFlow(initial);
+			break;
 		default:
-			if (type == 1212)
-				// WW
-				CalcSecondaryVariablesUnsaturatedFlow(initial);
 			break;
 	}
 }
@@ -7079,7 +7079,7 @@ void CRFProcess::Extropolation_GaussValue()
 	for (i = 0; i < (long)m_msh->GetNodesNumber(false); i++)
 		for (k = 0; k < NS; k++)
 			SetNodeValue(i, idx[k], 0.0);
-	if (type == 1212 || type == 1313)  // Multi-phase flow
+	if (getProcessType() == FiniteElement::MULTI_PHASE_FLOW || getProcessType() == FiniteElement::PS_GLOBAL)  // Multi-phase flow
 	{
 		idx[0] = GetNodeValueIndex("VELOCITY_X2");
 		idx[1] = GetNodeValueIndex("VELOCITY_Y2");
@@ -7243,9 +7243,9 @@ void CRFProcess::CopyTimestepNODValues(bool forward)
 		// 1212) { //Multiphase. WW
 		// Multiphase. WW
 		if (this->getProcessType() == FiniteElement::RICHARDS_FLOW ||
-		    type == 1212 || type == 42)
+		    getProcessType() == FiniteElement::MULTI_PHASE_FLOW || type == 42)
 		{
-			if (j == 1 && (type == 1212 || type == 42))  // Multiphase. WW
+			if (j == 1 && (getProcessType() == FiniteElement::MULTI_PHASE_FLOW || type == 42))  // Multiphase. WW
 				continue;
 			if (j == 0)
 				nidx0 = GetNodeValueIndex("SATURATION1");
@@ -7453,7 +7453,7 @@ void CRFProcess::CalcSecondaryVariablesUnsaturatedFlow(bool initial)
 	vector<string> secondSNames;
 	vector<string> secondCPNames;
 	secondSNames.push_back("SATURATION1");
-	if (type == 1212 || type == 42)  // Multiphase flow
+	if (getProcessType() == FiniteElement::MULTI_PHASE_FLOW || type == 42)  // Multiphase flow
 		secondCPNames.push_back("PRESSURE1");
 	else
 		secondCPNames.push_back("PRESSURE_CAP1");
@@ -7470,7 +7470,7 @@ void CRFProcess::CalcSecondaryVariablesUnsaturatedFlow(bool initial)
 	for (int ii = 0; ii < (int)secondSNames.size(); ii++)
 	{
 		idxS = GetNodeValueIndex(secondSNames[ii].c_str()) + 1;
-		if (type == 1212 || type == 42)  // Multiphase flow
+		if (getProcessType() == FiniteElement::MULTI_PHASE_FLOW || type == 42)  // Multiphase flow
 		{
 			jj = ii;
 			if (type == 42) jj += problem_dimension_dm;
@@ -7488,7 +7488,7 @@ void CRFProcess::CalcSecondaryVariablesUnsaturatedFlow(bool initial)
 		{
 			// Copy the new saturation to the old level
 			//
-			if (type == 1212 || type == 42)  // Multiphase flow
+			if (getProcessType() == FiniteElement::MULTI_PHASE_FLOW || type == 42)  // Multiphase flow
 			{
 				// p_w = p_g-p_c
 				p_cap = GetNodeValue(i, idxcp + 2) - GetNodeValue(i, idxcp);
@@ -8916,7 +8916,7 @@ void CreateEQS_LinearSolver()
 	bool need_eqs_dof = false;
 	for (auto m_pcs : pcs_vector)
 	{
-		if (m_pcs->type == 1212)  // Important for parallel computing.
+		if (m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)  // Important for parallel computing.
 		{
 			dof_nonDM = m_pcs->GetPrimaryVNumber();
 			//dof = dof_nonDM;

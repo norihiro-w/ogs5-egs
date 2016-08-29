@@ -197,36 +197,14 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 	idx_P0 = idx_pls = 0;
 	for (size_t i = 0; i < pcs_vector.size(); i++)
 	{
-		//      if (pcs_vector[i]->pcs_type_name.find("FLOW") != string::npos) {
-		// TF
 		if (isFlowProcess(pcs_vector[i]->getProcessType()))
 		{
 			h_pcs = pcs_vector[i];
-			// 25.04.2008, 04.09.2008  WW
-			if (h_pcs->type == 1 || h_pcs->type == 41)
+			if (h_pcs->getProcessType() == FiniteElement::LIQUID_FLOW
+			    || h_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
 			{
-				//				if (h_pcs->pcs_type_name.find("GROUND") !=
-				// string::npos)
-				// TF
-				if (h_pcs->getProcessType() == GROUNDWATER_FLOW)
-					Flow_Type = 10;
-				else
-					Flow_Type = 0;
-				// 25.08.2005.  WW
+				Flow_Type = 0;
 			}
-			else if (h_pcs->type == 14 || h_pcs->type == 22)
-				Flow_Type = 1;
-			else if (h_pcs->type == 1212 || h_pcs->type == 42)
-			{
-				Flow_Type = 2;  // 25.04.2008.  WW
-			}
-			// WW idx_P0 = pcs->GetNodeValueIndex("POROPRESSURE0");
-			break;
-		}  // TF
-		else if (pcs_vector[i]->getProcessType() == PS_GLOBAL)
-		{
-			h_pcs = pcs_vector[i];
-			if (h_pcs->type == 1313) Flow_Type = 3;  // 05.05.2009.  PCH
 			break;
 		}
 	}
@@ -234,8 +212,6 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 	{
 		idx_P1 = h_pcs->GetNodeValueIndex("PRESSURE1") + 1;
 	}
-	if (Flow_Type == 10)
-		idx_P1 = h_pcs->GetNodeValueIndex("HEAD") + 1;
 
 	for (size_t i = 0; i < pcs_vector.size(); i++)
 		//      if (pcs_vector[i]->pcs_type_name.find("HEAT") != string::npos) {
