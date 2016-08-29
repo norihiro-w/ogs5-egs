@@ -147,8 +147,8 @@ private:
 	                       int gp_t);
 	// Effictive strain
 	double CalcStrain_v();
-	void ExtropolateGuassStrain();
-	void ExtropolateGuassStress();
+	void ExtropolateGaussStrain();
+	void ExtropolateGaussStress();
 	double CalcStress_eff();
 
 	// Compute the local finite element matrices

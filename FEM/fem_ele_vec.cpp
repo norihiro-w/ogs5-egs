@@ -1354,7 +1354,7 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 	}
 	// The mapping of Gauss point strain to element nodes
 	if (update)
-		ExtropolateGuassStrain();
+		ExtropolateGaussStrain();
 
 	/*
 	   //TEST
@@ -1448,7 +1448,7 @@ bool CFiniteElementVec::RecordGuassStrain(const int gp, const int gp_r,
    06/2004   WW
    02/2007   Make it work for all 2nd variables
  **************************************************************************/
-void CFiniteElementVec::ExtropolateGuassStrain()
+void CFiniteElementVec::ExtropolateGaussStrain()
 {
 	int i, j;
 	//  int l1,l2,l3,l4; //, counter;
@@ -1570,7 +1570,7 @@ void CFiniteElementVec::ExtropolateGuassStrain()
    06/2004   WW
    03/2007   WW  Generize for all 2nd variables
  **************************************************************************/
-void CFiniteElementVec::ExtropolateGuassStress()
+void CFiniteElementVec::ExtropolateGaussStress()
 {
 	int i, j, gp_r, gp_s, gp_t;
 	// int l1,l2,l3,l4; //, counter;
