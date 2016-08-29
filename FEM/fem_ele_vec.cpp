@@ -214,8 +214,6 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 	}
 
 	for (size_t i = 0; i < pcs_vector.size(); i++)
-		//      if (pcs_vector[i]->pcs_type_name.find("HEAT") != string::npos) {
-		// TF
 		if (pcs_vector[i]->getProcessType() == HEAT_TRANSPORT)
 		{
 			t_pcs = pcs_vector[i];
@@ -586,20 +584,6 @@ double CFiniteElementVec::CalDensity()
 			           // so still works)
 			rho = (1. - porosity) * fabs(smat->Density()) +
 			      porosity * Sw * density_fluid;
-
-			if (Flow_Type == 2 || Flow_Type == 3)
-			{
-				/*
-				   p_g=0.0;
-				   for(i = 0; i< nnodes; i++)
-				   p_g += shapefct[i]*AuxNodal2[i];
-				   rho += porosity *
-				   (1.0-Sw)*COMP_MOL_MASS_AIR*p_g/(GAS_CONSTANT*(Tem+273.15));
-				 */
-				CFluidProperties* GasProp;
-				GasProp = MFPGet("GAS");
-				rho += porosity * (1.0 - Sw) * GasProp->Density();
-			}
 		}
 		else
 			rho = 0.0;
@@ -927,8 +911,6 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 	if (PressureC)
 	{
 		int i = 0;               // phase
-		if (Flow_Type == 2)  // Multi-phase-flow
-			i = 1;
 		GlobalAssembly_PressureCoupling(PressureC, f2 * biot, i);
 	}
 
@@ -1087,11 +1069,6 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 					}
 					AuxNodal[i] = LoadFactor * val_n;
 				}
-				break;
-			case 10:  // Ground_flow. Will be merged to case 0
-				for (int i = 0; i < nnodes; i++)
-					AuxNodal[i] =
-					    LoadFactor * h_pcs->GetNodeValue(nodes[i], idx_P1);
 				break;
 		}
 
