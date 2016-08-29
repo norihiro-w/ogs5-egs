@@ -1202,7 +1202,8 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 		}
 
 		ComputeStrain();
-		if (update) RecordGuassStrain(gp, gp_r, gp_s, gp_t);
+		if (update)
+			RecordGuassStrain(gp, gp_r, gp_s, gp_t);
 		if (F_Flag || T_Flag)
 			ComputeShapefct(1);  // Linear order interpolation function
 		//---------------------------------------------------------
