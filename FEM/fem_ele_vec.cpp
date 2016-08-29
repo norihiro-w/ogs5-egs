@@ -29,9 +29,6 @@
 #include "tools.h"
 
 
-#define COMP_MOL_MASS_AIR 28.96  // kg/kmol WW  28.96
-#define GAS_CONSTANT 8314.41     // J/(kmol*K) WW
-
 namespace FiniteElement
 {
 
@@ -1124,27 +1121,12 @@ void CFiniteElementVec::GlobalAssembly_RHS()
  **************************************************************************/
 void CFiniteElementVec::LocalAssembly_continuum(const int update)
 {
-	long i;
-
-	Matrix* p_D = NULL;
 	eleV_DM = ele_value_dm[MeshElement->GetIndex()];
 
 	// ---- Gauss integral
-	int gp_r = 0, gp_s = 0, gp_t;
 	gp = 0;
-	gp_t = 0;
-	double fkt = 0.0;
-
-	const int PModel = smat->Plasticity_type;
-	double dPhi = 0.0;  // Sclar factor for the plastic strain
 
 	double ThermalExpansion = 0.0;
-	double t1 = 0.0;
-	bool Strain_TCS = false;
-
-	//
-	ThermalExpansion = 0.0;
-	// Thermal effect
 	if (smat->Thermal_Expansion() > 0.0)
 		ThermalExpansion = smat->Thermal_Expansion();
 
@@ -1158,7 +1140,7 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 
 	if (T_Flag)
 	{
-		for (i = 0; i < nnodes; i++)
+		for (long i = 0; i < nnodes; i++)
 		{
 			T1[i] = t_pcs->GetNodeValue(nodes[i], idx_T1);
 			Temp[i] = t_pcs->GetNodeValue(nodes[i], idx_T1) -
@@ -1167,6 +1149,7 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 	}
 	//
 
+	const int PModel = smat->Plasticity_type;
 	if (PModel == 1 || PModel == 10 || PModel == 11)
 		smat->CalulateCoefficent_DP();
 	//
@@ -1183,51 +1166,13 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 			*De = *(smat->getD_tran());  // UJG/WW
 	}
 
-	if (PModel == 5) smat->CalculateCoefficent_HOEKBROWN();
-	                                                         /*
-	                                                            string fname=FileName+"_D.txt";
-	                                                            ofstream out_f(fname.c_str());
-	                                                            De->Write(out_f);
-	                                                          */
 
-	/*
-	   //TEST
-	   fstream oss;
-	   if(update)
-	   {
-	   char tf_name[10];
-	   #ifdef USE_MPI
-	   sprintf(tf_name,"%d",myrank);
-	    string fname = FileName+tf_name+".stress";
-	   #else
-	    string fname = FileName+".stress";
-	   #endif
-	   oss.open(fname.c_str(), ios::app|ios::out);
-	   //    oss.open(fname.c_str(), ios::trunc|ios::out);
-	   oss<<"\nElement  "<<Index<<endl;
-	   oss<<endl;
-
-	   oss<<"Diaplacement "<<endl;
-	   for(i=0;i<nnodesHQ;i++)
-	   {
-	   oss<<nodes[i]<<"  ";
-	   for(int ii=0; ii<dim; ii++)
-	   oss<<Disp[ii*nnodesHQ+i]<<"  ";
-	   oss<<endl;
-	   }
-	   oss<<"Temperature "<<endl;
-	   for(i=0; i<nnodes;i++)
-	   oss<<Temp[i]<<"  ";
-	   oss<<endl;
-	   oss.close();
-	   }
-	 */
 	//
+	bool Strain_TCS = false;
 	if (PoroModel == 4 || T_Flag || smat->Creep_mode > 0) Strain_TCS = true;
 	//
-	if (smat->CreepModel() == 1000)  // HL_ODS
-		smat->CleanTrBuffer_HL_ODS();
-	for (i = 0; i < ns; i++)
+
+	for (long i = 0; i < ns; i++)
 		stress0[i] = .0;
 
 	// Loop over Gauss points
@@ -1237,7 +1182,8 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 		//  Get local coordinates and weights
 		//  Compute Jacobian matrix and its determinate
 		//---------------------------------------------------------
-		fkt = GetGaussData(gp, gp_r, gp_s, gp_t);
+		int gp_r = 0, gp_s = 0, gp_t = 0;
+		double fkt = GetGaussData(gp, gp_r, gp_s, gp_t);
 
 		//---------------------------------------------------------
 		// Compute geometry
@@ -1265,7 +1211,7 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 		// Initial the stress vector
 		if (PModel != 3)
 		{
-			for (i = 0; i < ns; i++)
+			for (long i = 0; i < ns; i++)
 				dstress[i] = 0.0;
 			De->multi(dstrain, dstress);
 		}
@@ -1273,11 +1219,12 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 		//---------------------------------------------------------
 		// Integrate the stress by return mapping:
 		//---------------------------------------------------------
+		double dPhi = 0.0;  // Sclar factor for the plastic strain
 		switch (PModel)
 		{
 			case -1:  // Pure elasticity
 				// Non-linear elasticity: TE model. 10.03.2008. WW
-				for (i = 0; i < ns; i++)
+				for (long i = 0; i < ns; i++)
 					dstress[i] += (*eleV_DM->Stress)(i, gp);
 				break;
 			case 1:  // Drucker-Prager model
@@ -1335,44 +1282,6 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 				        gp, eleV_DM, De, ConsistDep, dstress, update) > 0)
 					dPhi = 1.0;
 				break;
-			case 3:  // Generalized Cam-Clay model
-				for (i = 0; i < ns; i++)
-					dstress[i] = dstrain[i];
-				//
-				if (smat->SwellingPressureType == 3)
-				{
-					double suc = interpolate(AuxNodal1);
-					double dsuc = interpolate(AuxNodal);
-					(*smat->data_Youngs)(7) = suc;
-					(*smat->data_Youngs)(8) = dsuc;
-					smat->CalStress_and_TangentialMatrix_CC_SubStep(
-					    gp, eleV_DM, dstress, ConsistDep, update);
-					//
-					// double pn = -((*eleV_DM->Stress)(0,
-					// gp)+(*eleV_DM->Stress)(1, gp)+
-					//             (*eleV_DM->Stress)(2, gp))/3.0;
-					// de_vsw =
-					// -smat->TEPSwellingParameter(pn,suc)*dsuc/(suc+1.0e5);
-				}
-				/*
-				   else if (smat->SwellingPressureType==4)  //Power. 07.05.2008
-				   WW
-				   {
-				   double suc = interpolate(AuxNodal1);
-				   double dsuc = interpolate(AuxNodal);
-				   smat->TEPSwellingParameter_kis(suc);
-				   S_Water = m_mmp->SaturationCapillaryPressureFunction(suc);
-				   dS = S_Water -
-				   m_mmp->SaturationCapillaryPressureFunction(suc-dsuc);
-				   de_vsw = pow(S_Water, (*smat->data_Youngs)(2) )*dS;
-				   }
-				 */
-				else
-					smat->CalStress_and_TangentialMatrix_CC(
-					    gp, eleV_DM, dstress, ConsistDep, update);
-
-				dPhi = 1.0;
-				break;
 			case 4:  // Mohr-Coloumb	//WX:10.2010
 				if (smat->DirectStressIntegrationMOHR(gp, eleV_DM, dstress,
 				                                      update, De))
@@ -1384,61 +1293,35 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 					dPhi = 1.0;
 				}
 				break;
-				/*case 5:
-				   if(smat->StressIntegrationHoekBrown(gp, eleV_DM, dstress,
-				   update, De))
-				   {
-				   *ConsistDep = *De;
-				         smat->TangentialHoekBrown(ConsistDep);		//also for
-				   tension
-				         //ConsistDep->Write();
-				         dPhi = 1.0;
-				   }
-				   break;*/
 		}
 		// --------------------------------------------------------------------
 		// Stress increment by heat, swelling, or heat
 		//
 		if (Strain_TCS)
 		{
-			if (PModel == 3) smat->ElasticConsitutive(ele_dim, De);
-			for (i = 0; i < ns; i++)
+			if (PModel == 3)
+				smat->ElasticConsitutive(ele_dim, De);
+			for (long i = 0; i < ns; i++)
 				strain_ne[i] = 0.0;
 			if (PoroModel == 4)  // For swelling pressure
-
-				for (i = 0; i < 3; i++)
+				for (long i = 0; i < 3; i++)
 					strain_ne[i] -= deporo;
 			//
 			if (T_Flag)  // Contribution by thermal expansion
 			{
 				Tem = 0.0;
-				t1 = 0.0;
-				for (i = 0; i < nnodes; i++)
+				double t1 = 0.0;
+				for (long i = 0; i < nnodes; i++)
 				{
 					Tem += shapefct[i] * Temp[i];
 					t1 += shapefct[i] * T1[i];
 				}
-				for (i = 0; i < 3;
-				     i++)  // JT: This was commented. SHOULDN'T BE!
+				for (long i = 0; i < 3; i++)
 					strain_ne[i] -= ThermalExpansion * Tem;
-			}
-			// Strain increment by creep
-			if (smat->Creep_mode == 1 || smat->Creep_mode == 2)
-			{
-				for (i = 0; i < ns; i++)
-					stress_ne[i] = (*eleV_DM->Stress)(i, gp);
-				smat->AddStain_by_Creep(ns, stress_ne, strain_ne, t1);
-			}
-			if (smat->Creep_mode == 1000)  // HL_ODS. Strain increment by creep
-			{
-				for (i = 0; i < ns; i++)
-					stress_ne[i] = (*eleV_DM->Stress)(i, gp);
-				smat->AddStain_by_HL_ODS(eleV_DM, stress_ne, strain_ne, t1);
 			}
 			// Stress deduced by thermal or swelling strain incremental:
 			De->multi(strain_ne, dstress);
-			for (i = 0; i < ns;
-			     i++)  // JT: This was commented. It shouldn't be.
+			for (long i = 0; i < ns; i++)
 				dstrain[i] += strain_ne[i];
 		}
 		// Assemble matrices and RHS
@@ -1447,20 +1330,21 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 			//---------------------------------------------------------
 			// Assemble matrices and RHS
 			//---------------------------------------------------------
+			Matrix* p_D = NULL;
 			if (dPhi <= 0.0)
 				p_D = De;
 			else
 				p_D = ConsistDep;
 			if (pcs->calcDiffFromStress0)
 			{
-				for (i = 0; i < ns; i++)
+				for (long i = 0; i < ns; i++)
 					stress0[i] = (*eleV_DM->Stress0)(i, gp);
 			}
 			ComputeMatrix_RHS(fkt, p_D);
 		}
 		else  // Update stress
 		{
-			for (i = 0; i < ns; i++)
+			for (long i = 0; i < ns; i++)
 			{
 				(*eleV_DM->Stress)(i, gp) = dstress[i];
 				(*eleV_DM->Strain)(i, gp) += dstrain[i];
@@ -1470,8 +1354,6 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 	// The mapping of Gauss point strain to element nodes
 	if (update)
 		ExtropolateGuassStrain();
-	else if (smat->Creep_mode == 1000)  // HL_ODS. Strain increment by creep
-		smat->AccumulateEtr_HL_ODS(eleV_DM, nGaussPoints);
 
 	/*
 	   //TEST
