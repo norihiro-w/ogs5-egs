@@ -74,7 +74,6 @@ private:
 	// Column index in the node value table
 	int idx_P, idx_P0, idx_P1, idx_P1_0, idx_P2;
 	int idx_T0, idx_T1;
-	int idx_S0, idx_S, idx_Snw;
 	int idx_pls;
 	// Displacement column indeces in the node value table
 	int* Idx_Stress;
@@ -103,10 +102,9 @@ private:
 	Matrix* AuxMatrix2;
 	Matrix* Stiffness;
 	Matrix* PressureC;
-	Matrix* PressureC_S;     // Function of S
-	Matrix* PressureC_S_dp;  // Function of S and ds_dp
 	Vector* RHS;
-	// Global RHS. 08.2010. WW
+
+	// Global RHS.
 	double* b_rhs;
 
 	//  Stresses:
@@ -127,7 +125,6 @@ private:
 	// Temperatures of nodes
 	double* Temp, Tem;
 	double* T1;
-	double S_Water;
 
 	// Element value
 	ElementValue_DM* eleV_DM;
@@ -171,8 +168,6 @@ private:
 	// Auxillarary vector
 	double* AuxNodal0;
 	double* AuxNodal;
-	double* AuxNodal_S0;
-	double* AuxNodal_S;
 	double* AuxNodal1;
 	double* AuxNodal2;
 

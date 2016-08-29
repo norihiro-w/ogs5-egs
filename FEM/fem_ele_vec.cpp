@@ -41,13 +41,10 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
     : CElement(C_Sys_Flad, order),
       pcs(dm_pcs),
       PressureC(NULL),
-      PressureC_S(NULL),
-      PressureC_S_dp(NULL),
       b_rhs(NULL)
 {
 	int i;
 
-	S_Water = 1.0;
 	Tem = 273.15 + 23.0;
 	h_pcs = NULL;
 	t_pcs = NULL;
@@ -60,8 +57,6 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 	//  10.11.2010. WW
 	AuxNodal0 = new double[8];
 	AuxNodal = new double[8];
-	AuxNodal_S0 = new double[8];
-	AuxNodal_S = new double[8];
 	AuxNodal1 = new double[60];
 
 	Idx_Stress = new int[ns];
@@ -97,10 +92,6 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 	Idx_Stress[1] = pcs->GetNodeValueIndex("STRESS_YY");
 	Idx_Stress[2] = pcs->GetNodeValueIndex("STRESS_ZZ");
 	Idx_Stress[3] = pcs->GetNodeValueIndex("STRESS_XY");
-
-	idx_S = -1;
-	// Saturation;
-	S_Water = 1.0;
 
 	// For cache NW
 	vec_B_matrix.resize(20);
@@ -228,17 +219,9 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 			else if (h_pcs->type == 1212 || h_pcs->type == 42)
 			{
 				Flow_Type = 2;  // 25.04.2008.  WW
-
-				// 07.2011. WW
-				PressureC_S = new Matrix(60, 20);
-				if (pcs->m_num->nls_method == FiniteElement::NL_NEWTON &&
-				    h_pcs->type == 42)  // Newton-raphson. WW
-					PressureC_S_dp = new Matrix(60, 20);
 			}
 			// WW idx_P0 = pcs->GetNodeValueIndex("POROPRESSURE0");
 			break;
-			//		} else if (pcs_vector[i]->pcs_type_name.find("PS_GLOBAL") !=
-			// string::npos) {
 		}  // TF
 		else if (pcs_vector[i]->getProcessType() == PS_GLOBAL)
 		{
@@ -253,30 +236,6 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 	}
 	if (Flow_Type == 10)
 		idx_P1 = h_pcs->GetNodeValueIndex("HEAD") + 1;
-	else if (Flow_Type == 1)
-	{
-		idx_P1 = h_pcs->GetNodeValueIndex("PRESSURE1") + 1;
-		idx_P1_0 = h_pcs->GetNodeValueIndex("PRESSURE1");
-		idx_S0 = h_pcs->GetNodeValueIndex("SATURATION1");
-		idx_S = h_pcs->GetNodeValueIndex("SATURATION1") + 1;
-	}
-	else if (Flow_Type == 2)
-	{
-		idx_P1 = h_pcs->GetNodeValueIndex("PRESSURE1") + 1;
-		idx_P2 = h_pcs->GetNodeValueIndex("PRESSURE2") + 1;
-		idx_S0 = h_pcs->GetNodeValueIndex("SATURATION1");
-		idx_S = h_pcs->GetNodeValueIndex("SATURATION1") + 1;
-		AuxNodal2 = new double[8];
-	}
-	else if (Flow_Type == 3)
-	{
-		idx_P1 = h_pcs->GetNodeValueIndex("PRESSURE1") + 1;
-		idx_P2 = h_pcs->GetNodeValueIndex("PRESSURE2");
-		idx_S0 = h_pcs->GetNodeValueIndex("SATURATION1");
-		idx_S = idx_S0;
-		idx_Snw = h_pcs->GetNodeValueIndex("SATURATION2") + 1;
-		AuxNodal2 = new double[8];
-	}
 
 	for (size_t i = 0; i < pcs_vector.size(); i++)
 		//      if (pcs_vector[i]->pcs_type_name.find("HEAT") != string::npos) {
@@ -342,8 +301,6 @@ CFiniteElementVec::~CFiniteElementVec()
 
 	// 11.07.2011. WW
 	if (PressureC) delete PressureC;
-	if (PressureC_S) delete PressureC_S;
-	if (PressureC_S_dp) delete PressureC_S_dp;
 
 	B_matrix = NULL;
 	B_matrix_T = NULL;
@@ -365,10 +322,8 @@ CFiniteElementVec::~CFiniteElementVec()
 	pstr = NULL;
 	delete[] AuxNodal;
 	delete[] AuxNodal0;
-	delete[] AuxNodal_S0;
-	delete[] AuxNodal_S;
 	delete[] AuxNodal1;
-	AuxNodal = AuxNodal_S0 = AuxNodal_S = AuxNodal1 = NULL;
+	AuxNodal = AuxNodal1 = NULL;
 	//
 	Idx_Strain = NULL;
 	Idx_Stress = NULL;
@@ -445,8 +400,6 @@ void CFiniteElementVec::SetMemory()
 		size = dim * nnodesHQ;
 		Stiffness->LimitSize(size, size);
 		if (PressureC) PressureC->LimitSize(size, nnodes);
-		if (PressureC_S) PressureC_S->LimitSize(size, nnodes);
-		if (PressureC_S_dp) PressureC_S_dp->LimitSize(size, nnodes);
 		RHS->LimitSize(size);
 	}
 	else
@@ -637,7 +590,7 @@ double CFiniteElementVec::CalDensity()
 	// double p_g = 0.0;
 	double Sw = 0.0;
 	int no_phases = (int)mfp_vector.size();
-	int i = 0, phase = 0;
+	int phase = 0;
 
 	rho = 0.0;
 	if (F_Flag)
@@ -655,12 +608,6 @@ double CFiniteElementVec::CalDensity()
 			Sw = 1.0;  // JT, should be 1.0, unless multiphase (calculate below)
 			           // (if unsaturated, fluid density would be negligible...
 			           // so still works)
-			if (Flow_Type > 0 && Flow_Type != 10)
-			{
-				Sw = 0.;  // WW
-				for (i = 0; i < nnodes; i++)
-					Sw += shapefct[i] * AuxNodal_S[i];
-			}
 			rho = (1. - porosity) * fabs(smat->Density()) +
 			      porosity * Sw * density_fluid;
 
@@ -768,21 +715,9 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 	//---------------------------------------------------------
 	// LoadFactor: factor of incremental loading, prescibed in rf_pcs.cpp
 
-	if ((PressureC || PressureC_S || PressureC_S_dp) && !PreLoad)
+	if (PressureC && !PreLoad)
 	{
 		fac = LoadFactor * fkt;
-
-		if (PressureC_S || PressureC_S_dp)
-		{
-			// Pressure 1
-			fac2 = interpolate(AuxNodal0);
-			// Saturation of phase 1
-			fac1 = m_mmp->SaturationCapillaryPressureFunction(fac2);
-			if (PressureC_S_dp)
-				fac2 = fac1 -
-				       fac2 * m_mmp->PressureSaturationDependency(fac1, true);
-			// JT: dSdP now returns actual sign (<0)
-		}
 
 		if (axisymmetry)
 		{
@@ -797,11 +732,6 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 
 						f_buff = fac * dN_dx * shapefct[l];
 						(*PressureC)(nnodesHQ* j + k, l) += f_buff;
-						if (PressureC_S)
-							(*PressureC_S)(nnodesHQ* j + k, l) += f_buff * fac1;
-						if (PressureC_S_dp)
-							(*PressureC_S_dp)(nnodesHQ* j + k, l) +=
-							    f_buff * fac2;
 					}
 				}
 			}
@@ -816,12 +746,6 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 					{
 						f_buff = fac * dshapefctHQ[nnodesHQ * j + k] * shapefct[l];
 						(*PressureC)(nnodesHQ* j + k, l) += f_buff;
-
-						if (PressureC_S)
-							(*PressureC_S)(nnodesHQ* j + k, l) += f_buff * fac1;
-						if (PressureC_S_dp)
-							(*PressureC_S_dp)(nnodesHQ* j + k, l) +=
-							    f_buff * fac2;
 					}
 				}
 			}
@@ -894,8 +818,6 @@ void CFiniteElementVec::LocalAssembly(const int update)
 	(*Stiffness) = 0.0;
 
 	if (PressureC) (*PressureC) = 0.0;
-	if (PressureC_S) (*PressureC_S) = 0.0;
-	if (PressureC_S_dp) (*PressureC_S_dp) = 0.0;
 
 	for (int i = 0; i < nnodesHQ; i++)
 		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex();
@@ -910,39 +832,6 @@ void CFiniteElementVec::LocalAssembly(const int update)
 		for (j = 0; j < nnodesHQ; j++)
 			Disp[j + i * nnodesHQ] = pcs->GetNodeValue(nodes[j], Idx_dm0[i]);
 
-	// Get saturation of element nodes
-	if (Flow_Type > 0 && Flow_Type != 10)
-	{
-		for (int i = 0; i < nnodes; i++)
-		{
-			AuxNodal_S[i] = h_pcs->GetNodeValue(nodes[i], idx_S);
-			AuxNodal_S0[i] = h_pcs->GetNodeValue(nodes[i], idx_S0);
-		}
-		if (Flow_Type == 2 || Flow_Type == 3)  // 09.10.2009 PCH
-
-			for (int i = 0; i < nnodes; i++)
-			{
-				AuxNodal0[i] = h_pcs->GetNodeValue(nodes[i], idx_P1);
-				AuxNodal2[i] = h_pcs->GetNodeValue(nodes[i], idx_P2);
-			}
-		// 12.03.2008 WW
-		if ((Flow_Type == 1 || Flow_Type == 2) &&
-		    (smat->SwellingPressureType == 3 ||
-		     smat->SwellingPressureType == 4))
-		{
-			double fac = 1.0;
-			if (Flow_Type == 1) fac = -1.0;
-			for (int i = 0; i < nnodes; i++)
-			{
-				// Pc
-				AuxNodal1[i] = fac * h_pcs->GetNodeValue(nodes[i], idx_P1 - 1);
-				// dPc
-				AuxNodal[i] = fac * (h_pcs->GetNodeValue(nodes[i], idx_P1) -
-				                     h_pcs->GetNodeValue(nodes[i], idx_P1 - 1));
-			}
-		}
-	}
-	//
 
 	//----------------------------------------------------
 	LocalAssembly_continuum(update);
@@ -975,20 +864,6 @@ void CFiniteElementVec::LocalAssembly(const int update)
 				(*pcs->matrix_file) << "Pressue coupling matrix: "
 				                    << "\n";
 				PressureC->Write(*pcs->matrix_file);
-			}
-			// 07.2011. WW
-			if (PressureC_S)
-			{
-				(*pcs->matrix_file)
-				    << "Saturation depedent pressue coupling matrix: "
-				    << "\n";
-				PressureC_S->Write(*pcs->matrix_file);
-			}
-			if (PressureC_S_dp)
-			{
-				(*pcs->matrix_file) << "Jacobi pressue coupling matrix: "
-				                    << "\n";
-				PressureC_S_dp->Write(*pcs->matrix_file);
 			}
 		}
 	}
@@ -1080,11 +955,6 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 			i = 1;
 		GlobalAssembly_PressureCoupling(PressureC, f2 * biot, i);
 	}
-	// H2: p_g- S_w*p_c
-	if (PressureC_S)
-		GlobalAssembly_PressureCoupling(PressureC_S, -f2 * biot, 0);
-	if (PressureC_S_dp)
-		GlobalAssembly_PressureCoupling(PressureC_S_dp, -f2 * biot, 0);
 
 	// TEST OUT
 	// PressureC->Write();
@@ -1247,89 +1117,6 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 					AuxNodal[i] =
 					    LoadFactor * h_pcs->GetNodeValue(nodes[i], idx_P1);
 				break;
-			case 1:  // Richards flow
-				//
-				for (int i = 0; i < nnodes; i++)
-				{
-					double val_n = h_pcs->GetNodeValue(nodes[i], idx_P1);
-					if (biot < 0.0 && val_n < 0.0)
-						AuxNodal[i] = 0.0;
-					else
-						AuxNodal[i] = LoadFactor * S_Water * val_n;
-				}
-				break;
-			case 2:
-			{  // Multi-phase-flow: p_g-Sw*p_c
-				// 07.2011. WW
-				const int dim_times_nnodesHQ(dim * nnodesHQ);
-				for (int i = 0; i < dim_times_nnodesHQ; i++)
-					AuxNodal1[i] = 0.0;
-
-				if (smat->bishop_model > 0)
-				{
-					for (int i = 0; i < nnodes; i++)
-					{
-						double bishop_coef = 1.;  // bishop
-						double S_e = 1.;
-						switch (smat->bishop_model)
-						{
-							case 1:
-								bishop_coef = smat->bishop_model_value;
-								break;
-							case 2:
-								S_e = m_mmp->GetEffectiveSaturationForPerm(
-								    AuxNodal_S[i], 0);
-								bishop_coef =
-								    pow(S_e, smat->bishop_model_value);
-								break;
-							default:
-								break;
-						}
-						double val_n = 0;
-						if (smat->bishop_model == 1 ||
-						    smat->bishop_model == 2)  // pg-bishop*pc 05.2011 WX
-							val_n = h_pcs->GetNodeValue(nodes[i], idx_P2) -
-							        bishop_coef *
-							            h_pcs->GetNodeValue(nodes[i], idx_P1);
-						else
-							val_n = h_pcs->GetNodeValue(nodes[i],
-							                            idx_P2)  // pg - Sw*pc
-							        -
-							        AuxNodal_S[i] *
-							            h_pcs->GetNodeValue(nodes[i], idx_P1);
-						val_n = h_pcs->GetNodeValue(nodes[i], idx_P2) -
-						        AuxNodal_S[i] *
-						            h_pcs->GetNodeValue(nodes[i], idx_P1);
-						if (biot < 0.0 && val_n < 0.0)
-							AuxNodal[i] = 0.0;
-						else
-							AuxNodal[i] = val_n * LoadFactor;
-					}
-
-					PressureC->multi(AuxNodal, AuxNodal1);
-				}
-				else
-				{
-					PressureC->multi(AuxNodal2, AuxNodal1, LoadFactor);
-					PressureC_S->multi(AuxNodal0, AuxNodal1, -1.0 * LoadFactor);
-				}
-
-				break;
-			}
-			case 3:  // Multi-phase-flow: SwPw+SgPg	// PCH 05.05.2009
-				for (int i = 0; i < nnodes; i++)
-				{
-					double Snw = h_pcs->GetNodeValue(nodes[i], idx_Snw);
-					double Sw = 1.0 - Snw;
-					double Pw = h_pcs->GetNodeValue(nodes[i], idx_P1);
-					double Pnw = h_pcs->GetNodeValue(nodes[i], idx_P2);
-					double val_n = Sw * Pw + Snw * Pnw;
-					if (biot < 0.0 && val_n < 0.0)
-						AuxNodal[i] = 0.0;
-					else
-						AuxNodal[i] = val_n * LoadFactor;
-				}
-				break;
 		}
 
 		const int dim_times_nnodesHQ(dim * nnodesHQ);
@@ -1397,7 +1184,6 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 
 	const int PModel = smat->Plasticity_type;
 	double dPhi = 0.0;  // Sclar factor for the plastic strain
-	double dS = 0.0;
 
 	double ThermalExpansion = 0.0;
 	double t1 = 0.0;
@@ -1702,37 +1488,6 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 			     i++)  // JT: This was commented. It shouldn't be.
 				dstrain[i] += strain_ne[i];
 		}
-		// Fluid coupling;
-		S_Water = 1.0;
-		if (Flow_Type > 0 && Flow_Type != 10)
-			S_Water = interpolate(AuxNodal_S, 1);
-		// Decovalex. Swelling pressure
-		if (smat->SwellingPressureType == 1)
-		{
-			dS = -interpolate(AuxNodal_S0, 1);
-			dS += S_Water;
-			for (i = 0; i < 3; i++)
-				dstress[i] -= 2.0 * S_Water * dS * smat->Max_SwellingPressure;
-		}
-		else if (smat->SwellingPressureType == 2)  // LBNL's model
-		{
-			dS = -interpolate(AuxNodal_S0, 1);
-			dS += S_Water;
-			for (i = 0; i < 3; i++)
-				dstress[i] -= dS * smat->Max_SwellingPressure;
-		}
-		/*
-		   else if(smat->SwellingPressureType==3||smat->SwellingPressureType==4)
-		   // TEP model
-		   {
-		   for (i = 0; i < 3; i++)
-		      strain_ne[i] = -de_vsw;
-		   for (i = 3; i < ns; i++)
-		      strain_ne[i] = 0.;
-		   smat->ElasticConsitutive(ele_dim, De);
-		   De->multi(strain_ne, dstress);
-		   }
-		 */
 		// Assemble matrices and RHS
 		if (update < 1)
 		{
