@@ -148,7 +148,6 @@ CRFProcess::CRFProcess(void)
 	iter_outer_cpl = 0;
 	first_coupling_iteration = false;
 	orig_size = 0;
-	ite_steps = 0;
 	cpl_num_dof_errors = 0;
 	continuum_ic = true;
 	number_of_nvals = 0;
@@ -6683,7 +6682,7 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 		// ---------------------------------------------------
 		// LINEAR SOLUTION
 		// ---------------------------------------------------
-		if (m_num->nls_method == FiniteElement::INVALID_NL_TYPE)
+		if (m_num->nls_method == FiniteElement::NL_LINEAR)
 		{
 			PrintStandardIterationInformation(true, nl_itr_err);
 			converged = true;

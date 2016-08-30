@@ -185,7 +185,6 @@ public:
 	friend bool PCSRead(std::string);
 	//....................................................................
 	// 1-GEO
-	int ite_steps;  /// Newton step index;
 public:
 	int Phase_Transition_Model;  // BG, NB flag of Phase_Transition_Model
 	                             // (1...CO2-H2O-NaCl)

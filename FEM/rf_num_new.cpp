@@ -60,7 +60,7 @@ CNumerics::CNumerics(string const& name)
 	//
 	// NLS - Nonlinear Solver
 	nls_method_name = "PICARD";
-	nls_method = FiniteElement::INVALID_NL_TYPE;
+	nls_method = FiniteElement::NL_LINEAR;
 	nls_error_method = 1;
 	nls_max_iterations = 1;
 	nls_relaxation = 0.0;
@@ -171,27 +171,11 @@ void CNumerics::NumConfigure(bool overall_coupling_exists)
 	// Overall coupling check
 	if (overall_coupling_exists && !cpl_error_specified)
 	{
-		if (this->nls_method == FiniteElement::INVALID_NL_TYPE)
-		{
-			std::cout << "ERROR in NUMRead. Overall coupling requested, but ";
-			std::cout << this->pcs_type_name << " was not\n";
-			std::cout << "supplied with coupling tolerance. See "
-			             "$COUPLING_CONTROL keyword to enter this.\n";
-			exit(1);
-		}
-		else
-		{  // Can take the non-linear tolerance as an emergency backup
-			std::cout << "WARNING in NUMRead. Overall coupling requested, but ";
-			std::cout << this->pcs_type_name << " was not\n";
-			std::cout << "supplied with coupling tolerance. Adopting "
-			             "10*non_linear_tolerance.\n";
-			setCouplingErrorMethod(getNonLinearErrorMethod());
-			for (size_t i = 0; i < DOF_NUMBER_MAX; i++)
-			{
-				cpl_error_tolerance[i] = 10.0 * nls_error_tolerance[i];
-			}
-			cpl_error_specified = true;
-		}
+		std::cout << "ERROR in NUMRead. Overall coupling requested, but ";
+		std::cout << this->pcs_type_name << " was not\n";
+		std::cout << "supplied with coupling tolerance. See "
+					 "$COUPLING_CONTROL keyword to enter this.\n";
+		exit(1);
 	}
 	//
 	// Check master processes
@@ -205,7 +189,7 @@ void CNumerics::NumConfigure(bool overall_coupling_exists)
 	}
 	//
 	// We are ok. Now check the tolerances.
-	if (this->nls_method == FiniteElement::INVALID_NL_TYPE)
+	if (this->nls_method == FiniteElement::NL_LINEAR)
 	{  // linear solution
 		if (cpl_error_specified)
 		{  // A coupling error was entered. Adopt this for error calculations.
@@ -336,7 +320,9 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 					break;
 			}
 
-			if (nls_method_name.find("PICARD") != string::npos)
+			if (nls_method_name.find("LINEAR") != string::npos)
+				nls_method = FiniteElement::NL_LINEAR;
+			else if (nls_method_name.find("PICARD") != string::npos)
 				nls_method = FiniteElement::NL_PICARD;
 			else if (nls_method_name.find("NEWTON") != string::npos)
 				nls_method = FiniteElement::NL_NEWTON;

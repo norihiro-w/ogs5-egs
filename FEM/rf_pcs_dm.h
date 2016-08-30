@@ -59,7 +59,7 @@ public:
 	double Execute(int loop_process_number);
 
 	// Aux. Memory
-	std::vector<double> const& GetAuxArray() const { return tempArray; }
+	std::vector<double> const& GetAuxArray() const { return previousTimeStepSolution; }
 	std::vector<double> const& GetInitialFluidPressure() const { return p0; }
 
 	void ScalingNodeForce(const double SFactor);
@@ -67,10 +67,10 @@ public:
 	//
 	void SetInitialGuess_EQS_VEC();
 	void UpdateIterativeStep(const double damp, const int u_type);
-	void InitializeNewtonSteps(const bool ini_excav = false);
+	void InitializeNewtonSteps();
 	double NormOfUpdatedNewton();
-	void StoreLastSolution(const int ty = 0);
-	void RecoverSolution(const int ty = 0);
+	void StoreLastTimeStepSolution();
+	void RecoverLastTimeStepSolution();
 	double NormOfDisp();
 	// Stress
 	// For partitioned HM coupled scheme
@@ -92,23 +92,20 @@ public:
 
 private:
 	void InitialMBuffer();
+	double getNormOfDisplacements();
+	void solveLinear();
+	void solveNewton();
 
 	CFiniteElementVec* fem_dm = nullptr;
-	std::vector<double> tempArray;
+	std::vector<double> previousTimeStepSolution;
 	std::vector<double> p0;
 	bool _isInitialStressNonZero = false;
-
-	int counter = 0;
 	double InitialNormR0 = 0;
 	double InitialNormDU_coupling = 0;
 	double InitialNormDU0 = 0;
-
-	InitDataReadWriteType idata_type = none;
-
-	//
 	double norm_du0_pre_cpl_itr = 0;
-
-	double getNormOfDisplacements();
+	InitDataReadWriteType idata_type = none;
+	int ite_steps;
 };
 
 extern void CalStressInvariants(const long Node_Inex, double* StressInv);

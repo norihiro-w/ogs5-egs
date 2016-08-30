@@ -158,21 +158,21 @@ void CRFProcessDeformation::Initialization()
  **************************************************************************/
 void CRFProcessDeformation::InitialMBuffer()
 {
-	size_t bufferSize(0);
+	size_t n_solution_vector(0);
 	bool HM_Stagered = false;
 	if (getProcessType() == FiniteElement::DEFORMATION)
 	{
-		bufferSize = GetPrimaryVNumber() * m_msh->GetNodesNumber(true);
+		n_solution_vector = GetPrimaryVNumber() * m_msh->GetNodesNumber(true);
 		if (H_Process)
 			HM_Stagered = true;
 	}
 	else if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
 	{
-		bufferSize = (GetPrimaryVNumber() - 1) * m_msh->GetNodesNumber(true) + m_msh->GetNodesNumber(false);
+		n_solution_vector = (GetPrimaryVNumber() - 1) * m_msh->GetNodesNumber(true) + m_msh->GetNodesNumber(false);
 	}
 
 	// Allocate memory for  temporal array
-	tempArray.resize(bufferSize);
+	previousTimeStepSolution.resize(n_solution_vector);
 
 	// Allocate memory for element variables
 	ele_value_dm.reserve(m_msh->ele_vector.size());
@@ -344,6 +344,145 @@ double CRFProcessDeformation::getNormOfDisplacements()
 	return norm_u_k1;
 }
 
+void CRFProcessDeformation::solveLinear()
+{
+	// Refresh solver
+	eqs_new->Initialize();
+
+#ifndef WIN32
+	if (ite_steps == 1)
+	{
+		BaseLib::MemWatch mem_watch;
+		ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
+	}
+#endif
+	// Assemble and solve system equation
+	ScreenMessage("Assembling equation system...\n");
+	GlobalAssembly();
+
+#ifndef WIN32
+	if (ite_steps == 1)
+	{
+		BaseLib::MemWatch mem_watch;
+		ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
+	}
+#endif
+
+	// init solution vector
+	if (getProcessType() != FiniteElement::DEFORMATION_FLOW)
+#if defined(USE_PETSC)
+		InitializeRHS_with_u0();
+#else
+		SetInitialGuess_EQS_VEC();
+#endif
+
+	ScreenMessage("Calling linear solver...\n");
+	// Linear solver
+#if defined(USE_PETSC)
+	//			eqs_new->EQSV_Viewer("eqs" +
+	// number2str(aktueller_zeitschritt) + "b");
+	eqs_new->Solver();
+	eqs_new->MappingSolution();
+#elif defined(NEW_EQS)
+	bool compress_eqs = (this->Deactivated_SubDomain.size() > 0);
+	eqs_new->Solver(compress_eqs);
+#endif
+
+	UpdateIterativeStep(1.0, 0);  // w = w+dw
+
+}
+
+void CRFProcessDeformation::solveNewton()
+{
+	const int MaxIteration = m_num->nls_max_iterations;
+	const double Tolerance_global_Newton = m_num->nls_error_tolerance[0];
+
+	for (ite_steps = 1; ite_steps < MaxIteration +1; ite_steps++)
+	{
+		ScreenMessage("-->Starting Newton-Raphson iteration: %d/%d\n", ite_steps, MaxIteration);
+		ScreenMessage("------------------------------------------------\n");
+
+		// Refresh solver
+		eqs_new->Initialize();
+
+#ifndef WIN32
+		if (ite_steps == 1)
+		{
+			BaseLib::MemWatch mem_watch;
+			ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
+		}
+#endif
+		// Assemble and solve system equation
+		ScreenMessage("Assembling equation system...\n");
+		GlobalAssembly();
+
+#ifndef WIN32
+		if (ite_steps == 1)
+		{
+			BaseLib::MemWatch mem_watch;
+			ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
+		}
+#endif
+
+		ScreenMessage("Calling linear solver...\n");
+		// Linear solver
+#if defined(USE_PETSC)
+		//			eqs_new->EQSV_Viewer("eqs" +
+		// number2str(aktueller_zeitschritt) + "b");
+		eqs_new->Solver();
+		eqs_new->MappingSolution();
+#elif defined(NEW_EQS)
+		bool compress_eqs = (this->Deactivated_SubDomain.size() > 0);
+		eqs_new->Solver(compress_eqs);
+#endif
+
+		// Get norm of residual vector, solution increment
+#if defined(USE_PETSC)
+		double NormR = eqs_new->GetVecNormRHS();
+		double NormDU = eqs_new->GetVecNormX();
+#elif defined(NEW_EQS)
+		double NormR = eqs_new->NormRHS();
+		double NormDU = eqs_new->NormX();
+#endif
+
+		if (ite_steps == 1)
+		{
+			if (this->first_coupling_iteration)
+			{
+				InitialNormDU_coupling = NormDU;
+				norm_du0_pre_cpl_itr = .0;
+			}
+			InitialNormR0 = NormR;
+			InitialNormDU0 = NormDU;
+		}
+
+		// calculate errors
+		double ErrorR = NormR / (InitialNormR0 == 0 ? 1 : InitialNormR0);
+		double ErrorDU = NormDU / (InitialNormDU0 == 0 ? 1 : InitialNormDU0);
+
+		//
+		ScreenMessage("-->End of Newton-Raphson iteration: %d/%d\n", ite_steps, MaxIteration);
+		ScreenMessage("   Abs.Res.  Rel.Res.  Abs.DU Rel.DU\n");
+		ScreenMessage("   %8.2e  %8.2e  %8.2e %8.2e\n", NormR, ErrorR, NormDU, ErrorDU);
+		ScreenMessage("------------------------------------------------\n");
+
+		if (ErrorR > 100.0 && ite_steps > 1)
+		{
+			ScreenMessage("***Attention: Newton-Raphson step is diverged. Programme halt!\n");
+			exit(1);
+		}
+
+		if (ErrorR <= Tolerance_global_Newton)
+		{
+			if (ite_steps == 1)
+				UpdateIterativeStep(1.0, 0);
+			break;
+		}
+
+		UpdateIterativeStep(1.0, 0);  // w = w+dw
+	}                                     // Newton-Raphson iteration
+}
+
 /*************************************************************************
    ROCKFLOW - Function: CRFProcess::
    Task:  Solve plastic deformation by generalized Newton-Raphson method
@@ -362,9 +501,6 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 	clock_t dm_time;
 	dm_time = -clock();
 
-	counter++;  // Times of this method  to be called
-	// For pure elesticity
-	const bool isLinearProblem = FiniteElement::isNewtonKind(m_num->nls_method);
 
 	// setup mesh
 	m_msh->SwitchOnQuadraticNodes(true);
@@ -372,176 +508,36 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 		CheckMarkedElement();
 
 #ifdef NEW_EQS
-	eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method, m_num->ls_max_iterations, m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
+	eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method, m_num->ls_max_iterations,
+							m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
 #endif
 
 	if (this->first_coupling_iteration)
-		StoreLastSolution();  // u_n-->temp
+		StoreLastTimeStepSolution();  // u_n-->temp
 
 	//  Reset stress for each coupling step when partitioned scheme is applied
 	//  to HM
-	if (H_Process && (type / 10 != 4))
+	if (H_Process && getProcessType() == FiniteElement::DEFORMATION)
 		ResetCouplingStep();
 
-	//
-	// Compute the maximum ratio of load increment and
-	//   predict the number of load steps
-	// ---------------------------------------------------------------
-	// Compute the ratio of the current load to initial yield load
-	// ---------------------------------------------------------------
-	int number_of_load_steps = 1;
-	if (type / 10 == 4)  // For monolithic scheme
-		number_of_load_steps = 1;
-	double damping = 1.0;
-	const double Tolerance_global_Newton = m_num->nls_error_tolerance[0];
 
-	for (int l = 1; l <= number_of_load_steps; l++)
-	{
-		// Initialize incremental displacement: w=0
-		InitializeNewtonSteps();
-		double NormDU = 0.0, NormR = 0.0;
-		double ErrorR = 0.0, ErrorU = 0.0;
-		const int MaxIteration =
-		    isLinearProblem ? 1 : m_num->nls_max_iterations;
-		if (!isLinearProblem)
-		{
-			ErrorR = ErrorU = NormR = NormDU = 1.0e+8;
-			ScreenMessage("Starting loading step %d/%d.\n", l,
-			              number_of_load_steps);
-			ScreenMessage("------------------------------------------------\n");
-		}
+	// Initialize incremental displacement: w=0
+	InitializeNewtonSteps();
 
-		// Begin Newton-Raphson steps
-		ite_steps = 0;
-		while (ite_steps < MaxIteration)
-		{
-			ite_steps++;
-			ScreenMessage("-->Starting Newton-Raphson iteration: %d/%d\n",
-			              ite_steps, MaxIteration);
-			ScreenMessage("------------------------------------------------\n");
-// Refresh solver
-#if defined(USE_PETSC)
-			eqs_new->Initialize();
-#elif defined(NEW_EQS)
-			eqs_new->Initialize();
-#endif
+	if (m_num->nls_method == FiniteElement::NL_LINEAR)
+		solveLinear();
+	else if (FiniteElement::isNewtonKind(m_num->nls_method))
+		solveNewton();
 
-#ifndef WIN32
-			if (ite_steps == 1)
-			{
-				BaseLib::MemWatch mem_watch;
-				ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
-			}
-#endif
-			// Assemble and solve system equation
-			ScreenMessage("Assembling equation system...\n");
-			GlobalAssembly();
+	// Update stresses
+	UpdateStress();
 
-#ifndef WIN32
-			if (ite_steps == 1)
-			{
-				BaseLib::MemWatch mem_watch;
-				ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
-			}
-#endif
-
-			// init solution vector
-			if (isLinearProblem && type != 41)
-#if defined(USE_PETSC)
-				InitializeRHS_with_u0();
-#else
-				SetInitialGuess_EQS_VEC();
-#endif
-
-			ScreenMessage("Calling linear solver...\n");
-			// Linear solver
-#if defined(USE_PETSC)
-			//			eqs_new->EQSV_Viewer("eqs" +
-			// number2str(aktueller_zeitschritt) + "b");
-			eqs_new->Solver();
-			eqs_new->MappingSolution();
-#elif defined(NEW_EQS)
-			bool compress_eqs =
-				(type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
-			eqs_new->Solver(compress_eqs);
-#endif
-
-			if (!isLinearProblem)
-			{
-// Get norm of residual vector, solution increment
-#if defined(USE_PETSC)
-				NormR = eqs_new->GetVecNormRHS();
-				NormDU = eqs_new->GetVecNormX();
-#elif defined(NEW_EQS)
-				NormR = eqs_new->NormRHS();
-				NormDU = eqs_new->NormX();
-#endif
-
-				if (ite_steps == 1)
-				{
-					if (this->first_coupling_iteration)
-					{
-						InitialNormDU_coupling = NormDU;
-						norm_du0_pre_cpl_itr = .0;
-					}
-					InitialNormR0 = NormR;
-					InitialNormDU0 = NormDU;
-				}
-
-				// calculate errors
-				ErrorR = NormR / (InitialNormR0 == 0 ? 1 : InitialNormR0);
-				ErrorU = NormDU / (InitialNormDU0 == 0 ? 1 : InitialNormDU0);
-
-				// Compute damping for Newton-Raphson step
-				damping = 1.0;
-
-#if 0
-				if(ErrorR / Error1 > 1.0e-1 || ErrorU / ErrorU1 > 1.0e-1)
-					damping = 0.5;
-#endif
-
-				//
-				ScreenMessage("-->End of Newton-Raphson iteration: %d/%d\n",
-				              ite_steps, MaxIteration);
-				ScreenMessage(
-				    "   NR-Error  RHS Norm 0  RHS Norm    Unknowns Norm  "
-				    "Damping\n");
-				ScreenMessage("   %8.2e  %8.2e    %8.2e    %8.2e       %8.2e\n",
-				              ErrorR, InitialNormR0, NormR, NormDU, damping);
-				ScreenMessage(
-				    "------------------------------------------------\n");
-
-				if (ErrorR > 100.0 && ite_steps > 1)
-				{
-					ScreenMessage(
-					    "***Attention: Newton-Raphson step is diverged. "
-					    "Programme halt!\n");
-					exit(1);
-				}
-				//				if(InitialNormR0 < 10 * Tolerance_global_Newton)
-				//					break;
-				//				if(NormR < 0.001 * InitialNormR0)
-				//					break;
-				if (ErrorR <= Tolerance_global_Newton)
-				{
-					if (ite_steps == 1) UpdateIterativeStep(damping, 0);
-					break;
-				}
-			}
-
-			UpdateIterativeStep(damping, 0);  // w = w+dw
-		}                                     // Newton-Raphson iteration
-
-		// Update stresses
-		UpdateStress();
-
-		// Update displacements, u=u+w for the Newton-Raphson
-		// u1 = u0 for linear problems
-		UpdateIterativeStep(1.0, 1);
-	}  // Load step
+	// Update displacements, u=u+w for the Newton-Raphson
+	// u1 = u0 for linear problems
+	UpdateIterativeStep(1.0, 1);
 
 	// Recovery the old solution.  Temp --> u_n	for flow proccess
-	RecoverSolution();
+	RecoverLastTimeStepSolution();
 
 	// get coupling error
 	const double norm_u_k1 = getNormOfDisplacements();  // InitialNormDU_coupling
@@ -594,7 +590,7 @@ void CRFProcessDeformation::ResetCouplingStep()
 	{
 		number_of_nodes = num_nodes_p_var[i];
 		for (j = 0; j < number_of_nodes; j++)
-			SetNodeValue(j, p_var_index[i], tempArray[shift + j]);
+			SetNodeValue(j, p_var_index[i], previousTimeStepSolution[shift + j]);
 		shift += number_of_nodes;
 	}
 }
@@ -751,66 +747,26 @@ void CRFProcessDeformation::UpdateIterativeStep(const double damp,
    11/2007   WW   Change to fit the new equation class
    06/2007   WW   Rewrite
 **************************************************************************/
-void CRFProcessDeformation::InitializeNewtonSteps(const bool ini_excav)
+void CRFProcessDeformation::InitializeNewtonSteps()
 {
-	long i, j;
-	long number_of_nodes;
-	int col0, Col = 0, start, end;
-	//
-	//
-	start = 0;
-	end = pcs_number_of_primary_nvals;
-	//
-
-	/// u_0 = 0
-	if (type == 42)  // H2M
-		end = problem_dimension_dm;
-
-	/// Dynamic: plus p_0 = 0
-	if (type == 41)
+	// set du = 0
+	for (int i = 0; i < pcs_number_of_primary_nvals; i++)
 	{
-		// p_1 = 0
-		for (i = 0; i < pcs_number_of_primary_nvals; i++)
-		{
-			Col = p_var_index[i];
-			col0 = Col - 1;
-			number_of_nodes = num_nodes_p_var[i];
-			if (i < problem_dimension_dm)
-				for (j = 0; j < number_of_nodes; j++)
-					// SetNodeValue(j, Col, 0.0);
-					SetNodeValue(j, col0, 0.0);
-
-			else
-			{
-				if (FiniteElement::isNewtonKind(
-				        m_num->nls_method))  // If newton. 29.09.2011. WW
-					continue;
-
-				for (j = 0; j < number_of_nodes; j++)
-					SetNodeValue(j, Col, 0.0);
-			}
-		}
+		int var_id_u0 = p_var_index[i] - 1;
+		long number_of_nodes = num_nodes_p_var[i];
+		for (long j = 0; j < number_of_nodes; j++)
+			SetNodeValue(j, var_id_u0, 0.0);
 	}
-	else  // non HM monolithic
+
+	// p1 = 0
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW
+		&& FiniteElement::isNewtonKind(m_num->nls_method))
 	{
-		for (i = start; i < end; i++)
-		{
-			Col = p_var_index[i] - 1;
-			number_of_nodes = num_nodes_p_var[i];
-			for (j = 0; j < number_of_nodes; j++)
-				SetNodeValue(j, Col, 0.0);
-		}
+		int var_id_p1 = p_var_index[problem_dimension_dm];
+		long number_of_nodes = num_nodes_p_var[problem_dimension_dm];
+		for (long j = 0; j < number_of_nodes; j++)
+			SetNodeValue(j, var_id_p1, 0.0);
 	}
-	/// Excavation: plus u_1 = 0;
-	if (ini_excav)
-		// p_1 = 0
-		for (i = 0; i < problem_dimension_dm; i++)
-		{
-			Col = p_var_index[i];
-			number_of_nodes = num_nodes_p_var[i];
-			for (j = 0; j < number_of_nodes; j++)
-				SetNodeValue(j, Col, 0.0);
-		}
 }
 
 /**************************************************************************
@@ -867,18 +823,16 @@ double CRFProcessDeformation::NormOfUpdatedNewton()
    11/2007   WW   Change to fit the new equation class
 **************************************************************************/
 
-void CRFProcessDeformation::StoreLastSolution(const int ty)
+void CRFProcessDeformation::StoreLastTimeStepSolution()
 {
-	int i, j;
-	long number_of_nodes;
 	long shift = 0;
-
-	// Displacement
-	for (i = 0; i < pcs_number_of_primary_nvals; i++)
+	for (int i = 0; i < pcs_number_of_primary_nvals; i++)
 	{
-		number_of_nodes = num_nodes_p_var[i];
-		for (j = 0; j < number_of_nodes; j++)
-			tempArray[shift + j] = GetNodeValue(j, p_var_index[i] - ty);
+		int var_id1 = p_var_index[i];
+		long number_of_nodes = num_nodes_p_var[i];
+		for (long j = 0; j < number_of_nodes; j++)
+			previousTimeStepSolution[shift + j] = GetNodeValue(j, var_id1);
+
 		shift += number_of_nodes;
 	}
 }
@@ -897,47 +851,16 @@ void CRFProcessDeformation::StoreLastSolution(const int ty)
    10/2002   WW   Erste Version
    11/2007   WW   Change to fit the new equation class
 **************************************************************************/
-void CRFProcessDeformation::RecoverSolution(const int ty)
+void CRFProcessDeformation::RecoverLastTimeStepSolution()
 {
-	int i, j, idx;
-	long number_of_nodes;
-	int Colshift = 1;
 	long shift = 0;
-	double tem = 0.0;
-
-	int start, end;
-
-	start = 0;
-	end = pcs_number_of_primary_nvals;
-
-	// If monolithic scheme for p-u coupling,  p_i-->p_0 only
-	if (getProcessType() == FiniteElement::DEFORMATION_FLOW && ty > 0)
+	for (int i = 0; i < pcs_number_of_primary_nvals; i++)
 	{
-		start = problem_dimension_dm;
-		for (i = 0; i < start; i++)
-			shift += num_nodes_p_var[i];
+		long number_of_nodes = num_nodes_p_var[i];
+		int idx = p_var_index[i] - 1;
+		for (long j = 0; j < number_of_nodes; j++)
+			SetNodeValue(j, idx, previousTimeStepSolution[shift + j]);
 
-		// TODO: end = problem_dimension_dm;
-	}
-	for (i = start; i < end; i++)
-	{
-		number_of_nodes = num_nodes_p_var[i];
-		idx = p_var_index[i] - Colshift;
-		for (j = 0; j < number_of_nodes; j++)
-		{
-			if (ty < 2)
-			{
-				if (ty == 1) tem = GetNodeValue(j, idx);
-				SetNodeValue(j, idx, tempArray[shift + j]);
-				if (ty == 1) tempArray[shift + j] = tem;
-			}
-			else if (ty == 2)
-			{
-				tem = tempArray[shift + j];
-				tempArray[shift + j] = GetNodeValue(j, idx);
-				SetNodeValue(j, idx, tem);
-			}
-		}
 		shift += number_of_nodes;
 	}
 }
