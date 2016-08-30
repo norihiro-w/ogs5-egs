@@ -112,9 +112,8 @@ private:
 };
 
 extern void CalStressInvariants(const long Node_Inex, double* StressInv);
-// For visualization
 extern void CalMaxiumStressInvariants(double* StressInv);
-extern double LoadFactor;
-extern int number_of_load_steps;
+
 extern int problem_dimension_dm;
+
 #endif

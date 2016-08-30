@@ -2649,7 +2649,6 @@ int CSolidProperties::DirectStressIntegrationMOHR(
 	double TmpValue1, TmpValue2, dstrNorm = 0;
 	// double LodeAngle, I1, J2, J3;
 	double shearsurf, tensionsurf, ep;
-	LoadFactor = 1.;
 
 	// initialize all vectors
 	double dstrs[6] = {0.}, TmpStress[6] = {0.}, prin_str[6] = {0.},

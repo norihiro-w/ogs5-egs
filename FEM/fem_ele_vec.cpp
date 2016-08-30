@@ -671,7 +671,7 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 
 	if (PressureC)
 	{
-		fac = LoadFactor * fkt;
+		fac = fkt;
 
 		if (axisymmetry)
 		{
@@ -714,7 +714,7 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 		// 2D, in y-direction
 		// 3D, in z-direction
 		i = (ele_dim - 1) * nnodesHQ;
-		const double coeff = LoadFactor * rho * smat->grav_const * fkt;
+		const double coeff = rho * smat->grav_const * fkt;
 		for (k = 0; k < nnodesHQ; k++)
 			(*RHS)(i + k) += coeff * shapefctHQ[k];
 		//        (*RHS)(i+k) += LoadFactor * rho * smat->grav_const *
@@ -1059,7 +1059,7 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 					{
 						val_n -= p0[nodes[i]];
 					}
-					AuxNodal[i] = LoadFactor * val_n;
+					AuxNodal[i] = val_n;
 				}
 				break;
 		}

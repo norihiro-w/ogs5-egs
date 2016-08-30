@@ -49,8 +49,6 @@
 #include "tools.h"
 
 
-double LoadFactor = 1.0;
-int number_of_load_steps = 1;
 int problem_dimension_dm = 0;
 
 using namespace std;
@@ -391,10 +389,9 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 	// ---------------------------------------------------------------
 	// Compute the ratio of the current load to initial yield load
 	// ---------------------------------------------------------------
-	number_of_load_steps = 1;
+	int number_of_load_steps = 1;
 	if (type / 10 == 4)  // For monolithic scheme
 		number_of_load_steps = 1;
-	LoadFactor = 1.0;
 	double damping = 1.0;
 	const double Tolerance_global_Newton = m_num->nls_error_tolerance[0];
 
@@ -409,8 +406,8 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 		if (!isLinearProblem)
 		{
 			ErrorR = ErrorU = NormR = NormDU = 1.0e+8;
-			ScreenMessage("Starting loading step %d/%d. Load factor: %g\n", l,
-			              number_of_load_steps, LoadFactor);
+			ScreenMessage("Starting loading step %d/%d.\n", l,
+			              number_of_load_steps);
 			ScreenMessage("------------------------------------------------\n");
 		}
 
