@@ -36,30 +36,23 @@ namespace FiniteElement
 
 class ElementValue_DM;
 
-// Derived element for deformation caculation
 class CFiniteElementVec : public CElement
 {
 public:
 	CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 	                  const int C_Sys_Flad, const int order = 2);
-	~CFiniteElementVec();
+	virtual ~CFiniteElementVec();
 
-	// Set memory for local matrices
-	void SetMemory();
-
-	// Compute the local finite element matrices and vectors
-	void LocalAssembly(const int update);
-	// Assemble local matrics and vectors to the global system
-	bool GlobalAssembly();
-
-	// Compute strains
-	void ComputeStrain();
-
-	// Set material data
 	void SetMaterial();
 
-	// Get strain
-	double* GetStrain() const { return dstrain; }
+	void LocalAssembly(const int update);
+
+private:
+	void SetMemory();
+
+	bool GlobalAssembly();
+
+	void ComputeStrain();
 
 private:
 	CRFProcessDeformation* pcs;
