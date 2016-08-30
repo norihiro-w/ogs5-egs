@@ -87,7 +87,8 @@ private:
 	void StoreLastTimeStepDisplacements();
 	void StoreLastCouplingIterationSolution();
 	void RecoverLastTimeStepDisplacements();
-	void ResetCouplingStep();
+	void ResetStress();
+	void CopyLastTimeStepDisplacementToCurrent();
 
 	std::string GetGaussPointStressFileName();
 	void WriteGaussPointStress();

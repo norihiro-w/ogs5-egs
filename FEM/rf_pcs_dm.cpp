@@ -630,25 +630,38 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 							m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
 #endif
 
+	//-------------------------------------------------------------------
+	// Preparation of this step
+	//-------------------------------------------------------------------
 	// store solution at last coupling iteration
 	if (!this->first_coupling_iteration)
 		StoreLastCouplingIterationSolution();
 
-	// setup detal u
+	// setup nodal values of detal u
 	if (this->first_coupling_iteration)
 		StoreLastTimeStepDisplacements();  // to use u_n array as du_n1
 	zeroDU();
 
-	//  Reset stress???
-	if (H_Process && getProcessType() == FiniteElement::DEFORMATION)
-		ResetCouplingStep();
+	//  setup for partitioned coupling
+	if (pcs_vector.size()>1 && getProcessType() == FiniteElement::DEFORMATION)
+		ResetStress();
 
+	// reset current displacement
+	if (!this->first_coupling_iteration)
+		CopyLastTimeStepDisplacementToCurrent();
+
+	//-------------------------------------------------------------------
+	// Solution
+	//-------------------------------------------------------------------
 	// solve du, p
 	if (m_num->nls_method == FiniteElement::NL_LINEAR)
 		solveLinear();
 	else if (FiniteElement::isNewtonKind(m_num->nls_method))
 		solveNewton();
 
+	//-------------------------------------------------------------------
+	// Post-process
+	//-------------------------------------------------------------------
 	// Update stresses
 	UpdateTotalDisplacement(); // u_n1
 	UpdateStress();
@@ -693,7 +706,7 @@ double CRFProcessDeformation::Execute(int loop_process_number)
    Programming:
    12/2005 WW
  **************************************************************************/
-void CRFProcessDeformation::ResetCouplingStep()
+void CRFProcessDeformation::ResetStress()
 {
 	for (size_t e = 0; e < m_msh->ele_vector.size(); e++)
 	{
@@ -703,8 +716,10 @@ void CRFProcessDeformation::ResetCouplingStep()
 		ElementValue_DM* eleV_DM = ele_value_dm[e];
 		eleV_DM->ResetStress(true);
 	}
+}
 
-	// copy last time step solution to current?
+void CRFProcessDeformation::CopyLastTimeStepDisplacementToCurrent()
+{
 	long shift = 0;
 	for (int i = 0; i < pcs_number_of_primary_nvals; i++)
 	{
@@ -714,6 +729,7 @@ void CRFProcessDeformation::ResetCouplingStep()
 		shift += number_of_nodes;
 	}
 }
+
 /*************************************************************************
    ROCKFLOW - Function: CRFProcess::InitializeStress_EachCouplingStep()
    Programming:
@@ -915,8 +931,9 @@ void CRFProcessDeformation::UpdateTotalDisplacement()
 
 		for (long j = 0; j < number_of_nodes; j++)
 		{
+			double last_ts_u = GetNodeValue(j, var_id_tn + 1);
 			double du = GetNodeValue(j, var_id_tn);
-			SetNodeValue(j, var_id_tn + 1, GetNodeValue(j, var_id_tn + 1) + du);
+			SetNodeValue(j, var_id_tn + 1, last_ts_u + du);
 		}
 	}
 }
