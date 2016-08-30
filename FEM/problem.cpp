@@ -995,7 +995,7 @@ void Problem::SetTimeActiveProcesses()
    01/2009 WW Update
    03/2012 JT Many changes. Allow independent time stepping.
 **************************************************************************/
-void Problem::Euler_TimeDiscretize()
+bool Problem::Euler_TimeDiscretize()
 {
 #ifndef WIN32
 	BaseLib::MemWatch mem_watch;
@@ -1271,6 +1271,8 @@ void Problem::Euler_TimeDiscretize()
 #if defined(USE_MPI) || defined(USE_PETSC)  // JT2012
 	}
 #endif
+
+	return last_dt_accepted;
 }
 
 /*-----------------------------------------------------------------------
