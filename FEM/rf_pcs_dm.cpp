@@ -622,11 +622,10 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 							m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
 #endif
 
+	// store solutions
 	if (this->first_coupling_iteration)
-	{
 		StoreLastTimeStepSolution();  // to use u_n array as du_n1
-		StoreLastCouplingIterationSolution();
-	}
+	StoreLastCouplingIterationSolution(); // for checking coupling convergence
 
 	//  Reset stress???
 	if (H_Process && getProcessType() == FiniteElement::DEFORMATION)
@@ -647,7 +646,6 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 
 	// Recovery the old solution.  Temp --> u_n	for flow proccess
 	RecoverLastTimeStepSolution();
-
 
 	// get coupling error
 	const double u_cpl_abs_error = getNormOfCouplingError(0, problem_dimension_dm);
