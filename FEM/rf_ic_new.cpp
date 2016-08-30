@@ -610,8 +610,8 @@ void CInitialCondition::SetByElementValues(int nidx)
 	}
 
 	CRFProcess* pcs = this->getProcess();
-	//MeshLib::CFEMesh* msh = pcs->m_msh;
 #ifdef USE_PETSC
+	MeshLib::CFEMesh* msh = pcs->m_msh;
 	std::map<size_t, size_t> map_global2local_ele_id;
 	for (size_t i=0; i<map_global2local_ele_id.size(); i++)
 		map_global2local_ele_id.insert(std::make_pair((size_t)msh->getElementVector()[i]->GetGlobalIndex(), i));
