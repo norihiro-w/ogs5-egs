@@ -54,8 +54,6 @@ double Tolerance_global_Newton = 0.0;
 double Tolerance_Local_Newton = 0.0;
 int number_of_load_steps = 1;
 int problem_dimension_dm = 0;
-int PreLoad = 0;
-bool GravityForce = true;
 
 using namespace std;
 using namespace FiniteElement;
@@ -646,12 +644,8 @@ void CRFProcessDeformation::SetInitialGuess_EQS_VEC()
 	long number_of_nodes;
 	long shift = 0;
 	double* eqs_x = NULL;
-#if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
-// TODO
-#elif defined(NEW_EQS)
+#if defined(NEW_EQS)
 	eqs_x = eqs_new->getX();
-#else
-	eqs_x = eqs->x;
 #endif
 	for (i = 0; i < pcs_number_of_primary_nvals; i++)
 	{

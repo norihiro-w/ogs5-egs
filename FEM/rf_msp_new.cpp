@@ -1827,7 +1827,7 @@ bool CSolidProperties::StressIntegrationDP(const int GPiGPj,
 	if (F0 <= (*ele_val->y_surface)(GPiGPj))  // unloading
 		F = -1.0;
 	//
-	if (F > 0.0 && (!PreLoad))  // in yield status
+	if (F > 0.0)  // in yield status
 	{
 		ploading = true;
 		// err = 1.0e+5;
@@ -1985,7 +1985,7 @@ bool CSolidProperties::DirectStressIntegrationDP(const int GPiGPj,
 	//  F = -1.0;
 	if (sy <= sy0)  // unloading
 		F = -1.0;
-	if (F > 0.0 && (!PreLoad))  // in yield status
+	if (F > 0.0)  // in yield status
 	{
 		if (ep < MKleinsteZahl)  // Elastic in previous load step
 			R = F / (sy - sy0);
@@ -2125,7 +2125,7 @@ int CSolidProperties::DirectStressIntegrationDPwithTension(
 
 	if (tmpvalue == 0) Ft = F = -1;
 
-	if (F > 0.0 && (!PreLoad))
+	if (F > 0.0)
 	{
 		// return to Fs
 		Matrix* tmpMatrix = new Matrix(Size, Size);
@@ -3880,7 +3880,7 @@ int CSolidProperties::CalStress_and_TangentialMatrix_SYS(
 	if (pcs_deformation == 1) F = -1.0;
 
 	PLASTIC = 0;
-	if (F > TolF && !PreLoad) /* In Yield Status */
+	if (F > TolF) /* In Yield Status */
 	{
 		PLASTIC = 1;
 		subPLASTIC = 0;
@@ -5393,7 +5393,7 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC(
 		F = -1.0;
 	// TEST CAM-CLAY
 	if (p_tr < 0) F = -1.0;
-	if (F > 0.0 && !PreLoad)  // in yield status
+	if (F > 0.0)  // in yield status
 	{
 		// Local Newton-Raphson procedure to compute the volume plastic strain
 		vep = 0.0;
@@ -5941,7 +5941,7 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC_SubStep(
 		// TEST CAM-CLAY
 		if (p_tr < 0) F = -1.0;
 
-		if (F > f_tol && !PreLoad)  // in yield status
+		if (F > f_tol)  // in yield status
 		{
 			// Local Newton-Raphson procedure to compute the volume plastic
 			// strain

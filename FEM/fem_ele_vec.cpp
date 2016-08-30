@@ -642,9 +642,6 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 			}
 		}
 
-		if (PreLoad == 11)
-			continue;
-
 		(*tmp_AuxMatrix2) = 0.0;
 		tmp_B_matrix_T->multi(*p_D, *tmp_AuxMatrix2);
 		for (j = 0; j < nnodesHQ; j++)
@@ -672,7 +669,7 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 	//---------------------------------------------------------
 	// LoadFactor: factor of incremental loading, prescibed in rf_pcs.cpp
 
-	if (PressureC && !PreLoad)
+	if (PressureC)
 	{
 		fac = LoadFactor * fkt;
 
@@ -712,7 +709,7 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 	//---------------------------------------------------------
 	// Assemble gravity force vector
 	//---------------------------------------------------------
-	if (rho > 0.0 && GravityForce)
+	if (rho > 0.0)
 	{
 		// 2D, in y-direction
 		// 3D, in z-direction
@@ -840,7 +837,6 @@ bool CFiniteElementVec::GlobalAssembly()
 {
 
 	GlobalAssembly_RHS();
-	if (PreLoad == 11) return true;
 
 	GlobalAssembly_Stiffness();
 

@@ -119,6 +119,4 @@ extern double Tolerance_global_Newton;
 extern double Tolerance_Local_Newton;
 extern int number_of_load_steps;
 extern int problem_dimension_dm;
-extern int PreLoad;
-extern bool GravityForce;
 #endif
