@@ -74,7 +74,6 @@ private:
 	void UpdateTotalDisplacement();
 	void zeroDU();
 	void UpdateStress();
-	void UpdateInitialStress(bool ZeroInitialS);
 
 //	double getNormOfDisplacements();
 //	double getNormOfPressure();

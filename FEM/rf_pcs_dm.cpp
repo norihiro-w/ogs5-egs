@@ -1284,30 +1284,3 @@ void CRFProcessDeformation::ReadGaussPointStress()
 	file_stress.close();
 }
 
-/*************************************************************************
-   ROCKFLOW - Function: CRFProcess::UpdateInitialStress()
-   Task:  Compute number of element neighbors to a node
-   Dim : Default=2
-   Programming:
-   12/2003 WW
- **************************************************************************/
-void CRFProcessDeformation::UpdateInitialStress(bool ZeroInitialS)
-{
-	long i;
-	ElementValue_DM* eval_DM;
-
-	// Over all elements
-	MeshLib::CElem* elem = NULL;
-	for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
-	{
-		elem = m_msh->ele_vector[i];
-		if (elem->GetMark())  // Marked for use
-		{
-			eval_DM = ele_value_dm[i];
-			if (ZeroInitialS)
-				(*eval_DM->Stress0) = 0.0;
-			else
-				(*eval_DM->Stress0) = (*eval_DM->Stress);
-		}
-	}
-}
