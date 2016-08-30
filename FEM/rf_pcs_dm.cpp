@@ -789,42 +789,6 @@ void CRFProcessDeformation::zeroPressure1()
 }
 
 /**************************************************************************
-   ROCKFLOW - Funktion: NormOfUpdatedNewton
-
-   Aufgabe:
-   Compute the norm of Newton increment
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E: LINEAR_SOLVER * ls: linear solver
-
-   Ergebnis:
-   - double - Eucleadian Norm
-
-   Programmaenderungen:
-   12/2002   WW   Erste Version
-   11/2007   WW   Change to fit the new equation class
-**************************************************************************/
-double CRFProcessDeformation::NormOfUpdatedNewton()
-{
-	int i, j;
-	long number_of_nodes;
-	double NormW = 0.0;
-	double val;
-	int Colshift = 1;
-	//
-	for (i = 0; i < pcs_number_of_primary_nvals; i++)
-	{
-		number_of_nodes = num_nodes_p_var[i];
-		for (j = 0; j < number_of_nodes; j++)
-		{
-			val = GetNodeValue(j, p_var_index[i] - Colshift);
-			NormW += val * val;
-		}
-	}
-	return sqrt(NormW);
-}
-
-/**************************************************************************
    ROCKFLOW - Funktion: StoreDisplacement
 
    Aufgabe:
@@ -884,37 +848,6 @@ void CRFProcessDeformation::RecoverLastTimeStepSolution()
 
 		shift += number_of_nodes;
 	}
-}
-
-/**************************************************************************
-   ROCKFLOW - Funktion: NormOfDisp
-
-   Aufgabe:
-   Compute the norm of  u_{n+1}
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E: LINEAR_SOLVER * ls: linear solver
-
-   Ergebnis:
-   - double - Eucleadian Norm
-
-   Programmaenderungen:
-   10/2002   WW   Erste Version
-   11/2007   WW   Change to fit the new equation class
-**************************************************************************/
-double CRFProcessDeformation::NormOfDisp()
-{
-	int i, j;
-	long number_of_nodes;
-	double Norm1 = 0.0;
-	//
-	for (i = 0; i < pcs_number_of_primary_nvals; i++)
-	{
-		number_of_nodes = num_nodes_p_var[i];
-		for (j = 0; j < number_of_nodes; j++)
-			Norm1 += GetNodeValue(j, p_var_index[i]) *
-			         GetNodeValue(j, p_var_index[i]);
-	}
-	return Norm1;
 }
 
 /**************************************************************************

@@ -24,7 +24,7 @@ namespace FiniteElement
 {
 class CFiniteElementVec;
 }
-using FiniteElement::CFiniteElementVec;
+using namespace FiniteElement;
 
 enum InitDataReadWriteType
 {
@@ -71,10 +71,8 @@ public:
 	void UpdateU();
 	void zeroDU();
 	void zeroPressure1();
-	double NormOfUpdatedNewton();
 	void StoreLastTimeStepSolution();
 	void RecoverLastTimeStepSolution();
-	double NormOfDisp();
 	// Stress
 	// For partitioned HM coupled scheme
 	void ResetCouplingStep();
