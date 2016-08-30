@@ -303,6 +303,7 @@ void CRFProcessDeformation::InitGauss(void)
 	Extropolation_GaussValue();
 }
 
+#if 0
 double CRFProcessDeformation::getNormOfDisplacements()
 {
 #ifdef USE_PETSC
@@ -343,8 +344,9 @@ double CRFProcessDeformation::getNormOfDisplacements()
 #endif
 	return norm_u_k1;
 }
+#endif
 
-
+#if 0
 double CRFProcessDeformation::getNormOfPressure()
 {
 #ifdef USE_PETSC
@@ -384,7 +386,9 @@ double CRFProcessDeformation::getNormOfPressure()
 #endif
 	return norm_u_k1;
 }
+#endif
 
+#if 0
 double CRFProcessDeformation::getNormOfSoluctionIncrement(int pvar_id_start, int n)
 {
 #if 1 // LMAX
@@ -393,7 +397,7 @@ double CRFProcessDeformation::getNormOfSoluctionIncrement(int pvar_id_start, int
 	{
 		int nidx1 = p_var_index[ii];
 		long const number_of_nodes = num_nodes_p_var[ii];
-		for (size_t i = 0; i < number_of_nodes; i++)
+		for (long i = 0; i < number_of_nodes; i++)
 		{
 			double val1 = GetNodeValue(i, nidx1) - GetNodeValue(i, nidx1-1);
 			normLMAX = std::max(normLMAX, fabs(val1));
@@ -423,6 +427,7 @@ double CRFProcessDeformation::getNormOfSoluctionIncrement(int pvar_id_start, int
 	return normL2;
 #endif
 }
+#endif
 
 double CRFProcessDeformation::getNormOfCouplingError(int pvar_id_start, int n)
 {
