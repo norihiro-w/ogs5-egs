@@ -592,6 +592,9 @@ void CRFProcessDeformation::solveNewton()
 
 	} // Newton-Raphson iteration
 
+	if (MaxIteration == 1)
+		isConverged = true;
+
 	if (!isConverged)
 	{
 		accepted = false;
