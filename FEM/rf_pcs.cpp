@@ -2641,12 +2641,9 @@ void CRFProcess::ConfigDeformation()
 #endif
 	type = 4;
 
-	if (getProcessType() == FiniteElement::DEFORMATION_FLOW ||
-	    getProcessType() == FiniteElement::DEFORMATION_H2)
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
 	{
 		type = 41;
-		if (getProcessType() == FiniteElement::DEFORMATION_H2)
-			type = 42;
 	}
 
 	CNumerics* num = NULL;
@@ -2674,14 +2671,14 @@ void CRFProcess::ConfigDeformation()
 		Shift[i] = i * m_msh->GetNodesNumber(true);
 
 	long nn_H = (long)m_msh->GetNodesNumber(true);
-	if (type == 4)
+	if (getProcessType() == FiniteElement::DEFORMATION)
 	{
 		num_nodes_p_var = new long[problem_dimension_dm];
 		p_var_index = new int[problem_dimension_dm];
 		for (int i = 0; i < problem_dimension_dm; i++)
 			num_nodes_p_var[i] = nn_H;
 	}
-	else if (type == 41)
+	else if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
 	{
 		num_nodes_p_var = new long[problem_dimension_dm + 1];
 		p_var_index = new int[problem_dimension_dm + 1];
@@ -2692,22 +2689,8 @@ void CRFProcess::ConfigDeformation()
 		Shift[problem_dimension_dm] =
 		    problem_dimension_dm * m_msh->GetNodesNumber(true);
 	}
-	else if (type == 42)
-	{
-		num_nodes_p_var = new long[problem_dimension_dm + 2];
-		p_var_index = new int[problem_dimension_dm + 2];
 
-		for (i = 0; i < problem_dimension_dm; i++)
-			num_nodes_p_var[i] = nn_H;
-		for (i = problem_dimension_dm; i < problem_dimension_dm + 2; i++)
-			num_nodes_p_var[i] = (long)m_msh->GetNodesNumber(false);
-		Shift[problem_dimension_dm] =
-		    problem_dimension_dm * m_msh->GetNodesNumber(true);
-		Shift[problem_dimension_dm + 1] =
-		    Shift[problem_dimension_dm] + m_msh->GetNodesNumber(false);
-	}
-
-	if (type / 10 == 4)
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
 		SetOBJNames();
 }
 
@@ -2722,8 +2705,7 @@ void CRFProcess::VariableStaticProblem()
 {
 	//----------------------------------------------------------------------
 	// NOD Primary functions
-	pcs_number_of_primary_nvals =
-	    2;  // OK distinguish 2/3D problems, problem_dimension_dm;
+	pcs_number_of_primary_nvals = 2;
 	pcs_number_of_evals = 0;
 	pcs_primary_function_name[0] = "DISPLACEMENT_X1";
 	pcs_primary_function_name[1] = "DISPLACEMENT_Y1";
@@ -2804,18 +2786,9 @@ void CRFProcess::VariableStaticProblem()
 		pcs_number_of_secondary_nvals++;
 	}
 
-	if (type == 41)
-	{  // Monolithic scheme
-		Def_Variable_LiquidFlow();
-
-		// Output material parameters
-		configMaterialParameters();
-	}
-	else if (type == 42)  // Monolithic scheme H2M. 03.08.2010. WW
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
 	{
-		Def_Variable_MultiPhaseFlow();
-
-		// Output material parameters
+		Def_Variable_LiquidFlow();
 		configMaterialParameters();
 	}
 }
