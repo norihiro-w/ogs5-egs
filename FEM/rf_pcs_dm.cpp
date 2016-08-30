@@ -622,17 +622,18 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 							m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
 #endif
 
-	// store solutions
+	// store solution at last coupling iteration
+	if (!this->first_coupling_iteration)
+		StoreLastCouplingIterationSolution();
+
+	// setup detal u
 	if (this->first_coupling_iteration)
-		StoreLastTimeStepSolution();  // to use u_n array as du_n1
-	StoreLastCouplingIterationSolution(); // for checking coupling convergence
+		StoreLastTimeStepDisplacements();  // to use u_n array as du_n1
+	zeroDU();
 
 	//  Reset stress???
 	if (H_Process && getProcessType() == FiniteElement::DEFORMATION)
 		ResetCouplingStep();
-
-	// zero displacement increment for current time
-	zeroDU();
 
 	// solve du, p
 	if (m_num->nls_method == FiniteElement::NL_LINEAR)
@@ -641,29 +642,31 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 		solveNewton();
 
 	// Update stresses
-	UpdateTotalDisplacement();
+	UpdateTotalDisplacement(); // u_n1
 	UpdateStress();
 
 	// Recovery the old solution.  Temp --> u_n	for flow proccess
-	RecoverLastTimeStepSolution();
+	RecoverLastTimeStepDisplacements();
 
 	// get coupling error
-	const double u_cpl_abs_error = getNormOfCouplingError(0, problem_dimension_dm);
-	const double p_cpl_abs_error = (getProcessType() == FiniteElement::DEFORMATION) ? 0: getNormOfCouplingError(problem_dimension_dm, 1);
-	const double cpl_abs_error = std::max(u_cpl_abs_error, p_cpl_abs_error);
+	if (!this->first_coupling_iteration)
+	{
+		const double u_cpl_abs_error = getNormOfCouplingError(0, problem_dimension_dm);
+		const double p_cpl_abs_error = (getProcessType() == FiniteElement::DEFORMATION) ? 0: getNormOfCouplingError(problem_dimension_dm, 1);
+		const double cpl_abs_error = std::max(u_cpl_abs_error, p_cpl_abs_error);
+		cpl_max_relative_error = cpl_abs_error / m_num->cpl_error_tolerance[0];
 
-	cpl_max_relative_error = cpl_abs_error / m_num->cpl_error_tolerance[0];
+		if (getProcessType() == FiniteElement::DEFORMATION)
+			ScreenMessage("   ||u^k1-u^k||=%g\n", u_cpl_abs_error);
+		else
+			ScreenMessage("   ||u^k1-u^k||=%g, ||p^k1-p^k||=%g\n", u_cpl_abs_error, p_cpl_abs_error);
+	} else {
+		cpl_max_relative_error = std::numeric_limits<double>::max();
+	}
+
 	cpl_num_dof_errors = 1;
-	if (getProcessType() == FiniteElement::DEFORMATION)
-		ScreenMessage("   ||u^k1-u^k||=%g\n", u_cpl_abs_error);
-	else
-		ScreenMessage("   ||u^k1-u^k||=%g, ||p^k1-p^k||=%g\n", u_cpl_abs_error, p_cpl_abs_error);
 
-//	// store current du0
-//	norm_du0_pre_cpl_itr = InitialNormDU0;
-
-#ifdef NEW_EQS  // WW
-	// Also allocate temporary memory for linear solver. WW
+#ifdef NEW_EQS
 	eqs_new->Clean();
 #endif
 
@@ -969,11 +972,11 @@ void CRFProcessDeformation::zeroPressure1()
    11/2007   WW   Change to fit the new equation class
 **************************************************************************/
 
-void CRFProcessDeformation::StoreLastTimeStepSolution()
+void CRFProcessDeformation::StoreLastTimeStepDisplacements()
 {
 	// u(n) is used to store du(n+1)
 	long shift = 0;
-	for (int i = 0; i < pcs_number_of_primary_nvals; i++)
+	for (int i = 0; i < problem_dimension_dm; i++)
 	{
 		int var_id1 = p_var_index[i];
 		long number_of_nodes = num_nodes_p_var[i];
@@ -1015,11 +1018,11 @@ void CRFProcessDeformation::StoreLastCouplingIterationSolution()
    10/2002   WW   Erste Version
    11/2007   WW   Change to fit the new equation class
 **************************************************************************/
-void CRFProcessDeformation::RecoverLastTimeStepSolution()
+void CRFProcessDeformation::RecoverLastTimeStepDisplacements()
 {
 	// u(n) was used to store du(n+1)
 	long shift = 0;
-	for (int i = 0; i < pcs_number_of_primary_nvals; i++)
+	for (int i = 0; i < problem_dimension_dm; i++)
 	{
 		long number_of_nodes = num_nodes_p_var[i];
 		int idx = p_var_index[i] - 1;

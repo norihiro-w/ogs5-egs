@@ -84,9 +84,9 @@ private:
 	double getNormOfSoluctionIncrement(int pvar_id_start, int n);
 	double getNormOfCouplingError(int pvar_id_start, int n);
 
-	void StoreLastTimeStepSolution();
+	void StoreLastTimeStepDisplacements();
 	void StoreLastCouplingIterationSolution();
-	void RecoverLastTimeStepSolution();
+	void RecoverLastTimeStepDisplacements();
 	void ResetCouplingStep();
 
 	std::string GetGaussPointStressFileName();
