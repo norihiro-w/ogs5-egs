@@ -185,6 +185,9 @@ void ElementValue_DM::ReadElementStressASCI(std::fstream& is)
 
 void ElementValue_DM::ResetStress(bool cpl_loop)
 {
+	if (Stress_j == nullptr)
+		return;
+
 	if (cpl_loop)  // For coupling loop
 	{
 		(*Stress_j) = (*Stress_i);
