@@ -563,7 +563,7 @@ void CRFProcessDeformation::solveNewton()
 
 		//
 		ScreenMessage("-->End of Newton-Raphson iteration: %d/%d\n", iter_nlin+1, MaxIteration);
-		ScreenMessage("   Abs.Res.  Rel.Res.  Abs.DU Rel.DU\n");
+		ScreenMessage("   Abs.Res.  Rel.Res.  Abs.DU   Rel.DU\n");
 		ScreenMessage("   %8.2e  %8.2e  %8.2e %8.2e\n", NormR, ErrorR, NormDU, ErrorDU);
 		ScreenMessage("------------------------------------------------\n");
 
