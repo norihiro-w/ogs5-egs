@@ -47,6 +47,9 @@ public:
 
 	void LocalAssembly(const int update);
 
+	void UpdateStress();
+
+
 private:
 	void SetMemory();
 
