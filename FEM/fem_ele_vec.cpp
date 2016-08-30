@@ -742,7 +742,6 @@ void CFiniteElementVec::LocalAssembly(const int update)
 	Index = MeshElement->GetIndex();
 	SetMemory();
 	SetMaterial();
-	// 12.2009. WW
 	eleV_DM = ele_value_dm[MeshElement->GetIndex()];
 	ns = 4;
 	if (MeshElement->GetDimension() == 3) ns = 6;

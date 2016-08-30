@@ -66,8 +66,11 @@ public:
 	void InitGauss();
 	//
 	void SetInitialGuess_EQS_VEC();
-	void UpdateIterativeStep(const double damp, const int u_type);
-	void InitializeNewtonSteps();
+	void UpdateDU();
+	void UpdateP();
+	void UpdateU();
+	void zeroDU();
+	void zeroPressure1();
 	double NormOfUpdatedNewton();
 	void StoreLastTimeStepSolution();
 	void RecoverLastTimeStepSolution();
@@ -105,7 +108,6 @@ private:
 	double InitialNormDU0 = 0;
 	double norm_du0_pre_cpl_itr = 0;
 	InitDataReadWriteType idata_type = none;
-	int ite_steps;
 };
 
 extern void CalStressInvariants(const long Node_Inex, double* StressInv);

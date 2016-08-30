@@ -6975,7 +6975,7 @@ void CRFProcess::PrintStandardIterationInformation(bool write_std_errors,
 {
 	//
 	// LINEAR SOLUTION
-	if (m_num->nls_method == FiniteElement::INVALID_NL_TYPE)
+	if (m_num->nls_method == FiniteElement::NL_LINEAR)
 	{
 		ScreenMessage("      -->LINEAR solution complete. \n");
 		if (write_std_errors)
