@@ -469,8 +469,6 @@ void CRFProcessDeformation::solveLinear()
 	{
 #if defined(USE_PETSC)
 		InitializeRHS_with_u0();
-#else
-		SetInitialGuess_EQS_VEC();
 #endif
 	}
 
@@ -745,44 +743,6 @@ void CRFProcessDeformation::ResetTimeStep()
 			eleV_DM = ele_value_dm[e];
 			eleV_DM->ResetStress(false);
 		}
-}
-
-/*************************************************************************
-   ROCKFLOW - Funktion: TransferNodeValuesToVectorLinearSolver
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E LINEAR_SOLVER *ls: Zeiger auf eine Instanz vom Typ LINEAR_SOLVER.
-
-   Programmaenderungen:
-   02/2000   OK   aus TransferNodeValuesToVectorLinearSolver abgeleitet
-   07/2005   WW  aus  TransferNodeValuesToVectorLinearSolver(OK)
-   11/2010   WW  Modification for H2M
-*************************************************************************/
-void CRFProcessDeformation::SetInitialGuess_EQS_VEC()
-{
-	int i;
-	long j, v_idx = 0;
-	long number_of_nodes;
-	long shift = 0;
-	double* eqs_x = NULL;
-#if defined(NEW_EQS)
-	eqs_x = eqs_new->getX();
-#endif
-	for (i = 0; i < pcs_number_of_primary_nvals; i++)
-	{
-		number_of_nodes = num_nodes_p_var[i];
-		v_idx = p_var_index[i];
-		if (i < problem_dimension_dm)
-		{
-			v_idx--;
-			for (j = 0; j < number_of_nodes; j++)
-				eqs_x[shift + j] = GetNodeValue(j, v_idx);
-		}
-		else
-			for (j = 0; j < number_of_nodes; j++)
-				eqs_x[shift + j] = 0.;
-		shift += number_of_nodes;
-	}
 }
 
 void CRFProcessDeformation::SetDUFromSolution()

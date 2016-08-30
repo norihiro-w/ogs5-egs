@@ -61,8 +61,6 @@ private:
 	void InitialMBuffer();
 	void InitGauss();
 
-	void SetInitialGuess_EQS_VEC();
-
 	void GlobalAssembly();
 	void GlobalAssembly_DM();
 
