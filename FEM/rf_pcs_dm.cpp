@@ -198,6 +198,125 @@ void CRFProcessDeformation::InitialMBuffer()
 	}
 }
 
+
+/**************************************************************************
+   ROCKFLOW - Funktion: InitializeStress
+
+   Aufgabe:
+   Initilize all Gausss values and others
+
+   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
+   - const int NodesOfEelement:
+
+   Ergebnis:
+   - void -
+
+   Programmaenderungen:
+   01/2003  WW  Erste Version
+   09/2007  WW  Parallelize the released load for the excavation modeling
+   letzte Aenderung:
+**************************************************************************/
+void CRFProcessDeformation::InitGauss(void)
+{
+	int Idx_Strain[9] = {-1};
+
+	int NS = 4;
+	Idx_Strain[0] = GetNodeValueIndex("STRAIN_XX");
+	Idx_Strain[1] = GetNodeValueIndex("STRAIN_YY");
+	Idx_Strain[2] = GetNodeValueIndex("STRAIN_ZZ");
+	Idx_Strain[3] = GetNodeValueIndex("STRAIN_XY");
+
+	if (problem_dimension_dm == 3)
+	{
+		NS = 6;
+		Idx_Strain[4] = GetNodeValueIndex("STRAIN_XZ");
+		Idx_Strain[5] = GetNodeValueIndex("STRAIN_YZ");
+	}
+	Idx_Strain[NS] = GetNodeValueIndex("STRAIN_PLS");
+
+	for (size_t i = 0; i < m_msh->GetNodesNumber(false); i++)
+		for (int j = 0; j < NS + 1; j++)
+			SetNodeValue(i, Idx_Strain[j], 0.0);
+
+	std::vector<CInitialCondition*> stress_ic(6, nullptr);
+	for (auto m_ic : ic_vector)
+	{
+		if (m_ic->getProcessPrimaryVariable() == FiniteElement::STRESS_XX)
+			stress_ic[0] = m_ic;
+		if (m_ic->getProcessPrimaryVariable() == FiniteElement::STRESS_YY)
+			stress_ic[1] = m_ic;
+		if (m_ic->getProcessPrimaryVariable() == FiniteElement::STRESS_ZZ)
+			stress_ic[2] = m_ic;
+		if (m_ic->getProcessPrimaryVariable() == FiniteElement::STRESS_XY)
+			stress_ic[3] = m_ic;
+		if (m_ic->getProcessPrimaryVariable() == FiniteElement::STRESS_XZ)
+			stress_ic[4] = m_ic;
+		if (m_ic->getProcessPrimaryVariable() == FiniteElement::STRESS_YZ)
+			stress_ic[5] = m_ic;
+	}
+
+	int n_given_ic = 0;
+	for (int j = 0; j < NS; j++)
+		if (stress_ic[j])
+			n_given_ic++;
+	if (n_given_ic > 0)
+		reload = -1000;
+
+	for (size_t i = 0; i < m_msh->ele_vector.size(); i++)
+	{
+		MeshLib::CElem* elem = m_msh->ele_vector[i];
+		if (!elem->GetMark())
+			continue;
+
+		int MatGroup = elem->GetPatchIndex();
+		elem->SetOrder(true);
+		fem_dm->ConfigElement(elem);
+		ElementValue_DM* eleV_DM = ele_value_dm[i];
+		*(eleV_DM->Stress0) = 0.0;
+		*(eleV_DM->Stress) = 0.0;
+
+		if (n_given_ic == 0)
+			continue;
+
+		int NGS = fem_dm->GetNumGaussPoints();
+		for (int gp = 0; gp < NGS; gp++)
+		{
+			int gp_r = 0, gp_s = 0, gp_t = 0;
+			fem_dm->GetGaussData(gp, gp_r, gp_s, gp_t);
+			fem_dm->ComputeShapefct(2);
+			double xyz[3];
+			fem_dm->RealCoordinates(xyz);
+			for (int j = 0; j < NS; j++)
+			{
+				CInitialCondition* m_ic = stress_ic[j];
+				if (!m_ic) continue;
+				int n_dom = m_ic->GetNumDom();
+				for (int k = 0; k < n_dom; k++)
+				{
+					if (MatGroup != m_ic->GetDomain(k)) continue;
+					(*eleV_DM->Stress)(j, gp) =
+						m_ic->getLinearFunction()->getValue(m_ic->GetDomain(k), xyz[0], xyz[1], xyz[2]);
+					(*eleV_DM->Stress0)(j, gp) = (*eleV_DM->Stress)(j, gp);
+				}
+			}
+		}
+		if (eleV_DM->Stress_j)
+			(*eleV_DM->Stress_j) = (*eleV_DM->Stress);
+		elem->SetOrder(false);
+	}
+
+	// Reload the stress results of the previous simulation
+	// if(reload >= 2)
+	if (idata_type == read_all_binary || idata_type == read_write)
+	{
+		ReadGaussPointStress();
+		if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+			ReadSolution();
+	}
+
+	Extropolation_GaussValue();
+}
+
 double CRFProcessDeformation::getNormOfDisplacements()
 {
 #ifdef USE_PETSC
@@ -464,213 +583,6 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 
 	return cpl_max_relative_error;
 }
-
-/**************************************************************************
-   ROCKFLOW - Funktion: InitializeStress
-
-   Aufgabe:
-   Initilize all Gausss values and others
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   - const int NodesOfEelement:
-
-   Ergebnis:
-   - void -
-
-   Programmaenderungen:
-   01/2003  WW  Erste Version
-   09/2007  WW  Parallelize the released load for the excavation modeling
-   letzte Aenderung:
-**************************************************************************/
-void CRFProcessDeformation::InitGauss(void)
-{
-	const int LenMat = 7;
-	size_t i;
-	int j, k, gp, NGS, MatGroup, n_dom;
-	int PModel = 1;
-	int gp_r = 0, gp_s = 0, gp_t = 0;
-	//  double z=0.0;
-	double xyz[3];
-	static double Strs[6];
-	ElementValue_DM* eleV_DM = NULL;
-	CSolidProperties* SMat = NULL;
-	CInitialCondition* m_ic = NULL;
-	std::vector<CInitialCondition*> stress_ic(6);
-
-	// double M_cam = 0.0;
-	double pc0 = 0.0;
-	double OCR = 1.0;
-	n_dom = k = 0;
-
-	int Idx_Strain[9];
-
-	int NS = 4;
-	Idx_Strain[0] = GetNodeValueIndex("STRAIN_XX");
-	Idx_Strain[1] = GetNodeValueIndex("STRAIN_YY");
-	Idx_Strain[2] = GetNodeValueIndex("STRAIN_ZZ");
-	Idx_Strain[3] = GetNodeValueIndex("STRAIN_XY");
-
-	if (problem_dimension_dm == 3)
-	{
-		NS = 6;
-		Idx_Strain[4] = GetNodeValueIndex("STRAIN_XZ");
-		Idx_Strain[5] = GetNodeValueIndex("STRAIN_YZ");
-	}
-	Idx_Strain[NS] = GetNodeValueIndex("STRAIN_PLS");
-
-	for (j = 0; j < NS; j++)
-		stress_ic[j] = NULL;
-	for (j = 0; j < (long)ic_vector.size(); j++)
-	{
-		m_ic = ic_vector[j];
-		if (m_ic->getProcessPrimaryVariable() == FiniteElement::STRESS_XX)
-			stress_ic[0] = m_ic;
-		if (m_ic->getProcessPrimaryVariable() == FiniteElement::STRESS_YY)
-			stress_ic[1] = m_ic;
-		if (m_ic->getProcessPrimaryVariable() == FiniteElement::STRESS_ZZ)
-			stress_ic[2] = m_ic;
-		if (m_ic->getProcessPrimaryVariable() == FiniteElement::STRESS_XY)
-			stress_ic[3] = m_ic;
-		if (m_ic->getProcessPrimaryVariable() == FiniteElement::STRESS_XZ)
-			stress_ic[4] = m_ic;
-		if (m_ic->getProcessPrimaryVariable() == FiniteElement::STRESS_YZ)
-			stress_ic[5] = m_ic;
-	}
-	int ccounter = 0;
-	for (j = 0; j < NS; j++)
-		if (stress_ic[j]) ccounter++;
-	if (ccounter > 0) reload = -1000;
-
-	for (i = 0; i < m_msh->GetNodesNumber(false); i++)
-		for (j = 0; j < NS + 1; j++)
-			SetNodeValue(i, Idx_Strain[j], 0.0);
-	MeshLib::CElem* elem = NULL;
-	for (i = 0; i < m_msh->ele_vector.size(); i++)
-	{
-		elem = m_msh->ele_vector[i];
-		if (elem->GetMark())  // Marked for use
-		{
-			MatGroup = elem->GetPatchIndex();
-			SMat = msp_vector[MatGroup];
-			elem->SetOrder(true);
-			fem_dm->ConfigElement(elem);
-			eleV_DM = ele_value_dm[i];
-			*(eleV_DM->Stress0) = 0.0;
-			*(eleV_DM->Stress) = 0.0;
-			PModel = SMat->Plasticity_type;
-
-			for (j = 3; j < fem_dm->ns; j++)
-				Strs[j] = 0.0;
-
-			if (PModel == 2) *(eleV_DM->xi) = 0.0;
-
-			if (PModel == 3)
-			{
-				// WW M_cam = (*SMat->data_Plasticity)(0);
-				pc0 = (*SMat->data_Plasticity)(
-				    3);  // The initial preconsolidation pressure
-				         // Void ratio
-				*(eleV_DM->e_i) = (*SMat->data_Plasticity)(4);
-				OCR = (*SMat->data_Plasticity)(5);  // Over consolidation ratio
-				for (j = 0; j < 3; j++)
-					Strs[j] = (*SMat->data_Plasticity)(6 + j);
-
-				/*
-				   g_s = GetSolidDensity(i);
-				   if(g_s<=0.0)
-				   {
-				   printf("\n !!! Input error. Gravity density should not be
-				   less than zero with Cam-Clay model\n  ");
-				   abort();
-				   }
-
-				   if(EleType== TriEle) // Triangle
-				   nh = 6;
-				   // Set soil profile. Cam-Clay. Step 2
-				   for (j = 0; j < nh; j++)
-				   h_node[j]=GetNodeY(element_nodes[j]); //Note: for 3D, should
-				   be Z
-				 */
-			}
-
-			//
-			// if 2D //ToDo: Set option for 3D
-			// Loop over Gauss points
-			NGS = fem_dm->GetNumGaussPoints();
-			// WW NGSS = fem_dm->GetNumGaussSamples();
-
-			for (gp = 0; gp < NGS; gp++)
-			{
-				if (ccounter > 0)
-				{
-					fem_dm->GetGaussData(gp, gp_r, gp_s, gp_t);
-					fem_dm->ComputeShapefct(2);
-					fem_dm->RealCoordinates(xyz);
-					for (j = 0; j < NS; j++)
-					{
-						m_ic = stress_ic[j];
-						if (!m_ic) continue;
-						n_dom = m_ic->GetNumDom();
-						for (k = 0; k < n_dom; k++)
-						{
-							if (MatGroup != m_ic->GetDomain(k)) continue;
-							(*eleV_DM->Stress)(j, gp) =
-							    m_ic->getLinearFunction()->getValue(
-							        m_ic->GetDomain(k), xyz[0], xyz[1], xyz[2]);
-							(*eleV_DM->Stress0)(j, gp) =
-							    (*eleV_DM->Stress)(j, gp);
-						}
-					}
-				}
-				else
-				{
-					switch (PModel)
-					{
-						case 2:  // Weimar's model
-							// Initial stress_xx, yy,zz
-							for (j = 0; j < 3; j++)
-								(*eleV_DM->Stress)(j, gp) =
-								    (*SMat->data_Plasticity)(20 + j);
-							break;
-						case 3:  // Cam-Clay
-							for (j = 0; j < 3; j++)
-								(*eleV_DM->Stress0)(j, gp) = Strs[j];
-							(*eleV_DM->Stress) = (*eleV_DM->Stress0);
-							break;
-					}
-				}
-				if (eleV_DM->Stress_j)
-					(*eleV_DM->Stress_j) = (*eleV_DM->Stress);
-				//
-				switch (PModel)
-				{
-					case 2:  // Weimar's model
-						for (j = 0; j < LenMat; j++)
-							(*eleV_DM->MatP)(j, gp) =
-							    (*SMat->data_Plasticity)(j);
-						break;
-					case 3:          // Cam-Clay
-						pc0 *= OCR;  /// TEST
-						(*eleV_DM->prep0)(gp) = pc0;
-						break;
-				}
-				//
-			}
-			elem->SetOrder(false);
-		}
-	}
-	// Reload the stress results of the previous simulation
-	// if(reload >= 2)
-	if (idata_type == read_all_binary || idata_type == read_write)
-	{
-		ReadGaussPointStress();
-		if (type == 41)  // mono-deformation-liquid
-			ReadSolution();
-	}
-
-	Extropolation_GaussValue();
-}
-
 
 /*************************************************************************
    ROCKFLOW - Function: CRFProcess::InitializeStress_EachCouplingStep()
