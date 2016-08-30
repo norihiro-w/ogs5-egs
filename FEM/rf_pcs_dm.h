@@ -73,7 +73,6 @@ private:
 	void UpdateNodalPressure();
 	void UpdateTotalDisplacement();
 	void zeroDU();
-	void zeroPressure1();
 	void UpdateStress();
 	void UpdateInitialStress(bool ZeroInitialS);
 

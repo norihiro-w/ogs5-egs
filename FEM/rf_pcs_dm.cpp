@@ -493,9 +493,6 @@ void CRFProcessDeformation::solveLinear()
 
 void CRFProcessDeformation::solveNewton()
 {
-//	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
-//		zeroPressure1(); // p1 = 0
-
 	const int MaxIteration = m_num->nls_max_iterations;
 	const double Tolerance_global_Newton = m_num->nls_error_tolerance[0];
 	bool isConverged = false;
@@ -908,35 +905,6 @@ void CRFProcessDeformation::zeroDU()
 		for (long j = 0; j < number_of_nodes; j++)
 			SetNodeValue(j, var_id_du1, 0.0);
 	}
-}
-
-/**************************************************************************
-   ROCKFLOW - Funktion: InitializeNewtonSteps(LINEAR_SOLVER * ls)
-
-   Aufgabe:
-   Initialize the incremental unknows in Newton-Raphson procedure
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E:
-   LINEAR_SOLVER * ls: linear solver
-   const int type    : 0,  update w=0 (u0=0)
-                       1,  update u=0 (u1=0)
-
-   Ergebnis:
-   - double - Eucleadian Norm
-
-   Programmaenderungen:
-   10/2002   WW   Erste Version
-   11/2007   WW   Change to fit the new equation class
-   06/2007   WW   Rewrite
-**************************************************************************/
-void CRFProcessDeformation::zeroPressure1()
-{
-	// p1 = 0
-	int var_id_p1 = p_var_index[problem_dimension_dm];
-	long number_of_nodes = num_nodes_p_var[problem_dimension_dm];
-	for (long j = 0; j < number_of_nodes; j++)
-		SetNodeValue(j, var_id_p1, 0.0);
 }
 
 /**************************************************************************
