@@ -344,6 +344,104 @@ double CRFProcessDeformation::getNormOfDisplacements()
 	return norm_u_k1;
 }
 
+
+double CRFProcessDeformation::getNormOfPressure()
+{
+#ifdef USE_PETSC
+	const int g_nnodes = m_msh->getNumNodesLocal_Q();
+	const int size = g_nnodes * pcs_number_of_primary_nvals;
+	vector<int> ix(size);
+	vector<double> val(size);
+	for (int i = 0; i < problem_dimension_dm; i++)
+	{
+		const int nidx1 = p_var_index[i];
+		int local_node_counter = 0;
+		for (size_t j = 0; j < m_msh->GetNodesNumber(true); j++)
+		{
+			if (!m_msh->isNodeLocal(j))
+				continue;
+			int ish = pcs_number_of_primary_nvals * local_node_counter + i;
+			ix[ish] = pcs_number_of_primary_nvals * m_msh->Eqs2Global_NodeIndex_Q[j] + i;
+			val[ish] = GetNodeValue(j, nidx1);
+			local_node_counter++;
+		}
+	}
+	eqs_new->setArrayValues(0, size, &ix[0], &val[0], INSERT_VALUES);
+	eqs_new->AssembleUnkowns_PETSc();
+	double norm_u_k1 = eqs_new->GetVecNormX();
+#else
+	const int g_nnodes = m_msh->GetNodesNumber(false);
+	double val = .0;
+	for (int i = problem_dimension_dm; i < problem_dimension_dm + 1; i++)
+	{
+		const int nidx1 = p_var_index[i];
+		for (int j = 0; j < g_nnodes; j++)
+		{
+			val += std::pow(GetNodeValue(j, nidx1), 2.0);
+		}
+	}
+	double norm_u_k1 = std::sqrt(val);
+#endif
+	return norm_u_k1;
+}
+
+double CRFProcessDeformation::getNormOfSoluctionIncrement(int pvar_id_start, int n)
+{
+#if 1 // LMAX
+	double normLMAX = 0;
+	for (int ii = pvar_id_start; ii < pvar_id_start + n; ii++)
+	{
+		int nidx1 = p_var_index[ii];
+		long const number_of_nodes = num_nodes_p_var[ii];
+		for (size_t i = 0; i < number_of_nodes; i++)
+		{
+			double val1 = GetNodeValue(i, nidx1) - GetNodeValue(i, nidx1-1);
+			normLMAX = std::max(normLMAX, fabs(val1));
+		}
+	}
+#ifdef USE_PETSC
+	double error_l = normLMAX;
+	MPI_Allreduce(&error_l, &normLMAX, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+#endif
+	return normLMAX;
+#else
+	double normL2 = 0;
+	for (int ii = pvar_id_start; ii < pvar_id_start + n; ii++)
+	{
+		int nidx1 = GetNodeValueIndex(pcs_primary_function_name[ii]) + 1;
+		for (size_t i = 0; i < g_nnodes; i++)
+		{
+			double val1 = GetNodeValue(k, nidx1) - GetNodeValue(k, nidx1-1);
+			normL2 += val1 * val1;
+		}
+	}
+#ifdef USE_PETSC
+	double unknowns_norm_l = normL2;
+	MPI_Allreduce(&unknowns_norm_l, &normL2, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+	normL2 = std::sqrt(normL2);
+	return normL2;
+#endif
+}
+
+double CRFProcessDeformation::getNormOfCouplingError(int pvar_id_start, int n)
+{
+	double lmax = 0.0;
+	long shift = 0;
+	for (int i = pvar_id_start; i < pvar_id_start + n; i++)
+	{
+		int var_id1 = p_var_index[i];
+		long number_of_nodes = num_nodes_p_var[i];
+		for (long j = 0; j < number_of_nodes; j++)
+		{
+			double diff = previousCouplingSolution[shift + j] - GetNodeValue(j, var_id1);
+			lmax = std::max(lmax, diff);
+		}
+		shift += number_of_nodes;
+	}
+	return lmax;
+}
+
 void CRFProcessDeformation::solveLinear()
 {
 	eqs_new->Initialize();
@@ -383,21 +481,24 @@ void CRFProcessDeformation::solveLinear()
 	eqs_new->Solver(compress_eqs);
 #endif
 
-	// update total displacement
-	UpdateDU();  // w = w+dw
+	// update nodal values from solution
+	SetDUFromSolution();
+
 	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
-		UpdateP();
+		SetPressureFromSolution();
 }
 
 void CRFProcessDeformation::solveNewton()
 {
-	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
-		zeroPressure1(); // p1 = 0
+//	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+//		zeroPressure1(); // p1 = 0
 
 	const int MaxIteration = m_num->nls_max_iterations;
 	const double Tolerance_global_Newton = m_num->nls_error_tolerance[0];
-
 	bool isConverged = false;
+	double InitialNormR0 = 0;
+	double InitialNormDU0 = 0;
+
 	for (iter_nlin = 0; iter_nlin < MaxIteration; iter_nlin++)
 	{
 		ScreenMessage("-->Starting Newton-Raphson iteration: %d/%d\n", iter_nlin+1, MaxIteration);
@@ -450,7 +551,6 @@ void CRFProcessDeformation::solveNewton()
 		{
 			if (this->first_coupling_iteration)
 			{
-				InitialNormDU_coupling = NormDU;
 				norm_du0_pre_cpl_itr = .0;
 			}
 			InitialNormR0 = NormR;
@@ -477,9 +577,10 @@ void CRFProcessDeformation::solveNewton()
 			break;
 		}
 
-		UpdateDU();  // w = w+dw
+		// update nodal values from x
+		UpdateNodalDU();
 		if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
-			UpdateP();
+			UpdateNodalPressure();
 
 		if (isConverged)
 			break;
@@ -511,7 +612,6 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 	clock_t dm_time;
 	dm_time = -clock();
 
-
 	// setup mesh
 	m_msh->SwitchOnQuadraticNodes(true);
 	if (hasAnyProcessDeactivatedSubdomains || Deactivated_SubDomain.size() > 0)
@@ -523,7 +623,10 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 #endif
 
 	if (this->first_coupling_iteration)
-		StoreLastTimeStepSolution();  // u_n is used to store du_n1
+	{
+		StoreLastTimeStepSolution();  // to use u_n array as du_n1
+		StoreLastCouplingIterationSolution();
+	}
 
 	//  Reset stress???
 	if (H_Process && getProcessType() == FiniteElement::DEFORMATION)
@@ -539,27 +642,27 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 		solveNewton();
 
 	// Update stresses
+	UpdateTotalDisplacement();
 	UpdateStress();
-
-	// Update displacements, u=u+w for the Newton-Raphson
-	// u1 = u0 for linear problems
-	UpdateU();
 
 	// Recovery the old solution.  Temp --> u_n	for flow proccess
 	RecoverLastTimeStepSolution();
 
+
 	// get coupling error
-	const double norm_u_k1 = getNormOfDisplacements();  // InitialNormDU_coupling
-	const double cpl_abs_error =
-	    std::abs(InitialNormDU0 - norm_du0_pre_cpl_itr) /
-	    (norm_u_k1 == 0 ? 1 : norm_u_k1);
+	const double u_cpl_abs_error = getNormOfCouplingError(0, problem_dimension_dm);
+	const double p_cpl_abs_error = (getProcessType() == FiniteElement::DEFORMATION) ? 0: getNormOfCouplingError(problem_dimension_dm, 1);
+	const double cpl_abs_error = std::max(u_cpl_abs_error, p_cpl_abs_error);
+
 	cpl_max_relative_error = cpl_abs_error / m_num->cpl_error_tolerance[0];
 	cpl_num_dof_errors = 1;
-	ScreenMessage("   ||u^k+1||=%g, ||du^k+1||-||du^k||=%g\n", norm_u_k1,
-	              std::abs(InitialNormDU0 - norm_du0_pre_cpl_itr));
+	if (getProcessType() == FiniteElement::DEFORMATION)
+		ScreenMessage("   ||u^k1-u^k||=%g\n", u_cpl_abs_error);
+	else
+		ScreenMessage("   ||u^k1-u^k||=%g, ||p^k1-p^k||=%g\n", u_cpl_abs_error, p_cpl_abs_error);
 
-	// store current du0
-	norm_du0_pre_cpl_itr = InitialNormDU0;
+//	// store current du0
+//	norm_du0_pre_cpl_itr = InitialNormDU0;
 
 #ifdef NEW_EQS  // WW
 	// Also allocate temporary memory for linear solver. WW
@@ -657,6 +760,64 @@ void CRFProcessDeformation::SetInitialGuess_EQS_VEC()
 	}
 }
 
+void CRFProcessDeformation::SetDUFromSolution()
+{
+#if defined(USE_PETSC)
+	double* eqs_x = eqs_new->GetGlobalSolution();
+#elif defined(NEW_EQS)
+	double* eqs_x = eqs_new->getX();
+#endif
+
+	long shift = 0;
+	for (int i = 0; i < problem_dimension_dm; i++)
+	{
+		long const number_of_nodes = num_nodes_p_var[i];
+		// u_n array is temporally used for du
+		int const var_id_tn = p_var_index[i] - 1;
+
+		for (long j = 0; j < number_of_nodes; j++)
+		{
+#ifdef USE_PETSC
+			long k = m_msh->Eqs2Global_NodeIndex_Q[j] * pcs_number_of_primary_nvals + i;
+			double du = eqs_x[k];
+#else
+			double du = eqs_x[j + shift];
+#endif
+			SetNodeValue(j, var_id_tn, du);
+		}
+		shift += number_of_nodes;
+	}
+}
+
+void CRFProcessDeformation::SetPressureFromSolution()
+{
+#if defined(USE_PETSC)
+	double* eqs_x = eqs_new->GetGlobalSolution();
+#elif defined(NEW_EQS)
+	double* eqs_x = eqs_new->getX();
+#endif
+
+	long shift = 0;
+	for (int i = problem_dimension_dm; i < pcs_number_of_primary_nvals; i++)
+	{
+		long const number_of_nodes = num_nodes_p_var[i];
+		int const var_id_tn1 = p_var_index[i];
+
+		for (long j = 0; j < number_of_nodes; j++)
+		{
+#ifdef USE_PETSC
+			long k = m_msh->Eqs2Global_NodeIndex_Q[j] * pcs_number_of_primary_nvals + i;
+#else
+			long k = j + shift;
+#endif
+			double p = eqs_x[k];
+			SetNodeValue(j, var_id_tn1, p);
+		}
+
+		shift += number_of_nodes;
+	}
+}
+
 /**************************************************************************
    ROCKFLOW - Funktion: UpdateIterativeStep(LINEAR_SOLVER * ls, const int Type)
 
@@ -676,7 +837,7 @@ void CRFProcessDeformation::SetInitialGuess_EQS_VEC()
    10/2002   WW   Erste Version
    11/2007   WW   Change to fit the new equation class
 **************************************************************************/
-void CRFProcessDeformation::UpdateDU()
+void CRFProcessDeformation::UpdateNodalDU()
 {
 #if defined(USE_PETSC)
 	double* eqs_x = eqs_new->GetGlobalSolution();
@@ -705,7 +866,8 @@ void CRFProcessDeformation::UpdateDU()
 	}
 }
 
-void CRFProcessDeformation::UpdateP()
+// p_n1 += dp
+void CRFProcessDeformation::UpdateNodalPressure()
 {
 #if defined(USE_PETSC)
 	double* eqs_x = eqs_new->GetGlobalSolution();
@@ -734,8 +896,9 @@ void CRFProcessDeformation::UpdateP()
 	}
 }
 
-void CRFProcessDeformation::UpdateU()
+void CRFProcessDeformation::UpdateTotalDisplacement()
 {
+	// u = u + du
 	for (int i = 0; i < problem_dimension_dm; i++)
 	{
 		long const number_of_nodes = num_nodes_p_var[i];
@@ -743,7 +906,6 @@ void CRFProcessDeformation::UpdateU()
 
 		for (long j = 0; j < number_of_nodes; j++)
 		{
-			// u = u + du
 			double du = GetNodeValue(j, var_id_tn);
 			SetNodeValue(j, var_id_tn + 1, GetNodeValue(j, var_id_tn + 1) + du);
 		}
@@ -753,7 +915,7 @@ void CRFProcessDeformation::UpdateU()
 void CRFProcessDeformation::zeroDU()
 {
 	// set du_n1 = 0
-	for (int i = 0; i < pcs_number_of_primary_nvals; i++)
+	for (int i = 0; i < problem_dimension_dm; i++)
 	{
 		int var_id_du1 = p_var_index[i] - 1;
 		long number_of_nodes = num_nodes_p_var[i];
@@ -819,6 +981,23 @@ void CRFProcessDeformation::StoreLastTimeStepSolution()
 		long number_of_nodes = num_nodes_p_var[i];
 		for (long j = 0; j < number_of_nodes; j++)
 			previousTimeStepSolution[shift + j] = GetNodeValue(j, var_id1);
+
+		shift += number_of_nodes;
+	}
+}
+
+void CRFProcessDeformation::StoreLastCouplingIterationSolution()
+{
+	if (previousCouplingSolution.empty())
+		previousCouplingSolution.resize(previousTimeStepSolution.size());
+
+	long shift = 0;
+	for (int i = 0; i < pcs_number_of_primary_nvals; i++)
+	{
+		int var_id1 = p_var_index[i];
+		long number_of_nodes = num_nodes_p_var[i];
+		for (long j = 0; j < number_of_nodes; j++)
+			previousCouplingSolution[shift + j] = GetNodeValue(j, var_id1);
 
 		shift += number_of_nodes;
 	}

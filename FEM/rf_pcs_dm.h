@@ -51,65 +51,58 @@ public:
 
 	void Initialization();
 
-	// Assemble system equation
+	double Execute(int loop_process_number);
+	void ResetTimeStep();
+	void Extropolation_GaussValue();
+
+	std::vector<double> const& GetInitialFluidPressure() const { return p0; }
+
+private:
+	void InitialMBuffer();
+	void InitGauss();
+
+	void SetInitialGuess_EQS_VEC();
+
 	void GlobalAssembly();
 	void GlobalAssembly_DM();
 
-	// overloaded
-	double Execute(int loop_process_number);
+	void solveLinear();
+	void solveNewton();
 
-	// Aux. Memory
-	std::vector<double> const& GetAuxArray() const { return previousTimeStepSolution; }
-	std::vector<double> const& GetInitialFluidPressure() const { return p0; }
-
-	void ScalingNodeForce(const double SFactor);
-	void InitGauss();
-	//
-	void SetInitialGuess_EQS_VEC();
-	void UpdateDU();
-	void UpdateP();
-	void UpdateU();
+	void SetDUFromSolution();
+	void SetPressureFromSolution();
+	void UpdateNodalDU();
+	void UpdateNodalPressure();
+	void UpdateTotalDisplacement();
 	void zeroDU();
 	void zeroPressure1();
-	void StoreLastTimeStepSolution();
-	void RecoverLastTimeStepSolution();
-	// Stress
-	// For partitioned HM coupled scheme
-	void ResetCouplingStep();
-	void ResetTimeStep();
-	//
 	void UpdateStress();
 	void UpdateInitialStress(bool ZeroInitialS);
-	void Extropolation_GaussValue();
 
-	// Write stresses
+	double getNormOfDisplacements();
+	double getNormOfPressure();
+	double getNormOfSoluctionIncrement(int pvar_id_start, int n);
+	double getNormOfCouplingError(int pvar_id_start, int n);
+
+	void StoreLastTimeStepSolution();
+	void StoreLastCouplingIterationSolution();
+	void RecoverLastTimeStepSolution();
+	void ResetCouplingStep();
+
 	std::string GetGaussPointStressFileName();
 	void WriteGaussPointStress();
 	void ReadGaussPointStress();
 	void ReadElementStress();
 
-	// Access members
-	CFiniteElementVec* GetFEM_Assembler() const { return fem_dm; }
-
 private:
-	void InitialMBuffer();
-	double getNormOfDisplacements();
-	void solveLinear();
-	void solveNewton();
-
 	CFiniteElementVec* fem_dm = nullptr;
 	std::vector<double> previousTimeStepSolution;
+	std::vector<double> previousCouplingSolution;
 	std::vector<double> p0;
 	bool _isInitialStressNonZero = false;
-	double InitialNormR0 = 0;
-	double InitialNormDU_coupling = 0;
-	double InitialNormDU0 = 0;
 	double norm_du0_pre_cpl_itr = 0;
 	InitDataReadWriteType idata_type = none;
 };
-
-extern void CalStressInvariants(const long Node_Inex, double* StressInv);
-extern void CalMaxiumStressInvariants(double* StressInv);
 
 extern int problem_dimension_dm;
 
