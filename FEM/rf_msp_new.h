@@ -261,10 +261,12 @@ public:
 	           const double* S_Invariants, const double* MatN1,
 	           const int LengthStrs);
 
+#if 0
 	int CalStress_and_TangentialMatrix_SYS(const int GPiGPj,
 	                                       const ElementValue_DM* ele_val,
 	                                       const Matrix* De, Matrix* D_ep,
 	                                       double* dStress, const int Update);
+#endif
 	// 2.2 Cam-clay model
 	void CalStress_and_TangentialMatrix_CC(const int GPiGPj,
 	                                       const ElementValue_DM* ele_val,

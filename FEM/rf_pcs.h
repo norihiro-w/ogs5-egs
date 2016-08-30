@@ -394,8 +394,6 @@ public:
 	int srand_seed;
 	const char* pcs_num_name[2];  // For monolithic scheme
 	FiniteElement::TimType tim_type;
-	const char* pcs_sol_name;
-	std::string cpl_type_name;
 	CNumerics* m_num;
 	//
 	bool selected;           // OK
@@ -720,7 +718,6 @@ extern double PCSGetELEValue(long index,
 extern void PCSRestart();
 // PCS global variables
 extern int pcs_no_components;
-extern int pcs_deformation;
 
 // ToDo
 // SB

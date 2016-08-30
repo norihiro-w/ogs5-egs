@@ -1025,10 +1025,9 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 	bool Residual = false;
 	if (Flow_Type >= 0)
 	{
-		if (pcs->type / 10 == 4)  // Monolithic scheme
+		if (pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
 		{
-			// If nonlinear deformation
-			if (pcs_deformation > 100)
+			if (FiniteElement::isNewtonKind(pcs->m_num->nls_method))
 				Residual = true;
 		}
 		else  // Partitioned scheme
@@ -1276,13 +1275,6 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 				}
 				break;
 			}
-			case 2:  // Rotational hardening model
-				// Compute stesses and plastic multi-plier
-				dPhi = 0.0;
-				if (smat->CalStress_and_TangentialMatrix_SYS(
-				        gp, eleV_DM, De, ConsistDep, dstress, update) > 0)
-					dPhi = 1.0;
-				break;
 			case 4:  // Mohr-Coloumb	//WX:10.2010
 				if (smat->DirectStressIntegrationMOHR(gp, eleV_DM, dstress,
 				                                      update, De))

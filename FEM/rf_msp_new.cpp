@@ -3727,6 +3727,7 @@ void CSolidProperties::ResizeMatricesSYS(const int Dim)
 	}
 }
 
+#if 0
 /**************************************************************************
    ROCKFLOW - Funktion: CSolidProperties::CalStress_and_TangentialMatrix_SYS
 
@@ -4543,6 +4544,7 @@ int CSolidProperties::CalStress_and_TangentialMatrix_SYS(
 
 	return PLASTIC;
 }
+#endif
 
 /**************************************************************************
    ROCKFLOW - Funktion: CSolidProperties::dF_dNStress
@@ -5276,6 +5278,7 @@ point
 **************************************************************************/
 //#define New
 #define associative
+#if 0
 void CSolidProperties::CalStress_and_TangentialMatrix_CC(
     const int GPiGPj,
     const ElementValue_DM* ele_val,
@@ -6155,6 +6158,8 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC_SubStep(
 	//    dStrain[i] -= (*data_Plasticity)(6+i); // Initial stress
 	//
 }
+#endif
+
 /**************************************************************************
    FEMLib-Method:
    Task: Caculate increment of strain deduced by creep

@@ -81,7 +81,6 @@ T* resize(T* array, size_t old_size, size_t new_size);
 //------------------------------------------------------------------------
 // Globals, to be checked
 int pcs_no_components = 0;
-int pcs_deformation = 0;
 int size_eval = 0;
 bool hasAnyProcessDeactivatedSubdomains = false;
 
@@ -173,9 +172,7 @@ CRFProcess::CRFProcess(void)
 	// NUM
 	pcs_num_name[0] = NULL;
 	pcs_num_name[1] = NULL;
-	pcs_sol_name = NULL;
 	m_num = NULL;
-	cpl_type_name = "PARTITIONED";  // OK
 	num_type_name = "FEM";          // OK
 	rwpt_app = 0;  // PCH Application types for RWPT such as Cell Dynamics,
 	               // Crypto, etc.
@@ -1399,7 +1396,6 @@ CRFProcess* CRFProcess::CopyPCStoDM_PCS()
 	dm_pcs->isPCSMultiFlow = this->isPCSMultiFlow;
 	dm_pcs->write_boundary_condition = write_boundary_condition;
 	dm_pcs->Deactivated_SubDomain = Deactivated_SubDomain;
-	pcs_deformation = 1;
 	dm_pcs->write_leqs = write_leqs;
 	dm_pcs->calcDiffFromStress0 = calcDiffFromStress0;
 	dm_pcs->resetStrain = resetStrain;
@@ -1425,7 +1421,6 @@ CRFProcess* CRFProcess::CopyPCStoTH_PCS()
 	dm_pcs->isPCSMultiFlow = this->isPCSMultiFlow;
 	dm_pcs->write_boundary_condition = write_boundary_condition;
 	dm_pcs->Deactivated_SubDomain = Deactivated_SubDomain;
-	pcs_deformation = 1;
 	dm_pcs->write_leqs = write_leqs;
 	dm_pcs->scaleUnknowns = scaleUnknowns;
 	dm_pcs->vec_scale_dofs = vec_scale_dofs;
@@ -1593,18 +1588,6 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 		if (line_string.find("$NUM_TYPE") != string::npos)
 		{
 			*pcs_file >> num_type_name;
-			pcs_file->ignore(MAX_ZEILE, '\n');
-			continue;
-		}
-		//....................................................................
-		// subkeyword found
-		if (line_string.find("$CPL_TYPE") != string::npos)
-		{
-			*pcs_file >> cpl_type_name;
-			if (cpl_type_name.compare("MONOLITHIC") == 0)
-			{
-				pcs_deformation = 11;
-			}
 			pcs_file->ignore(MAX_ZEILE, '\n');
 			continue;
 		}
@@ -1888,9 +1871,6 @@ void CRFProcess::Write(std::fstream* pcs_file)
 	*pcs_file << " $NUM_TYPE" << endl;
 	*pcs_file << "  " << num_type_name << endl;
 
-	*pcs_file << " $CPL_TYPE" << endl;
-	*pcs_file << "  " << cpl_type_name << endl;
-
 	*pcs_file << " $TIM_TYPE" << endl;
 	*pcs_file << "  " << FiniteElement::convertTimTypeToString(tim_type)
 	          << endl;
@@ -2135,7 +2115,6 @@ void CRFProcess::Config(void)
 void CRFProcess::ConfigLiquidFlow()
 {
 	// pcs_num_name[0] = "PRESSURE0";
-	// pcs_sol_name = "LINEAR_SOLVER_PROPERTIES_PRESSURE1";
 	pcs_number_of_primary_nvals = 0;
 	pcs_number_of_secondary_nvals = 0;
 	pcs_number_of_evals = 0;
@@ -2155,7 +2134,6 @@ void CRFProcess::ConfigLiquidFlow()
 void CRFProcess::ConfigGroundwaterFlow()
 {
 	pcs_num_name[0] = "HEAD";
-	pcs_sol_name = "LINEAR_SOLVER_PROPERTIES_HEAD";
 	// NOD values
 	pcs_number_of_primary_nvals = 1;
 	pcs_primary_function_name[0] = "HEAD";
@@ -2246,7 +2224,6 @@ void CRFProcess::ConfigGasFlow()
 	//----------------------------------------------------------------------
 	// NUM
 	pcs_num_name[0] = "PRESSURE0";
-	pcs_sol_name = "LINEAR_SOLVER_PROPERTIES_PRESSURE1";
 }
 
 /**************************************************************************
@@ -2263,11 +2240,9 @@ void CRFProcess::ConfigMultiphaseFlow()
 	{
 		case 0:
 			pcs_num_name[0] = "PRESSURE0";
-			pcs_sol_name = "LINEAR_SOLVER_PROPERTIES_PRESSURE1";
 			break;
 		case 1:
 			pcs_num_name[0] = "SATURATION0";
-			pcs_sol_name = "LINEAR_SOLVER_PROPERTIES_SATURATION1";
 			break;
 	}
 	//----------------------------------------------------------------------
@@ -2425,13 +2400,11 @@ void CRFProcess::ConfigNonIsothermalFlow()
 	{
 		case 0:
 			pcs_num_name[0] = "PRESSURE0";
-			pcs_sol_name = "LINEAR_SOLVER_PROPERTIES_PRESSURE1";
 			pcs_primary_function_name[0] = "PRESSURE1";
 			pcs_primary_function_unit[0] = "Pa";
 			break;
 		case 1:
 			pcs_num_name[0] = "SATURATION0";
-			pcs_sol_name = "LINEAR_SOLVER_PROPERTIES_SATURATION1";
 			pcs_primary_function_name[0] = "SATURATION2";
 			pcs_primary_function_unit[0] = "m3/m3";
 			break;
@@ -2613,7 +2586,6 @@ void CRFProcess::ConfigMassTransport()
 	pcs_num_name[0] = "CONCENTRATION0";
 	/* SB: immer solver properties der ersten Komponente nehmen */
 	// SB ??
-	pcs_sol_name = "LINEAR_SOLVER_PROPERTIES_CONCENTRATION1";
 }
 
 /**************************************************************************
@@ -2627,7 +2599,6 @@ void CRFProcess::ConfigMassTransport()
 void CRFProcess::ConfigHeatTransport()
 {
 	pcs_num_name[0] = "TEMPERATURE0";
-	pcs_sol_name = "LINEAR_SOLVER_PROPERTIES_TEMPERATURE1";
 	// NOD
 	if ((int)continuum_vector.size() == 1)
 	{
@@ -2675,9 +2646,8 @@ void CRFProcess::ConfigDeformation()
 	    getProcessType() == FiniteElement::DEFORMATION_H2)
 	{
 		type = 41;
-		if (getProcessType() == FiniteElement::DEFORMATION_H2) type = 42;
-		cpl_type_name = "MONOLITHIC";
-		pcs_deformation = 11;
+		if (getProcessType() == FiniteElement::DEFORMATION_H2)
+			type = 42;
 	}
 
 	CNumerics* num = NULL;
@@ -2687,19 +2657,12 @@ void CRFProcess::ConfigDeformation()
 		num = num_vector[ii];
 		if (num->pcs_type_name.find("DEFORMATION") != string::npos)
 		{
-			num->pcs_type_name = FiniteElement::convertProcessTypeToString(
-			    this->getProcessType());
-			if (FiniteElement::isNewtonKind(num->nls_method))  // Newton-Raphson
-			{
-				pcs_deformation = 101;
-				if (type / 10 == 4) pcs_deformation = 110;
-			}
+			num->pcs_type_name = FiniteElement::convertProcessTypeToString(this->getProcessType());
 			break;
 		}
 	}
 
 	// NUM
-	pcs_sol_name = "LINEAR_SOLVER_PROPERTIES_DISPLACEMENT1";
 	pcs_num_name[0] = "DISPLACEMENT0";
 	pcs_num_name[1] = "PRESSURE0";
 	VariableStaticProblem();
@@ -3044,7 +3007,6 @@ void CRFProcess::ConfigFluidMomentum()
 	// pcs_num_name[0] = "VELOCITY1_X";
 	// Nothing added in terms of matrix solver.
 	// Just linear solver is good enough.
-	pcs_sol_name = "LINEAR_SOLVER_PROPERTIES_PRESSURE1";
 	// NOD values
 	pcs_number_of_primary_nvals = 3;
 	pcs_primary_function_name[0] = "VELOCITY1_X";
@@ -3071,7 +3033,6 @@ void CRFProcess::ConfigRandomWalk()
 {
 	// Nothing added in terms of matrix solver.
 	// Just linear solver is good enough.
-	pcs_sol_name = "LINEAR_SOLVER_PROPERTIES_PRESSURE1";
 
 	// NOD values
 	pcs_number_of_primary_nvals = 0;

@@ -4438,11 +4438,10 @@ void CFiniteElementStd::Assemble_strainCPL(const int phase)
 	double fac = 1.0 / dt;
 	fac *= SolidProp->biot_const;
 
-	if (dm_pcs->type != 41)
+	if (dm_pcs->getProcessType() != FiniteElement::DEFORMATION_FLOW)
 		Residual = 0;
-	else // Mono
-		if (pcs_deformation > 100)  // Pls
-			Residual = 1;
+	else if (FiniteElement::isNewtonKind(dm_pcs->m_num->nls_method))
+		Residual = 1;
 
 #if 0
 	if (MediaProp->storage_model == 7)
@@ -4722,8 +4721,8 @@ void CFiniteElementStd::Config()
 	//----------------------------------------------------------------------
 	//----------------------------------------------------------------------
 	// ?2WW
-	if (D_Flag == 41 && pcs_deformation > 100)
-		dm_pcs = (CRFProcessDeformation*)pcs;
+	if (D_Flag)
+		dm_pcs = (CRFProcessDeformation*)PCSGetDeformation();
 	//----------------------------------------------------------------------
 	// Initialize RHS
 	if (pcs->Memory_Type > 0)

@@ -63,17 +63,13 @@ using namespace SolidProp;
 using namespace Math_Group;
 
 CRFProcessDeformation::CRFProcessDeformation()
-
 {
 }
 
 CRFProcessDeformation::~CRFProcessDeformation()
 {
-	if (fem_dm) delete fem_dm;
-
 	// Release memory for element variables
 	// alle stationaeren Matrizen etc. berechnen
-	long i;
 	// Write Gauss stress // TEST for excavation analysis
 	//   if(reload==1)
 	// if(reload == 1 || reload == 3)
@@ -83,12 +79,12 @@ CRFProcessDeformation::~CRFProcessDeformation()
 		if (type == 41)  // mono-deformation-liquid
 			WriteSolution();
 	}
-	//
-	for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
-	{
-		delete ele_value_dm[i];
-		ele_value_dm[i] = NULL;
-	}
+
+	delete fem_dm;
+
+	for (auto p : ele_value_dm)
+		delete p;
+	ele_value_dm.clear();
 }
 
 /*************************************************************************
@@ -101,6 +97,12 @@ CRFProcessDeformation::~CRFProcessDeformation()
  **************************************************************************/
 void CRFProcessDeformation::Initialization()
 {
+	if (msp_vector.empty())
+	{
+		std::cout << "***ERROR: MSP data not found!\n";
+		return;
+	}
+
 	//-- NW 25.10.2011
 	// this section has to be executed at latest before calling InitGauss()
 	// Control for reading and writing solution
@@ -109,21 +111,17 @@ void CRFProcessDeformation::Initialization()
 	if (reload == 3) idata_type = read_write;
 	//--
 	if ((reload == 2 || reload == 3) && calcDiffFromStress0)
-		_isInitialStressNonZero = true;  // NW
+		_isInitialStressNonZero = true;
 
-	// Local assembliers
-	// An instaniate of CFiniteElementVec
-	int i, Axisymm = 1;  // ani-axisymmetry
 	//
-	if (m_msh->isAxisymmetry()) Axisymm = -1;  // Axisymmetry is true
+	const int Axisymm = (m_msh->isAxisymmetry() ? -1 : 1);
 	fem_dm = new CFiniteElementVec(this, Axisymm * m_msh->GetCoordinateFlag());
 	fem_dm->SetGaussPointNumber(m_num->ele_gauss_points);
-	//
-	// Monolithic scheme
-	if (type / 10 == 4)
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
 		fem = new CFiniteElementStd(this, Axisymm * m_msh->GetCoordinateFlag());
-	//
+
 	pcs_number_deformation = pcs_number;
+
 	//
 	if (m_num)
 	{
@@ -133,17 +131,11 @@ void CRFProcessDeformation::Initialization()
 	//
 
 	// Initialize material transform tensor for tansverse isotropic elasticity
-	// UJG/WW. 25.11.2009
-	for (i = 0; i < (int)msp_vector.size(); i++)
-		msp_vector[i]->CalculateTransformMatrixFromNormalVector(
-		    problem_dimension_dm);
-
-	if (!msp_vector.size())
+	for (auto msp : msp_vector)
 	{
-		std::cout << "***ERROR: MSP data not found!"
-		          << "\n";
-		return;
+		msp->CalculateTransformMatrixFromNormalVector(problem_dimension_dm);
 	}
+
 	InitialMBuffer();
 	InitGauss();
 
@@ -155,17 +147,15 @@ void CRFProcessDeformation::Initialization()
 	// NW 28.08.2012
 	if (_isInitialStressNonZero)
 	{
-		std::cout << "->Initial stress is given."
-		          << "\n";
+		std::cout << "->Initial stress is given.\n";
 		CRFProcess* h_pcs = PCSGet("LIQUID_FLOW");
 		if (h_pcs)
-		{  // NW
-			std::cout << "->Found LIQUID_FLOW. Store initial liquid pressure."
-			          << "\n";
+		{
+			ScreenMessage("->Found LIQUID_FLOW. Store initial liquid pressure.\n");
 			int n_nodes = m_msh->GetNodesNumber(false);
 			p0.resize(n_nodes);
 			const int id_p0 = h_pcs->GetNodeValueIndex("PRESSURE1");
-			for (i = 0; i < n_nodes; i++)
+			for (int i = 0; i < n_nodes; i++)
 			{
 				p0[i] = h_pcs->GetNodeValue(i, id_p0);
 			}
@@ -182,40 +172,29 @@ void CRFProcessDeformation::Initialization()
  **************************************************************************/
 void CRFProcessDeformation::InitialMBuffer()
 {
-	if (!msp_vector.size())
-	{
-		cout << "No .msp file.   " << endl;
-		abort();
-	}
-
 	size_t bufferSize(0);
 	bool HM_Stagered = false;
-	if (GetObjType() == 4)
+	if (getProcessType() == FiniteElement::DEFORMATION)
 	{
 		bufferSize = GetPrimaryVNumber() * m_msh->GetNodesNumber(true);
-		if (H_Process) HM_Stagered = true;
+		if (H_Process)
+			HM_Stagered = true;
 	}
-	else if (GetObjType() == 41)
-		bufferSize = (GetPrimaryVNumber() - 1) * m_msh->GetNodesNumber(true) +
-		             m_msh->GetNodesNumber(false);
-	else if (GetObjType() == 42)
-		bufferSize = (GetPrimaryVNumber() - 2) * m_msh->GetNodesNumber(true) +
-		             2 * m_msh->GetNodesNumber(false);
+	else if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+	{
+		bufferSize = (GetPrimaryVNumber() - 1) * m_msh->GetNodesNumber(true) + m_msh->GetNodesNumber(false);
+	}
 
 	// Allocate memory for  temporal array
 	tempArray.resize(bufferSize);
 
 	// Allocate memory for element variables
-	MeshLib::CElem* elem = NULL;
+	ele_value_dm.reserve(m_msh->ele_vector.size());
 	for (size_t i = 0; i < m_msh->ele_vector.size(); i++)
 	{
-		elem = m_msh->ele_vector[i];
-		//       if (elem->GetMark()) // Marked for use
-		//       {
-		ElementValue_DM* ele_val =
-		    new ElementValue_DM(elem, m_num->ele_gauss_points, HM_Stagered);
+		MeshLib::CElem* elem = m_msh->ele_vector[i];
+		ElementValue_DM* ele_val = new ElementValue_DM(elem, m_num->ele_gauss_points, HM_Stagered);
 		ele_value_dm.push_back(ele_val);
-		//       }
 	}
 }
 
@@ -280,7 +259,7 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 
 	counter++;  // Times of this method  to be called
 	// For pure elesticity
-	const bool isLinearProblem = (pcs_deformation <= 100);
+	const bool isLinearProblem = FiniteElement::isNewtonKind(m_num->nls_method);
 
 	// setup mesh
 	m_msh->SwitchOnQuadraticNodes(true);
@@ -1037,7 +1016,7 @@ void CRFProcessDeformation::RecoverSolution(const int ty)
 	end = pcs_number_of_primary_nvals;
 
 	// If monolithic scheme for p-u coupling,  p_i-->p_0 only
-	if (pcs_deformation % 11 == 0 && ty > 0)
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW && ty > 0)
 	{
 		start = problem_dimension_dm;
 		for (i = 0; i < start; i++)
