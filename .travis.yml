@@ -52,7 +52,7 @@ install:
   - export bench_ref=`pwd`/benchmarks/ref_files
   - mkdir build
   - cd build
-  - if [[ "$CASE" == "LIS" ]]; then export CMAKE_ARGS="${CMAKE_ARGS} -DNUMDIFF_TOOL_PATH=$TRAVIS_BUILD_DIR/csvdiff-master/build/csvdiff"; fi
+  - if [[ "$CASE" == "LIS" ]]; then export CMAKE_ARGS="${CMAKE_ARGS} -DCSVDIFF_TOOL_PATH=$TRAVIS_BUILD_DIR/csvdiff-master/build/csvdiff"; fi
   - if [[ "$CASE" == "LIS" ]]; then export CMAKE_ARGS="${CMAKE_ARGS} -DBENCHMARK_DIR=${bench_input} -DBENCHMARK_REF_DIR=${bench_ref}"; fi
   - cmake $CMAKE_ARGS ..
   - make -j4

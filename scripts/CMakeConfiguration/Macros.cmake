@@ -160,7 +160,7 @@ FUNCTION (ADD_BENCHMARK authorName benchmarkName ogsConfiguration numProcesses)
 		SET (FILES_TO_DELETE "${FILES_TO_DELETE} gmon.out")
 	ENDIF()
 
-	find_program(NUMDIFF_TOOL_PATH csvdiff)
+	find_program(CSVDIFF_TOOL_PATH csvdiff)
 	#find_program(NUMDIFF_TOOL_PATH numdiff)
 	#message(STATUS "NUMDIFF_TOOL_PATH=${NUMDIFF_TOOL_PATH}")
 	FOREACH (entry ${ARGN})
@@ -204,7 +204,7 @@ FUNCTION (ADD_BENCHMARK authorName benchmarkName ogsConfiguration numProcesses)
 		-DOGS_FEM_CONFIG=${ogsConfiguration}
 		-DNUM_PROCESSES=${numProcesses}
 		-DBENCHMARK_DIR_FOUND=${BENCHMARK_DIR_FOUND}
-		-DNUMDIFF_TOOL_PATH=${NUMDIFF_TOOL_PATH}
+		-DNUMDIFF_TOOL_PATH=${CSVDIFF_TOOL_PATH}
 		-DOUTPUT_FILES=${OUTPUT_FILES}
 		-DBENCHMARK_REF_DIR=${BENCHMARK_REF_DIR_FOUND}
 		-P ${PROJECT_SOURCE_DIR}/scripts/CMakeConfiguration/CompareBenchmark.cmake
