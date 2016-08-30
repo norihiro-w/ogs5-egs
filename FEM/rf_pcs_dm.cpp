@@ -310,9 +310,9 @@ double CRFProcessDeformation::getNormOfDisplacements()
 	const int size = g_nnodes * pcs_number_of_primary_nvals;
 	vector<int> ix(size);
 	vector<double> val(size);
-	for (int i = 0; i < pcs_number_of_primary_nvals; i++)
+	for (int i = 0; i < problem_dimension_dm; i++)
 	{
-		const int nidx0 = GetNodeValueIndex(pcs_primary_function_name[i]);
+		const int nidx1 = p_var_index[i];
 		int local_node_counter = 0;
 		for (size_t j = 0; j < m_msh->GetNodesNumber(true); j++)
 		{
@@ -320,7 +320,7 @@ double CRFProcessDeformation::getNormOfDisplacements()
 				continue;
 			int ish = pcs_number_of_primary_nvals * local_node_counter + i;
 			ix[ish] = pcs_number_of_primary_nvals * m_msh->Eqs2Global_NodeIndex_Q[j] + i;
-			val[ish] = GetNodeValue(j, nidx0 + 1);
+			val[ish] = GetNodeValue(j, nidx1);
 			local_node_counter++;
 		}
 	}
@@ -331,12 +331,12 @@ double CRFProcessDeformation::getNormOfDisplacements()
 	const int g_nnodes = m_msh->GetNodesNumber(true);
 	//const int size = g_nnodes * pcs_number_of_primary_nvals;
 	double val = .0;
-	for (int i = 0; i < pcs_number_of_primary_nvals; i++)
+	for (int i = 0; i < problem_dimension_dm; i++)
 	{
-		const int nidx0 = GetNodeValueIndex(pcs_primary_function_name[i]);
+		const int nidx1 = p_var_index[i];
 		for (int j = 0; j < g_nnodes; j++)
 		{
-			val += std::pow(GetNodeValue(j, nidx0 + 1), 2.0);
+			val += std::pow(GetNodeValue(j, nidx1), 2.0);
 		}
 	}
 	double norm_u_k1 = std::sqrt(val);
@@ -363,14 +363,16 @@ void CRFProcessDeformation::solveLinear()
 
 	// init solution vector
 	if (getProcessType() != FiniteElement::DEFORMATION_FLOW)
+	{
 #if defined(USE_PETSC)
 		InitializeRHS_with_u0();
 #else
 		SetInitialGuess_EQS_VEC();
 #endif
+	}
 
 	ScreenMessage("Calling linear solver...\n");
-	// solve du
+	// solve du, p
 #if defined(USE_PETSC)
 	//			eqs_new->EQSV_Viewer("eqs" +
 	// number2str(aktueller_zeitschritt) + "b");
@@ -521,15 +523,16 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 #endif
 
 	if (this->first_coupling_iteration)
-		StoreLastTimeStepSolution();  // u_n-->temp, u_n is used to store du_n1
+		StoreLastTimeStepSolution();  // u_n is used to store du_n1
 
-	//  Reset stress for each coupling loop
+	//  Reset stress???
 	if (H_Process && getProcessType() == FiniteElement::DEFORMATION)
-		ResetCouplingStep(); // copy p_n -> p_n1
+		ResetCouplingStep();
 
-	// Initialize incremental displacement: w=0
+	// zero displacement increment for current time
 	zeroDU();
 
+	// solve du, p
 	if (m_num->nls_method == FiniteElement::NL_LINEAR)
 		solveLinear();
 	else if (FiniteElement::isNewtonKind(m_num->nls_method))
