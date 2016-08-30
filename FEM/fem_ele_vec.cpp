@@ -63,19 +63,16 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 	stress0 = new double[ns];
 	for (i = 0; i < 4; i++)
 		NodeShift[i] = pcs->Shift[i];
-	{
-		// Indecex in nodal value table
-		Idx_dm0[0] = pcs->GetNodeValueIndex("DISPLACEMENT_X1");
-		Idx_dm0[1] = pcs->GetNodeValueIndex("DISPLACEMENT_Y1");
-		Idx_dm1[0] = Idx_dm0[0] + 1;
-		Idx_dm1[1] = Idx_dm0[1] + 1;
 
-		//     if(problem_dimension_dm==3)
-		if (dim == 3)
-		{
-			Idx_dm0[2] = pcs->GetNodeValueIndex("DISPLACEMENT_Z1");
-			Idx_dm1[2] = Idx_dm0[2] + 1;
-		}
+	// Indecex in nodal value table
+	Idx_dm0[0] = pcs->GetNodeValueIndex("DISPLACEMENT_X1");
+	Idx_dm0[1] = pcs->GetNodeValueIndex("DISPLACEMENT_Y1");
+	Idx_dm1[0] = Idx_dm0[0] + 1;
+	Idx_dm1[1] = Idx_dm0[1] + 1;
+	if (dim == 3)
+	{
+		Idx_dm0[2] = pcs->GetNodeValueIndex("DISPLACEMENT_Z1");
+		Idx_dm1[2] = Idx_dm0[2] + 1;
 	}
 
 	// idx_pls =  pcs->GetNodeValueIndex("STRAIN_PLS");

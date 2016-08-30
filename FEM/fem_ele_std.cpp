@@ -540,7 +540,7 @@ void CFiniteElementStd::SetMemory()
 
 **************************************************************************/
 void CFiniteElementStd::ConfigureCoupling(CRFProcess* pcs, const int* Shift,
-                                          bool dyn)
+                                          bool /*dyn*/)
 {
 	// ProcessType pcs_type (pcs->getProcessType());
 	EnumProcessType CplPcsType = getEnumProcessType(pcs);
@@ -548,35 +548,27 @@ void CFiniteElementStd::ConfigureCoupling(CRFProcess* pcs, const int* Shift,
 	if (D_Flag > 0)
 	{
 		for (size_t i = 0; i < pcs_vector.size(); i++)
+		{
 			if (isDeformationProcess(pcs_vector[i]->getProcessType()))
 			{
 				dm_pcs = (CRFProcessDeformation*)pcs_vector[i];
 				break;
 			}
-		if (dyn)
-		{
-			Idx_dm0[0] = dm_pcs->GetNodeValueIndex("ACCELERATION_X1");
-			Idx_dm0[1] = dm_pcs->GetNodeValueIndex("ACCELERATION_Y1");
 		}
-		else
-		{
-			Idx_dm0[0] = dm_pcs->GetNodeValueIndex("DISPLACEMENT_X1");
-			Idx_dm0[1] = dm_pcs->GetNodeValueIndex("DISPLACEMENT_Y1");
-		}
+		Idx_dm0[0] = dm_pcs->GetNodeValueIndex("DISPLACEMENT_X1");
+		Idx_dm0[1] = dm_pcs->GetNodeValueIndex("DISPLACEMENT_Y1");
 		Idx_dm1[0] = Idx_dm0[0] + 1;
 		Idx_dm1[1] = Idx_dm0[1] + 1;
-		//     if(problem_dimension_dm==3)
 		if (dim == 3)
 		{
-			if (dyn)
-				Idx_dm0[2] = dm_pcs->GetNodeValueIndex("ACCELERATION_Z1");
-			else
-				Idx_dm0[2] = dm_pcs->GetNodeValueIndex("DISPLACEMENT_Z1");
+			Idx_dm0[2] = dm_pcs->GetNodeValueIndex("DISPLACEMENT_Z1");
 			Idx_dm1[2] = Idx_dm0[2] + 1;
 		}
-		if (dm_pcs->type / 10 == 4)
+		if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
+		{
 			for (size_t i = 0; i < pcs->GetPrimaryVNumber(); i++)
 				NodeShift[i] = Shift[i];
+		}
 	}
 
 	switch (CplPcsType)
