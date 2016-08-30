@@ -485,10 +485,10 @@ void CRFProcessDeformation::solveLinear()
 #endif
 
 	// update nodal values from solution
-	SetDUFromSolution();
+	setDUFromSolution();
 
 	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
-		SetPressureFromSolution();
+		setPressureFromSolution();
 }
 
 void CRFProcessDeformation::solveNewton()
@@ -578,9 +578,9 @@ void CRFProcessDeformation::solveNewton()
 		}
 
 		// update nodal values from x
-		UpdateNodalDU();
+		incrementNodalDUFromSolution();
 		if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
-			UpdateNodalPressure();
+			incrementNodalPressureFromSolution();
 
 		if (isConverged)
 			break;
@@ -635,7 +635,7 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 	// setup nodal values of detal u
 	if (this->first_coupling_iteration)
 		StoreLastTimeStepDisplacements();  // to use u_n array as du_n1
-	zeroDU();
+	zeroNodalDU();
 
 	//  setup for partitioned coupling
 	if (pcs_vector.size()>1 && getProcessType() == FiniteElement::DEFORMATION)
@@ -658,8 +658,8 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 	// Post-process
 	//-------------------------------------------------------------------
 	// Update stresses
-	UpdateTotalDisplacement(); // u_n1
-	UpdateStress();
+	incrementNodalDisplacement(); // u_n1
+	updateGaussStress();
 
 	// Recovery the old solution.  Temp --> u_n	for flow proccess
 	RecoverLastTimeStepDisplacements();
@@ -742,7 +742,7 @@ void CRFProcessDeformation::ResetTimeStep()
 		}
 }
 
-void CRFProcessDeformation::SetDUFromSolution()
+void CRFProcessDeformation::setDUFromSolution()
 {
 #if defined(USE_PETSC)
 	double* eqs_x = eqs_new->GetGlobalSolution();
@@ -771,7 +771,7 @@ void CRFProcessDeformation::SetDUFromSolution()
 	}
 }
 
-void CRFProcessDeformation::SetPressureFromSolution()
+void CRFProcessDeformation::setPressureFromSolution()
 {
 #if defined(USE_PETSC)
 	double* eqs_x = eqs_new->GetGlobalSolution();
@@ -819,7 +819,7 @@ void CRFProcessDeformation::SetPressureFromSolution()
    10/2002   WW   Erste Version
    11/2007   WW   Change to fit the new equation class
 **************************************************************************/
-void CRFProcessDeformation::UpdateNodalDU()
+void CRFProcessDeformation::incrementNodalDUFromSolution()
 {
 #if defined(USE_PETSC)
 	double* eqs_x = eqs_new->GetGlobalSolution();
@@ -849,7 +849,7 @@ void CRFProcessDeformation::UpdateNodalDU()
 }
 
 // p_n1 += dp
-void CRFProcessDeformation::UpdateNodalPressure()
+void CRFProcessDeformation::incrementNodalPressureFromSolution()
 {
 #if defined(USE_PETSC)
 	double* eqs_x = eqs_new->GetGlobalSolution();
@@ -878,7 +878,7 @@ void CRFProcessDeformation::UpdateNodalPressure()
 	}
 }
 
-void CRFProcessDeformation::UpdateTotalDisplacement()
+void CRFProcessDeformation::incrementNodalDisplacement()
 {
 	// u = u + du
 	for (int i = 0; i < problem_dimension_dm; i++)
@@ -895,7 +895,7 @@ void CRFProcessDeformation::UpdateTotalDisplacement()
 	}
 }
 
-void CRFProcessDeformation::zeroDU()
+void CRFProcessDeformation::zeroNodalDU()
 {
 	// set du_n1 = 0
 	for (int i = 0; i < problem_dimension_dm; i++)
@@ -1186,7 +1186,7 @@ void CRFProcessDeformation::GlobalAssembly_DM()
    02/2005 WW
    06/2005 WW  Parallelization
 **************************************************************************/
-void CRFProcessDeformation::UpdateStress()
+void CRFProcessDeformation::updateGaussStress()
 {
 	for (MeshLib::CElem* elem : m_msh->ele_vector)
 	{

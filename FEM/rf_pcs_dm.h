@@ -67,13 +67,13 @@ private:
 	void solveLinear();
 	void solveNewton();
 
-	void SetDUFromSolution();
-	void SetPressureFromSolution();
-	void UpdateNodalDU();
-	void UpdateNodalPressure();
-	void UpdateTotalDisplacement();
-	void zeroDU();
-	void UpdateStress();
+	void setDUFromSolution();
+	void setPressureFromSolution();
+	void incrementNodalDUFromSolution();
+	void incrementNodalPressureFromSolution();
+	void incrementNodalDisplacement();
+	void zeroNodalDU();
+	void updateGaussStress();
 
 //	double getNormOfDisplacements();
 //	double getNormOfPressure();
