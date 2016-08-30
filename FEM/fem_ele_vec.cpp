@@ -1040,7 +1040,7 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 	if (Residual)
 	{
 		const double biot = smat->biot_const;
-		double* p0 = pcs->GetInitialFluidPressure();  // NW should calculate (p
+		std::vector<double> const& p0 = pcs->GetInitialFluidPressure();  // NW should calculate (p
 		                                              // - p0) because OGS
 		                                              // calculates (stress -
 		                                              // stress0)
@@ -1060,7 +1060,7 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 					// calculates stress balance of changes from the initial
 					// stress.
 					// NW 28.08.2012
-					if (pcs->calcDiffFromStress0 && p0 != NULL)
+					if (pcs->calcDiffFromStress0 && !p0.empty())
 					{
 						val_n -= p0[nodes[i]];
 					}

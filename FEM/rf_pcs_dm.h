@@ -20,19 +20,6 @@
 
 #include "rf_pcs.h"
 
-// Strong discontinuity
-extern bool Localizing;  // for tracing localization
-typedef struct
-{
-	int ElementIndex;
-	int NumInterFace;  // Number of intersection faces
-	// Local indeces of intersection faces (3D)
-	int* InterFace;
-} DisElement;
-extern std::vector<DisElement*>
-    LastElement;  // Last discontinuity element correponding to SeedElement
-extern std::vector<long> ElementOnPath;  // Element on the discontinuity path
-
 namespace FiniteElement
 {
 class CFiniteElementVec;
@@ -72,8 +59,8 @@ public:
 	double Execute(int loop_process_number);
 
 	// Aux. Memory
-	double* GetAuxArray() const { return ARRAY; }
-	double* GetInitialFluidPressure() const { return p0; }
+	std::vector<double> const& GetAuxArray() const { return tempArray; }
+	std::vector<double> const& GetInitialFluidPressure() const { return p0; }
 
 	void ScalingNodeForce(const double SFactor);
 	void InitGauss();
@@ -94,9 +81,6 @@ public:
 	void UpdateInitialStress(bool ZeroInitialS);
 	void Extropolation_GaussValue();
 
-	// Calculate scaling factor for load increment
-	double CaclMaxiumLoadRatio();
-
 	// Write stresses
 	std::string GetGaussPointStressFileName();
 	void WriteGaussPointStress();
@@ -107,21 +91,22 @@ public:
 	CFiniteElementVec* GetFEM_Assembler() const { return fem_dm; }
 
 private:
-	CFiniteElementVec* fem_dm;
 	void InitialMBuffer();
-	double* ARRAY;
-	double* p0;
-	bool _isInitialStressNonZero;
 
-	int counter;
-	double InitialNormR0;
-	double InitialNormDU_coupling;
-	double InitialNormDU0;
+	CFiniteElementVec* fem_dm = nullptr;
+	std::vector<double> tempArray;
+	std::vector<double> p0;
+	bool _isInitialStressNonZero = false;
 
-	InitDataReadWriteType idata_type;
+	int counter = 0;
+	double InitialNormR0 = 0;
+	double InitialNormDU_coupling = 0;
+	double InitialNormDU0 = 0;
+
+	InitDataReadWriteType idata_type = none;
 
 	//
-	double norm_du0_pre_cpl_itr;
+	double norm_du0_pre_cpl_itr = 0;
 
 	double getNormOfDisplacements();
 };

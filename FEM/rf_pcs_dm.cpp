@@ -57,43 +57,20 @@ int problem_dimension_dm = 0;
 int PreLoad = 0;
 bool GravityForce = true;
 
-bool Localizing = false;  // for tracing localization
-// Last discontinuity element correponding to SeedElement
-
 using namespace std;
-
-vector<DisElement*> LastElement(0);
-vector<long> ElementOnPath(0);  // Element on the discontinuity path
-
-using FiniteElement::CFiniteElementVec;
-using FiniteElement::CFiniteElementStd;
-using FiniteElement::ElementValue_DM;
-using SolidProp::CSolidProperties;
-using Math_Group::Matrix;
+using namespace FiniteElement;
+using namespace SolidProp;
+using namespace Math_Group;
 
 CRFProcessDeformation::CRFProcessDeformation()
-    : CRFProcess(),
-      fem_dm(NULL),
-      ARRAY(NULL),
-      p0(NULL),
-      counter(0),
-      InitialNormR0(0.0)
 
 {
-	norm_du0_pre_cpl_itr = 0.0;
-	idata_type = none;
-	_isInitialStressNonZero = false;  // NW
-	InitialNormDU0 = 0.0;
 }
 
 CRFProcessDeformation::~CRFProcessDeformation()
 {
-	if (ARRAY) delete[] ARRAY;
-	if (p0) delete[] p0;
 	if (fem_dm) delete fem_dm;
 
-	fem_dm = NULL;
-	ARRAY = NULL;
 	// Release memory for element variables
 	// alle stationaeren Matrizen etc. berechnen
 	long i;
@@ -183,11 +160,10 @@ void CRFProcessDeformation::Initialization()
 		CRFProcess* h_pcs = PCSGet("LIQUID_FLOW");
 		if (h_pcs)
 		{  // NW
-			assert(p0 == NULL);
 			std::cout << "->Found LIQUID_FLOW. Store initial liquid pressure."
 			          << "\n";
 			int n_nodes = m_msh->GetNodesNumber(false);
-			p0 = new double[n_nodes];
+			p0.resize(n_nodes);
 			const int id_p0 = h_pcs->GetNodeValueIndex("PRESSURE1");
 			for (i = 0; i < n_nodes; i++)
 			{
@@ -227,7 +203,7 @@ void CRFProcessDeformation::InitialMBuffer()
 		             2 * m_msh->GetNodesNumber(false);
 
 	// Allocate memory for  temporal array
-	ARRAY = new double[bufferSize];
+	tempArray.resize(bufferSize);
 
 	// Allocate memory for element variables
 	MeshLib::CElem* elem = NULL;
@@ -740,7 +716,7 @@ void CRFProcessDeformation::ResetCouplingStep()
 	{
 		number_of_nodes = num_nodes_p_var[i];
 		for (j = 0; j < number_of_nodes; j++)
-			SetNodeValue(j, p_var_index[i], ARRAY[shift + j]);
+			SetNodeValue(j, p_var_index[i], tempArray[shift + j]);
 		shift += number_of_nodes;
 	}
 }
@@ -1028,7 +1004,7 @@ void CRFProcessDeformation::StoreLastSolution(const int ty)
 	{
 		number_of_nodes = num_nodes_p_var[i];
 		for (j = 0; j < number_of_nodes; j++)
-			ARRAY[shift + j] = GetNodeValue(j, p_var_index[i] - ty);
+			tempArray[shift + j] = GetNodeValue(j, p_var_index[i] - ty);
 		shift += number_of_nodes;
 	}
 }
@@ -1078,13 +1054,13 @@ void CRFProcessDeformation::RecoverSolution(const int ty)
 			if (ty < 2)
 			{
 				if (ty == 1) tem = GetNodeValue(j, idx);
-				SetNodeValue(j, idx, ARRAY[shift + j]);
-				if (ty == 1) ARRAY[shift + j] = tem;
+				SetNodeValue(j, idx, tempArray[shift + j]);
+				if (ty == 1) tempArray[shift + j] = tem;
 			}
 			else if (ty == 2)
 			{
-				tem = ARRAY[shift + j];
-				ARRAY[shift + j] = GetNodeValue(j, idx);
+				tem = tempArray[shift + j];
+				tempArray[shift + j] = GetNodeValue(j, idx);
 				SetNodeValue(j, idx, tem);
 			}
 		}
@@ -1121,221 +1097,6 @@ double CRFProcessDeformation::NormOfDisp()
 			         GetNodeValue(j, p_var_index[i]);
 	}
 	return Norm1;
-}
-
-
-/**************************************************************************
-   ROCKFLOW - Funktion: MaxiumLoadRatio
-
-   Aufgabe:
-   Calculate the muxium effective stress, Smax, of all Gauss points.
-   (For 2-D 9 nodes element only up to now). Then compute the maxium ration
-   by:
-
-   Smax/Y0(initial yield stress)
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   - const int NodesOfEelement:
-
-   Ergebnis:
-   - void -
-
-   Programmaenderungen:
-   01/2003  WW  Erste Version
-
-   letzte Aenderung:
-
-**************************************************************************/
-//#define Modified_B_matrix
-double CRFProcessDeformation::CaclMaxiumLoadRatio(void)
-{
-	int j, gp, gp_r, gp_s;  //, gp_t;
-	int PModel = 1;
-	long i = 0;
-	double* dstrain;
-
-	double S0 = 0.0, p0 = 0.0;
-	double MaxS = 0.000001;
-	double EffS = 0.0;
-
-	MeshLib::CElem* elem = NULL;
-	ElementValue_DM* eleV_DM = NULL;
-	CSolidProperties* SMat = NULL;
-
-	// Weimar's model
-	Matrix* Mat = NULL;
-	double II = 0.0;
-	double III = 0.0;
-
-	double PRatio = 0.0;
-	const double MaxR = 20.0;
-
-	int NGS, NGPS;
-
-	// gp_t = 0;
-
-	for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
-	{
-		elem = m_msh->ele_vector[i];
-		if (elem->GetMark())  // Marked for use
-		{
-			fem_dm->ConfigElement(elem);
-			fem_dm->SetMaterial();
-			eleV_DM = ele_value_dm[i];
-			SMat = fem_dm->smat;
-			SMat->axisymmetry = m_msh->isAxisymmetry();
-			PModel = SMat->Plasticity_type;
-			//
-			switch (PModel)
-			{
-				case 1:
-#ifdef RFW_FRACTURE
-					SMat->Calculate_Lame_Constant(elem);
-#endif
-#ifndef RFW_FRACTURE
-					SMat->Calculate_Lame_Constant();
-#endif
-					SMat->ElasticConsitutive(fem_dm->Dim(), fem_dm->De);
-					SMat->CalulateCoefficent_DP();
-					S0 = MSqrt2Over3 * SMat->BetaN * SMat->Y0;
-					break;
-				case 2:
-#ifdef RFW_FRACTURE
-					SMat->Calculate_Lame_Constant(elem);
-#endif
-#ifndef RFW_FRACTURE
-					SMat->Calculate_Lame_Constant();
-#endif
-					SMat->ElasticConsitutive(fem_dm->Dim(), fem_dm->De);
-					Mat = eleV_DM->MatP;
-					break;
-				case 3:
-					Mat = SMat->data_Plasticity;
-					S0 = (*Mat)(3);
-					break;
-			}
-			NGS = fem_dm->GetNumGaussPoints();
-			NGPS = fem_dm->GetNumGaussSamples();
-			//
-			for (gp = 0; gp < NGS; gp++)
-			{
-				switch (elem->GetElementType())
-				{
-					case MshElemType::TRIANGLE:  // Triangle
-						SamplePointTriHQ(gp, fem_dm->unit);
-						break;
-					case MshElemType::QUAD:  // Quadralateral
-						gp_r = (int)(gp / NGPS);
-						gp_s = gp % NGPS;
-						fem_dm->unit[0] = MXPGaussPkt(NGPS, gp_r);
-						fem_dm->unit[1] = MXPGaussPkt(NGPS, gp_s);
-						break;
-					default:
-						std::cerr
-						    << "CRFProcessDeformation::CaclMaxiumLoadRatio "
-						       "MshElemType not handled"
-						    << "\n";
-				}
-				fem_dm->computeJacobian(2);
-				fem_dm->ComputeGradShapefct(2);
-				fem_dm->ComputeStrain();
-
-				dstrain = fem_dm->GetStrain();
-
-				if (PModel == 3)  // Cam-Clay
-				{
-					p0 =
-					    ((*eleV_DM->Stress)(0, gp) + (*eleV_DM->Stress)(1, gp) +
-					     (*eleV_DM->Stress)(2, gp)) /
-					    3.0;
-					// Swelling index: (*SMat->data_Plasticity)(2)
-					if (fabs(p0) < MKleinsteZahl)
-						// The initial preconsolidation pressure
-						p0 = (*SMat->data_Plasticity)(3);
-
-					SMat->K = (1.0 + (*eleV_DM->e_i)(gp)) * fabs(p0) /
-					          (*SMat->data_Plasticity)(2);
-					SMat->G = 1.5 * SMat->K * (1 - 2.0 * SMat->PoissonRatio) /
-					          (1 + SMat->PoissonRatio);
-					SMat->Lambda = SMat->K - 2.0 * SMat->G / 3.0;
-					SMat->ElasticConsitutive(fem_dm->Dim(), fem_dm->De);
-				}
-
-				// Stress of the previous time step
-				for (j = 0; j < fem_dm->ns; j++)
-					fem_dm->dstress[j] = (*eleV_DM->Stress)(j, gp);
-
-				// Compute try stress, stress incremental:
-				fem_dm->De->multi(dstrain, fem_dm->dstress);
-
-				p0 = DeviatoricStress(fem_dm->dstress) / 3.0;
-
-				switch (PModel)
-				{
-					case 1:  // Drucker-Prager model
-						EffS = sqrt(TensorMutiplication2(fem_dm->dstress,
-						                                 fem_dm->dstress,
-						                                 fem_dm->Dim())) +
-						       3.0 * SMat->Al * p0;
-
-						if (EffS > S0 && EffS > MaxS &&
-						    fabs(S0) > MKleinsteZahl)
-						{
-							MaxS = EffS;
-							PRatio = MaxS / S0;
-						}
-						break;
-
-					case 2:  // Single yield surface
-						// Compute try stress, stress incremental:
-						II = TensorMutiplication2(
-						    fem_dm->dstress, fem_dm->dstress, fem_dm->Dim());
-						III = TensorMutiplication3(fem_dm->dstress,
-						                           fem_dm->dstress,
-						                           fem_dm->dstress,
-						                           fem_dm->Dim());
-						p0 *= 3.0;
-						EffS =
-						    sqrt(II * pow(1.0 + (*Mat)(5) * III / pow(II, 1.5),
-						                  (*Mat)(6)) +
-						         0.5 * (*Mat)(0) * p0 * p0 +
-						         (*Mat)(2) * (*Mat)(2) * p0 * p0 * p0 * p0) +
-						    (*Mat)(1) * p0 + (*Mat)(3) * p0* p0;
-
-						if (EffS > (*Mat)(4))
-						{
-							if ((*Mat)(4) > 0.0)
-							{
-								if (EffS > MaxS) MaxS = EffS;
-								PRatio = MaxS / (*Mat)(4);
-								if (PRatio > MaxR) PRatio = MaxR;
-							}
-							else
-								PRatio = EffS;
-						}
-						break;
-
-					case 3:  // Cam-Clay
-						II = 1.5 * TensorMutiplication2(fem_dm->dstress,
-						                                fem_dm->dstress,
-						                                fem_dm->Dim());
-						if (S0 > 0.0)
-						{
-							EffS = II / (p0 * (*Mat)(0) * (*Mat)(0)) + p0;
-							if (EffS > S0)
-								PRatio = EffS / S0;
-							else
-								PRatio = 1.0;
-						}
-						else
-							PRatio = 1.0;
-						break;
-				}
-			}
-		}
-	}
-
-	return PRatio;
 }
 
 /**************************************************************************
