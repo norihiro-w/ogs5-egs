@@ -90,7 +90,6 @@ private:
 	std::string GetGaussPointStressFileName();
 	void WriteGaussPointStress();
 	void ReadGaussPointStress();
-	void ReadElementStress();
 
 private:
 	CFiniteElementVec* fem_dm = nullptr;

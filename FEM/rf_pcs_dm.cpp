@@ -1057,11 +1057,8 @@ void CRFProcessDeformation::GlobalAssembly()
 {
 	GlobalAssembly_DM();
 
-	if (type / 10 == 4)
-	{  // p-u monolithic scheme
-
-		// if(!fem_dm->dynamic)   ///
-		//  RecoverSolution(1);  // p_i-->p_0
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+	{
 		GlobalAssembly_std(true);
 #if 0
 		const size_t n_nodes_linear = m_msh->GetNodesNumber(false);
@@ -1281,37 +1278,6 @@ void CRFProcessDeformation::ReadGaussPointStress()
 		eleV_DM = ele_value_dm[index];
 		eleV_DM->Read_BIN(file_stress);
 		(*eleV_DM->Stress0) = (*eleV_DM->Stress);
-		if (eleV_DM->Stress_j) (*eleV_DM->Stress_j) = (*eleV_DM->Stress);
-	}
-	//
-	file_stress.close();
-}
-
-/**************************************************************************
-   ROCKFLOW - Funktion: ReadGaussPointStress()
-
-   Aufgabe:
-   Read element-wise stress data
-
-   Programmaenderungen:
-   10/2011  WW  Erste Version
-   letzte Aenderung:
-
-**************************************************************************/
-void CRFProcessDeformation::ReadElementStress()
-{
-	long i, index, ActiveElements;
-	string StressFileName = FileName + ".ele_stress.asc";
-	fstream file_stress(StressFileName.data());
-	ElementValue_DM* eleV_DM = NULL;
-	//
-	file_stress >> ActiveElements;
-	for (i = 0; i < ActiveElements; i++)
-	{
-		file_stress >> index;
-		eleV_DM = ele_value_dm[index];
-		eleV_DM->ReadElementStressASCI(file_stress);
-		(*eleV_DM->Stress) = (*eleV_DM->Stress0);
 		if (eleV_DM->Stress_j) (*eleV_DM->Stress_j) = (*eleV_DM->Stress);
 	}
 	//
