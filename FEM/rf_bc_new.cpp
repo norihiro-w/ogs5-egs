@@ -875,7 +875,7 @@ void CBoundaryCondition::SetByElementValues(long ShiftInNodeVector)
 	}
 
 	CRFProcess* pcs = this->getProcess();
-	MeshLib::CFEMesh* msh = pcs->m_msh;
+	//MeshLib::CFEMesh* msh = pcs->m_msh;
 #ifdef USE_PETSC
 	std::map<size_t, size_t> map_global2local_ele_id;
 	for (size_t i=0; i<map_global2local_ele_id.size(); i++)
