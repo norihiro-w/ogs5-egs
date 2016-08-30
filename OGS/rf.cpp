@@ -318,7 +318,7 @@ int main(int argc, char* argv[])
 	ScreenMessage("\tcurrent mem: %d MB\n",
 	              mem_watch.getVirtMemUsage() / (1024 * 1024));
 #endif
-	aproblem->Euler_TimeDiscretize();
+	bool success = aproblem->Euler_TimeDiscretize();
 #ifdef USE_PETSC
 	MPI_Barrier(PETSC_COMM_WORLD);
 #endif
@@ -361,5 +361,5 @@ int main(int argc, char* argv[])
 	PetscFinalize();
 #endif
 
-	return 0;
+	return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
