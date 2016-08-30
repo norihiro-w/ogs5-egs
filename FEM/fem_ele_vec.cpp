@@ -1225,7 +1225,7 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 				break;
 			case 1:  // Drucker-Prager model
 				if (smat->StressIntegrationDP(gp, eleV_DM, dstress, dPhi,
-				                              update))
+				                              update, pcs->m_num->nls_plasticity_local_tolerance))
 
 					// WW DevStress = smat->devS;
 					smat->ConsistentTangentialDP(ConsistDep, dPhi, ele_dim);

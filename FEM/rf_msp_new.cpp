@@ -1775,7 +1775,7 @@ void CSolidProperties::CalculateCoefficent_HOEKBROWN()  // WX: 02.2011
 bool CSolidProperties::StressIntegrationDP(const int GPiGPj,
                                            const ElementValue_DM* ele_val,
                                            double* TryStress, double& dPhi,
-                                           const int Update)
+                                           const int Update, double Tolerance_Local_Newton)
 {
 	int i = 0;
 	double I1 = 0.0;

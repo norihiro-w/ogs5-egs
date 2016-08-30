@@ -223,7 +223,7 @@ public:
 	double GetYieldCoefficent_DP(const double Angle);
 	void CalulateCoefficent_DP();
 	bool StressIntegrationDP(const int GPiGPj, const ElementValue_DM* ele_val,
-	                         double* TryStress, double& dPhi, const int Update);
+	                         double* TryStress, double& dPhi, const int Update, double Tolerance_Local_Newton);
 	void ConsistentTangentialDP(Matrix* Dep, const double dPhi, const int Dim);
 	bool DirectStressIntegrationDP(const int GPiGPj,
 	                               const ElementValue_DM* ele_val,

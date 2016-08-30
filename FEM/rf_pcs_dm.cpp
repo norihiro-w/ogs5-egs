@@ -50,8 +50,6 @@
 
 
 double LoadFactor = 1.0;
-double Tolerance_global_Newton = 0.0;
-double Tolerance_Local_Newton = 0.0;
 int number_of_load_steps = 1;
 int problem_dimension_dm = 0;
 
@@ -119,14 +117,6 @@ void CRFProcessDeformation::Initialization()
 		fem = new CFiniteElementStd(this, Axisymm * m_msh->GetCoordinateFlag());
 
 	pcs_number_deformation = pcs_number;
-
-	//
-	if (m_num)
-	{
-		Tolerance_Local_Newton = m_num->nls_plasticity_local_tolerance;
-		Tolerance_global_Newton = m_num->nls_error_tolerance[0];
-	}
-	//
 
 	// Initialize material transform tensor for tansverse isotropic elasticity
 	for (auto msp : msp_vector)
@@ -406,6 +396,8 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 		number_of_load_steps = 1;
 	LoadFactor = 1.0;
 	double damping = 1.0;
+	const double Tolerance_global_Newton = m_num->nls_error_tolerance[0];
+
 	for (int l = 1; l <= number_of_load_steps; l++)
 	{
 		// Initialize incremental displacement: w=0
