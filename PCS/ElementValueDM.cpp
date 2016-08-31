@@ -51,34 +51,19 @@ namespace FiniteElement
    ----------------------
    -----------------------------------------------------------------*/
 ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool HM_Staggered)
-    : NodesOnPath(NULL), orientation(NULL)
 {
-	int Plastic = 1;
-	const int LengthMat = 7;  // Number of material parameter of SYS model.
-	int LengthBS = 4;         // Number of stress/strain components
-	int NGPoints = 0;
-	CSolidProperties* sdp = NULL;
-	int ele_dim;
-	//
-	Stress = NULL;
-	Strain = NULL;
-	pStrain = NULL;
-	prep0 = NULL;
-	e_i = NULL;
-	xi = NULL;
-	MatP = NULL;
-	NodesOnPath = NULL;
-	orientation = NULL;
 	MshElemType::type ele_type = ele->GetElementType();
-	ele_dim = ele->GetDimension();
-	sdp = msp_vector[ele->GetPatchIndex()];
-	Plastic = sdp->Plastictity();
+	int ele_dim = ele->GetDimension();
+	CSolidProperties* msp = msp_vector[ele->GetPatchIndex()];
+	int Plastic = msp->Plastictity();
 
+	int LengthBS = 4;         // Number of stress/strain components
 	if (ele_dim == 2)
 		LengthBS = 4;
 	else if (ele_dim == 3)
 		LengthBS = 6;
 
+	int NGPoints = 0;
 	if (ele_type == MshElemType::TRIANGLE)
 		NGPoints = 3;
 	else if (ele_type == MshElemType::TETRAHEDRON)
@@ -89,14 +74,15 @@ ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool HM_Staggered)
 		NGPoints = MathLib::fastpow(NGP, ele_dim);
 
 	Stress0 = new Matrix(LengthBS, NGPoints);
-	Stress_i = new Matrix(LengthBS, NGPoints);
-	Stress = Stress_i;
+	Stress_last_ts = new Matrix(LengthBS, NGPoints);
+	if (HM_Staggered)
+		Stress_current_ts = new Matrix(LengthBS, NGPoints);
+	Stress = Stress_last_ts;
+
 	Strain = new Matrix(LengthBS, NGPoints);
 	if (HM_Staggered)
-		Stress_j = new Matrix(LengthBS, NGPoints);
-	else
-		Stress_j = NULL;  // for HM coupling iteration
-	//
+		Strain_last_ts = new Matrix(LengthBS, NGPoints);
+
 	if (Plastic > 0)
 	{
 		pStrain = new Matrix(NGPoints);
@@ -104,10 +90,9 @@ ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool HM_Staggered)
 		*y_surface = 0.0;
 		*pStrain = 0.0;
 	}
-	else
-		y_surface = NULL;
 	*Stress = 0.0;
 
+	const int LengthMat = 7;  // Number of material parameter of SYS model.
 	if (Plastic == 2)  // Rotational hardening model
 	{
 		xi = new Matrix(LengthBS - 1, NGPoints);
@@ -122,7 +107,7 @@ ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool HM_Staggered)
 		*prep0 = 0.0;
 		*e_i = 0.0;
 	}
-	if (sdp->CreepModel() == 1000)
+	if (msp->CreepModel() == 1000)
 	{
 		xi = new Matrix(LengthBS);
 		*xi = 0.0;
@@ -131,80 +116,12 @@ ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool HM_Staggered)
 	tract_j = 0.0;
 	Localized = false;
 }
-// 01/2006 WW
-void ElementValue_DM::Write_BIN(std::fstream& os)
-{
-	Stress0->Write_BIN(os);
-	Stress_i->Write_BIN(os);
-	if (pStrain) pStrain->Write_BIN(os);
-	if (y_surface) y_surface->Write_BIN(os);
-	if (xi) xi->Write_BIN(os);
-	if (MatP) MatP->Write_BIN(os);
-	if (prep0) prep0->Write_BIN(os);
-	if (e_i) e_i->Write_BIN(os);
-	if (NodesOnPath) NodesOnPath->Write_BIN(os);
-	if (orientation) os.write((char*)(orientation), sizeof(*orientation));
-	os.write((char*)(&disp_j), sizeof(disp_j));
-	os.write((char*)(&tract_j), sizeof(tract_j));
-	os.write((char*)(&Localized), sizeof(Localized));
-}
-// 01/2006 WW
-void ElementValue_DM::Read_BIN(std::fstream& is)
-{
-	Stress0->Read_BIN(is);
-	Stress_i->Read_BIN(is);
-	if (pStrain) pStrain->Read_BIN(is);
-	if (y_surface) y_surface->Read_BIN(is);
-	if (xi) xi->Read_BIN(is);
-	if (MatP) MatP->Read_BIN(is);
-	if (prep0) prep0->Read_BIN(is);
-	if (e_i) e_i->Read_BIN(is);
-	if (NodesOnPath) NodesOnPath->Read_BIN(is);
-	if (orientation) is.read((char*)(orientation), sizeof(*orientation));
-	is.read((char*)(&disp_j), sizeof(disp_j));
-	is.read((char*)(&tract_j), sizeof(tract_j));
-	is.read((char*)(&Localized), sizeof(Localized));
-}
-
-// 10/2011 WW
-void ElementValue_DM::ReadElementStressASCI(std::fstream& is)
-{
-	size_t i, j;
-	size_t ns = Stress0->Rows();
-	size_t nGS = Stress0->Cols();
-
-	for (i = 0; i < ns; i++)
-	{
-		is >> (*Stress0)(i, 0);
-		for (j = 1; j < nGS; j++)
-			(*Stress0)(i, j) = (*Stress0)(i, 0);
-	}
-
-	*Stress_i = *Stress0;
-}
-
-void ElementValue_DM::ResetStress(bool cpl_loop)
-{
-	if (Stress_j == nullptr)
-		return;
-
-	if (cpl_loop)  // For coupling loop
-	{
-		(*Stress_j) = (*Stress_i);
-		Stress = Stress_j;
-	}
-	else  // Time loop
-	{
-		(*Stress_i) = (*Stress_j);
-		Stress = Stress_i;
-	}
-}
 
 ElementValue_DM::~ElementValue_DM()
 {
 	delete Stress0;
-	if (Stress_i) delete Stress_i;
-	if (Stress_j) delete Stress_j;
+	if (Stress_last_ts) delete Stress_last_ts;
+	if (Stress_current_ts) delete Stress_current_ts;
 	if (pStrain) delete pStrain;
 	if (y_surface) delete y_surface;
 
@@ -219,20 +136,77 @@ ElementValue_DM::~ElementValue_DM()
 	if (orientation) delete orientation;
 
 	delete Strain;
-
-	NodesOnPath = NULL;
-	orientation = NULL;
-	y_surface = NULL;
-	Stress0 = NULL;
-	Stress = NULL;
-	Strain = NULL;
-	Stress_i = NULL;  // for HM coupling iteration
-	Stress_j = NULL;  // for HM coupling iteration
-	pStrain = NULL;
-	prep0 = NULL;
-	e_i = NULL;
-	xi = NULL;
-	MatP = NULL;
+	delete Strain_last_ts;
 }
+
+void ElementValue_DM::Write_BIN(std::fstream& os)
+{
+	Stress0->Write_BIN(os);
+	Stress_last_ts->Write_BIN(os);
+	if (pStrain) pStrain->Write_BIN(os);
+	if (y_surface) y_surface->Write_BIN(os);
+	if (xi) xi->Write_BIN(os);
+	if (MatP) MatP->Write_BIN(os);
+	if (prep0) prep0->Write_BIN(os);
+	if (e_i) e_i->Write_BIN(os);
+	if (NodesOnPath) NodesOnPath->Write_BIN(os);
+	if (orientation) os.write((char*)(orientation), sizeof(*orientation));
+	os.write((char*)(&disp_j), sizeof(disp_j));
+	os.write((char*)(&tract_j), sizeof(tract_j));
+	os.write((char*)(&Localized), sizeof(Localized));
+}
+
+void ElementValue_DM::Read_BIN(std::fstream& is)
+{
+	Stress0->Read_BIN(is);
+	Stress_last_ts->Read_BIN(is);
+	if (pStrain) pStrain->Read_BIN(is);
+	if (y_surface) y_surface->Read_BIN(is);
+	if (xi) xi->Read_BIN(is);
+	if (MatP) MatP->Read_BIN(is);
+	if (prep0) prep0->Read_BIN(is);
+	if (e_i) e_i->Read_BIN(is);
+	if (NodesOnPath) NodesOnPath->Read_BIN(is);
+	if (orientation) is.read((char*)(orientation), sizeof(*orientation));
+	is.read((char*)(&disp_j), sizeof(disp_j));
+	is.read((char*)(&tract_j), sizeof(tract_j));
+	is.read((char*)(&Localized), sizeof(Localized));
+}
+
+void ElementValue_DM::ReadElementStressASCI(std::fstream& is)
+{
+	size_t i, j;
+	size_t ns = Stress0->Rows();
+	size_t nGS = Stress0->Cols();
+
+	for (i = 0; i < ns; i++)
+	{
+		is >> (*Stress0)(i, 0);
+		for (j = 1; j < nGS; j++)
+			(*Stress0)(i, j) = (*Stress0)(i, 0);
+	}
+
+	*Stress_last_ts = *Stress0;
+}
+
+void ElementValue_DM::ResetStress(bool cpl_loop)
+{
+	if (Stress_current_ts == nullptr)
+		return;
+
+	if (cpl_loop)  // For coupling loop
+	{
+		(*Stress_current_ts) = (*Stress_last_ts);
+		Stress = Stress_current_ts;
+		(*Strain) = (*Strain_last_ts);
+	}
+	else  // Time loop
+	{
+		(*Stress_last_ts) = (*Stress_current_ts);
+		Stress = Stress_last_ts;
+		(*Strain_last_ts) = (*Strain);
+	}
+}
+
 
 } // namespace

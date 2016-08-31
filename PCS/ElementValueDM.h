@@ -38,26 +38,27 @@ public:
 		return (*Stress)(0, gp) + (*Stress)(1, gp) + (*Stress)(2, gp);
 	}
 
-	Matrix* Stress0;  // Initial stress
-	Matrix* Stress;
-	Matrix* Stress_i;
-	Matrix* Stress_j;
-	Matrix* Strain;
-	Matrix* pStrain;
-	Matrix* y_surface;
+	Matrix* Stress0 = nullptr;  // Initial stress
+	Matrix* Stress = nullptr;
+	Matrix* Stress_last_ts = nullptr;
+	Matrix* Stress_current_ts = nullptr;
+	Matrix* Strain = nullptr;
+	Matrix* Strain_last_ts = nullptr;
+	Matrix* pStrain = nullptr;
+	Matrix* y_surface = nullptr;
 	// Preconsolidation pressure
-	Matrix* prep0;
-	Matrix* e_i;  // Void ratio
+	Matrix* prep0 = nullptr;
+	Matrix* e_i = nullptr;  // Void ratio
 	// Variables of single yield surface model
-	Matrix* xi;    // Rotational hardening variables
-	Matrix* MatP;  // Material parameters
+	Matrix* xi = nullptr;    // Rotational hardening variables
+	Matrix* MatP = nullptr;  // Material parameters
 
 	// Discontinuity
 	double disp_j;
 	double tract_j;
 	bool Localized;
-	Matrix* NodesOnPath;
-	double* orientation;
+	Matrix* NodesOnPath = nullptr;
+	double* orientation = nullptr;
 };
 
 }  // end namespace

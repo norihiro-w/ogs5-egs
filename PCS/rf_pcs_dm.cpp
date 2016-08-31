@@ -285,8 +285,8 @@ void CRFProcessDeformation::InitGauss(void)
 				}
 			}
 		}
-		if (eleV_DM->Stress_j)
-			(*eleV_DM->Stress_j) = (*eleV_DM->Stress);
+		if (eleV_DM->Stress_current_ts)
+			(*eleV_DM->Stress_current_ts) = (*eleV_DM->Stress);
 		elem->SetOrder(false);
 	}
 
@@ -1034,6 +1034,22 @@ void CRFProcessDeformation::Extropolation_GaussValue()
 		for (k = 0; k < NS; k++)
 			SetNodeValue(i, Idx_Stress[k], 0.0);
 
+	// Clean nodal strain
+	NS = 4;
+	Idx_Stress[0] = GetNodeValueIndex("STRAIN_XX");
+	Idx_Stress[1] = GetNodeValueIndex("STRAIN_YY");
+	Idx_Stress[2] = GetNodeValueIndex("STRAIN_ZZ");
+	Idx_Stress[3] = GetNodeValueIndex("STRAIN_XY");
+	if (problem_dimension_dm == 3)
+	{
+		NS = 6;
+		Idx_Stress[4] = GetNodeValueIndex("STRAIN_XZ");
+		Idx_Stress[5] = GetNodeValueIndex("STRAIN_YZ");
+	}
+	for (i = 0; i < LowOrderNodes; i++)
+		for (k = 0; k < NS; k++)
+			SetNodeValue(i, Idx_Stress[k], 0.0);
+
 	for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
 	{
 		elem = m_msh->ele_vector[i];
@@ -1043,6 +1059,7 @@ void CRFProcessDeformation::Extropolation_GaussValue()
 			fem_dm->SetMaterial();
 			//         eval_DM = ele_value_dm[i];
 			// TEST        (*eval_DM->Stress) += (*eval_DM->Stress0);
+			fem_dm->ExtropolateGaussStrain();
 			fem_dm->ExtropolateGaussStress();
 			// TEST        if(!update)
 			//           (*eval_DM->Stress) -= (*eval_DM->Stress0);
@@ -1344,7 +1361,7 @@ void CRFProcessDeformation::WriteGaussPointStress()
 			file_stress.write((char*)(&i), sizeof(i));
 			//          *eleV_DM->Stress_i += *eleV_DM->Stress0;
 			// TEST           *eleV_DM->Stress0 = 0.0;
-			*eleV_DM->Stress0 = *eleV_DM->Stress_i;
+			*eleV_DM->Stress0 = *eleV_DM->Stress_last_ts;
 			eleV_DM->Write_BIN(file_stress);
 		}
 	}
@@ -1376,7 +1393,7 @@ void CRFProcessDeformation::ReadGaussPointStress()
 		eleV_DM = ele_value_dm[index];
 		eleV_DM->Read_BIN(file_stress);
 		(*eleV_DM->Stress0) = (*eleV_DM->Stress);
-		if (eleV_DM->Stress_j) (*eleV_DM->Stress_j) = (*eleV_DM->Stress);
+		if (eleV_DM->Stress_current_ts) (*eleV_DM->Stress_current_ts) = (*eleV_DM->Stress);
 	}
 	//
 	file_stress.close();

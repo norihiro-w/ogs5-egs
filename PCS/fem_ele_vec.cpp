@@ -1219,7 +1219,7 @@ void CFiniteElementVec::UpdateStressStrain()
 	for (int i = 0; i < nnodes; i++)
 		dbuff[i] = (double)MeshElement->GetNode(i)->getConnectedElementIDs().size();
 	// The mapping of Gauss point strain to element nodes
-	ExtropolateGaussStrain();
+	//ExtropolateGaussStrain();
 }
 
 
@@ -1682,8 +1682,34 @@ void CFiniteElementVec::ExtropolateGaussStrain()
 	gp = 0;
 	// double Area1, Area2, Tol=10e-9;
 
-	// l1=l2=l3=l4=0;
 	MshElemType::type ElementType = MeshElement->GetElementType();
+	eleV_DM = ele_value_dm[MeshElement->GetIndex()];
+	for (gp = 0; gp < nGaussPoints; gp++)
+	{
+		if (ElementType == MshElemType::QUAD ||
+		    ElementType == MshElemType::HEXAHEDRON)
+		{
+			int gp_r, gp_s, gp_t;
+			SetGaussPoint(gp, gp_r, gp_s, gp_t);
+			i = GetLocalIndex(gp_r, gp_s, gp_t);
+			if (i == -1) continue;
+		}
+		else
+			i = gp;
+
+		Sxx[i] = (*eleV_DM->Strain)(0, gp);
+		Syy[i] = (*eleV_DM->Strain)(1, gp);
+		Szz[i] = (*eleV_DM->Strain)(2, gp);
+		Sxy[i] = (*eleV_DM->Strain)(3, gp);
+		if (ele_dim == 3)
+		{
+			Sxz[i] = (*eleV_DM->Strain)(4, gp);
+			Syz[i] = (*eleV_DM->Strain)(5, gp);
+		}
+	}
+
+
+	// l1=l2=l3=l4=0;
 	if (ElementType == MshElemType::QUAD ||
 	    ElementType == MshElemType::HEXAHEDRON)
 		Xi_p = CalcXi_p();
