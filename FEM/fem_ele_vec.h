@@ -119,7 +119,7 @@ private:
 	double* Disp;
 
 	// Temperatures of nodes
-	double* Temp, Tem;
+	double* dT, Tem;
 	double* T1;
 
 	// Element value

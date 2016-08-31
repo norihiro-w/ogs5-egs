@@ -119,7 +119,7 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 			AuxMatrix = new Matrix(2, 2);
 			AuxMatrix2 = new Matrix(2, 4);  // NW
 			Disp = new double[18];
-			Temp = new double[9];
+			dT = new double[9];
 			T1 = new double[9];
 
 			Sxx = new double[9];
@@ -143,7 +143,7 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 			AuxMatrix = new Matrix(3, 3);
 			AuxMatrix2 = new Matrix(3, 6);  // NW
 			Disp = new double[60];
-			Temp = new double[20];
+			dT = new double[20];
 			T1 = new double[20];
 
 			Sxx = new double[20];
@@ -243,7 +243,7 @@ CFiniteElementVec::~CFiniteElementVec()
 	delete AuxMatrix;
 	delete AuxMatrix2;  // NW
 	delete[] Disp;
-	delete[] Temp;
+	delete[] dT;
 	delete[] T1;
 	delete[] Sxx;
 	delete[] Syy;
@@ -279,7 +279,7 @@ CFiniteElementVec::~CFiniteElementVec()
 	AuxMatrix = NULL;
 	AuxMatrix2 = NULL;  // NW
 	Disp = NULL;
-	Temp = NULL;
+	dT = NULL;
 	T1 = NULL;
 	Sxx = NULL;
 	Syy = NULL;
@@ -858,7 +858,7 @@ void CFiniteElementVec::UpdateStress()
 		for (long i = 0; i < nnodes; i++)
 		{
 			T1[i] = t_pcs->GetNodeValue(nodes[i], idx_T1);
-			Temp[i] = t_pcs->GetNodeValue(nodes[i], idx_T1) -
+			dT[i] = t_pcs->GetNodeValue(nodes[i], idx_T1) -
 			          t_pcs->GetNodeValue(nodes[i], idx_T0);
 		}
 	}
@@ -1023,7 +1023,7 @@ void CFiniteElementVec::UpdateStress()
 				double t1 = 0.0;
 				for (long i = 0; i < nnodes; i++)
 				{
-					Tem += shapefct[i] * Temp[i];
+					Tem += shapefct[i] * dT[i];
 					t1 += shapefct[i] * T1[i];
 				}
 				for (long i = 0; i < 3; i++)
@@ -1363,7 +1363,7 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 		for (long i = 0; i < nnodes; i++)
 		{
 			T1[i] = t_pcs->GetNodeValue(nodes[i], idx_T1);
-			Temp[i] = t_pcs->GetNodeValue(nodes[i], idx_T1) -
+			dT[i] = t_pcs->GetNodeValue(nodes[i], idx_T1) -
 			          t_pcs->GetNodeValue(nodes[i], idx_T0);
 		}
 	}
@@ -1527,7 +1527,7 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 				double t1 = 0.0;
 				for (long i = 0; i < nnodes; i++)
 				{
-					Tem += shapefct[i] * Temp[i];
+					Tem += shapefct[i] * dT[i];
 					t1 += shapefct[i] * T1[i];
 				}
 				for (long i = 0; i < 3; i++)
