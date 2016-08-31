@@ -24,6 +24,7 @@
 #include "mathlib.h"
 
 #include "ElementValue.h"
+#include "ElementValueDM.h"
 #include "Output.h"
 #include "fem_ele_std.h"
 #include "rf_mmp_new.h"
@@ -1099,11 +1100,10 @@ bool CVTK::WriteElementValue(std::fstream& fin,
                              CFEMesh* msh,
                              long& offset)
 {
-	std::vector<int> ele_value_index_vector(
-	    out->getElementValueVector().size());
-	if (ele_value_index_vector.size() >
-	    0)  // GetELEValuesIndexVector() should check this!
+	std::vector<int> ele_value_index_vector(out->getElementValueVector().size());
+	if (ele_value_index_vector.size() > 0)
 		out->GetELEValuesIndexVector(ele_value_index_vector);
+
 	CRFProcess* m_pcs = NULL;
 	MeshLib::CElem* ele = NULL;
 
@@ -1202,14 +1202,26 @@ bool CVTK::WriteElementValue(std::fstream& fin,
 
 	// Element values
 	bool outEleVelocity = false;
+	bool outEleStress = false;
+	bool outEleStrain = false;
 	for (int i = 0; i < (int)ele_value_index_vector.size(); i++)
 	{
-		if (ele_value_index_vector[i] < 0) continue;
 		if (out->getElementValueVector()[i].find("VELOCITY") != string::npos)
 		{
 			outEleVelocity = true;
 			continue;
 		}
+		if (out->getElementValueVector()[i].find("STRESS") != string::npos)
+		{
+			outEleStress = true;
+			continue;
+		}
+		if (out->getElementValueVector()[i].find("STRAIN") != string::npos)
+		{
+			outEleStrain = true;
+			continue;
+		}
+		if (ele_value_index_vector[i] < 0) continue;
 		m_pcs = out->GetPCS_ELE(out->getElementValueVector()[i]);
 
 		if (!useBinary || !output_data)
@@ -1402,6 +1414,80 @@ bool CVTK::WriteElementValue(std::fstream& fin,
 			if (!useBinary || !output_data) WriteDataArrayFooter(fin);
 		}
 	}
+
+	// Element strain
+	if (outEleStrain)
+	{
+		if (!useBinary || !output_data)
+			WriteDataArrayHeader(fin, this->type_Double, "ELEMENT_STRAIN", 6, str_format, offset);
+		if (output_data)
+		{
+			if (!useBinary)
+			{
+				fin << "          ";
+				std::valarray<double> values(6);
+				int tensor_index[] = {0, 1, 2, 3, 5, 4};
+				for (long i = 0; i < (long)msh->ele_vector.size(); i++)
+				{
+					FiniteElement::ElementValue_DM* ev = ele_value_dm[i];
+					int gp = 0;
+					values = .0;
+					for (unsigned j=0; j<ev->Strain->Rows(); j++)
+						values[j] = (*ev->Strain)(j, gp);
+					for (int j=0; j<6; j++)
+						fin << values[tensor_index[j]] << " ";
+				}
+				fin << "\n";
+			}
+			else
+			{
+				//TODO
+			}
+		}
+		else
+			// OK411
+			offset += (long)msh->ele_vector.size() * sizeof(double) * 6 + SIZE_OF_BLOCK_LENGTH_TAG;
+		if (!useBinary || !output_data) WriteDataArrayFooter(fin);
+
+	}
+
+	// Element stress
+	if (outEleStress)
+	{
+		if (!useBinary || !output_data)
+			WriteDataArrayHeader(fin, this->type_Double, "ELEMENT_STRESS", 6, str_format, offset);
+		if (output_data)
+		{
+			if (!useBinary)
+			{
+				fin << "          ";
+				std::valarray<double> values(6);
+				int tensor_index[] = {0, 1, 2, 3, 5, 4};
+				//int tensor_index[] = {0, 3, 4, 3, 1, 5, 4, 5, 2};
+				for (long i = 0; i < (long)msh->ele_vector.size(); i++)
+				{
+					FiniteElement::ElementValue_DM* ev = ele_value_dm[i];
+					int gp = 0;
+					values = .0;
+					for (unsigned j=0; j<ev->Stress->Rows(); j++)
+						values[j] = (*ev->Stress)(j, gp);
+					for (int j=0; j<6; j++)
+						fin << values[tensor_index[j]] << " ";
+				}
+				fin << "\n";
+			}
+			else
+			{
+				//TODO
+			}
+		}
+		else
+			// OK411
+			offset += (long)msh->ele_vector.size() * sizeof(double) * 6 + SIZE_OF_BLOCK_LENGTH_TAG;
+		if (!useBinary || !output_data) WriteDataArrayFooter(fin);
+
+	}
+
 	// Material information
 	// MMP
 	if (out->mmp_value_vector.size() > 0)
