@@ -496,8 +496,8 @@ void CRFProcessDeformation::solveNewton()
 	const int MaxIteration = m_num->nls_max_iterations;
 	const double Tolerance_global_Newton = m_num->nls_error_tolerance[0];
 	bool isConverged = false;
-	double InitialNormR0 = 0;
-	double InitialNormDU0 = 0;
+	double absNormR0 = 0;
+	double absNormDX0 = 0;
 
 	for (iter_nlin = 0; iter_nlin < MaxIteration; iter_nlin++)
 	{
@@ -506,7 +506,6 @@ void CRFProcessDeformation::solveNewton()
 
 		// Refresh solver
 		eqs_new->Initialize();
-
 #ifndef WIN32
 		if (iter_nlin == 0)
 		{
@@ -514,10 +513,44 @@ void CRFProcessDeformation::solveNewton()
 			ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
 		}
 #endif
-		// Assemble and solve system equation
-		ScreenMessage("Assembling equation system...\n");
-		GlobalAssembly();
+		// -----------------------------------------------------------------
+		// Evaluate residuals
+		// -----------------------------------------------------------------
+		ScreenMessage("Assembling a residual vector...\n");
+		AssembleResidual();
 
+#if defined(USE_PETSC)
+		double absNormR = eqs_new->GetVecNormRHS();
+#elif defined(NEW_EQS)
+		double absNormR = eqs_new->ComputeNormRHS();
+#endif
+
+		if (iter_nlin == 0)
+			absNormR0 = absNormR;
+
+		double relNormR = absNormR / (absNormR0 == 0 ? 1 : absNormR0);
+
+		//
+		ScreenMessage("-->Newton-Raphson %d: Abs.Res.=%g, Rel.Res.=%g\n", iter_nlin+1, absNormR, relNormR);
+
+		if (relNormR <= Tolerance_global_Newton)
+		{
+			ScreenMessage("-->Newton-Raphson converged\n");
+			isConverged = true;
+			break;
+		}
+		else if (iter_nlin > 0 && relNormR > 100.0)
+		{
+			ScreenMessage("***Attention: Newton-Raphson step is diverged.\n");
+			break;
+		}
+
+
+		// -----------------------------------------------------------------
+		// Assemble Jacobian and solve linear eqs
+		// -----------------------------------------------------------------
+		ScreenMessage("Assembling a Jacobian matrix...\n");
+		AssembleJacobian();
 #ifndef WIN32
 		if (iter_nlin == 0)
 		{
@@ -527,10 +560,7 @@ void CRFProcessDeformation::solveNewton()
 #endif
 
 		ScreenMessage("Calling linear solver...\n");
-		// Linear solver
 #if defined(USE_PETSC)
-		//			eqs_new->EQSV_Viewer("eqs" +
-		// number2str(aktueller_zeitschritt) + "b");
 		eqs_new->Solver();
 		eqs_new->MappingSolution();
 #elif defined(NEW_EQS)
@@ -538,52 +568,27 @@ void CRFProcessDeformation::solveNewton()
 		eqs_new->Solver(compress_eqs);
 #endif
 
-		// Get norm of residual vector, solution increment
 #if defined(USE_PETSC)
-		double NormR = eqs_new->GetVecNormRHS();
-		double NormDU = eqs_new->GetVecNormX();
+		double absNormDX = eqs_new->GetVecNormX();
 #elif defined(NEW_EQS)
-		double NormR = eqs_new->NormRHS();
-		double NormDU = eqs_new->NormX();
+		double absNormDX = eqs_new->NormX();
 #endif
-
 		if (iter_nlin == 0)
 		{
 			if (this->first_coupling_iteration)
-			{
 				norm_du0_pre_cpl_itr = .0;
-			}
-			InitialNormR0 = NormR;
-			InitialNormDU0 = NormDU;
+			absNormDX0 = absNormDX;
 		}
+		double relNormDX = absNormDX / (absNormDX0 == 0 ? 1 : absNormDX0);
 
-		// calculate errors
-		double ErrorR = NormR / (InitialNormR0 == 0 ? 1 : InitialNormR0);
-		double ErrorDU = NormDU / (InitialNormDU0 == 0 ? 1 : InitialNormDU0);
+		ScreenMessage("-->Newton-Raphson %d: Abs.DU=%g, Rel.DU=%g\n", iter_nlin+1, absNormDX, relNormDX);
 
-		//
-		ScreenMessage("-->End of Newton-Raphson iteration: %d/%d\n", iter_nlin+1, MaxIteration);
-		ScreenMessage("   Abs.Res.  Rel.Res.  Abs.DU   Rel.DU\n");
-		ScreenMessage("   %8.2e  %8.2e  %8.2e %8.2e\n", NormR, ErrorR, NormDU, ErrorDU);
-		ScreenMessage("------------------------------------------------\n");
-
-		if (ErrorR <= Tolerance_global_Newton)
-		{
-			isConverged = true;
-		}
-		else if (ErrorR > 100.0 && iter_nlin > 0)
-		{
-			ScreenMessage("***Attention: Newton-Raphson step is diverged.\n");
-			break;
-		}
-
-		// update nodal values from x
+		// -----------------------------------------------------------------
+		// Update solution
+		// -----------------------------------------------------------------
 		incrementNodalDUFromSolution();
 		if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
 			incrementNodalPressureFromSolution();
-
-		if (isConverged)
-			break;
 
 	} // Newton-Raphson iteration
 
@@ -1176,6 +1181,100 @@ void CRFProcessDeformation::GlobalAssembly_DM()
 	}
 	if (print_progress)
 		ScreenMessage("done\n");
+}
+
+void CRFProcessDeformation::AssembleResidual()
+{
+	ScreenMessage("-> set Dirichlet BC to nodal values\n");
+	IncorporateBoundaryConditions(-1, false, false, false, true);
+
+	const size_t dn = m_msh->ele_vector.size() / 10;
+	const bool print_progress = (dn >= 100);
+	if (print_progress)
+		ScreenMessage("start local assembly for %d elements...\n",
+		              m_msh->ele_vector.size());
+
+	for (long i = 0; i < (long)m_msh->ele_vector.size(); i++)
+	{
+		if (print_progress && (i + 1) % dn == 0) ScreenMessage("* ");
+		MeshLib::CElem* elem = m_msh->ele_vector[i];
+		if (!elem->GetMark())  // Marked for use
+			continue;
+
+		elem->SetOrder(true);
+		fem_dm->ConfigElement(elem);
+		fem_dm->AssembleResidual();
+	}
+	if (print_progress)
+		ScreenMessage("done\n");
+
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+	{
+		//TODO
+	}
+
+//#ifdef NEW_EQS
+//	{
+//		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_assembly.txt");
+//		eqs_new->WriteRHS(os);
+//	}
+//#endif
+	ScreenMessage("-> impose Neumann BC and source/sink terms\n");
+	IncorporateSourceTerms();
+//#ifdef NEW_EQS
+//	{
+//		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_st.txt");
+//		eqs_new->WriteRHS(os);
+//	}
+//#endif
+
+	// set bc residual = 0
+	ScreenMessage("-> set bc residual = 0 \n");
+	IncorporateBoundaryConditions(-1, false, true, true);
+
+//#ifdef NEW_EQS
+//	{
+//		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_bc.txt");
+//		eqs_new->WriteRHS(os);
+//	}
+//#endif
+
+}
+
+void CRFProcessDeformation::AssembleJacobian()
+{
+	const size_t dn = m_msh->ele_vector.size() / 10;
+	const bool print_progress = (dn >= 100);
+	if (print_progress)
+		ScreenMessage("start local assembly for %d elements...\n",
+		              m_msh->ele_vector.size());
+
+	for (long i = 0; i < (long)m_msh->ele_vector.size(); i++)
+	{
+		if (print_progress && (i + 1) % dn == 0) ScreenMessage("* ");
+		MeshLib::CElem* elem = m_msh->ele_vector[i];
+		if (!elem->GetMark())  // Marked for use
+			continue;
+
+		elem->SetOrder(true);
+		fem_dm->ConfigElement(elem);
+		fem_dm->AssembleJacobian();
+	}
+	if (print_progress)
+		ScreenMessage("done\n");
+
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+	{
+		//TODO
+	}
+
+	IncorporateBoundaryConditions(-1, true, false);
+//#ifdef NEW_EQS
+//	{
+//		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_J.txt");
+//		eqs_new->WriteRHS(os);
+//	}
+//#endif
 }
 
 /**************************************************************************

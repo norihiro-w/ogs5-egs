@@ -521,7 +521,8 @@ public:
 	void IncorporateBoundaryConditions(const int rank = -1,
 	                                   bool updateA = true,
 	                                   bool updateRHS = true,
-	                                   bool isResidual = false);
+	                                   bool isResidual = false,
+	                                   bool updateNodalValues = false);
 	// PCH for FLUID_MOMENTUM
 	void IncorporateBoundaryConditionsFM(const int rank, const int axis);
 #if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW

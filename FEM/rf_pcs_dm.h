@@ -61,6 +61,8 @@ private:
 	void InitialMBuffer();
 	void InitGauss();
 
+	void AssembleResidual();
+	void AssembleJacobian();
 	void GlobalAssembly();
 	void GlobalAssembly_DM();
 

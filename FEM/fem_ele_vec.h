@@ -46,6 +46,8 @@ public:
 	void SetMaterial();
 
 	void AssembleLinear();
+	void AssembleResidual();
+	void AssembleJacobian();
 
 	void UpdateStressStrain();
 
@@ -159,6 +161,8 @@ private:
 #ifdef USE_PETSC
 	void add2GlobalMatrixII();
 #endif
+	void assembleGlobalVector();
+	void assembleGlobalMatrix();
 
 	friend class ::CRFProcessDeformation;
 

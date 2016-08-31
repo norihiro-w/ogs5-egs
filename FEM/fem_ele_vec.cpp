@@ -736,6 +736,9 @@ void CFiniteElementVec::Init()
 			          t_pcs->GetNodeValue(nodes[i], idx_T0);
 		}
 	}
+
+	for (int i = 0; i < nnodesHQ; i++)
+		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex();
 }
 
 /***************************************************************************
@@ -787,31 +790,466 @@ void CFiniteElementVec::AssembleLinear()
 }
 
 
-void CFiniteElementVec::UpdateStressStrain()
+void CFiniteElementVec::AssembleResidual()
 {
-	Index = MeshElement->GetIndex();
-	eleV_DM = ele_value_dm[MeshElement->GetIndex()];
-	ns = 4;
-	if (MeshElement->GetDimension() == 3)
-		ns = 6;
+	Init();
+	Vector &r = *RHS;
+	r = 0.0;
+	if (PressureC)
+		(*PressureC) = 0.0;
 
-	SetMemory();
-	SetMaterial();
+	for (long i = 0; i < ns; i++)
+		stress0[i] = .0;
 
-	// Get displacement increment
-	for (size_t i = 0; i < dim; i++)
-		for (int j = 0; j < nnodesHQ; j++)
-			Disp[j + i * nnodesHQ] = pcs->GetNodeValue(nodes[j], Idx_dm0[i]);
 
-	if (T_Flag)
+	// Loop over Gauss points
+	for (gp = 0; gp < nGaussPoints; gp++)
 	{
-		for (long i = 0; i < nnodes; i++)
+		//---------------------------------------------------------
+		//  Get local coordinates and weights
+		//  Compute Jacobian matrix and its determinate
+		//---------------------------------------------------------
+		int gp_r = 0, gp_s = 0, gp_t = 0;
+		double fkt = GetGaussData(gp, gp_r, gp_s, gp_t);
+
+		//---------------------------------------------------------
+		// Compute shape functions
+		//---------------------------------------------------------
+		ComputeGradShapefct(2);
+		ComputeShapefct(2);
+		if (F_Flag || T_Flag)
+			ComputeShapefct(1);
+
+		//---------------------------------------------------------
+		// Compute strain
+		//---------------------------------------------------------
+		ComputeStrain();
+
+		//---------------------------------------------------------
+		// Compute elastic constitutive
+		//---------------------------------------------------------
+		smat->Calculate_Lame_Constant();
+		smat->ElasticConstitutive(ele_dim, De);
+
+		//---------------------------------------------------------
+		// Material properties (Integration of the stress)
+		//---------------------------------------------------------
+		for (long i = 0; i < ns; i++)
+			dstress[i] = 0.0;
+		De->multi(dstrain, dstress);
+
+		//---------------------------------------------------------
+		// Integrate the stress by return mapping:
+		//---------------------------------------------------------
+		for (long i = 0; i < ns; i++)
+			dstress[i] += (*eleV_DM->Stress)(i, gp);
+
+		// --------------------------------------------------------------------
+		// Stress increment by heat, swelling, or heat
+		// --------------------------------------------------------------------
+		double ThermalExpansion = 0.0;
+		if (T_Flag)
+			ThermalExpansion = smat->Thermal_Expansion();
+		if (T_Flag && ThermalExpansion != 0.0)
 		{
-			T1[i] = t_pcs->GetNodeValue(nodes[i], idx_T1);
-			dT[i] = t_pcs->GetNodeValue(nodes[i], idx_T1) -
-			          t_pcs->GetNodeValue(nodes[i], idx_T0);
+			for (long i = 0; i < ns; i++)
+				strain_ne[i] = 0.0;
+			double gp_dT  = this->interpolate(dT, 1);
+			for (long i = 0; i < 3; i++)
+				strain_ne[i] -= ThermalExpansion * gp_dT;
+
+			// update stress
+			De->multi(strain_ne, dstress);
+			// strain
+			for (long i = 0; i < ns; i++)
+				dstrain[i] += strain_ne[i];
+		}
+
+		//---------------------------------------------------------
+		// Assemble matrices and RHS
+		//---------------------------------------------------------
+		if (pcs->calcDiffFromStress0)
+		{
+			for (long i = 0; i < ns; i++)
+				stress0[i] = (*eleV_DM->Stress0)(i, gp);
+		}
+
+		//---------------------------------------------------------
+		// cache B
+		//---------------------------------------------------------
+		for (int i = 0; i < nnodesHQ; i++)
+		{
+			setTransB_Matrix(i);
+			(*this->vec_B_matrix[i]) = *B_matrix;
+			(*this->vec_B_matrix_T[i]) = *B_matrix_T;
+		}
+		Matrix* old_B_matrix = B_matrix;
+		Matrix* old_B_matrix_T = B_matrix_T;
+
+		//---------------------------------------------------------
+		// r = B^T * (Stress' - alpa*p - (Stress'0 - alpha0*p0)) + rho*g
+		//---------------------------------------------------------
+		// r = B^T * (Stress' - Stress'0)
+		for (int i = 0; i < nnodesHQ; i++)
+		{
+			Matrix* tmp_B_matrix_T = this->vec_B_matrix_T[i];
+
+			for (unsigned j = 0; j < ele_dim; j++) {
+				for (int k = 0; k < ns; k++) {
+					r(j* nnodesHQ + i) += (*tmp_B_matrix_T)(j, k) * (dstress[k] - stress0[k]) * fkt;
+				}
+			}
+		}
+
+		// r += rho*g
+		double rho = CalDensity();
+		if (rho > 0.0)
+		{
+			// 2D, in y-direction
+			// 3D, in z-direction
+			int i = (ele_dim - 1) * nnodesHQ;
+			const double coeff = rho * smat->grav_const * fkt;
+			for (int k = 0; k < nnodesHQ; k++)
+				r(i + k) += coeff * shapefctHQ[k];
+		}
+
+		// r+= B^T * (-alpha*p - (-alpha0*p0))
+		if (PressureC)
+		{
+			for (int k = 0; k < nnodesHQ; k++)
+			{
+				for (int l = 0; l < nnodes; l++)
+				{
+					for (unsigned j = 0; j < ele_dim; j++)
+					{
+						double dN_dx = dshapefctHQ[nnodesHQ * j + k];
+						if (axisymmetry && j == 0)
+							dN_dx += shapefctHQ[k] / Radius;
+						double f_buff = fkt * dN_dx * shapefct[l];
+						(*PressureC)(nnodesHQ* j + k, l) += f_buff;
+					}
+				}
+			}
+
+			const double biot = smat->biot_const;
+			const double biot0 = smat->biot_const;
+			std::vector<double> const& p0 = pcs->GetInitialFluidPressure();
+			// d(alpha*p) = alpha*p - alpha0*p0
+			double* d_alpha_p = AuxNodal;
+			for (int i = 0; i < nnodes; i++)
+			{
+				double val_n = std::abs(biot) * h_pcs->GetNodeValue(nodes[i], idx_P1);
+				if (pcs->calcDiffFromStress0 && !p0.empty())
+					val_n -= std::abs(biot0) * p0[nodes[i]];
+				d_alpha_p[i] = val_n;
+			}
+			// B^T*d(alpha*p)
+			const int dim_times_nnodesHQ(dim * nnodesHQ);
+			for (int i = 0; i < dim_times_nnodesHQ; i++)
+				AuxNodal1[i] = 0.0;
+			PressureC->multi(d_alpha_p, AuxNodal1);
+			// update r
+			for (int i = 0; i < dim_times_nnodesHQ; i++)
+				r(i) -= AuxNodal1[i];
+		}
+
+		//---------------------------------------------------------
+		// restore B
+		//---------------------------------------------------------
+		B_matrix = old_B_matrix;
+		B_matrix_T = old_B_matrix_T;
+	}
+
+	// for solving J dx = -r
+	r *= -1;
+
+	//---------------------------------------------------------
+	// Global assembly
+	//---------------------------------------------------------
+	assembleGlobalVector();
+}
+
+void CFiniteElementVec::AssembleJacobian()
+{
+	Init();
+	(*Stiffness) = 0.0;
+	if (PressureC)
+		(*PressureC) = 0.0;
+
+	for (long i = 0; i < ns; i++)
+		stress0[i] = .0;
+
+	// Loop over Gauss points
+	for (gp = 0; gp < nGaussPoints; gp++)
+	{
+		//---------------------------------------------------------
+		//  Get local coordinates and weights
+		//  Compute Jacobian matrix and its determinate
+		//---------------------------------------------------------
+		int gp_r = 0, gp_s = 0, gp_t = 0;
+		double fkt = GetGaussData(gp, gp_r, gp_s, gp_t);
+
+		//---------------------------------------------------------
+		// Compute shape functions
+		//---------------------------------------------------------
+		ComputeGradShapefct(2);
+		ComputeShapefct(2);
+		if (F_Flag || T_Flag)
+			ComputeShapefct(1);
+
+		//---------------------------------------------------------
+		// Compute strain
+		//---------------------------------------------------------
+		ComputeStrain();
+
+		//---------------------------------------------------------
+		// Compute elastic constitutive
+		//---------------------------------------------------------
+		smat->Calculate_Lame_Constant();
+		smat->ElasticConstitutive(ele_dim, De);
+
+		//---------------------------------------------------------
+		// Material properties (Integration of the stress)
+		//---------------------------------------------------------
+		for (long i = 0; i < ns; i++)
+			dstress[i] = 0.0;
+		De->multi(dstrain, dstress);
+
+		//---------------------------------------------------------
+		// Integrate the stress by return mapping:
+		//---------------------------------------------------------
+		for (long i = 0; i < ns; i++)
+			dstress[i] += (*eleV_DM->Stress)(i, gp);
+
+		// --------------------------------------------------------------------
+		// Stress increment by heat, swelling, or heat
+		// --------------------------------------------------------------------
+		double ThermalExpansion = 0.0;
+		if (T_Flag)
+			ThermalExpansion = smat->Thermal_Expansion();
+		if (T_Flag && ThermalExpansion != 0.0)
+		{
+			for (long i = 0; i < ns; i++)
+				strain_ne[i] = 0.0;
+			double gp_dT  = this->interpolate(dT, 1);
+			for (long i = 0; i < 3; i++)
+				strain_ne[i] -= ThermalExpansion * gp_dT;
+
+			// update stress
+			De->multi(strain_ne, dstress);
+			// strain
+			for (long i = 0; i < ns; i++)
+				dstrain[i] += strain_ne[i];
+		}
+
+		//---------------------------------------------------------
+		// Assemble matrices and RHS
+		//---------------------------------------------------------
+		Matrix* p_D = De;
+		if (pcs->calcDiffFromStress0)
+		{
+			for (long i = 0; i < ns; i++)
+				stress0[i] = (*eleV_DM->Stress0)(i, gp);
+		}
+
+		//---------------------------------------------------------
+		// cache B
+		//---------------------------------------------------------
+		for (int i = 0; i < nnodesHQ; i++)
+		{
+			setTransB_Matrix(i);
+			(*this->vec_B_matrix[i]) = *B_matrix;
+			(*this->vec_B_matrix_T[i]) = *B_matrix_T;
+		}
+		Matrix* old_B_matrix = B_matrix;
+		Matrix* old_B_matrix_T = B_matrix_T;
+
+		//---------------------------------------------------------
+		// J = B^T * (D * B - alpha*p)
+		//   = A + PC
+		//---------------------------------------------------------
+		// A = B^T * D * B
+		Matrix* tmp_AuxMatrix = AuxMatrix;
+		Matrix* tmp_AuxMatrix2 = AuxMatrix2;
+		for (int i = 0; i < nnodesHQ; i++)
+		{
+			Matrix* tmp_B_matrix_T = this->vec_B_matrix_T[i];
+
+			(*tmp_AuxMatrix2) = 0.0;
+			tmp_B_matrix_T->multi(*p_D, *tmp_AuxMatrix2);
+			for (int j = 0; j < nnodesHQ; j++)
+			{
+				Matrix* tmp_B_matrix = this->vec_B_matrix[j];
+				// Compute stiffness matrix
+				(*tmp_AuxMatrix) = 0.0;
+				tmp_AuxMatrix2->multi(*tmp_B_matrix, *tmp_AuxMatrix);
+
+				// Local assembly of stiffness matrix
+				for (unsigned k = 0; k < ele_dim; k++) {
+					for (unsigned l = 0; l < ele_dim; l++) {
+						(*Stiffness)(i + k * nnodesHQ, j + l * nnodesHQ) += (*tmp_AuxMatrix)(k, l) * fkt;
+					}
+				}
+			}  // loop j
+		}      // loop i
+
+		// PC = B^T * (-alpha*p)
+		if (PressureC)
+		{
+			for (int k = 0; k < nnodesHQ; k++)
+			{
+				for (int l = 0; l < nnodes; l++)
+				{
+					for (unsigned j = 0; j < ele_dim; j++)
+					{
+						double dN_dx = dshapefctHQ[nnodesHQ * j + k];
+						if (axisymmetry && j == 0)
+							dN_dx += shapefctHQ[k] / Radius;
+						double f_buff = fkt * dN_dx * shapefct[l];
+						(*PressureC)(nnodesHQ* j + k, l) += f_buff;
+					}
+				}
+			}
+		}
+
+		//---------------------------------------------------------
+		// restore B
+		//---------------------------------------------------------
+		B_matrix = old_B_matrix;
+		B_matrix_T = old_B_matrix_T;
+	}
+
+
+	//---------------------------------------------------------
+	// Global assembly
+	//---------------------------------------------------------
+	assembleGlobalMatrix();
+}
+
+void CFiniteElementVec::assembleGlobalVector()
+{
+#ifdef USE_PETSC
+	int const ndof = pcs->pcs_number_of_primary_nvals; //TODO in monolithic HM
+	int m_dim = nnodesHQ * ndof;
+	for (int i = 0; i < nnodesHQ; i++)
+	{
+		MeshLib::CNode* node = MeshElement->GetNode(i);
+		const int offset = node->GetEquationIndex(true) * ndof;
+		const bool isGhost = !pcs->m_msh->isNodeLocal(node->GetIndex());
+		for (int k = 0; k < ndof; k++)
+		{
+			const int ki = k * nnodesHQ + i;
+			row_ids[ki] = isGhost ? -1 : (offset + k);
 		}
 	}
+
+	pcs->eqs_new->setArrayValues(1, m_dim, row_ids, RHS->getEntryArray());
+#else
+	b_rhs = pcs->eqs_new->b;
+	//	std::cerr << "e: " << Index << "\n";
+	for (size_t i = 0; i < dim; i++)
+	{
+		for (int j = 0; j < nnodesHQ; j++)
+		{
+			long global_id = eqs_number[j] + NodeShift[i];
+			double val = (*RHS)(i* nnodesHQ + j);
+#pragma omp atomic
+			b_rhs[global_id] += val;
+		}
+	}
+#endif
+}
+
+void CFiniteElementVec::assembleGlobalMatrix()
+{
+#ifdef NEW_EQS
+	CSparseMatrix* A = pcs->eqs_new->A;
+	double f1 = 1.0;
+	for (int i = 0; i < nnodesHQ; i++)
+	{
+		const long eqs_number_i = eqs_number[i];
+		for (int j = 0; j < nnodesHQ; j++)
+		{
+			const long eqs_number_j = eqs_number[j];
+			// Local assembly of stiffness matrix
+			for (size_t k = 0; k < ele_dim; k++)
+			{
+				const long globalRowId = eqs_number_i + NodeShift[k];
+				const long localRowId = i + k * nnodesHQ;
+				for (size_t l = 0; l < ele_dim; l++)
+				{
+					double globalColId = eqs_number_j + NodeShift[l];
+					double val = f1 * (*Stiffness)(localRowId, j + l * nnodesHQ);
+					double& a = (*A)(globalRowId, globalColId);
+					#pragma omp atomic
+					a += val;
+				}
+			}
+		}  // loop j
+	}      // loop i
+
+	if (pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
+	{
+		double fct = -smat->biot_const;
+
+		int dim_shift = dim;
+		// Add pressure coupling matrix to the stifness matrix
+		for (int i = 0; i < nnodesHQ; i++)
+		{
+			for (int j = 0; j < nnodes; j++)
+			{
+				for (size_t k = 0; k < ele_dim; k++)
+				{
+					(*A)(NodeShift[k] + eqs_number[i],
+						 NodeShift[dim_shift] + eqs_number[j]) +=
+						fct * (*PressureC)(nnodesHQ* k + i, j);
+				}
+			}
+		}
+
+	}
+
+#else
+	int const ndof = pcs->pcs_number_of_primary_nvals;
+
+	int m_dim, n_dim;
+	double* local_matrix = NULL;
+
+//#define assmb_petsc_test
+#ifdef assmb_petsc_test
+	char rank_char[10];
+	sprintf(rank_char, "%d", eqs->getMPI_Rank());
+	std::string fname = FileName + rank_char + "_e_matrix.txt";
+	std::ofstream os_t(fname.c_str(), std::ios::app);
+	os_t << "\n==================================================\n";
+#endif
+
+	m_dim = nnodesHQ * ndof;
+	n_dim = m_dim;
+	local_matrix = Stiffness->getEntryArray();
+
+	for (int i = 0; i < nnodesHQ; i++)
+	{
+		MeshLib::CNode* node = MeshElement->GetNode(i);
+		const int offset = node->GetEquationIndex(true) * ndof;
+		const bool isGhost = !pcs->m_msh->isNodeLocal(node->GetIndex());
+		for (int k = 0; k < ndof; k++)
+		{
+			const int ki = k * nnodesHQ + i;
+			row_ids[ki] = isGhost ? -1 : (offset + k);
+			col_ids[ki] = offset + k;
+		}
+	}
+
+	pcs->eqs_new->addMatrixEntries(m_dim, row_ids, n_dim, col_ids, &local_matrix[0]);
+
+	//TODO PressureC
+#endif
+}
+
+void CFiniteElementVec::UpdateStressStrain()
+{
+	Init();
 
 	// Loop over Gauss points
 	for (gp = 0; gp < nGaussPoints; gp++)
@@ -974,7 +1412,7 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 
 	// TEST OUT
 	// Stiffness->Write();
-	if (pcs->type / 40 != 1)  // Not monolithic scheme
+	if (pcs->getProcessType() == FiniteElement::DEFORMATION)
 		return;
 
 	double f2 = -1.0;
