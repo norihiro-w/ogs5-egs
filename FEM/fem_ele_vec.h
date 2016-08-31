@@ -47,7 +47,7 @@ public:
 
 	void LocalAssembly(const int update);
 
-	void UpdateStress();
+	void UpdateStressStrain();
 
 
 private:

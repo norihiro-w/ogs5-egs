@@ -812,7 +812,7 @@ void CFiniteElementVec::LocalAssembly(const int update)
 	}
 }
 
-void CFiniteElementVec::UpdateStress()
+void CFiniteElementVec::UpdateStressStrain()
 {
 	Index = MeshElement->GetIndex();
 	eleV_DM = ele_value_dm[MeshElement->GetIndex()];

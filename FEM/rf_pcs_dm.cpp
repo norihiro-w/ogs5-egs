@@ -1195,7 +1195,7 @@ void CRFProcessDeformation::updateGaussStress()
 
 		elem->SetOrder(true);
 		fem_dm->ConfigElement(elem);
-		fem_dm->UpdateStress();
+		fem_dm->UpdateStressStrain();
 	}
 }
 
