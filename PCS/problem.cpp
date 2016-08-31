@@ -50,14 +50,6 @@
 #include "tools.h"
 
 
-std::string FileName;
-std::string FilePath;
-
-#if defined(USE_MPI) || defined(USE_PETSC)
-int mysize;
-int myrank;
-#endif
-
 /**************************************************************************
    GeoSys - Function: Constructor
    Task:
