@@ -212,7 +212,7 @@ public:
 	// 1. Elasticity
 	void Calculate_Lame_Constant();
 	// For thermal elastic model
-	void ElasticConsitutive(const int Dimension, Matrix* D_e) const;
+	void ElasticConstitutive(const int Dimension, Matrix* D_e) const;
 	// For transverse isotropic linear elasticity: UJG 24.11.2009
 	void ElasticConstitutiveTransverseIsotropic(const int Dimension);
 	Matrix* getD_tran() const { return D_tran; }

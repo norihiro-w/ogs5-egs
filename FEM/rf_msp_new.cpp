@@ -1237,7 +1237,7 @@ void CSolidProperties::Calculate_Lame_Constant()
    11/2003   WW   Set plastic parameter
 
 *************************************************************************/
-void CSolidProperties::ElasticConsitutive(const int Dimension,
+void CSolidProperties::ElasticConstitutive(const int Dimension,
                                           Matrix* D_e) const
 {
 	(*D_e) = 0.0;
