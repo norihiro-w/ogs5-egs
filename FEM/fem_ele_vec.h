@@ -45,12 +45,13 @@ public:
 
 	void SetMaterial();
 
-	void LocalAssembly(const int update);
+	void AssembleLinear();
 
 	void UpdateStressStrain();
 
 
 private:
+	void Init();
 	void SetMemory();
 
 	bool GlobalAssembly();
@@ -148,7 +149,7 @@ private:
 	double CalcStress_eff();
 
 	// Compute the local finite element matrices
-	void LocalAssembly_continuum(const int update);
+	void LocalAssembly_Linear();
 
 	// Assembly local stiffness matrix
 	void GlobalAssembly_Stiffness();

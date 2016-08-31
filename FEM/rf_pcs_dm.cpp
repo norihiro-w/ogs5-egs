@@ -1172,7 +1172,7 @@ void CRFProcessDeformation::GlobalAssembly_DM()
 
 		elem->SetOrder(true);
 		fem_dm->ConfigElement(elem);
-		fem_dm->LocalAssembly(0);
+		fem_dm->AssembleLinear();
 	}
 	if (print_progress)
 		ScreenMessage("done\n");

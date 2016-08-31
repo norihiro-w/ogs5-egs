@@ -225,7 +225,6 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 	size_t size = 60;      // dim * nnodesHQ;
 	row_ids = new int[size];  //> global indices of local matrix rows
 	col_ids = new int[size];  //> global indices of local matrix columns
-	local_idx = new int[size];  //> local index for local assemble
 // local_matrix = new double[size_m * size_m]; //> local matrix
 // local_vec = new double[size_m]; //> local vector
 #endif
@@ -711,6 +710,34 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 		//        shapefctHQ[k] * fkt;
 	}
 }
+
+void CFiniteElementVec::Init()
+{
+	Index = MeshElement->GetIndex();
+	eleV_DM = ele_value_dm[MeshElement->GetIndex()];
+	ns = 4;
+	if (MeshElement->GetDimension() == 3)
+		ns = 6;
+
+	SetMemory();
+	SetMaterial();
+
+	// Get displacement increment
+	for (size_t i = 0; i < dim; i++)
+		for (int j = 0; j < nnodesHQ; j++)
+			Disp[j + i * nnodesHQ] = pcs->GetNodeValue(nodes[j], Idx_dm0[i]);
+
+	if (T_Flag)
+	{
+		for (long i = 0; i < nnodes; i++)
+		{
+			T1[i] = t_pcs->GetNodeValue(nodes[i], idx_T1);
+			dT[i] = t_pcs->GetNodeValue(nodes[i], idx_T1) -
+			          t_pcs->GetNodeValue(nodes[i], idx_T0);
+		}
+	}
+}
+
 /***************************************************************************
    GeoSys - Funktion:
            CFiniteElementVec:: LocalAssembly
@@ -725,92 +752,40 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
    05/2005   WW   ...
    08/2010   WW   JFNK method
  **************************************************************************/
-void CFiniteElementVec::LocalAssembly(const int update)
+void CFiniteElementVec::AssembleLinear()
 {
-	int j;
+	LocalAssembly_Linear();
 
-	Index = MeshElement->GetIndex();
-	SetMemory();
-	SetMaterial();
-	eleV_DM = ele_value_dm[MeshElement->GetIndex()];
-	ns = 4;
-	if (MeshElement->GetDimension() == 3) ns = 6;
+	GlobalAssembly();
 
-#ifdef USE_PETSC
-	if (MeshElement->getGhostNodeIndices())  // ghost nodes pcs->pcs_number_of_primary_nvals
+	if (pcs->Write_Matrix)
 	{
-		act_nodes = MeshElement->getGhostNodeIndices()[0];
-		act_nodes_h = MeshElement->getGhostNodeIndices()[1];
-		for (int i = 0; i < act_nodes_h; i++)
-			local_idx[i] = MeshElement->getGhostNodeIndices()[i + 2];
-	}
-	else
-	{
-		act_nodes = nnodes;
-		act_nodes_h = nnodesHQ;
-		for (int i = 0; i < nnodesHQ; i++)
-			local_idx[i] = i;
-	}
-#endif
-
-#ifdef NEW_EQS
-	b_rhs = pcs->eqs_new->b;
-#endif
-
-	(*RHS) = 0.0;
-	(*Stiffness) = 0.0;
-
-	if (PressureC) (*PressureC) = 0.0;
-
-	for (int i = 0; i < nnodesHQ; i++)
-		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex();
-
-	// For strain and stress extropolation all element types
-	// Number of elements associated to nodes
-	for (int i = 0; i < nnodes; i++)
-		dbuff[i] = (double)MeshElement->GetNode(i)->getConnectedElementIDs().size();
-
-	// Get displacement_n
-	for (size_t i = 0; i < dim; i++)
-		for (j = 0; j < nnodesHQ; j++)
-			Disp[j + i * nnodesHQ] = pcs->GetNodeValue(nodes[j], Idx_dm0[i]);
-
-
-	//----------------------------------------------------
-	LocalAssembly_continuum(update);
-
-	if (update == 0)
-	{
-		GlobalAssembly();
-		// Output matrices
-		if (pcs->Write_Matrix)
-		{
-			(*pcs->matrix_file) << "### Element: " << MeshElement->GetGlobalIndex() << "\n";
+		(*pcs->matrix_file) << "### Element: " << MeshElement->GetGlobalIndex() << "\n";
 #if 0
-			(*pcs->matrix_file) << "---Nodes:\n";
-			pcs->matrix_file->setf(std::ios::scientific, std::ios::floatfield);
-			pcs->matrix_file->precision(12);
-			for (int i=0; i<nnodesHQ; i++)
-			{
-				CNode* node = MeshElement->GetNode(i);
-				(*pcs->matrix_file) << node->GetGlobalIndex() << ": " << (*node)[0] << "," << (*node)[1] << ", " << (*node)[2] << "\n";
-			}
+		(*pcs->matrix_file) << "---Nodes:\n";
+		pcs->matrix_file->setf(std::ios::scientific, std::ios::floatfield);
+		pcs->matrix_file->precision(12);
+		for (int i=0; i<nnodesHQ; i++)
+		{
+			CNode* node = MeshElement->GetNode(i);
+			(*pcs->matrix_file) << node->GetGlobalIndex() << ": " << (*node)[0] << "," << (*node)[1] << ", " << (*node)[2] << "\n";
+		}
 #endif
-			(*pcs->matrix_file) << "---Stiffness matrix: "
-			                    << "\n";
-			Stiffness->Write(*pcs->matrix_file);
-			(*pcs->matrix_file) << "---RHS: "
-			                    << "\n";
-			RHS->Write(*pcs->matrix_file);
-			if (PressureC)
-			{
-				(*pcs->matrix_file) << "Pressue coupling matrix: "
-				                    << "\n";
-				PressureC->Write(*pcs->matrix_file);
-			}
+		(*pcs->matrix_file) << "---Stiffness matrix: "
+							<< "\n";
+		Stiffness->Write(*pcs->matrix_file);
+		(*pcs->matrix_file) << "---RHS: "
+							<< "\n";
+		RHS->Write(*pcs->matrix_file);
+		if (PressureC)
+		{
+			(*pcs->matrix_file) << "Pressue coupling matrix: "
+								<< "\n";
+			PressureC->Write(*pcs->matrix_file);
 		}
 	}
 }
+
 
 void CFiniteElementVec::UpdateStressStrain()
 {
@@ -932,6 +907,11 @@ void CFiniteElementVec::UpdateStressStrain()
  **************************************************************************/
 bool CFiniteElementVec::GlobalAssembly()
 {
+	for (int i = 0; i < nnodesHQ; i++)
+		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex();
+#ifdef NEW_EQS
+	b_rhs = pcs->eqs_new->b;
+#endif
 
 	GlobalAssembly_RHS();
 
@@ -1211,58 +1191,14 @@ void CFiniteElementVec::GlobalAssembly_RHS()
    06/2004   WW   Generalize for different element types as a member of class
    12/2005   WW   Creep
  **************************************************************************/
-void CFiniteElementVec::LocalAssembly_continuum(const int update)
+void CFiniteElementVec::LocalAssembly_Linear()
 {
-	eleV_DM = ele_value_dm[MeshElement->GetIndex()];
+	Init();
 
-	// ---- Gauss integral
-	gp = 0;
-
-	double ThermalExpansion = 0.0;
-	if (smat->Thermal_Expansion() > 0.0)
-		ThermalExpansion = smat->Thermal_Expansion();
-
-	// For swelling pressure;
-	double deporo = 0.0;
-	int PoroModel = m_mmp->porosity_model;
-	if (PoroModel == 4)
-		deporo = h_pcs->GetElementValue(
-		             Index, h_pcs->GetElementValueIndex("n_sw_rate")) /
-		         (double)ele_dim;
-
-	if (T_Flag)
-	{
-		for (long i = 0; i < nnodes; i++)
-		{
-			T1[i] = t_pcs->GetNodeValue(nodes[i], idx_T1);
-			dT[i] = t_pcs->GetNodeValue(nodes[i], idx_T1) -
-			          t_pcs->GetNodeValue(nodes[i], idx_T0);
-		}
-	}
-	//
-
-	const int PModel = smat->Plasticity_type;
-	if (PModel == 1 || PModel == 10 || PModel == 11)
-		smat->CalulateCoefficent_DP();
-	//
-	if (PModel != 3 && smat->Youngs_mode != 2)  // modified due to transverse
-	                                            // isotropic elasticity: UJG
-	                                            // 24.11.2009
-	{
-		if (smat->Youngs_mode < 10 || smat->Youngs_mode > 13)
-		{
-			smat->Calculate_Lame_Constant();
-			smat->ElasticConstitutive(ele_dim, De);
-		}
-		else
-			*De = *(smat->getD_tran());  // UJG/WW
-	}
-
-
-	//
-	bool Strain_TCS = false;
-	if (PoroModel == 4 || T_Flag || smat->Creep_mode > 0) Strain_TCS = true;
-	//
+	(*RHS) = 0.0;
+	(*Stiffness) = 0.0;
+	if (PressureC)
+		(*PressureC) = 0.0;
 
 	for (long i = 0; i < ns; i++)
 		stress0[i] = .0;
@@ -1278,180 +1214,69 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 		double fkt = GetGaussData(gp, gp_r, gp_s, gp_t);
 
 		//---------------------------------------------------------
-		// Compute geometry
+		// Compute shape functions
 		//---------------------------------------------------------
 		ComputeGradShapefct(2);
 		ComputeShapefct(2);
-		if (smat->Youngs_mode == 2)  // WW/UJG. 22.01.2009
-		{
-			smat->CalcYoungs_SVV(CalcStrain_v());
-			smat->ElasticConstitutive(ele_dim, De);
-		}
-		if (smat->Youngs_mode == 3)  // AJ. 16.06.2014
-		{
-			smat->CalcYoungs_Drained(CalcStress_eff());
-			smat->ElasticConstitutive(ele_dim, De);
-		}
-
-		ComputeStrain();
-		if (update)
-			RecordGuassStrain(gp, gp_r, gp_s, gp_t);
 		if (F_Flag || T_Flag)
-			ComputeShapefct(1);  // Linear order interpolation function
+			ComputeShapefct(1);
+
+		//---------------------------------------------------------
+		// Compute strain
+		//---------------------------------------------------------
+		ComputeStrain();
+
+		//---------------------------------------------------------
+		// Compute elastic constitutive
+		//---------------------------------------------------------
+		smat->Calculate_Lame_Constant();
+		smat->ElasticConstitutive(ele_dim, De);
+
 		//---------------------------------------------------------
 		// Material properties (Integration of the stress)
 		//---------------------------------------------------------
-		// Initial the stress vector
-		if (PModel != 3)
-		{
-			for (long i = 0; i < ns; i++)
-				dstress[i] = 0.0;
-			De->multi(dstrain, dstress);
-		}
+		for (long i = 0; i < ns; i++)
+			dstress[i] = 0.0;
+		De->multi(dstrain, dstress);
 
 		//---------------------------------------------------------
 		// Integrate the stress by return mapping:
 		//---------------------------------------------------------
-		double dPhi = 0.0;  // Sclar factor for the plastic strain
-		switch (PModel)
-		{
-			case -1:  // Pure elasticity
-				// Non-linear elasticity: TE model. 10.03.2008. WW
-				for (long i = 0; i < ns; i++)
-					dstress[i] += (*eleV_DM->Stress)(i, gp);
-				break;
-			case 1:  // Drucker-Prager model
-				if (smat->StressIntegrationDP(gp, eleV_DM, dstress, dPhi,
-				                              update, pcs->m_num->nls_plasticity_local_tolerance))
+		for (long i = 0; i < ns; i++)
+			dstress[i] += (*eleV_DM->Stress)(i, gp);
 
-					// WW DevStress = smat->devS;
-					smat->ConsistentTangentialDP(ConsistDep, dPhi, ele_dim);
-				break;
-			case 10:  // Drucker-Prager model, direct integration. 02/06 WW
-				if (smat->DirectStressIntegrationDP(gp, eleV_DM, dstress,
-				                                    update))
-				{
-					*ConsistDep = *De;
-					smat->TangentialDP(ConsistDep);
-					dPhi = 1.0;
-				}
-				break;
-			case 11:  // WX: 08.2010
-			{
-				double mm = 0.;  // WX:09.2010. for DP with Tension.
-				switch (smat->DirectStressIntegrationDPwithTension(
-				    gp, De, eleV_DM, dstress, update, mm))
-				{
-					case 1:
-					{
-						*ConsistDep = *De;
-						smat->TangentialDP2(ConsistDep);
-						dPhi = 1.0;
-					}
-					break;
-					case 2:
-					{
-						*ConsistDep = *De;
-						smat->TangentialDPwithTension(ConsistDep, mm);
-						dPhi = 1.0;
-					}
-					break;
-					case 3:
-					{
-						*ConsistDep = *De;
-						smat->TangentialDPwithTensionCorner(ConsistDep, mm);
-						dPhi = 1.0;
-					}
-					break;
-					default:
-						break;
-				}
-				break;
-			}
-			case 4:  // Mohr-Coloumb	//WX:10.2010
-				if (smat->DirectStressIntegrationMOHR(gp, eleV_DM, dstress,
-				                                      update, De))
-				{
-					*ConsistDep = *De;
-					// also for tension
-					smat->TangentialMohrShear(ConsistDep);
-					// ConsistDep->Write();
-					dPhi = 1.0;
-				}
-				break;
-		}
 		// --------------------------------------------------------------------
 		// Stress increment by heat, swelling, or heat
-		//
-		if (Strain_TCS)
+		// --------------------------------------------------------------------
+		double ThermalExpansion = 0.0;
+		if (T_Flag)
+			ThermalExpansion = smat->Thermal_Expansion();
+		if (T_Flag && ThermalExpansion != 0.0)
 		{
-			if (PModel == 3)
-				smat->ElasticConstitutive(ele_dim, De);
 			for (long i = 0; i < ns; i++)
 				strain_ne[i] = 0.0;
-			if (PoroModel == 4)  // For swelling pressure
-				for (long i = 0; i < 3; i++)
-					strain_ne[i] -= deporo;
-			//
-			if (T_Flag)  // Contribution by thermal expansion
-			{
-				Tem = 0.0;
-				double t1 = 0.0;
-				for (long i = 0; i < nnodes; i++)
-				{
-					Tem += shapefct[i] * dT[i];
-					t1 += shapefct[i] * T1[i];
-				}
-				for (long i = 0; i < 3; i++)
-					strain_ne[i] -= ThermalExpansion * Tem;
-			}
-			// Stress deduced by thermal or swelling strain incremental:
+			double gp_dT  = this->interpolate(dT, 1);
+			for (long i = 0; i < 3; i++)
+				strain_ne[i] -= ThermalExpansion * gp_dT;
+
+			// update stress
 			De->multi(strain_ne, dstress);
+			// strain
 			for (long i = 0; i < ns; i++)
 				dstrain[i] += strain_ne[i];
 		}
+
+		//---------------------------------------------------------
 		// Assemble matrices and RHS
-		if (update < 1)
-		{
-			//---------------------------------------------------------
-			// Assemble matrices and RHS
-			//---------------------------------------------------------
-			Matrix* p_D = NULL;
-			if (dPhi <= 0.0)
-				p_D = De;
-			else
-				p_D = ConsistDep;
-			if (pcs->calcDiffFromStress0)
-			{
-				for (long i = 0; i < ns; i++)
-					stress0[i] = (*eleV_DM->Stress0)(i, gp);
-			}
-			ComputeMatrix_RHS(fkt, p_D);
-		}
-		else  // Update stress
+		//---------------------------------------------------------
+		Matrix* p_D = De;
+		if (pcs->calcDiffFromStress0)
 		{
 			for (long i = 0; i < ns; i++)
-			{
-				(*eleV_DM->Stress)(i, gp) = dstress[i];
-				(*eleV_DM->Strain)(i, gp) += dstrain[i];
-			}
+				stress0[i] = (*eleV_DM->Stress0)(i, gp);
 		}
+		ComputeMatrix_RHS(fkt, p_D);
 	}
-	// The mapping of Gauss point strain to element nodes
-	if (update)
-		ExtropolateGaussStrain();
-
-	/*
-	   //TEST
-
-	      //TEST
-	        if(update&&Index==0)
-	        {
-	           oss<<" Stress "<<endl;
-	           eleV_DM->Stress->Write(oss);
-	           oss.close();
-	        }
-	 */
 }
 
 /***************************************************************************
