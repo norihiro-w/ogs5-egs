@@ -455,46 +455,24 @@ void CFiniteElementVec::ComputeStrain()
  **************************************************************************/
 double CFiniteElementVec::CalDensity()
 {
-	double rho;
-	// OK_MFP
-	//--------------------------------------------------------------------
-	// MFP fluid properties
-	double density_fluid = 0.0;
-	double porosity = 0.0;
-	// double p_g = 0.0;
-	double Sw = 0.0;
-	int no_phases = (int)mfp_vector.size();
-	int phase = 0;
+	double solid_density = m_msp->Density();
+	// If negative value is given in the .msp file, gravity by solid is
+	// skipped
+	if (solid_density <= 0.0)
+		return 0.0;
 
-	rho = 0.0;
+	double rho = solid_density;
 	if (F_Flag)
 	{
-		if ((no_phases > 0) && (no_phases > phase))
-			density_fluid = m_mfp->Density();
-
-		// OK_MMP
-		//--------------------------------------------------------------------
-		// MMP medium properties
-		porosity = m_mmp->Porosity(this);
-		// Assume solid density is constant. (*smat->data_Density)(0)
-		if (m_msp->Density() > 0.0)
-		{
-			Sw = 1.0;  // JT, should be 1.0, unless multiphase (calculate below)
-			           // (if unsaturated, fluid density would be negligible...
-			           // so still works)
-			rho = (1. - porosity) * fabs(m_msp->Density()) +
-			      porosity * Sw * density_fluid;
-		}
-		else
-			rho = 0.0;
+		double porosity = m_mmp->Porosity(this);
+		rho = (1. - porosity) * solid_density;
+		rho += porosity * m_mfp->Density();
+		//TODO muliphase
 	}
-	else
-	    // If negative value is given in the .msp file, gravity by solid is
-	    // skipped
-	    if (m_msp->Density() > 0.0)
-		rho = m_msp->Density();
+
 	return rho;
 }
+
 /***************************************************************************
    GeoSys - Funktion:
            CFiniteElementVec:: ComputeMatrix_RHS(const double fkt)
