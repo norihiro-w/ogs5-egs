@@ -53,7 +53,6 @@ int problem_dimension_dm = 0;
 
 using namespace std;
 using namespace FiniteElement;
-using namespace SolidProp;
 using namespace Math_Group;
 
 CRFProcessDeformation::CRFProcessDeformation()

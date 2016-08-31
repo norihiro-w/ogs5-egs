@@ -58,10 +58,7 @@ enum EnumProcessType
 };
 //-----------------------------------------------------
 
-namespace SolidProp
-{
 class CSolidProperties;
-}
 class CMediumProperties;
 class CFluidProperties;
 
@@ -200,13 +197,12 @@ private:
 	//     ProcessType _pcs_type; // TF
 
 	CRFProcess* mfp_pcs;
-	SolidProp::CSolidProperties* SolidProp;
+	CSolidProperties* SolidProp;
 	CFluidProperties* FluidProp;
 	CFluidProperties* GasProp;
 	CMediumProperties* MediaProp;
 	CMediumProperties* MediaProp1;  // Matrix for the dual model. YD/WW
-	SolidProp::CSolidProperties*
-	    SolidProp1;  // Matrix for the dual model. YD/WW
+	CSolidProperties* SolidProp1;  // Matrix for the dual model. YD/WW
 	CRFProcess* pcs;
 	CRFProcess* cpl_pcs;  // Pointer to coupled process. WW
 	CRFProcessDeformation* dm_pcs;
@@ -333,7 +329,7 @@ private:
 	void PrintTheSetOfElementMatrices(std::string mark);
 	// Friend classes, 01/07, WW
 	friend class ::CMediumProperties;
-	friend class SolidProp::CSolidProperties;
+	friend class ::CSolidProperties;
 	friend class ::CFluidProperties;
 	// Friend functions. WW
 	friend double ::MFPCalcFluidsHeatCapacity(CFiniteElementStd* assem,

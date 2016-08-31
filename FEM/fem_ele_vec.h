@@ -13,21 +13,16 @@
 #include "fem_ele.h"
 #include "matrix_class.h"
 
-namespace SolidProp
-{
-class CSolidProperties;
-}
-
 class CRFProcess;
 class CRFProcessDeformation;
 class CFluidProperties;
 class CMediumProperties;
+class CSolidProperties;
 
 namespace MeshLib
 {
 class CElem;
 }
-using namespace SolidProp;
 using namespace Math_Group;
 using namespace MeshLib;
 

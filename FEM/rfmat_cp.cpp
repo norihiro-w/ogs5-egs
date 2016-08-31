@@ -41,7 +41,6 @@
 #include "rf_tim_new.h"
 #include "tools.h"
 
-using SolidProp::CSolidProperties;
 using namespace std;
 /* Vector auf CompProperties , globale Zugriffe */
 // vector <CompProperties*> cp_vec;

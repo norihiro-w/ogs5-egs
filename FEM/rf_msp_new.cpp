@@ -28,12 +28,10 @@
 
 using namespace std;
 
-vector<SolidProp::CSolidProperties*> msp_vector;
+vector<CSolidProperties*> msp_vector;
 
 using FiniteElement::ElementValue_DM;
 
-namespace SolidProp
-{
 /**************************************************************************
    FEMLib-Method:
    Task: OBJ read function
@@ -6465,7 +6463,6 @@ double CSolidProperties::TEPSwellingParameter(const double mean_stress)
 	return val * (*data_Youngs)(2) * exp((*data_Youngs)(4) * suction) /
 	       (3. + 3. * e0);
 }
-}  // end namespace
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -6483,7 +6480,7 @@ bool MSPRead(std::string file_base_name)
 	//----------------------------------------------------------------------
 	// OK  MSPDelete();
 	//----------------------------------------------------------------------
-	SolidProp::CSolidProperties* m_msp = NULL;
+	CSolidProperties* m_msp = NULL;
 	char line[MAX_ZEILE];
 	std::string sub_line;
 	std::string line_string;
@@ -6511,7 +6508,7 @@ bool MSPRead(std::string file_base_name)
 		// keyword found
 		if (line_string.find("#SOLID_PROPERTIES") != std::string::npos)
 		{
-			m_msp = new SolidProp::CSolidProperties();
+			m_msp = new CSolidProperties();
 			m_msp->file_base_name = file_base_name;
 			position = m_msp->Read(&msp_file);
 			msp_vector.push_back(m_msp);
@@ -6697,7 +6694,7 @@ void MSPDelete()
 **************************************************************************/
 void MSPWrite(std::string base_file_name)
 {
-	SolidProp::CSolidProperties* m_msp = NULL;
+	CSolidProperties* m_msp = NULL;
 	//----------------------------------------------------------------------
 	// File handling
 	std::fstream msp_file;
@@ -6724,9 +6721,9 @@ void MSPWrite(std::string base_file_name)
    FEMLib-Method:
    07/2007 OK Implementation
 **************************************************************************/
-SolidProp::CSolidProperties* MSPGet(std::string mat_name)
+CSolidProperties* MSPGet(std::string mat_name)
 {
-	SolidProp::CSolidProperties* m_msp = NULL;
+	CSolidProperties* m_msp = NULL;
 	for (int i = 0; i < (int)msp_vector.size(); i++)
 	{
 		m_msp = msp_vector[i];

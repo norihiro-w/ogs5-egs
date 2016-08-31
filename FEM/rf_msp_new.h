@@ -36,9 +36,6 @@ class CRFProcessDeformation;
 using namespace FiniteElement;
 using namespace Math_Group;
 
-namespace SolidProp
-{
-
 class CSolidProperties
 {
 private:
@@ -354,12 +351,12 @@ public:
 	// WW
 	std::vector<std::string> conductivity_pcs_name_vector;
 };
-}  // end namespace
-extern std::vector<SolidProp::CSolidProperties*> msp_vector;
+
+extern std::vector<CSolidProperties*> msp_vector;
 extern bool MSPRead(std::string file_base_name);
 extern void MSPWrite(std::string);
 extern void MSPDelete();
-extern SolidProp::CSolidProperties* MSPGet(std::string);
+extern CSolidProperties* MSPGet(std::string);
 
 extern double StressNorm(const double* s, const int Dim);
 extern double TensorMutiplication2(const double* s1, const double* s2,

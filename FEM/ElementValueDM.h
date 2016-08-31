@@ -13,21 +13,11 @@
 #include "fem_ele.h"
 #include "matrix_class.h"
 
-namespace SolidProp
-{
-class CSolidProperties;
-}
-
-class CRFProcess;
-class CRFProcessDeformation;
-class CFluidProperties;
-class CMediumProperties;
 
 namespace MeshLib
 {
 class CElem;
 }
-using namespace SolidProp;
 using namespace Math_Group;
 using namespace MeshLib;
 
@@ -37,7 +27,7 @@ namespace FiniteElement
 class ElementValue_DM
 {
 public:
-	ElementValue_DM(CElem* ele, const int NGP, bool HM_Staggered);
+	ElementValue_DM(MeshLib::CElem* ele, const int NGP, bool HM_Staggered);
 	~ElementValue_DM();
 	void ResetStress(bool cpl_loop);
 	void Write_BIN(std::fstream& os);
@@ -48,12 +38,6 @@ public:
 		return (*Stress)(0, gp) + (*Stress)(1, gp) + (*Stress)(2, gp);
 	}
 
-private:
-	// Friend class
-	friend class SolidProp::CSolidProperties;
-	friend class ::CRFProcessDeformation;
-	friend class ::CMediumProperties;
-	friend class CFiniteElementVec;
 	Matrix* Stress0;  // Initial stress
 	Matrix* Stress;
 	Matrix* Stress_i;

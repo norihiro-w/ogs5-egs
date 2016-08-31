@@ -2593,7 +2593,7 @@ double CMediumProperties::PermeabilitySaturationFunction(
 double CMediumProperties::HeatCapacity(long number, double theta,
                                        CFiniteElementStd* assem, double* var)
 {
-	SolidProp::CSolidProperties* m_msp = NULL;
+	CSolidProperties* m_msp = NULL;
 	double heat_capacity_fluids, specific_heat_capacity_solid;
 	double density_solid;
 	double porosity, Sat, PG;
@@ -2752,7 +2752,7 @@ double CMediumProperties::dHeatCapacitydT(long number, double theta,
 double* CMediumProperties::HeatConductivityTensor(int number, double* variables)
 {
 	int i, dimen;
-	SolidProp::CSolidProperties* m_msp = NULL;
+	CSolidProperties* m_msp = NULL;
 	double heat_conductivity_fluids, Kx[3];
 	// TF unused variable - comment fix compile warning
 	//   double *tensor = NULL;
@@ -4107,7 +4107,7 @@ CMediumProperties::PorosityEffectiveConstrainedSwellingConstantIonicStrength(
 	                                  // swelling Weimar beta=3.0)
 	//--------------------------------------------------------------------
 	// MSP solid properties
-	SolidProp::CSolidProperties* m_msp = NULL;
+	CSolidProperties* m_msp = NULL;
 	// long group = ElGetElementGroupNumber(index);
 	long group = m_pcs->m_msh->ele_vector[index]->GetPatchIndex();
 	m_msp = msp_vector[group];
@@ -7003,7 +7003,7 @@ double CMediumProperties::PorosityDrainedStrain(long index, double val0,
 	       mean_stress_temp = 0., stress_temp[3] = {0.}, vol_strain_us = 0., Ks;
 	int idx_temp = 0, group, ngp = assem->nGaussPoints;
 	int dim = m_pcs->m_msh->GetCoordinateFlag() / 10;
-	SolidProp::CSolidProperties* m_msp = NULL;
+	CSolidProperties* m_msp = NULL;
 	ElementValue_DM* ele_value = ele_value_dm[index];
 
 	if (dim == 2)
@@ -7055,7 +7055,7 @@ double CMediumProperties::PorosityDrainedStrainTemp(
 	int idx_temp[2] = {0}, group, ngp = assem->nGaussPoints,
 	    nnodes = assem->nnodes;
 	int dim = m_pcs->m_msh->GetCoordinateFlag() / 10;
-	SolidProp::CSolidProperties* m_msp = NULL;
+	CSolidProperties* m_msp = NULL;
 	ElementValue_DM* ele_value = ele_value_dm[index];
 
 	if (dim == 2)
