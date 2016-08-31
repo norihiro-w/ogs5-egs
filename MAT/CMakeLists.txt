@@ -2,20 +2,13 @@
 
 APPEND_SOURCE_FILES(SOURCES)
 
-IF(NOT OGS_FEM_PETSC)
-	LIST(REMOVE_ITEM SOURCES fct_mpi.h fct_mpi.cpp)
-ENDIF()
-
-APPEND_SOURCE_FILES(SOURCES FileIO)
-
-
 include_directories(
 	${CMAKE_SOURCE_DIR}/Base
+	${CMAKE_SOURCE_DIR}/Math
 	${CMAKE_SOURCE_DIR}/FEM
 	${CMAKE_SOURCE_DIR}/FEM/FileIO
 	${CMAKE_SOURCE_DIR}/GEO
 	${CMAKE_SOURCE_DIR}/GEO/FileIO
-	${CMAKE_SOURCE_DIR}/Math
 	${CMAKE_SOURCE_DIR}/MAT
 	${CMAKE_SOURCE_DIR}/MSH
 	${CMAKE_SOURCE_DIR}/MSH/FileIO
@@ -28,13 +21,11 @@ IF (PARALLEL_USE_MPI)
 ENDIF (PARALLEL_USE_MPI)
 
 # Create the library
-add_library( FEM STATIC ${SOURCES} )
+add_library( MAT STATIC ${SOURCES} )
 
-target_link_libraries(FEM
+target_link_libraries(MAT
 	Base
 	GEO
 	MSH
-	MAT
-	PCS
 )
 
