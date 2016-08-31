@@ -36,32 +36,21 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
                                      const int C_Sys_Flad,
                                      const int order)
     : CElement(C_Sys_Flad, order),
-      pcs(dm_pcs),
-      PressureC(NULL),
-      b_rhs(NULL)
+      pcs(dm_pcs)
 {
-	int i;
-
-	Tem = 273.15 + 23.0;
-	h_pcs = NULL;
-	t_pcs = NULL;
-
-	AuxNodal2 = NULL;
-	//
 	dim = pcs->m_msh->GetMaxElementDim();  // overwrite dim in CElement
 	ns = 4;
 	if (dim == 3) ns = 6;
-	//  10.11.2010. WW
-	AuxNodal0 = new double[8];
-	AuxNodal = new double[8];
-	AuxNodal1 = new double[60];
+
+	AuxNodal.resize(8);
+	AuxNodal1.resize(60);
 
 	Idx_Stress = new int[ns];
 	Idx_Strain = new int[ns];
-	strain_ne = new double[ns];
-	stress_ne = new double[ns];
-	stress0 = new double[ns];
-	for (i = 0; i < 4; i++)
+	strain_ne.resize(ns);
+	stress_ne.resize(ns);
+	stress0.resize(ns);
+	for (int i = 0; i < 4; i++)
 		NodeShift[i] = pcs->Shift[i];
 
 	// Indecex in nodal value table
@@ -87,37 +76,19 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 	Idx_Stress[2] = pcs->GetNodeValueIndex("STRESS_ZZ");
 	Idx_Stress[3] = pcs->GetNodeValueIndex("STRESS_XY");
 
-	// For cache NW
+	// For cache
 	vec_B_matrix.resize(20);
 	vec_B_matrix_T.resize(20);
-	for (i = 0; i < (int)vec_B_matrix.size(); i++)
+	for (int i = 0; i < (int)vec_B_matrix.size(); i++)
 	{
-		switch (dim)
-		{
-			case 2:
-				vec_B_matrix[i] = new Matrix(4, 2);
-				vec_B_matrix_T[i] = new Matrix(2, 4);
-				break;
-			case 3:
-				vec_B_matrix[i] = new Matrix(6, 3);
-				vec_B_matrix_T[i] = new Matrix(3, 6);
-				break;
-		}
+		vec_B_matrix[i] = new Matrix(ns, dim);
+		vec_B_matrix_T[i] = new Matrix(dim, ns);
 	}
 
 	//
 	switch (dim)
 	{
 		case 2:
-			ns = 4;
-			B_matrix = new Matrix(4, 2);
-			B_matrix_T = new Matrix(2, 4);
-			dstress = new double[4];
-			dstrain = new double[4];
-			De = new Matrix(4, 4);
-			ConsistDep = new Matrix(4, 4);
-			AuxMatrix = new Matrix(2, 2);
-			AuxMatrix2 = new Matrix(2, 4);  // NW
 			Disp = new double[18];
 			dT = new double[9];
 			T1 = new double[9];
@@ -128,20 +99,8 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 			Sxy = new double[9];
 			pstr = new double[9];
 
-			Sxz = NULL;
-			Syz = NULL;
-
 			break;
 		case 3:
-			ns = 6;
-			B_matrix = new Matrix(6, 3);
-			B_matrix_T = new Matrix(3, 6);
-			dstress = new double[6];
-			dstrain = new double[6];
-			De = new Matrix(6, 6);
-			ConsistDep = new Matrix(6, 6);
-			AuxMatrix = new Matrix(3, 3);
-			AuxMatrix2 = new Matrix(3, 6);  // NW
 			Disp = new double[60];
 			dT = new double[20];
 			T1 = new double[20];
@@ -162,6 +121,16 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 			Idx_Stress[5] = pcs->GetNodeValueIndex("STRESS_YZ");
 			break;
 	}
+
+	dstress.resize(ns);
+	dstrain.resize(ns);
+	B_matrix = new Matrix(ns, dim);
+	B_matrix_T = new Matrix(dim, ns);
+	De = new Matrix(ns, ns);
+	ConsistDep = new Matrix(ns, ns);
+	AuxMatrix = new Matrix(dim, dim);
+	AuxMatrix2 = new Matrix(dim, ns);
+
 	*B_matrix = 0.0;
 	*B_matrix_T = 0.0;
 
@@ -169,52 +138,39 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 	{
 		Stiffness = new Matrix(60, 60);
 		RHS = new Vector(60);
-		if (H_Process) PressureC = new Matrix(60, 20);
+		if (H_Process)
+			PressureC = new Matrix(60, 20);
 	}
-	else  // Local matrices stored and allocated the pcs.cpp;
-	{
-		Stiffness = NULL;
-		RHS = NULL;
-	}
-
-	// Material properties
-	smat = NULL;
-	// Fluid coupling
-	m_mfp = NULL;
-	// Medium property
-	m_mmp = NULL;  //
 
 	// Coupling
-	Flow_Type = -1;
-	idx_P = -1;
-	eleV_DM = NULL;
-	idx_P0 = idx_pls = 0;
-	for (size_t i = 0; i < pcs_vector.size(); i++)
+	 idx_pls = 0;
+	if (H_Process)
 	{
-		if (isFlowProcess(pcs_vector[i]->getProcessType()))
+		for (size_t i = 0; i < pcs_vector.size(); i++)
 		{
-			h_pcs = pcs_vector[i];
-			if (h_pcs->getProcessType() == FiniteElement::LIQUID_FLOW
-			    || h_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
+			if (isFlowProcess(pcs_vector[i]->getProcessType()))
 			{
-				Flow_Type = 0;
+				h_pcs = pcs_vector[i];
+				break;
 			}
-			break;
 		}
-	}
-	if (Flow_Type == 0)
-	{
-		idx_P1 = h_pcs->GetNodeValueIndex("PRESSURE1") + 1;
+		if (h_pcs && h_pcs->getProcessType() == FiniteElement::LIQUID_FLOW)
+		{
+			idx_P1 = h_pcs->GetNodeValueIndex("PRESSURE1") + 1;
+		}
 	}
 
-	for (size_t i = 0; i < pcs_vector.size(); i++)
-		if (pcs_vector[i]->getProcessType() == HEAT_TRANSPORT)
-		{
-			t_pcs = pcs_vector[i];
-			break;
-		}
+
 	if (T_Flag)
 	{
+		for (size_t i = 0; i < pcs_vector.size(); i++)
+		{
+			if (pcs_vector[i]->getProcessType() == HEAT_TRANSPORT)
+			{
+				t_pcs = pcs_vector[i];
+				break;
+			}
+		}
 		idx_T0 = t_pcs->GetNodeValueIndex("TEMPERATURE1");
 		idx_T1 = idx_T0 + 1;
 	}
@@ -235,12 +191,10 @@ CFiniteElementVec::~CFiniteElementVec()
 {
 	delete B_matrix;
 	delete B_matrix_T;
-	delete[] dstress;
-	delete[] dstrain;
 	delete De;
 	delete ConsistDep;
 	delete AuxMatrix;
-	delete AuxMatrix2;  // NW
+	delete AuxMatrix2;
 	delete[] Disp;
 	delete[] dT;
 	delete[] T1;
@@ -251,61 +205,21 @@ CFiniteElementVec::~CFiniteElementVec()
 	delete[] pstr;
 	delete[] Idx_Strain;
 	delete[] Idx_Stress;
-	delete[] strain_ne;
-	delete[] stress_ne;
-	delete[] stress0;
-	if (Sxz) delete[] Sxz;
-	if (Syz) delete[] Syz;
-	if (AuxNodal2) delete[] AuxNodal2;
+	delete[] Sxz;
+	delete[] Syz;
 
 	if (pcs->Memory_Type == 0)  // Do not store local matrices
 	{
 		delete Stiffness;
 		delete RHS;
-		Stiffness = NULL;
-		RHS = NULL;
 	}
 
-	// 11.07.2011. WW
-	if (PressureC) delete PressureC;
+	delete PressureC;
 
-	B_matrix = NULL;
-	B_matrix_T = NULL;
-	dstress = NULL;
-	dstrain = NULL;
-	De = NULL;
-	ConsistDep = NULL;
-	AuxMatrix = NULL;
-	AuxMatrix2 = NULL;  // NW
-	Disp = NULL;
-	dT = NULL;
-	T1 = NULL;
-	Sxx = NULL;
-	Syy = NULL;
-	Szz = NULL;
-	Sxy = NULL;
-	Sxz = NULL;
-	Syz = NULL;
-	pstr = NULL;
-	delete[] AuxNodal;
-	delete[] AuxNodal0;
-	delete[] AuxNodal1;
-	AuxNodal = AuxNodal1 = NULL;
-	//
-	Idx_Strain = NULL;
-	Idx_Stress = NULL;
-	strain_ne = NULL;
-	stress_ne = NULL;
-	stress0 = NULL;
-	//
-
-	// NW
 	for (int i = 0; i < (int)vec_B_matrix.size(); i++)
 	{
 		delete vec_B_matrix[i];
 		delete vec_B_matrix_T[i];
-		vec_B_matrix[i] = NULL;
-		vec_B_matrix_T[i] = NULL;
 	}
 }
 
@@ -325,10 +239,10 @@ void CFiniteElementVec::SetMaterial()
 {
 	int MatGroup = MeshElement->GetPatchIndex();
 
-	smat = msp_vector[MatGroup];
-	smat->axisymmetry = pcs->m_msh->isAxisymmetry();
-	if (smat->Plasticity_type == 2)
-		smat->ResizeMatricesSYS(ele_dim);
+	m_msp = msp_vector[MatGroup];
+	m_msp->axisymmetry = pcs->m_msh->isAxisymmetry();
+	if (m_msp->Plasticity_type == 2)
+		m_msp->ResizeMatricesSYS(ele_dim);
 
 	if (F_Flag)
 	{
@@ -563,12 +477,12 @@ double CFiniteElementVec::CalDensity()
 		// MMP medium properties
 		porosity = m_mmp->Porosity(this);
 		// Assume solid density is constant. (*smat->data_Density)(0)
-		if (smat->Density() > 0.0)
+		if (m_msp->Density() > 0.0)
 		{
 			Sw = 1.0;  // JT, should be 1.0, unless multiphase (calculate below)
 			           // (if unsaturated, fluid density would be negligible...
 			           // so still works)
-			rho = (1. - porosity) * fabs(smat->Density()) +
+			rho = (1. - porosity) * fabs(m_msp->Density()) +
 			      porosity * Sw * density_fluid;
 		}
 		else
@@ -577,8 +491,8 @@ double CFiniteElementVec::CalDensity()
 	else
 	    // If negative value is given in the .msp file, gravity by solid is
 	    // skipped
-	    if (smat->Density() > 0.0)
-		rho = smat->Density();
+	    if (m_msp->Density() > 0.0)
+		rho = m_msp->Density();
 	return rho;
 }
 /***************************************************************************
@@ -703,7 +617,7 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 		// 2D, in y-direction
 		// 3D, in z-direction
 		i = (ele_dim - 1) * nnodesHQ;
-		const double coeff = rho * smat->grav_const * fkt;
+		const double coeff = rho * m_msp->grav_const * fkt;
 		for (k = 0; k < nnodesHQ; k++)
 			(*RHS)(i + k) += coeff * shapefctHQ[k];
 		//        (*RHS)(i+k) += LoadFactor * rho * smat->grav_const *
@@ -798,8 +712,7 @@ void CFiniteElementVec::AssembleResidual()
 	if (PressureC)
 		(*PressureC) = 0.0;
 
-	for (long i = 0; i < ns; i++)
-		stress0[i] = .0;
+	stress0 = .0;
 
 
 	// Loop over Gauss points
@@ -828,14 +741,13 @@ void CFiniteElementVec::AssembleResidual()
 		//---------------------------------------------------------
 		// Compute elastic constitutive
 		//---------------------------------------------------------
-		smat->Calculate_Lame_Constant();
-		smat->ElasticConstitutive(ele_dim, De);
+		m_msp->Calculate_Lame_Constant();
+		m_msp->ElasticConstitutive(ele_dim, De);
 
 		//---------------------------------------------------------
 		// Material properties (Integration of the stress)
 		//---------------------------------------------------------
-		for (long i = 0; i < ns; i++)
-			dstress[i] = 0.0;
+		dstress = 0.0;
 		De->multi(dstrain, dstress);
 
 		//---------------------------------------------------------
@@ -849,20 +761,18 @@ void CFiniteElementVec::AssembleResidual()
 		// --------------------------------------------------------------------
 		double ThermalExpansion = 0.0;
 		if (T_Flag)
-			ThermalExpansion = smat->Thermal_Expansion();
+			ThermalExpansion = m_msp->Thermal_Expansion();
 		if (T_Flag && ThermalExpansion != 0.0)
 		{
-			for (long i = 0; i < ns; i++)
-				strain_ne[i] = 0.0;
+			strain_ne = 0.0;
 			double gp_dT  = this->interpolate(dT, 1);
-			for (long i = 0; i < 3; i++)
+			for (long i = 0; i < 3; i++) //TODO why 3?
 				strain_ne[i] -= ThermalExpansion * gp_dT;
 
 			// update stress
 			De->multi(strain_ne, dstress);
 			// strain
-			for (long i = 0; i < ns; i++)
-				dstrain[i] += strain_ne[i];
+			dstrain += strain_ne;
 		}
 
 		//---------------------------------------------------------
@@ -908,7 +818,7 @@ void CFiniteElementVec::AssembleResidual()
 			// 2D, in y-direction
 			// 3D, in z-direction
 			int i = (ele_dim - 1) * nnodesHQ;
-			const double coeff = rho * smat->grav_const * fkt;
+			const double coeff = rho * m_msp->grav_const * fkt;
 			for (int k = 0; k < nnodesHQ; k++)
 				r(i + k) += coeff * shapefctHQ[k];
 		}
@@ -943,11 +853,11 @@ void CFiniteElementVec::AssembleResidual()
 	// r+= B^T * (-alpha*p - (-alpha0*p0))
 	if (H_Process)
 	{
-		const double biot = smat->biot_const;
-		const double biot0 = smat->biot_const;
+		const double biot = m_msp->biot_const;
+		const double biot0 = m_msp->biot_const;
 		std::vector<double> const& p0 = pcs->GetInitialFluidPressure();
 		// d(alpha*p) = alpha*p - alpha0*p0
-		double* d_alpha_p = AuxNodal;
+		std::valarray<double>& d_alpha_p = AuxNodal;
 		for (int i = 0; i < nnodes; i++)
 		{
 			double val_n = std::abs(biot) * h_pcs->GetNodeValue(nodes[i], idx_P1);
@@ -957,8 +867,7 @@ void CFiniteElementVec::AssembleResidual()
 		}
 		// B^T*d(alpha*p)
 		const int dim_times_nnodesHQ(dim * nnodesHQ);
-		for (int i = 0; i < dim_times_nnodesHQ; i++)
-			AuxNodal1[i] = 0.0;
+		AuxNodal1 = 0;
 		PressureC->multi(d_alpha_p, AuxNodal1);
 		// update r
 		for (int i = 0; i < dim_times_nnodesHQ; i++)
@@ -1006,9 +915,6 @@ void CFiniteElementVec::AssembleJacobian()
 	if (pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
 		(*PressureC) = 0.0;
 
-	for (long i = 0; i < ns; i++)
-		stress0[i] = .0;
-
 	// Loop over Gauss points
 	for (gp = 0; gp < nGaussPoints; gp++)
 	{
@@ -1035,8 +941,8 @@ void CFiniteElementVec::AssembleJacobian()
 		//---------------------------------------------------------
 		// Compute elastic constitutive
 		//---------------------------------------------------------
-		smat->Calculate_Lame_Constant();
-		smat->ElasticConstitutive(ele_dim, De);
+		m_msp->Calculate_Lame_Constant();
+		m_msp->ElasticConstitutive(ele_dim, De);
 
 		//---------------------------------------------------------
 		// Assemble matrices and RHS
@@ -1154,7 +1060,7 @@ void CFiniteElementVec::assembleGlobalVector()
 
 	pcs->eqs_new->setArrayValues(1, m_dim, row_ids, RHS->getEntryArray());
 #else
-	b_rhs = pcs->eqs_new->b;
+	double* b_rhs = pcs->eqs_new->b;
 	//	std::cerr << "e: " << Index << "\n";
 	for (size_t i = 0; i < dim; i++)
 	{
@@ -1199,7 +1105,7 @@ void CFiniteElementVec::assembleGlobalMatrix()
 
 	if (pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
 	{
-		double fct = -smat->biot_const;
+		double fct = -m_msp->biot_const;
 
 		int dim_shift = dim;
 		// Add pressure coupling matrix to the stifness matrix
@@ -1287,14 +1193,13 @@ void CFiniteElementVec::UpdateStressStrain()
 		//---------------------------------------------------------
 		// Compute elastic constitutive
 		//---------------------------------------------------------
-		smat->Calculate_Lame_Constant();
-		smat->ElasticConstitutive(ele_dim, De);
+		m_msp->Calculate_Lame_Constant();
+		m_msp->ElasticConstitutive(ele_dim, De);
 
 		//---------------------------------------------------------
 		// Material properties (Integration of the stress)
 		//---------------------------------------------------------
-		for (long i = 0; i < ns; i++)
-			dstress[i] = 0.0;
+		dstress = 0.0;
 		De->multi(dstrain, dstress);
 
 		//---------------------------------------------------------
@@ -1308,11 +1213,10 @@ void CFiniteElementVec::UpdateStressStrain()
 		// --------------------------------------------------------------------
 		double ThermalExpansion = 0.0;
 		if (T_Flag)
-			ThermalExpansion = smat->Thermal_Expansion();
+			ThermalExpansion = m_msp->Thermal_Expansion();
 		if (T_Flag && ThermalExpansion != 0.0)
 		{
-			for (long i = 0; i < ns; i++)
-				strain_ne[i] = 0.0;
+			strain_ne = 0.0;
 			double gp_dT  = this->interpolate(dT, 1);
 			for (long i = 0; i < 3; i++)
 				strain_ne[i] -= ThermalExpansion * gp_dT;
@@ -1320,8 +1224,7 @@ void CFiniteElementVec::UpdateStressStrain()
 			// update stress
 			De->multi(strain_ne, dstress);
 			// strain
-			for (long i = 0; i < ns; i++)
-				dstrain[i] += strain_ne[i];
+			dstrain += strain_ne;
 		}
 
 		// --------------------------------------------------------------------
@@ -1356,9 +1259,6 @@ bool CFiniteElementVec::GlobalAssembly()
 {
 	for (int i = 0; i < nnodesHQ; i++)
 		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex();
-#ifdef NEW_EQS
-	b_rhs = pcs->eqs_new->b;
-#endif
 
 	GlobalAssembly_RHS();
 
@@ -1383,7 +1283,7 @@ bool CFiniteElementVec::GlobalAssembly()
  **************************************************************************/
 void CFiniteElementVec::GlobalAssembly_Stiffness()
 {
-	double biot = smat->biot_const;
+	double biot = m_msp->biot_const;
 #if defined(NEW_EQS)
 	CSparseMatrix* A = pcs->eqs_new->A;
 #endif
@@ -1543,7 +1443,7 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 {
 
 	bool Residual = false;
-	if (Flow_Type >= 0)
+	if (H_Process)
 	{
 		if (pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
 		{
@@ -1558,44 +1458,36 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 	// If dynamic GetNodeValue(nodes[i],idx_P0) = 0;
 	if (Residual)
 	{
-		const double biot = smat->biot_const;
+		const double biot = m_msp->biot_const;
 		std::vector<double> const& p0 = pcs->GetInitialFluidPressure();  // NW should calculate (p
 		                                              // - p0) because OGS
 		                                              // calculates (stress -
 		                                              // stress0)
-		switch (Flow_Type)
+		// For monolithic scheme and liquid flow, the limit of positive
+		// pressure must be removed
+		for (int i = 0; i < nnodes; i++)
 		{
-			case 0:  // Liquid flow
-				// For monolithic scheme and liquid flow, the limit of positive
-				// pressure must be removed
-				for (int i = 0; i < nnodes; i++)
-				{
-					double val_n = h_pcs->GetNodeValue(nodes[i], idx_P1);
-					//                AuxNodal[i] = LoadFactor*( val_n
-					//                -Max(pcs->GetNodeValue(nodes[i],idx_P0),0.0));
+			double val_n = h_pcs->GetNodeValue(nodes[i], idx_P1);
+			//                AuxNodal[i] = LoadFactor*( val_n
+			//                -Max(pcs->GetNodeValue(nodes[i],idx_P0),0.0));
 
-					// Initial pressure should be subtracted, i.e. (p-p0)
-					// because DEFORMATION
-					// calculates stress balance of changes from the initial
-					// stress.
-					// NW 28.08.2012
-					if (pcs->calcDiffFromStress0 && !p0.empty())
-					{
-						val_n -= p0[nodes[i]];
-					}
-					AuxNodal[i] = val_n;
-				}
-				break;
+			// Initial pressure should be subtracted, i.e. (p-p0)
+			// because DEFORMATION
+			// calculates stress balance of changes from the initial
+			// stress.
+			// NW 28.08.2012
+			if (pcs->calcDiffFromStress0 && !p0.empty())
+			{
+				val_n -= p0[nodes[i]];
+			}
+			AuxNodal[i] = val_n;
 		}
 
 		const int dim_times_nnodesHQ(dim * nnodesHQ);
 		// Coupling effect to RHS
-		if (Flow_Type != 2)
-		{
-			for (int i = 0; i < dim_times_nnodesHQ; i++)
-				AuxNodal1[i] = 0.0;
-			PressureC->multi(AuxNodal, AuxNodal1);
-		}
+		AuxNodal1 = 0.0;
+		PressureC->multi(AuxNodal, AuxNodal1);
+
 		for (int i = 0; i < dim_times_nnodesHQ; i++)
 			(*RHS)(i) -= fabs(biot) * AuxNodal1[i];
 	}  // End if partioned
@@ -1604,6 +1496,7 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 // RHS->Write();
 
 #ifndef USE_PETSC
+	double* b_rhs = pcs->eqs_new->b;
 	//	std::cerr << "e: " << Index << "\n";
 	for (size_t i = 0; i < dim; i++)
 	{
@@ -1647,8 +1540,7 @@ void CFiniteElementVec::LocalAssembly_Linear()
 	if (PressureC)
 		(*PressureC) = 0.0;
 
-	for (long i = 0; i < ns; i++)
-		stress0[i] = .0;
+	stress0 = .0;
 
 	// Loop over Gauss points
 	for (gp = 0; gp < nGaussPoints; gp++)
@@ -1676,14 +1568,13 @@ void CFiniteElementVec::LocalAssembly_Linear()
 		//---------------------------------------------------------
 		// Compute elastic constitutive
 		//---------------------------------------------------------
-		smat->Calculate_Lame_Constant();
-		smat->ElasticConstitutive(ele_dim, De);
+		m_msp->Calculate_Lame_Constant();
+		m_msp->ElasticConstitutive(ele_dim, De);
 
 		//---------------------------------------------------------
 		// Material properties (Integration of the stress)
 		//---------------------------------------------------------
-		for (long i = 0; i < ns; i++)
-			dstress[i] = 0.0;
+		dstress = 0.0;
 		De->multi(dstrain, dstress);
 
 		//---------------------------------------------------------
@@ -1697,11 +1588,10 @@ void CFiniteElementVec::LocalAssembly_Linear()
 		// --------------------------------------------------------------------
 		double ThermalExpansion = 0.0;
 		if (T_Flag)
-			ThermalExpansion = smat->Thermal_Expansion();
+			ThermalExpansion = m_msp->Thermal_Expansion();
 		if (T_Flag && ThermalExpansion != 0.0)
 		{
-			for (long i = 0; i < ns; i++)
-				strain_ne[i] = 0.0;
+			strain_ne = 0.0;
 			double gp_dT  = this->interpolate(dT, 1);
 			for (long i = 0; i < 3; i++)
 				strain_ne[i] -= ThermalExpansion * gp_dT;
@@ -1709,8 +1599,7 @@ void CFiniteElementVec::LocalAssembly_Linear()
 			// update stress
 			De->multi(strain_ne, dstress);
 			// strain
-			for (long i = 0; i < ns; i++)
-				dstrain[i] += strain_ne[i];
+			dstrain += strain_ne;
 		}
 
 		//---------------------------------------------------------
