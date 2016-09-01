@@ -14,7 +14,8 @@ set(TESTER_COMMAND ${TESTER_COMMAND} )
 
 set(SCRIPT_EXIT_CODE 0)
 set(BENCHMARK_OUTPUT_DIRECTORY "${BENCHMARK_DIR_FOUND}/results")
-set(NUMDIFF_OUTPUT_FILE ${BENCHMARK_OUTPUT_DIRECTORY}/${benchmarkStrippedName}.numdiff)
+set(NUMDIFF_OUTPUT_FILE ${BENCHMARK_OUTPUT_DIRECTORY}/${benchmarkNameUnderscore}.numdiff)
+#set(NUMDIFF_OUTPUT_FILE ${BENCHMARK_OUTPUT_DIRECTORY}/${benchmarkStrippedName}.numdiff)
 execute_process(COMMAND ${CMAKE_COMMAND} -E remove ${NUMDIFF_OUTPUT_FILE})
 separate_arguments(OUTPUT_FILES) # reconstruct list
 #message(STATUS "OUTPUT_FILES: ${OUTPUT_FILES}")
