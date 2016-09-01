@@ -157,23 +157,20 @@ void CRFProcessDeformation::Initialization()
  **************************************************************************/
 void CRFProcessDeformation::InitialMBuffer()
 {
-	size_t n_solution_vector(0);
-	bool HM_Stagered = false;
-	if (getProcessType() == FiniteElement::DEFORMATION)
-	{
-		n_solution_vector = GetPrimaryVNumber() * m_msh->GetNodesNumber(true);
-		if (H_Process)
-			HM_Stagered = true;
-	}
-	else if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
-	{
-		n_solution_vector = (GetPrimaryVNumber() - 1) * m_msh->GetNodesNumber(true) + m_msh->GetNodesNumber(false);
-	}
-
 	// Allocate memory for  temporal array
+	long n_solution_vector = problem_dimension_dm * m_msh->GetNodesNumber(true);
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+		n_solution_vector += m_msh->GetNodesNumber(false);
 	previousTimeStepSolution.resize(n_solution_vector);
 
 	// Allocate memory for element variables
+	bool HM_Stagered = false;
+	if (getProcessType() == FiniteElement::DEFORMATION)
+	{
+		if (H_Process)
+			HM_Stagered = true;
+	}
+
 	ele_value_dm.reserve(m_msh->ele_vector.size());
 	for (size_t i = 0; i < m_msh->ele_vector.size(); i++)
 	{
