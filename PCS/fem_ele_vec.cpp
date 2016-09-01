@@ -1214,14 +1214,7 @@ void CFiniteElementVec::UpdateStressStrain()
 			(*eleV_DM->Strain)(i, gp) += dstrain[i];
 		}
 	}
-
-	// For strain and stress extropolation all element types
-	for (int i = 0; i < nnodes; i++)
-		dbuff[i] = (double)MeshElement->GetNode(i)->getConnectedElementIDs().size();
-	// The mapping of Gauss point strain to element nodes
-	//ExtropolateGaussStrain();
 }
-
 
 /***************************************************************************
    GeoSys - Funktion:
@@ -1681,6 +1674,10 @@ void CFiniteElementVec::ExtropolateGaussStrain()
 	int i_s, i_e, ish, k = 0;
 	gp = 0;
 	// double Area1, Area2, Tol=10e-9;
+	// For strain and stress extropolation all element types
+	for (int i = 0; i < nnodes; i++)
+		dbuff[i] = (double)MeshElement->GetNode(i)->getConnectedElementIDs().size();
+
 
 	MshElemType::type ElementType = MeshElement->GetElementType();
 	eleV_DM = ele_value_dm[MeshElement->GetIndex()];
