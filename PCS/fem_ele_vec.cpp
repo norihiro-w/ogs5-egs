@@ -1199,8 +1199,8 @@ void CFiniteElementVec::UpdateStressStrain()
 
 			// update stress
 			De->multi(strain_ne, dstress);
-			// strain
-			dstrain += strain_ne;
+			// don't include thermal strain to total strain
+			//dstrain += strain_ne;
 		}
 
 		// --------------------------------------------------------------------
