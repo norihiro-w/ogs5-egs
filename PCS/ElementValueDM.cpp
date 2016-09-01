@@ -50,7 +50,7 @@ namespace FiniteElement
  |    6   |  m        |
    ----------------------
    -----------------------------------------------------------------*/
-ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool HM_Staggered)
+ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool has_coupling_loop)
 {
 	MshElemType::type ele_type = ele->GetElementType();
 	int ele_dim = ele->GetDimension();
@@ -75,12 +75,12 @@ ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool HM_Staggered)
 
 	Stress0 = new Matrix(LengthBS, NGPoints);
 	Stress_last_ts = new Matrix(LengthBS, NGPoints);
-	if (HM_Staggered)
+	if (has_coupling_loop)
 		Stress_current_ts = new Matrix(LengthBS, NGPoints);
 	Stress = Stress_last_ts;
 
 	Strain = new Matrix(LengthBS, NGPoints);
-	if (HM_Staggered)
+	if (has_coupling_loop)
 		Strain_last_ts = new Matrix(LengthBS, NGPoints);
 
 	if (Plastic > 0)

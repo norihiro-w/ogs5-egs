@@ -27,7 +27,7 @@ namespace FiniteElement
 class ElementValue_DM
 {
 public:
-	ElementValue_DM(MeshLib::CElem* ele, const int NGP, bool HM_Staggered);
+	ElementValue_DM(MeshLib::CElem* ele, const int NGP, bool has_coupling_loop);
 	~ElementValue_DM();
 	void ResetStress(bool cpl_loop);
 	void Write_BIN(std::fstream& os);
