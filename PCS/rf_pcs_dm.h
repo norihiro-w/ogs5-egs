@@ -75,7 +75,7 @@ private:
 	void incrementNodalPressureFromSolution();
 	void incrementNodalDisplacement();
 	void zeroNodalDU();
-	void updateGaussStress();
+	void updateGaussStressStrain();
 
 //	double getNormOfDisplacements();
 //	double getNormOfPressure();

@@ -663,7 +663,7 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 	//-------------------------------------------------------------------
 	// Update stresses
 	incrementNodalDisplacement(); // u_n1
-	updateGaussStress();
+	updateGaussStressStrain();
 
 	// Recovery the old solution.  Temp --> u_n	for flow proccess
 	RecoverLastTimeStepDisplacements();
@@ -1301,7 +1301,7 @@ void CRFProcessDeformation::AssembleJacobian()
    02/2005 WW
    06/2005 WW  Parallelization
 **************************************************************************/
-void CRFProcessDeformation::updateGaussStress()
+void CRFProcessDeformation::updateGaussStressStrain()
 {
 	for (MeshLib::CElem* elem : m_msh->ele_vector)
 	{
