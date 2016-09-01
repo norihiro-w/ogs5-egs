@@ -194,6 +194,7 @@ FUNCTION (ADD_BENCHMARK authorName benchmarkName ogsConfiguration numProcesses)
 		-DPROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}
 		-DEXECUTABLE_OUTPUT_PATH=${EXECUTABLE_OUTPUT_PATH}
 		-DbenchmarkStrippedName=${benchmarkStrippedName}
+		-DbenchmarkNameUnderscore=${benchmarkNameUnderscore}
 		-DbenchmarkDir=${benchmarkDir}
 		-DFILES_TO_DELETE=${FILES_TO_DELETE}
 		-DOGS_PROFILE=${OGS_PROFILE}
