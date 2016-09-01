@@ -398,8 +398,7 @@ void CFiniteElementVec::ComputeStrain()
 	switch (dim)
 	{
 		case 2:
-			for (i = 0; i < ns; i++)
-				dstrain[i] = 0.0;
+			dstrain = 0.0;
 			if (axisymmetry)
 			{
 				for (i = 0; i < nnodesHQ; i++)
@@ -424,8 +423,7 @@ void CFiniteElementVec::ComputeStrain()
 				}
 			break;
 		case 3:
-			for (i = 0; i < ns; i++)
-				dstrain[i] = 0.0;
+			dstrain = 0.0;
 			for (i = 0; i < nnodesHQ; i++)
 			{
 				j = i + nnodesHQ;
