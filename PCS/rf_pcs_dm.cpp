@@ -164,18 +164,12 @@ void CRFProcessDeformation::InitialMBuffer()
 	previousTimeStepSolution.resize(n_solution_vector);
 
 	// Allocate memory for element variables
-	bool HM_Stagered = false;
-	if (getProcessType() == FiniteElement::DEFORMATION)
-	{
-		if (H_Process)
-			HM_Stagered = true;
-	}
-
 	ele_value_dm.reserve(m_msh->ele_vector.size());
+	const bool hasCouplingLoop = (pcs_vector.size() > 1);
 	for (size_t i = 0; i < m_msh->ele_vector.size(); i++)
 	{
 		MeshLib::CElem* elem = m_msh->ele_vector[i];
-		ElementValue_DM* ele_val = new ElementValue_DM(elem, m_num->ele_gauss_points, HM_Stagered);
+		ElementValue_DM* ele_val = new ElementValue_DM(elem, m_num->ele_gauss_points, hasCouplingLoop);
 		ele_value_dm.push_back(ele_val);
 	}
 }

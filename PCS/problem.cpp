@@ -1337,7 +1337,7 @@ void Problem::PostCouplingLoop()
 	{
 		CRFProcessDeformation* dm_pcs =
 		    (CRFProcessDeformation*)(total_processes[12]);
-		if (H_Process && dm_pcs->type / 10 != 4)  // HM partitioned scheme
+		if (pcs_vector.size() > 1)
 			dm_pcs->ResetTimeStep();
 		dm_pcs->Extropolation_GaussValue();
 	}
