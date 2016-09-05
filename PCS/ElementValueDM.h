@@ -38,6 +38,8 @@ public:
 	Matrix* Stress = nullptr;
 	Matrix* Stress_last_ts = nullptr;
 	Matrix* Stress_current_ts = nullptr;
+	Matrix* dTotalStress = nullptr;
+
 	Matrix* Strain = nullptr;
 	Matrix* Strain_last_ts = nullptr;
 	Matrix* pStrain = nullptr;

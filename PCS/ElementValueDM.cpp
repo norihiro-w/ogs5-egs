@@ -74,6 +74,7 @@ ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool has_coupling_lo
 		NGPoints = MathLib::fastpow(NGP, ele_dim);
 
 	Stress0 = new Matrix(LengthBS, NGPoints);
+	dTotalStress = new Matrix(LengthBS, NGPoints);
 	Stress_last_ts = new Matrix(LengthBS, NGPoints);
 	if (has_coupling_loop)
 		Stress_current_ts = new Matrix(LengthBS, NGPoints);
@@ -122,6 +123,7 @@ ElementValue_DM::~ElementValue_DM()
 	delete Stress0;
 	delete Stress_last_ts;
 	delete Stress_current_ts;
+	delete dTotalStress;
 
 	delete pStrain;
 	delete y_surface;

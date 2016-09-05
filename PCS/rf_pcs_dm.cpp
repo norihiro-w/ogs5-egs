@@ -250,6 +250,7 @@ void CRFProcessDeformation::InitGauss(void)
 		ElementValue_DM* eleV_DM = ele_value_dm[i];
 		*(eleV_DM->Stress0) = 0.0;
 		*(eleV_DM->Stress) = 0.0;
+		*(eleV_DM->dTotalStress) = 0.0;
 
 		if (n_given_ic == 0)
 			continue;

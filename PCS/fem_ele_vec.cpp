@@ -990,6 +990,18 @@ void CFiniteElementVec::UpdateStressStrain()
 {
 	Init();
 
+	auto &nodal_p1 = AuxNodal;
+	auto &nodal_p0 = AuxNodal1;
+	if (H_Process)
+	{
+		for (int i = 0; i < nnodes; i++)
+		{
+			nodal_p1[i] = h_pcs->GetNodeValue(nodes[i], idx_P1);
+			nodal_p0[i] = h_pcs->GetNodeValue(nodes[i], idx_P1 - 1);
+		}
+	}
+
+
 	// Loop over Gauss points
 	for (gp = 0; gp < nGaussPoints; gp++)
 	{
@@ -1007,6 +1019,10 @@ void CFiniteElementVec::UpdateStressStrain()
 		ComputeShapefct(2);
 		if (F_Flag || T_Flag)
 			ComputeShapefct(1);
+
+		//---------------------------------------------------------
+		// Gauss point values
+		//---------------------------------------------------------
 
 		//---------------------------------------------------------
 		// Compute strain
@@ -1057,7 +1073,16 @@ void CFiniteElementVec::UpdateStressStrain()
 		for (long i = 0; i < ns; i++)
 		{
 			(*eleV_DM->Stress)(i, gp) = dstress[i];
+			(*eleV_DM->dTotalStress)(i, gp) = (*eleV_DM->Stress)(i, gp) - (*eleV_DM->Stress_last_ts)(i, gp);
 			(*eleV_DM->Strain)(i, gp) += dstrain[i];
+		}
+		if (H_Process)
+		{
+			const double gp_p1 = interpolate(nodal_p1);
+			const double gp_p0 = interpolate(nodal_p0);
+			const double d_bp = m_msp->biot_const * gp_p1 - m_msp->biot_const * gp_p0;
+			for (long i = 0; i < 3; i++)
+				(*eleV_DM->dTotalStress)(i, gp) -= d_bp;
 		}
 	}
 }
