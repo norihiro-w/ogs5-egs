@@ -33,10 +33,6 @@ public:
 	void Write_BIN(std::fstream& os);
 	void Read_BIN(std::fstream& is);
 	void ReadElementStressASCI(std::fstream& is);
-	double MeanStress(const int gp)
-	{
-		return (*Stress)(0, gp) + (*Stress)(1, gp) + (*Stress)(2, gp);
-	}
 
 	Matrix* Stress0 = nullptr;  // Initial stress
 	Matrix* Stress = nullptr;
