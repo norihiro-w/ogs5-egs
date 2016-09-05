@@ -120,20 +120,19 @@ ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool has_coupling_lo
 ElementValue_DM::~ElementValue_DM()
 {
 	delete Stress0;
-	if (Stress_last_ts) delete Stress_last_ts;
-	if (Stress_current_ts) delete Stress_current_ts;
-	if (pStrain) delete pStrain;
-	if (y_surface) delete y_surface;
+	delete Stress_last_ts;
+	delete Stress_current_ts;
 
-	// Preconsolidation pressure
-	if (prep0) delete prep0;
-	if (e_i) delete e_i;  // Void ratio
-	// Variables of single yield surface model
-	if (xi) delete xi;      // Rotational hardening variables
-	if (MatP) delete MatP;  // Material parameters
+	delete pStrain;
+	delete y_surface;
 
-	if (NodesOnPath) delete NodesOnPath;
-	if (orientation) delete orientation;
+	delete prep0;
+	delete e_i;
+	delete xi;
+	delete MatP;
+
+	delete NodesOnPath;
+	delete orientation;
 
 	delete Strain;
 	delete Strain_last_ts;
