@@ -623,6 +623,7 @@ public:
 	CRFProcess* CopyPCStoTH_PCS();
 	bool Check();
 
+	bool use_total_stress_coupling = false;
 	bool calcDiffFromStress0;
 	bool resetStrain;
 	bool scaleUnknowns;
