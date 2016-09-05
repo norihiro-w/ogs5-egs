@@ -50,6 +50,7 @@ CFiniteElementVec::CFiniteElementVec(CRFProcessDeformation* dm_pcs,
 	strain_ne.resize(ns);
 	stress_ne.resize(ns);
 	stress0.resize(ns);
+	stress1.resize(ns);
 	for (int i = 0; i < 4; i++)
 		NodeShift[i] = pcs->Shift[i];
 
@@ -530,7 +531,7 @@ void CFiniteElementVec::AssembleResidual()
 	Init();
 	Vector &r = *RHS;
 	r = 0.0;
-	if (PressureC)
+	if (H_Process)
 		(*PressureC) = 0.0;
 
 	stress0 = .0;
@@ -555,7 +556,7 @@ void CFiniteElementVec::AssembleResidual()
 			ComputeShapefct(1);
 
 		//---------------------------------------------------------
-		// Compute strain
+		// Compute strain increment
 		//---------------------------------------------------------
 		ComputeStrain();
 
@@ -566,16 +567,16 @@ void CFiniteElementVec::AssembleResidual()
 		m_msp->ElasticConstitutive(ele_dim, De);
 
 		//---------------------------------------------------------
-		// Material properties (Integration of the stress)
+		// Compute stress increment
 		//---------------------------------------------------------
 		dstress = 0.0;
 		De->multi(dstrain, dstress);
 
 		//---------------------------------------------------------
-		// Integrate the stress by return mapping:
+		// Compute new total stress
 		//---------------------------------------------------------
 		for (long i = 0; i < ns; i++)
-			dstress[i] += (*eleV_DM->Stress)(i, gp);
+			stress1[i] = dstress[i] + (*eleV_DM->Stress)(i, gp);
 
 		// --------------------------------------------------------------------
 		// Stress increment by heat, swelling, or heat
@@ -591,7 +592,7 @@ void CFiniteElementVec::AssembleResidual()
 				strain_ne[i] -= ThermalExpansion * gp_dT;
 
 			// update stress
-			De->multi(strain_ne, dstress);
+			De->multi(strain_ne, stress1);
 			// strain
 			dstrain += strain_ne;
 		}
@@ -618,7 +619,8 @@ void CFiniteElementVec::AssembleResidual()
 		Matrix* old_B_matrix_T = B_matrix_T;
 
 		//---------------------------------------------------------
-		// r = B^T * (Stress' - alpa*p - (Stress'0 - alpha0*p0)) + rho*g
+		// r = B^T * (Stress - Stress0) + (b-b0) + (t-t0)
+		//   = B^T * (Stress' - alpa*p - Stress0) + (b-b0) + (t-t0)
 		//---------------------------------------------------------
 		// r = B^T * (Stress' - Stress'0)
 		for (int i = 0; i < nnodesHQ; i++)
@@ -627,7 +629,8 @@ void CFiniteElementVec::AssembleResidual()
 
 			for (unsigned j = 0; j < ele_dim; j++) {
 				for (int k = 0; k < ns; k++) {
-					r(j* nnodesHQ + i) += (*tmp_B_matrix_T)(j, k) * (dstress[k] - stress0[k]) * fkt;
+					double diff_stress = stress1[k] - stress0[k];
+					r(j* nnodesHQ + i) += (*tmp_B_matrix_T)(j, k) * diff_stress * fkt;
 				}
 			}
 		}

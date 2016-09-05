@@ -141,12 +141,13 @@ private:
 	//  Stresses:
 	//  s11, s22, s33, s12, s13, s23
 	std::valarray<double> dstress;
+	std::valarray<double> stress1;
+	std::valarray<double> stress0;
+	std::valarray<double> stress_ne;
 	//  Straines:
 	//  s11, s22, s33, s12, s13, s23
 	std::valarray<double> dstrain;
 	std::valarray<double> strain_ne;
-	std::valarray<double> stress_ne;
-	std::valarray<double> stress0;
 	// Results, displacements
 	//  u_x1, u_x2, u_x3, ..., u_xn,
 	//  u_y1, u_y2, u_y3, ..., u_yn,
