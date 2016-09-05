@@ -1518,6 +1518,7 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 		//....................................................................
 		// subkeyword found
 		if (line_string.find("$PCS_TYPE") != string::npos)
+		{
 			while ((!new_keyword) || (!new_subkeyword) || (!pcs_file->eof()))
 			{
 				position = pcs_file->tellg();
@@ -1531,6 +1532,7 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 				line_stream.str(line_string);
 				std::string pcs_type_name;
 				line_stream >> pcs_type_name;
+				ScreenMessage("-> found %s\n", pcs_type_name.c_str());
 				pcs_type_name_vector.push_back(pcs_type_name);
 				this->setProcessType(
 				    FiniteElement::convertProcessType(pcs_type_name));
@@ -1582,6 +1584,7 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 					RANDOM_WALK_Process = true;
 				}
 			}
+		}
 		//....................................................................
 		// subkeyword found
 		if (line_string.find("$NUM_TYPE") != string::npos)
@@ -1786,6 +1789,14 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 			if (!resetStrain)
 				ScreenMessage("-> $RESET_STRAIN=0 is not supported yet\n",
 				              dummy);
+			continue;
+		}
+		if (line_string.find("$TOTAL_STRESS_COUPLING") == 0)
+		{
+			int dummy = 0;
+			*pcs_file >> dummy;
+			use_total_stress_coupling = (dummy != 0);
+			ScreenMessage("-> coupling with deformation will be done via total stress instead of strain\n", dummy);
 			continue;
 		}
 		if (line_string.find("$SCALE_DOF") == 0)
