@@ -5034,6 +5034,8 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 #endif
 		m_bc_node = bc_node_value[gindex];
 		m_bc = bc_node[gindex];
+		const bool isDisplacementBC = (m_bc_node->pcs_pv_name.find("DISPLACEMENT") != string::npos);
+
 		//
 		// WX: check if bc is aktive, when Time_Controlled_Aktive for this bc is
 		// defined
@@ -5043,20 +5045,15 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 				continue;
 
 //
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+#if defined(USE_PETSC)
 		bc_msh_node = m_bc_node->geo_node_number;
+
 		// Check whether the node is in this subdomain
-		if (quadr)
-		{
-			if (!m_msh->isNodeLocal(bc_msh_node)) continue;
-		}
-		else
-		{
-			if (!m_msh->isNodeLocal(bc_msh_node)) continue;
-		}
+		if (!m_msh->isNodeLocal(bc_msh_node))
+			continue;
 
 		int dof_per_node = 0;
-		if (m_msh->GetNodesNumber(false) == m_msh->GetNodesNumber(true))
+		if (!m_msh->hasHigherOrderNodes())
 		{
 			dof_per_node = pcs_number_of_primary_nvals;
 			shift = m_bc_node->msh_node_number / m_msh->GetNodesNumber(false);
@@ -5073,12 +5070,12 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 #else
 		shift = m_bc_node->msh_node_number - m_bc_node->geo_node_number;
 		bc_msh_node = m_bc_node->geo_node_number;
-#endif  // END: if defined(USE_PETSC) // || defined(other parallel libs
-		//------------------------------------------------------------WW
-		if (m_msh)  // OK
-			//	    if(!m_msh->nod_vector[bc_msh_node]->GetMark()) //WW
-			//          continue;
+#endif  // PETSC
+
+		//------------------------------------------------------------
+		if (m_msh)
 			time_fac = 1.0;
+
 		if (bc_msh_node >= 0)
 		{
 			//................................................................
@@ -5155,37 +5152,25 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 				bc_value = time_fac * fac * m_bc_node->node_value;
 			//----------------------------------------------------------------
 			// MSH
-			/// 16.08.2010. WW
 			if (curve > 10000000 && fabs(time_fac) > DBL_EPSILON)
 				bc_value =
-				    bc_value / time_fac + time_fac;  /// bc_value +time_fac;
-
-			if (m_bc->isPeriodic())  // JOD
-				bc_value *= sin(2 * 3.14159 * aktuelle_zeit /
-				                    m_bc->getPeriodeTimeLength() +
-				                m_bc->getPeriodePhaseShift());
+				    bc_value / time_fac + time_fac;  // bc_value +time_fac;
 
 //----------------------------------------------------------------
 #ifndef USE_PETSC
 			if (rank > -1)
 				bc_eqs_index = bc_msh_node;
 			else
-				// WW#
 				bc_eqs_index =
 				    m_msh->nod_vector[bc_msh_node]->GetEquationIndex();
 #endif
 			//..............................................................
-			// NEWTON WW   //Modified for JFNK. 09.2010. WW
-			if (FiniteElement::isNewtonKind(
-			        m_num->nls_method)  // 04.08.2010. WW
-			                            // _name.find("NEWTON")!=string::npos
-			    ||
-			    type == 4 || type / 10 == 4)
+			// NEWTON
+			if (FiniteElement::isNewtonKind(m_num->nls_method)
+			    || type == 4 || type / 10 == 4)
 			{  // Solution is in the manner of increment !
-				idx0 = GetNodeValueIndex(convertPrimaryVariableToString(
-				    m_bc->getProcessPrimaryVariable()));
-				if ((type == 4 || type / 10 == 4) &&
-				    m_bc_node->pcs_pv_name.find("DISPLACEMENT") != string::npos)
+				idx0 = GetNodeValueIndex(convertPrimaryVariableToString(m_bc->getProcessPrimaryVariable()));
+				if ((type == 4 || type / 10 == 4) && isDisplacementBC)
 				{
 					bc_value -=
 					    GetNodeValue(m_bc_node->geo_node_number, idx0) +
@@ -5193,27 +5178,13 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 				}
 				else
 				{
-					/// if JFNK and if the first Newton step. 11.11.2010. WW
-					// if(m_num->nls_method==2&&ite_steps==1) /// JFNK
-					/// p_{n+1} = p_b,
-					//  SetNodeValue(m_bc_node->geo_node_number, idx0++,
-					//  bc_value);
 					/// dp = u_b-u_n
 					if (isResidual)
 					{
-						// SetNodeValue(m_bc_node->geo_node_number, idx0+1,
-						// bc_value);
-						bc_value -=
-						    GetNodeValue(m_bc_node->geo_node_number, ++idx0);
-						// bc_value *= -1;
+						bc_value -= GetNodeValue(m_bc_node->geo_node_number, ++idx0);
 					}
 					else
-						bc_value -=
-						    GetNodeValue(m_bc_node->geo_node_number, ++idx0);
-					// SetNodeValue(m_bc_node->geo_node_number, idx0, bc_value);
-					// SetNodeValue(m_bc_node->geo_node_number, idx0+1,
-					// bc_value);
-					// bc_value = 0.;
+						bc_value -= GetNodeValue(m_bc_node->geo_node_number, ++idx0);
 				}
 			}
 #if !defined(USE_PETSC)  // && !defined(other parallel solver). //WW 04.2012. WW
@@ -5221,56 +5192,29 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 #endif
 
 				//----------------------------------------------------------------
-				//----------------------------------------------------------------
-				/* // Make the follows as comment by WW. 04.03.2008
-				   //YD dual
-				   if(dof>1) //WW
-				   {
-				   for(ii=0;ii<dof;ii++)
-				   {
-				    if(m_bc->pcs_pv_name.find(pcs_primary_function_name[ii]) !=
-				   string::npos)
-				    {
-				       //YD/WW
-				       //WW   bc_eqs_index += ii*(long)eqs->dim/dof;   //YD dual
-				   //DOF>1 WW
-				       bc_eqs_index += fem->NodeShift[ii];   //DOF>1 WW
-
-				   break;
-				   }
-				   }
-				   }
-				 */
 				if (this->scaleUnknowns)
 				{
-					if (m_bc->getProcessPrimaryVariable() ==
-					    FiniteElement::PRESSURE)
+					if (m_bc->getProcessPrimaryVariable() == FiniteElement::PRESSURE)
 						bc_value *= vec_scale_dofs[0];
-					else if (m_bc->getProcessPrimaryVariable() ==
-					         FiniteElement::TEMPERATURE)
+					else if (m_bc->getProcessPrimaryVariable() == FiniteElement::TEMPERATURE)
 						bc_value *= vec_scale_dofs[1];
 				}
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-				bc_eqs_id.push_back(static_cast<int>(
-				    m_msh->nod_vector[bc_msh_node]->GetEquationIndex() *
-				        dof_per_node +
-				    shift));
+
+				//----------------------------------------------------------------
+#if defined(USE_PETSC)
+				int eqs_id = m_msh->nod_vector[bc_msh_node]->GetEquationIndex();
+
+				bc_eqs_id.push_back(eqs_id * dof_per_node + shift);
 				bc_eqs_value.push_back(bc_value);
 				if (m_num->petsc_split_fields)
 				{
-					int dof_id = m_bc->getProcessPrimaryVariable() ==
-					                     FiniteElement::PRESSURE
-					                 ? 0
-					                 : 1;  // TODO
-					dof_node_id[dof_id].push_back(static_cast<int>(
-					    m_msh->nod_vector[bc_msh_node]->GetEquationIndex()));
+					int dof_id = m_bc->getProcessPrimaryVariable() == FiniteElement::PRESSURE ? 0 : 1;  // TODO
+					dof_node_id[dof_id].push_back(eqs_id);
 					dof_node_value[dof_id].push_back(bc_value);
 				}
 
-#elif defined(NEW_EQS)  // WW
+#elif defined(NEW_EQS)
 			eqs_p->SetKnownX_i(bc_eqs_index, bc_value);
-#else
-			MXRandbed(bc_eqs_index, bc_value, eqs_rhs);
 #endif
 		}
 	}
@@ -6023,23 +5967,16 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 		for (long i = begin; i < end; i++)
 		{
 			gindex = i;
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
+#if !defined(USE_PETSC)
 			if (rank > -1) gindex = st_node_value_in_dom[i];
 #endif
 
 			cnodev = st_node_value[is][gindex];
 
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+#if defined(USE_PETSC)
 			msh_node = cnodev->geo_node_number;
 			// Check whether the node is in this subdomain
-			if (quadr)
-			{
-				if (!m_msh->isNodeLocal(msh_node)) continue;
-			}
-			else
-			{
-				if (!m_msh->isNodeLocal(msh_node)) continue;
-			}
+			if (!m_msh->isNodeLocal(msh_node)) continue;
 
 			int dof_per_node = 0;
 			if (m_msh->GetNodesNumber(false) == m_msh->GetNodesNumber(true))
@@ -6099,10 +6036,9 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 			else
 				time_fac = 1.0;
 
-			// Time dependencies - FCT    //YD
-			if (m_st)  // WW
+			// Time dependencies
+			if (m_st)
 			{
-				// WW/YD //OK
 				if (m_msh && !m_msh->geo_name.empty() &&
 				    m_msh->geo_name.find("LOCAL") != string::npos)
 				{
@@ -6113,7 +6049,7 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 							time_fac = m_fct->GetValue(
 							    aktuelle_zeit,
 							    &is_valid,
-							    m_st->getFunctionMethod());  // fct_method. WW
+							    m_st->getFunctionMethod());
 						else
 							cout << "Warning in "
 							        "CRFProcess::IncorporateSourceTerms - no "
@@ -6145,13 +6081,12 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 					value *= vec_scale_eqs[1];
 				}
 			}
-//------------------------------------------------------------------
-// EQS->RHS
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+			//------------------------------------------------------------------
+			// EQS->RHS
+#if defined(USE_PETSC)
+			int eqs_id = m_msh->nod_vector[msh_node]->GetEquationIndex();
 
-			st_eqs_id.push_back(static_cast<int>(
-			    m_msh->nod_vector[msh_node]->GetEquationIndex() * dof_per_node +
-			    shift));
+			st_eqs_id.push_back(eqs_id * dof_per_node + shift);
 			st_eqs_value.push_back(value);
 			if (m_num->petsc_split_fields)
 			{
@@ -6177,7 +6112,7 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 
 	//====================================================================
 
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+#if defined(USE_PETSC)
 	if (m_num->petsc_split_fields)
 	{
 		//				for (unsigned i=0; i<eqs_new->vec_subRHS.size(); i++)
