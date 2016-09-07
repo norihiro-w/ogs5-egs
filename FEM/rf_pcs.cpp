@@ -6597,6 +6597,7 @@ void CRFProcess::SetIC()
 
 				if (m_ic->getProcess() == this)
 				{
+					ScreenMessage("* %s on %s\n", pcs_primary_function_name[i], m_ic->getGeoName().data());
 					m_ic->Set(nidx);
 					m_ic->Set(nidx + 1);
 				}
@@ -6621,6 +6622,7 @@ void CRFProcess::SetIC()
 				m_ic->setProcess(this);
 				if (m_ic->getProcessPrimaryVariable() == pv_i)
 				{
+					ScreenMessage("* %s on %s\n", pcs_primary_function_name[i], m_ic->getGeoName().data());
 					m_ic->Set(nidx);
 					m_ic->Set(nidx + 1);
 				}  // end of if
