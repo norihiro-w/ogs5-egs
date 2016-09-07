@@ -337,11 +337,7 @@ bool CFEMesh::Read(std::ifstream* fem_file)
 				position = fem_file->tellg();
 				*fem_file >> s;
 				if (s.find("$AREA") != std::string::npos)
-#ifndef OGS_ONLY_TH
-					*fem_file >> newNode->patch_area;
-#else
 					*fem_file >> idx;  // dummy
-#endif
 				else
 					fem_file->seekg(position, std::ios::beg);
 				*fem_file >> std::ws;
