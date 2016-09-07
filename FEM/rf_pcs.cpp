@@ -6216,50 +6216,6 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 }
 
 
-///////////////////////////////////////////////////////////////////////////
-// Specials
-///////////////////////////////////////////////////////////////////////////
-
-/*-------------------------------------------------------------------------
-   ROCKFLOW - Function: PCSRestart
-   Task: Insert process to list
-   Programming:
-   06/2003 OK Implementation
-   11/2004 OK file_name_base
-   last modified:
-   -------------------------------------------------------------------------*/
-void PCSRestart()
-{
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task: Relocate Deformation process
-   Programing:
-   09/2004 WW Implementation
-   10/2010 TF changes due to conversion from std::string to enum for process
-type
-**************************************************************************/
-void RelocateDeformationProcess(CRFProcess* m_pcs)
-{
-	//   string pcs_name_dm = m_pcs->_pcs_type_name;
-	FiniteElement::ProcessType pcs_name_dm(m_pcs->getProcessType());
-
-	string num_type_name_dm;
-	// Numerics
-	if (m_pcs->num_type_name.compare("STRONG_DISCONTINUITY") == 0)
-	{
-		num_type_name_dm = m_pcs->num_type_name;
-		enhanced_strain_dm = 1;
-	}
-
-	delete m_pcs;
-	m_pcs = dynamic_cast<CRFProcess*>(new CRFProcessDeformation());
-	m_pcs->setProcessType(pcs_name_dm);
-
-	if (enhanced_strain_dm == 1) m_pcs->num_type_name = num_type_name_dm;
-	pcs_deformation = 1;
-}
 
 /**************************************************************************
    FEMLib-Method:
