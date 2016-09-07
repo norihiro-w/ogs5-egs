@@ -1057,6 +1057,7 @@ void CBoundaryConditionsGroup::Set(CRFProcess* pcs, int ShiftInNodeVector,
 			++p_bc;
 			continue;
 		}
+		ScreenMessage("%s on %s\n", FiniteElement::convertPrimaryVariableToString(bc->getProcessPrimaryVariable()).data(), bc->getGeoName().data());
 
 		//-- 23.02.3009. WW
 		if (bc->getProcessDistributionType() == FiniteElement::DIRECT)
