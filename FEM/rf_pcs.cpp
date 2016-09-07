@@ -2826,7 +2826,10 @@ void CRFProcess::ConfigDeformation()
 {
 #ifndef USE_PETSC
 	// Generate high order nodes for all elements.
-	m_msh->GenerateHighOrderNodes();  // WW
+	ScreenMessage("-> generate higher order nodes\n");
+	m_msh->GenerateHighOrderNodes();
+	ScreenMessage("-> %d quadratic nodes are created. the number of total nodes becomes %d\n",
+				  m_msh->GetNodesNumber(true) - m_msh->GetNodesNumber(false), m_msh->GetNodesNumber(true));
 #endif
 	type = 4;
 	//	if (_pcs_type_name.find("DEFORMATION") != string::npos
