@@ -182,7 +182,7 @@ void Linear_EQS::WriteRHS(ostream& os)
 //**************************************************************************
 void Linear_EQS::Write_BIN(ostream& os)
 {
-	if ((A->GetStorageType() != CRS) || (!A)) return;
+	if (!A) return;
 
 	A->Write_BIN(os);
 	os.write((char*)b, A->Dim() * sizeof(double));
@@ -1022,6 +1022,7 @@ int Linear_EQS::solveWithParalution(bool /*compress*/)
 
 int Linear_EQS::Solver(bool compress)
 {
+	(void)compress;
 #define ENABLE_COMPRESS_EQS
 #ifndef ENABLE_COMPRESS_EQS
 	compress = false;
