@@ -153,8 +153,7 @@ public:
 	typedef std::pair<std::string, std::string> Para;
 	std::vector<Para> vec_para;
 
-	void VectorCreate(PetscInt m);
-	void MatrixCreate(PetscInt m, PetscInt n);
+	void CreateMatrix(PetscInt m, PetscInt n);
 
 	IS is_global_node_id, is_local_node_id;
 };
