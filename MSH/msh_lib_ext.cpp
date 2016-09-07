@@ -545,6 +545,36 @@ int CFEMesh::calMaximumConnectedNodes()
 	return global_max;
 }
 
+int CFEMesh::calMaximumConnectedLocalNodes()
+{
+	size_t max_connected_nodes = 0;
+	for (CNode* node : nod_vector)
+	{
+		size_t cnt = 0;
+		for (auto node_id : node->getConnectedNodes())
+			if (this->isNodeLocal(node_id))
+				cnt++;
+		max_connected_nodes = std::max(max_connected_nodes, cnt);
+	}
+	ScreenMessage2d("-> max. connected local nodes = %d\n", max_connected_nodes);
+	return max_connected_nodes;
+}
+
+int CFEMesh::calMaximumConnectedGhostNodes()
+{
+	size_t max_connected_nodes = 0;
+	for (auto node : nod_vector)
+	{
+		size_t cnt = 0;
+		for (auto node_id : node->getConnectedNodes())
+			if (!this->isNodeLocal(node_id))
+				cnt++;
+		max_connected_nodes = std::max(max_connected_nodes, cnt);
+	}
+	ScreenMessage2d("-> max. connected ghost nodes = %d\n", max_connected_nodes);
+	return max_connected_nodes;
+}
+
 int CFEMesh::getMaxNumNodesOfElement(bool quadratic) const
 {
 	int max_nnodes = 0;
