@@ -1022,6 +1022,7 @@ int Linear_EQS::solveWithParalution(bool /*compress*/)
 
 int Linear_EQS::Solver(bool compress)
 {
+	(void)compress;
 #define ENABLE_COMPRESS_EQS
 #ifndef ENABLE_COMPRESS_EQS
 	compress = false;

@@ -28,7 +28,7 @@
 
 namespace Math_Group
 {
-class SparseTable;
+struct SparseTable;
 
 class Linear_EQS
 {
