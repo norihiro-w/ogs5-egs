@@ -7,28 +7,14 @@
  *
  */
 
-//**************************************************************************
-/*!
-   \file msh_lib_ext.cpp
-
-   Define the member function of class CFEMesh for reading
-   subdomain mesh
-
-   02/2012 WW/
-   last modified
-*/
-//**************************************************************************
 #include "msh_lib.h"
 
-//#ifdef USET_PETSC
-// kg44 included for memcpy needed by petsc
-#include <stdio.h>
-#include <string.h>
-#include "petscksp.h"
-//#elif USE_MPI
-#include <mpi.h>
-//#endif
+#include <cstdio>
+#include <cstring>
 #include <sstream>
+
+#include <mpi.h>
+#include <petscksp.h>
 
 #include "StringTools.h"
 #include "display.h"
@@ -61,12 +47,10 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 	int tag[] = {0, 1, 2};
 	MPI_Status status;
 
-	ifstream is;
-#ifdef MULTI_MESH_FILE
-	stringstream ss(stringstream::in | stringstream::out);
-#endif
+	ifstream is; // only root opens the file
 
-	if (myrank == 0)
+	const bool isRoot = (myrank == 0);
+	if (isRoot)
 	{
 		std::string str_var = file_base_name + "_partitioned.msh";
 		is.open(str_var.c_str());
@@ -109,92 +93,64 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 	mesh_vec.push_back(mesh);
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	ScreenMessage("-> Parallel reading the partitioned mesh\n");
+	ScreenMessage("-> reading the partitioned mesh\n");
 	for (int i = 0; i < mysize; i++)
 	{
-		if (myrank == 0)
+		// read a subdomain for rank i
+		//-------------------------------------------------------------------------
+		// root reads the header and boradcasts
+		if (isRoot)
 		{
-#ifdef MULTI_MESH_FILE
-			ss.clear();
-			ss.str("");
-			ss << i;
-			str_var = file_base_name + "_" + ss.str() + ".msh";
-
-			is.open(str_var.c_str());
-			getline(is, str_var);
-#endif
-
-			// cout<<"-->Parallel reading the partitioned mesh: "<<i<<endl;
-
 			for (int j = 0; j < nheaders; j++)
 				is >> mesh_header[j];
 			is >> ws;
 		}
 		MPI_Bcast(mesh_header, nheaders, MPI_INT, 0, MPI_COMM_WORLD);
+
 		if (i == myrank)
 		{
+			// debug output
 			std::stringstream ss;
 			for (int j = 0; j < nheaders; j++)
 				ss << mesh_header[j] << " ";
 			ScreenMessage2d("-> header: %s\n", ss.str().c_str());
 		}
-		// cout<<"\ncccccccccc "<<mesh_header[0]<<"    "<<mesh_header[1]
-		//	<<"   " <<mesh_header[2]<<"  "<<mesh_header[3]<<endl;
 
 		//-------------------------------------------------------------------------
 		// Node
-		s_nodes =
-		    (MeshNodes*)realloc(s_nodes, sizeof(MeshNodes) * mesh_header[0]);
-		if (i > 0) BuildNodeStruc(s_nodes, &MPI_node);
+		int n_subdomain_nodes = mesh_header[0];
+		s_nodes = (MeshNodes*)realloc(s_nodes, sizeof(MeshNodes) * n_subdomain_nodes);
 
-		if (myrank == 0)
+		if (i > 0) // no need to broadcast if rank i is root
+			BuildNodeStruc(s_nodes, &MPI_node);
+
+		// root reads node data and broadcasts to rank-i
+		if (isRoot)
 		{
-			// Nodes
-			for (int k = 0; k < mesh_header[0]; k++)
+			for (int k = 0; k < n_subdomain_nodes; k++)
 			{
 				MeshNodes* anode = &s_nodes[k];
 				is >> anode->index;
 				is >> anode->x >> anode->y >> anode->z >> ws;
 			}
-			/*
-			//TEST
-			for(k=0; k<mesh_header[0]; k++)
-			{
-			MeshNodes *anode = &s_nodes[k];
-			cout<<anode->index<<" ";
-
-			cout<<anode->x<<" "<<anode->y<<" "<<anode->z<<endl;
-
-			}
-			*/
 			if (i == 0)
 			{
-				mesh->setSubdomainNodes(&mesh_header[0], s_nodes);
+				mesh->setSubdomainNodes(mesh_header, s_nodes);
 			}
 			else
 			{
-				MPI_Send(s_nodes, mesh_header[0], MPI_node, i, tag[0],
-				         MPI_COMM_WORLD);
+				MPI_Send(s_nodes, n_subdomain_nodes, MPI_node, i, tag[0], MPI_COMM_WORLD);
 			}
 		}
 
+		// rank-i recieve the node data
 		if (i > 0)
 		{
 			if (myrank == i)
 			{
-				MPI_Recv(s_nodes, mesh_header[0], MPI_node, 0, tag[0],
+				MPI_Recv(s_nodes, n_subdomain_nodes, MPI_node, 0, tag[0],
 				         MPI_COMM_WORLD, &status);
 				mesh->setSubdomainNodes(mesh_header, s_nodes);
-
-				/*
-				//TEST
-				for(k=0; k<mesh_header[0]; k++)
-				{
-				    MeshNodes *anode = &s_nodes[k];
-				    cout<<anode->index<<" ";
-				    cout<<anode->x<<" "<<anode->y<<" "<<anode->z<<endl;
-				}
-				*/
 			}
 		}
 
@@ -204,7 +160,7 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 		elem_info = (int*)realloc(elem_info, sizeof(int) * size_elem_info);
 		for (int ii = 0; ii < size_elem_info; ii++)
 			elem_info[ii] = -1;
-		if (myrank == 0)
+		if (isRoot)
 		{
 			int counter = mesh_header[2];
 			for (int j = 0; j < mesh_header[2]; j++)
@@ -319,9 +275,11 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 
 	if (mysize > 1) MPI_Type_free(&MPI_node);
 
+	//-------------------------------------------------------------------------------------
+	ScreenMessage("-> global: nnodes_l=%d, nnodes_g=%d\n", mesh->getNumNodesGlobal(), mesh->getNumNodesGlobal_Q());
 	MPI_Barrier(MPI_COMM_WORLD);
 	ScreenMessage2(
-	    "-> nelements_g=%d, nnodes_gl=%d, nnodes_gq=%d, nnodes_ll=%d, "
+	    "-> nelements=%d, nnodes=%d, nnodes_q=%d, nnodes_ll=%d, "
 	    "nnodes_lq=%d\n",
 	    mesh->getElementVector().size(), mesh->GetNodesNumber(false),
 	    mesh->GetNodesNumber(true), mesh->getNumNodesLocal(),
@@ -581,7 +539,6 @@ int CFEMesh::calMaximumConnectedNodes()
 		max_connected_nodes = std::max(max_connected_nodes, node->getNumConnectedNodes());
 	}
 	ScreenMessage2d("-> max. connected nodes = %d\n", max_connected_nodes);
-
 	int local_max = max_connected_nodes;
 	int global_max = 0;
 	MPI_Allreduce(&local_max, &global_max, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
