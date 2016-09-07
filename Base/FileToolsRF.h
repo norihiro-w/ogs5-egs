@@ -18,6 +18,7 @@
 /* Andere oeffentlich benutzte Module */
 #include "Configure.h"
 #include <cstdio>
+#include <iostream>
 #include <string>
 //#include <fstream>
 
@@ -135,6 +136,8 @@ extern std::string get_sub_string2(const std::string&, const std::string&,
                                    std::string*);
 extern bool SubKeyword(const std::string&);
 extern bool Keyword(const std::string&);
+
+extern std::ios::pos_type GetNextSubKeyword(std::ifstream* file, std::string* line, bool* keyword);
 
 extern std::string GetLineFromFile1(std::ifstream*);
 extern int GetLineFromFile(char*, std::ifstream*);

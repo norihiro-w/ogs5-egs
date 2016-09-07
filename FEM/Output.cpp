@@ -1494,7 +1494,6 @@ double COutput::NODWritePLYDataTEC(int number)
 	// Write data
 	//======================================================================
 	double flux_sum = 0.0;  // OK
-	double flux_nod;
 
 	m_msh->SwitchOnQuadraticNodes(false);  // WW
 	// NOD at PLY
@@ -1592,8 +1591,12 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 {
 	const long msh_node_number(
 	    m_msh->GetNODOnPNT(static_cast<const GEOLIB::Point*>(getGeoObj())));
-	if (msh_node_number < 0)  // 11.06.2012. WW
+	if (msh_node_number < 0)  {
+#ifndef USE_PETSC
+		ScreenMessage2("No Node found for %s\n", geo_name.data());
+#endif
 		return;
+	}
 	ScreenMessage2("Node %d found for %s\n", msh_node_number, geo_name.data());
 
 #ifdef USE_PETSC
@@ -1672,33 +1675,19 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 		}
 		tec_file << "\"TIME\"";
 
-		//    if(pcs_type_name.compare("RANDOM_WALK")==0)
 		if (getProcessType() == FiniteElement::RANDOM_WALK)
 			tec_file << "leavingParticles ";
-		for (size_t k = 0; k < no_variables; k++)  // WW
+		for (size_t k = 0; k < no_variables; k++)
 		{
 			tec_file << sep << "\"" << _nod_value_vector[k] << "\"";
-			//-------------------------------------WW
 			m_pcs = GetPCS(_nod_value_vector[k]);
 			if (m_pcs && m_pcs->type == 1212 &&
 			    _nod_value_vector[k].find("SATURATION") != string::npos)
 				tec_file << "SATURATION2 ";
-			//-------------------------------------WW
 		}
-		// OK411
-		for (size_t k = 0; k < mfp_value_vector.size(); k++)
-			// NB MFP data names for multiple phases
-			tec_file << " \"" << mfp_value_vector[k] << "\"" << sep;
-//
-#ifdef RFW_FRACTURE
-		for (i = 0; i < (int)mmp_vector.size(); ++i)
-			if (mmp_vector[i]->frac_num > 0)
-				for (int j = 0; j < mmp_vector[i]->frac_num; ++j)
-					tec_file << mmp_vector[i]->frac_names[j] << "_k "
-					         << mmp_vector[i]->frac_names[j] << "_aper "
-					         << mmp_vector[i]->frac_names[j] << "_closed ";
 
-#endif
+		for (size_t k = 0; k < mfp_value_vector.size(); k++)
+			tec_file << " \"" << mfp_value_vector[k] << "\"" << sep;
 
 		if (dm_pcs && !isCSV)
 			tec_file << " p_(1st_Invariant) "
@@ -1728,7 +1717,7 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 	size_t ns = 4;
 	int stress_i[6], strain_i[6];
 	double ss[6];
-	if (dm_pcs)  // WW
+	if (dm_pcs)
 	{
 		stress_i[0] = dm_pcs->GetNodeValueIndex("STRESS_XX");
 		stress_i[1] = dm_pcs->GetNodeValueIndex("STRESS_YY");
@@ -1761,109 +1750,72 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 	int timelevel;
 	CRFProcess* m_pcs_out = NULL;
 
-	// fetch geometric entities, especial the associated GEOLIB::Point vector
 	if (pcs_vector[0] == NULL) return;
-
-	// 11.06.2012. WW// long msh_node_number(m_msh->GetNODOnPNT(
-	//                             static_cast<const GEOLIB::Point*>
-	//                             (getGeoObj())));
 
 	// Mass transport
 	if (getProcessType() == FiniteElement::MASS_TRANSPORT)
+	{
 		for (size_t i = 0; i < _nod_value_vector.size(); i++)
 		{
 			std::string nod_value_name = _nod_value_vector[i];
 			for (size_t l = 0; l < pcs_vector.size(); l++)
 			{
 				m_pcs = pcs_vector[l];
-				//				if (m_pcs->pcs_type_name.compare("MASS_TRANSPORT")
-				//==
-				// 0) { TF
-				if (m_pcs->getProcessType() == FiniteElement::MASS_TRANSPORT)
+				if (m_pcs->getProcessType() != FiniteElement::MASS_TRANSPORT)
+					continue;
+
+				timelevel = 0;
+				for (size_t m = 0; m < m_pcs->nod_val_name_vector.size(); m++)
 				{
-					timelevel = 0;
-					for (size_t m = 0; m < m_pcs->nod_val_name_vector.size();
-					     m++)
-						if (m_pcs->nod_val_name_vector[m].compare(
-						        nod_value_name) == 0)
+					if (m_pcs->nod_val_name_vector[m].compare(nod_value_name) == 0)
+					{
+						m_pcs_out = PCSGet(FiniteElement::MASS_TRANSPORT, nod_value_name);
+						if (timelevel == 1)
 						{
-							//							m_pcs_out =
-							//PCSGet(pcs_type_name,
-							// nod_value_name);
-							m_pcs_out = PCSGet(FiniteElement::MASS_TRANSPORT,
-							                   nod_value_name);
-							if (timelevel == 1)
-							{
-								int nidx = m_pcs_out->GetNodeValueIndex(
-								               nod_value_name) +
-								           timelevel;
-								tec_file << sep
-								         << m_pcs_out->GetNodeValue(
-								                msh_node_number, nidx);
-							}
-							timelevel++;
+							int nidx = m_pcs_out->GetNodeValueIndex(nod_value_name) + timelevel;
+							tec_file << sep << m_pcs_out->GetNodeValue(msh_node_number, nidx);
 						}
+						timelevel++;
+					}
 				}
 			}
 		}
+	}
 	else
 	{
 		double flux_nod, flux_sum = 0.0;
 		for (size_t i = 0; i < _nod_value_vector.size(); i++)
 		{
-			// PCS
 			if (!(_nod_value_vector[i].compare("FLUX") == 0))  // JOD separate infiltration
-				                                   // flux output in overland
-				                                   // flow
 
 				m_pcs = GetPCS(_nod_value_vector[i]);
 			else
 				m_pcs = GetPCS();
+
 			if (!m_pcs)
 			{
-				cout << "Warning in COutput::NODWritePLYDataTEC - no PCS data"
-				     << endl;
-				tec_file
-				    << "Warning in COutput::NODWritePLYDataTEC - no PCS data"
-				    << "\n";
+				cout << "Warning in COutput::NODWritePLYDataTEC - no PCS data" << endl;
+				tec_file << "Warning in COutput::NODWritePLYDataTEC - no PCS data" << "\n";
 				return;
 			}
 			//..................................................................
 			// PCS
 			if (!(_nod_value_vector[i].compare("FLUX") == 0))  // JOD separate infiltration
-			                                       // flux output in overland
-			                                       // flow
 			{
-				//-----------------------------------------WW
-				double val_n =
-				    m_pcs->GetNodeValue(msh_node_number, NodeIndex[i]);
+				double val_n = m_pcs->GetNodeValue(msh_node_number, NodeIndex[i]);
 				tec_file << sep << val_n;
 				m_pcs = GetPCS(_nod_value_vector[i]);
 				if (m_pcs->type == 1212 &&
 				    (_nod_value_vector[i].find("SATURATION") != string::npos))
 					tec_file << 1. - val_n << " ";
-				//-----------------------------------------WW
 			}
 			else
 			{
 				flux_nod = NODFlux(msh_node_number);
 				tec_file << flux_nod << " ";
-				// flux_sum += abs(m_pcs->eqs->b[gnode]);
 				flux_sum += abs(flux_nod);
-				// OK cout << gnode << " " << flux_nod << " " << flux_sum <<
-				// endl;
 			}
 		}
-//....................................................................
-#ifdef RFW_FRACTURE
-		for (i = 0; i < (int)mmp_vector.size(); ++i)
-			if (mmp_vector[i]->frac_num > 0)
-				for (int j = 0; j < mmp_vector[i]->frac_num; ++j)
-					tec_file << mmp_vector[i]->frac_perm[j] << " "
-					         << mmp_vector[i]->avg_aperture[j] << " "
-					         << mmp_vector[i]->closed_fraction[j] << " ";
-
-#endif
 		//....................................................................
 		if (dm_pcs && !isCSV)
 		{
@@ -1887,9 +1839,7 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 			tec_file
 			    << MFPGetNodeValue(
 			           msh_node_number, mfp_value_vector[k],
-			           atoi(&mfp_value_vector[k][mfp_value_vector[k].size() -
-			                                     1]) -
-			               1) << " ";  // NB
+			           atoi(&mfp_value_vector[k][mfp_value_vector[k].size() - 1]) - 1) << " ";
 	}
 	tec_file << "\n";
 	//----------------------------------------------------------------------

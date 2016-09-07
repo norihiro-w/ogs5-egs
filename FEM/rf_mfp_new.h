@@ -161,8 +161,8 @@ private:
 	// compressibility
 	int compressibility_model_pressure;     // NB
 	int compressibility_model_temperature;  // NB
-	int compressibility_pressure;           // NB
-	int compressibility_temperature;        // NB
+	double compressibility_pressure = 0;           // NB
+	double compressibility_temperature;        // NB
 	int JTC;                                // NB
 
 	int phase;

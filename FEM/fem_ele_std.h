@@ -199,7 +199,6 @@ private:
 	//      */
 	//     ProcessType _pcs_type; // TF
 
-	bool dynamic;
 	CRFProcess* mfp_pcs;
 	SolidProp::CSolidProperties* SolidProp;
 	CFluidProperties* FluidProp;

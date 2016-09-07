@@ -237,6 +237,7 @@ extern void MNulleMat(double* vec, long m, long n);
 extern double MXPGaussPkt(long grd, long pkt);
 /* Punkte fuer die X Punkt Gauss-Integration */
 extern double MXPGaussFkt(long grd, long pkt);
+extern double MXPGaussFktTri(int anzgptri, long pkt);
 
 extern void realCoordTriHQ(double* x, const double* XY, const double* u);
 
@@ -278,6 +279,7 @@ extern void GradShapeFunctionPri(double* dN, const double* x);
 extern void GradShapeFunctionPriHQ(double* dN, const double* u);
 extern void GradShapeFunctionPyra(double* dN, const double* x);
 extern void GradShapeFunctionPyraHQ13(double* dN, const double* u);
+
 
 extern double pai;
 

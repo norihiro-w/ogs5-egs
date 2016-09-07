@@ -94,6 +94,7 @@ void getNodesOnDistribution(DistributionData& dis_data,
 			//#endif
 			std::vector<size_t> msh_nod_vec;
 			msh.GetNODOnSFC(sfc, msh_nod_vec);
+			ScreenMessage2("-> %d nodes found for SURFACE %s\n", msh_nod_vec.size(), dis_data.geo_name.c_str());
 			//#ifndef NDEBUG
 			//					debug_fname = "MeshNodesNew-BC-" + sfc_name +
 			//".gli";

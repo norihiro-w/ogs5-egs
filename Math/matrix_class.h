@@ -167,8 +167,32 @@ public:
 	}
 	virtual void operator=(const vec<T>&);
 	virtual void resize(int newh);
-	virtual T& operator[](size_t i) { return (T&)_entry[i]; }
-	virtual const T& operator[](size_t i) const { return (const T&)_entry[i]; }
+	virtual T& operator[](size_t i)
+	{
+//#define gDEBUG
+#ifdef gDEBUG
+		if (i >= _size)
+		{
+			std::cout << "\n Index exceeds the size of the matrix"
+			          << "\n";
+			abort();
+		}
+#endif
+		return (T&)_entry[i];
+	}
+	virtual const T& operator[](size_t i) const
+	{
+#ifdef gDEBUG
+		if (i >= _size)
+		{
+			std::cout << "\n Index exceeds the size of the matrix"
+			          << "\n";
+			abort();
+		}
+#endif
+#undef gDEBUG
+		return (const T&)_entry[i];
+	}
 	virtual size_t Size() const { return _size; }
 
 	T* Entry() { return _entry; }
