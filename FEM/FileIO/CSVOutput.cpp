@@ -427,6 +427,3 @@ void CSVOutput::writePoyline(COutput* output,
 		writeLine(os, tmp_values, delim);
 	}
 }
-
-#endif
-
