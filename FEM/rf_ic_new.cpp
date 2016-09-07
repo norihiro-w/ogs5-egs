@@ -522,7 +522,6 @@ void CInitialCondition::Set(int nidx)
 		{
 			case GEOLIB::POINT:
 				SetPoint(nidx);
-				std::cout << "WARNING: CInitialCondition::Set - ToDo" << endl;
 				break;
 			case GEOLIB::POLYLINE:
 				SetPolyline(nidx);
@@ -695,20 +694,20 @@ void CInitialCondition::SetEle(int nidx)
 	switch (getGeoType())
 	{
 		case GEOLIB::POINT:
-			std::cout << "Warning CInitialCondition::Set - ToDo"
+			std::cout << "Warning CInitialCondition::SetEle - ToDo"
 			          << "\n";
 			break;
 		case GEOLIB::POLYLINE:
 			// SetPolyline(nidx);
-			std::cout << "Warning CInitialCondition::Set - ToDo"
+			std::cout << "Warning CInitialCondition::SetEle - ToDo"
 			          << "\n";
 			break;
 		case GEOLIB::SURFACE:
-			std::cout << "Warning CInitialCondition::Set - ToDo"
+			std::cout << "Warning CInitialCondition::SetEle - ToDo"
 			          << "\n";
 			break;
 		case GEOLIB::VOLUME:
-			std::cout << "Warning CInitialCondition::Set - ToDo"
+			std::cout << "Warning CInitialCondition::SetEle - ToDo"
 			          << "\n";
 			break;
 		case GEOLIB::GEODOMAIN:
