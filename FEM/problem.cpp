@@ -298,24 +298,15 @@ Problem::Problem(char* filename)
 		buffer_array = NULL;
 	buffer_array1 = NULL;
 	//========================================================================
-	CRFProcessDeformation* dm_pcs = NULL;
 
-	//  //WW
 	for (size_t i = 0; i < no_processes; i++)
 	{
 		m_pcs = pcs_vector[i];
-		m_pcs->CalcSecondaryVariables(true);  // WW
-		m_pcs->Extropolation_MatValue();      // WW
+		m_pcs->CalcSecondaryVariables(true);
+		m_pcs->Extropolation_MatValue();
 	}
-	// Calculation of the initial stress and released load for excavation
-	// simulation
-	// 07.09.2007  WW
-	// Excavation for defromation
-	dm_pcs = (CRFProcessDeformation*)total_processes[12];
-	if (dm_pcs) dm_pcs->CreateInitialState4Excavation();
 
 #ifdef OGS_DELETE_EDGES_AFTER_INIT
-	// Free memory occupied by edges. 09.2012. WW
 	if (!fluid_mom_pcs)
 	{
 		for (size_t k = 0; k < fem_msh_vector.size(); k++)
