@@ -36,9 +36,6 @@ class CRFProcessDeformation;
 using namespace FiniteElement;
 using namespace Math_Group;
 
-namespace SolidProp
-{
-
 class CSolidProperties
 {
 private:
@@ -212,7 +209,7 @@ public:
 	// 1. Elasticity
 	void Calculate_Lame_Constant();
 	// For thermal elastic model
-	void ElasticConsitutive(const int Dimension, Matrix* D_e) const;
+	void ElasticConstitutive(const int Dimension, Matrix* D_e) const;
 	// For transverse isotropic linear elasticity: UJG 24.11.2009
 	void ElasticConstitutiveTransverseIsotropic(const int Dimension);
 	Matrix* getD_tran() const { return D_tran; }
@@ -223,7 +220,7 @@ public:
 	double GetYieldCoefficent_DP(const double Angle);
 	void CalulateCoefficent_DP();
 	bool StressIntegrationDP(const int GPiGPj, const ElementValue_DM* ele_val,
-	                         double* TryStress, double& dPhi, const int Update);
+	                         double* TryStress, double& dPhi, const int Update, double Tolerance_Local_Newton);
 	void ConsistentTangentialDP(Matrix* Dep, const double dPhi, const int Dim);
 	bool DirectStressIntegrationDP(const int GPiGPj,
 	                               const ElementValue_DM* ele_val,
@@ -261,10 +258,12 @@ public:
 	           const double* S_Invariants, const double* MatN1,
 	           const int LengthStrs);
 
+#if 0
 	int CalStress_and_TangentialMatrix_SYS(const int GPiGPj,
 	                                       const ElementValue_DM* ele_val,
 	                                       const Matrix* De, Matrix* D_ep,
 	                                       double* dStress, const int Update);
+#endif
 	// 2.2 Cam-clay model
 	void CalStress_and_TangentialMatrix_CC(const int GPiGPj,
 	                                       const ElementValue_DM* ele_val,
@@ -352,12 +351,12 @@ public:
 	// WW
 	std::vector<std::string> conductivity_pcs_name_vector;
 };
-}  // end namespace
-extern std::vector<SolidProp::CSolidProperties*> msp_vector;
+
+extern std::vector<CSolidProperties*> msp_vector;
 extern bool MSPRead(std::string file_base_name);
 extern void MSPWrite(std::string);
 extern void MSPDelete();
-extern SolidProp::CSolidProperties* MSPGet(std::string);
+extern CSolidProperties* MSPGet(std::string);
 
 extern double StressNorm(const double* s, const int Dim);
 extern double TensorMutiplication2(const double* s1, const double* s2,

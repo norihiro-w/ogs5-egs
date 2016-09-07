@@ -186,7 +186,15 @@ std::ios::pos_type CFluidProperties::Read(std::ifstream* mfp_file)
 		}
 		//....................................................................
 		// NB Oct-2009
-		if (line_string.find("$COMPRESSIBILITY") != string::npos)
+		if (line_string == "$COMPRESSIBILITY_P")
+		{
+			in.str(GetLineFromFile1(mfp_file));
+			in >> compressibility_model_pressure;  // sub_line 1 for first phase
+			in >> compressibility_pressure;        // sub_line 1
+			in.clear();
+			continue;
+		}
+		if (line_string == "$COMPRESSIBILITY")
 		{
 			in.str(GetLineFromFile1(mfp_file));
 			in >> compressibility_model_pressure;  // sub_line 1 for first phase
@@ -2098,7 +2106,7 @@ double MFPCalcFluidsHeatCapacity(CFiniteElementStd* assem, double* var)
 	{
 		//
 		// if (m_pcs->pcs_type_name.find("MULTI_PHASE_FLOW")!=string::npos)
-		if (m_pcs && m_pcs->type == 1212)  // non-isothermal multi-phase flow
+		if (m_pcs && m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)  // non-isothermal multi-phase flow
 		{
 			// Capillary pressure
 			PG = assem->interpolate(assem->NodalValC1);

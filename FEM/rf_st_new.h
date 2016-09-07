@@ -120,13 +120,7 @@ public:
 
 	void SetNOD();
 
-	// 23.02.2009. WW
 	void DirectAssign(const long ShiftInNodeVector);
-
-	// 03.2010. WW
-	std::string DirectAssign_Precipitation(double current_time);
-
-	double getCoupLeakance() const;
 
 	const std::vector<double>& getDistribution() const { return DistribedBC; }
 
@@ -307,8 +301,6 @@ private:
 	void SetDMN(CSourceTerm* m_st, const int ShiftInNodeVector);
 	// JOD
 	void SetSFC(CSourceTerm* m_st, const int ShiftInNodeVector);
-	// JOD
-	void SetCOL(CSourceTerm* m_st, const int ShiftInNodeVector);
 
 	// JOD
 	//      void SetPolylineNodeVector(CGLPolyline* m_ply,
@@ -364,7 +356,7 @@ extern CSourceTermGroup* STGetGroup(std::string pcs_type_name,
                                     std::string pcs_pv_name);
 extern std::list<CSourceTermGroup*> st_group_list;
 
-class DistributionData;
+struct DistributionData;
 void setDistributionData(CSourceTerm* st, DistributionData& distData);
 
 /**

@@ -18,6 +18,7 @@
 
 #include "Curve.h"
 
+#include "ElementValueDM.h"
 #include "fem_ele_std.h"
 #include "fem_ele_vec.h"
 #include "rf_pcs.h"
@@ -27,12 +28,10 @@
 
 using namespace std;
 
-vector<SolidProp::CSolidProperties*> msp_vector;
+vector<CSolidProperties*> msp_vector;
 
 using FiniteElement::ElementValue_DM;
 
-namespace SolidProp
-{
 /**************************************************************************
    FEMLib-Method:
    Task: OBJ read function
@@ -1236,7 +1235,7 @@ void CSolidProperties::Calculate_Lame_Constant()
    11/2003   WW   Set plastic parameter
 
 *************************************************************************/
-void CSolidProperties::ElasticConsitutive(const int Dimension,
+void CSolidProperties::ElasticConstitutive(const int Dimension,
                                           Matrix* D_e) const
 {
 	(*D_e) = 0.0;
@@ -1774,7 +1773,7 @@ void CSolidProperties::CalculateCoefficent_HOEKBROWN()  // WX: 02.2011
 bool CSolidProperties::StressIntegrationDP(const int GPiGPj,
                                            const ElementValue_DM* ele_val,
                                            double* TryStress, double& dPhi,
-                                           const int Update)
+                                           const int Update, double Tolerance_Local_Newton)
 {
 	int i = 0;
 	double I1 = 0.0;
@@ -1826,7 +1825,7 @@ bool CSolidProperties::StressIntegrationDP(const int GPiGPj,
 	if (F0 <= (*ele_val->y_surface)(GPiGPj))  // unloading
 		F = -1.0;
 	//
-	if (F > 0.0 && (!PreLoad))  // in yield status
+	if (F > 0.0)  // in yield status
 	{
 		ploading = true;
 		// err = 1.0e+5;
@@ -1984,7 +1983,7 @@ bool CSolidProperties::DirectStressIntegrationDP(const int GPiGPj,
 	//  F = -1.0;
 	if (sy <= sy0)  // unloading
 		F = -1.0;
-	if (F > 0.0 && (!PreLoad))  // in yield status
+	if (F > 0.0)  // in yield status
 	{
 		if (ep < MKleinsteZahl)  // Elastic in previous load step
 			R = F / (sy - sy0);
@@ -2124,7 +2123,7 @@ int CSolidProperties::DirectStressIntegrationDPwithTension(
 
 	if (tmpvalue == 0) Ft = F = -1;
 
-	if (F > 0.0 && (!PreLoad))
+	if (F > 0.0)
 	{
 		// return to Fs
 		Matrix* tmpMatrix = new Matrix(Size, Size);
@@ -2648,7 +2647,6 @@ int CSolidProperties::DirectStressIntegrationMOHR(
 	double TmpValue1, TmpValue2, dstrNorm = 0;
 	// double LodeAngle, I1, J2, J3;
 	double shearsurf, tensionsurf, ep;
-	LoadFactor = 1.;
 
 	// initialize all vectors
 	double dstrs[6] = {0.}, TmpStress[6] = {0.}, prin_str[6] = {0.},
@@ -3726,6 +3724,7 @@ void CSolidProperties::ResizeMatricesSYS(const int Dim)
 	}
 }
 
+#if 0
 /**************************************************************************
    ROCKFLOW - Funktion: CSolidProperties::CalStress_and_TangentialMatrix_SYS
 
@@ -3878,7 +3877,7 @@ int CSolidProperties::CalStress_and_TangentialMatrix_SYS(
 	if (pcs_deformation == 1) F = -1.0;
 
 	PLASTIC = 0;
-	if (F > TolF && !PreLoad) /* In Yield Status */
+	if (F > TolF) /* In Yield Status */
 	{
 		PLASTIC = 1;
 		subPLASTIC = 0;
@@ -4542,6 +4541,7 @@ int CSolidProperties::CalStress_and_TangentialMatrix_SYS(
 
 	return PLASTIC;
 }
+#endif
 
 /**************************************************************************
    ROCKFLOW - Funktion: CSolidProperties::dF_dNStress
@@ -5275,6 +5275,7 @@ point
 **************************************************************************/
 //#define New
 #define associative
+#if 0
 void CSolidProperties::CalStress_and_TangentialMatrix_CC(
     const int GPiGPj,
     const ElementValue_DM* ele_val,
@@ -5389,7 +5390,7 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC(
 		F = -1.0;
 	// TEST CAM-CLAY
 	if (p_tr < 0) F = -1.0;
-	if (F > 0.0 && !PreLoad)  // in yield status
+	if (F > 0.0)  // in yield status
 	{
 		// Local Newton-Raphson procedure to compute the volume plastic strain
 		vep = 0.0;
@@ -5937,7 +5938,7 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC_SubStep(
 		// TEST CAM-CLAY
 		if (p_tr < 0) F = -1.0;
 
-		if (F > f_tol && !PreLoad)  // in yield status
+		if (F > f_tol)  // in yield status
 		{
 			// Local Newton-Raphson procedure to compute the volume plastic
 			// strain
@@ -6154,6 +6155,8 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC_SubStep(
 	//    dStrain[i] -= (*data_Plasticity)(6+i); // Initial stress
 	//
 }
+#endif
+
 /**************************************************************************
    FEMLib-Method:
    Task: Caculate increment of strain deduced by creep
@@ -6460,7 +6463,6 @@ double CSolidProperties::TEPSwellingParameter(const double mean_stress)
 	return val * (*data_Youngs)(2) * exp((*data_Youngs)(4) * suction) /
 	       (3. + 3. * e0);
 }
-}  // end namespace
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -6478,7 +6480,7 @@ bool MSPRead(std::string file_base_name)
 	//----------------------------------------------------------------------
 	// OK  MSPDelete();
 	//----------------------------------------------------------------------
-	SolidProp::CSolidProperties* m_msp = NULL;
+	CSolidProperties* m_msp = NULL;
 	char line[MAX_ZEILE];
 	std::string sub_line;
 	std::string line_string;
@@ -6506,7 +6508,7 @@ bool MSPRead(std::string file_base_name)
 		// keyword found
 		if (line_string.find("#SOLID_PROPERTIES") != std::string::npos)
 		{
-			m_msp = new SolidProp::CSolidProperties();
+			m_msp = new CSolidProperties();
 			m_msp->file_base_name = file_base_name;
 			position = m_msp->Read(&msp_file);
 			msp_vector.push_back(m_msp);
@@ -6692,7 +6694,7 @@ void MSPDelete()
 **************************************************************************/
 void MSPWrite(std::string base_file_name)
 {
-	SolidProp::CSolidProperties* m_msp = NULL;
+	CSolidProperties* m_msp = NULL;
 	//----------------------------------------------------------------------
 	// File handling
 	std::fstream msp_file;
@@ -6719,9 +6721,9 @@ void MSPWrite(std::string base_file_name)
    FEMLib-Method:
    07/2007 OK Implementation
 **************************************************************************/
-SolidProp::CSolidProperties* MSPGet(std::string mat_name)
+CSolidProperties* MSPGet(std::string mat_name)
 {
-	SolidProp::CSolidProperties* m_msp = NULL;
+	CSolidProperties* m_msp = NULL;
 	for (int i = 0; i < (int)msp_vector.size(); i++)
 	{
 		m_msp = msp_vector[i];

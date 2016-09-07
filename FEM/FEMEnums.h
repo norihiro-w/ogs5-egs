@@ -318,7 +318,7 @@ std::string convertTimTypeToString(TimType st_type);
 
 enum NonlinearSolverType
 {
-	INVALID_NL_TYPE = -1,
+	NL_LINEAR,
 	NL_PICARD,
 	NL_NEWTON
 };

@@ -9,19 +9,24 @@
 // ** INCLUDES **
 #include "LegacyVtkInterface.h"
 
-#include "display.h"
-#include "FEMEnums.h"
-#include "ProcessInfo.h"
-#include "fem_ele_std.h"
-#include "matrix_class.h"
-#include "msh_lib.h"
-#include "msh_mesh.h"
-#include "rf_mmp_new.h"  // this is for class CMediumProperties, what else???
-#include "rf_pcs.h"
-#include "rf_pcs.h"
-
 #include <string>
 #include <iomanip>
+
+#include "display.h"
+#include "makros.h"
+
+#include "matrix_class.h"
+
+#include "msh_lib.h"
+#include "msh_mesh.h"
+
+#include "FEMEnums.h"
+#include "fem_ele_std.h"
+#include "ProcessInfo.h"
+#include "ElementValue.h"
+#include "rf_mmp_new.h"
+#include "rf_pcs.h"
+
 
 #if defined(VTK_FOUND) && defined(OGS_USE_QT)
 #include "vtkMath.h"
@@ -1206,7 +1211,7 @@ void LegacyVtkInterface::WriteVTKDataArrays(fstream& vtk_file) const
 	CRFProcess* pcs = NULL;
 	if (!_pointArrayNames.empty())  // SB added
 		pcs = PCSGet(_pointArrayNames[0], true);
-	if (pcs && pcs->type == 1212)
+	if (pcs && pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)
 	{
 		size_t i = pcs->GetNodeValueIndex("SATURATION1", true);  // JT: Latest
 		vtk_file << "SCALARS SATURATION2 double 1"

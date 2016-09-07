@@ -47,10 +47,6 @@ int anz_kurven = 0;
 **************************************************************************/
 double GetCurveValue(int kurve, int methode, double punkt, int* gueltig)
 {
-	static long anz;
-	register long i;
-	static StuetzStellen* s;
-
 	if (kurve == 0)
 	{
 		*gueltig = 1;
@@ -68,11 +64,11 @@ double GetCurveValue(int kurve, int methode, double punkt, int* gueltig)
 	}
 #endif
 
-	anz = kurven[kurve].anz_stuetzstellen;
-	s = kurven[kurve].stuetzstellen;
+	long anz = kurven[kurve].anz_stuetzstellen;
+	StuetzStellen* s = kurven[kurve].stuetzstellen;
 	*gueltig = 1;
 
-	i = 1l;
+	long i = 1l;
 	while (punkt > s[i].punkt)
 		i++;
 	//

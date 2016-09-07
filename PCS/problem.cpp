@@ -30,6 +30,7 @@
 #include "msh_lib.h"
 #include "msh_node.h"
 
+#include "ElementValue.h"
 #include "fem_ele_std.h"
 #include "files0.h"
 #include "Output.h"
@@ -48,14 +49,6 @@
 #include "rf_tim_new.h"
 #include "tools.h"
 
-
-std::string FileName;
-std::string FilePath;
-
-#if defined(USE_MPI) || defined(USE_PETSC)
-int mysize;
-int myrank;
-#endif
 
 /**************************************************************************
    GeoSys - Function: Constructor
@@ -1232,10 +1225,9 @@ bool Problem::CouplingLoop()
 				Call_Member_FN(this, active_processes[index])();
 				a_pcs->first_coupling_iteration = false;  // No longer true.
 				// Check for break criteria
-				max_outer_error =
-				    MMax(max_outer_error, a_pcs->cpl_max_relative_error);
-				ScreenMessage("coupling error (relative to tolerance): %e\n",
-				              a_pcs->cpl_max_relative_error);
+				max_outer_error = MMax(max_outer_error, a_pcs->cpl_max_relative_error);
+				if (outer_index>0)
+					ScreenMessage("coupling error (relative to tolerance): %e\n", a_pcs->cpl_max_relative_error);
 				if (!a_pcs->TimeStepAccept())
 				{
 					if (a_pcs->tim_type == FiniteElement::TIM_STEADY)
@@ -1263,13 +1255,12 @@ bool Problem::CouplingLoop()
 		//
 		if (cpl_overall_max_iterations > 1)
 		{
-			ScreenMessage(
-			    "\n======================================================\n");
-			ScreenMessage("Outer coupling loop %d/%d: err=%g\n",
-			              outer_index + 1, cpl_overall_max_iterations,
-			              max_outer_error);
-			ScreenMessage(
-			    "======================================================\n");
+			ScreenMessage("\n======================================================\n");
+			if (outer_index == 0)
+				ScreenMessage("Outer coupling loop %d/%d\n", outer_index + 1, cpl_overall_max_iterations);
+			else
+				ScreenMessage("Outer coupling loop %d/%d: err=%g\n", outer_index + 1, cpl_overall_max_iterations, max_outer_error);
+			ScreenMessage("======================================================\n");
 		}
 		else
 		{
@@ -1346,7 +1337,7 @@ void Problem::PostCouplingLoop()
 	{
 		CRFProcessDeformation* dm_pcs =
 		    (CRFProcessDeformation*)(total_processes[12]);
-		if (H_Process && dm_pcs->type / 10 != 4)  // HM partitioned scheme
+		if (pcs_vector.size() > 1)
 			dm_pcs->ResetTimeStep();
 		dm_pcs->Extropolation_GaussValue();
 	}

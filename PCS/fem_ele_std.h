@@ -58,10 +58,7 @@ enum EnumProcessType
 };
 //-----------------------------------------------------
 
-namespace SolidProp
-{
 class CSolidProperties;
-}
 class CMediumProperties;
 class CFluidProperties;
 
@@ -200,13 +197,12 @@ private:
 	//     ProcessType _pcs_type; // TF
 
 	CRFProcess* mfp_pcs;
-	SolidProp::CSolidProperties* SolidProp;
+	CSolidProperties* SolidProp;
 	CFluidProperties* FluidProp;
 	CFluidProperties* GasProp;
 	CMediumProperties* MediaProp;
 	CMediumProperties* MediaProp1;  // Matrix for the dual model. YD/WW
-	SolidProp::CSolidProperties*
-	    SolidProp1;  // Matrix for the dual model. YD/WW
+	CSolidProperties* SolidProp1;  // Matrix for the dual model. YD/WW
 	CRFProcess* pcs;
 	CRFProcess* cpl_pcs;  // Pointer to coupled process. WW
 	CRFProcessDeformation* dm_pcs;
@@ -297,9 +293,9 @@ private:
 	// Assembly of parabolic equation
 	void AssembleParabolicEquation();  // OK4104
 	void AssembleMixedHyperbolicParabolicEquation();
-	void Assemble_strainCPL(
-	    const int phase = 0);  // Assembly of strain coupling
+	void Assemble_strainCPL(const int phase = 0);  // Assembly of strain coupling
 	void Assemble_strainCPL_Matrix(const double fac, const int phase = 0);
+	void Assemble_totalStressCPL(const int phase = 0);
 
 	void AssembleMassMatrix(int option);  // PCH
 	// Assembly of RHS by Darcy's gravity term
@@ -333,7 +329,7 @@ private:
 	void PrintTheSetOfElementMatrices(std::string mark);
 	// Friend classes, 01/07, WW
 	friend class ::CMediumProperties;
-	friend class SolidProp::CSolidProperties;
+	friend class ::CSolidProperties;
 	friend class ::CFluidProperties;
 	// Friend functions. WW
 	friend double ::MFPCalcFluidsHeatCapacity(CFiniteElementStd* assem,
@@ -372,29 +368,6 @@ private:
 	bool add2global;
 };
 
-// Vector for storing element values WW
-class ElementValue
-{
-public:
-	ElementValue(CRFProcess* m_pcs, MeshLib::CElem* ele);
-	~ElementValue();
-	void getIPvalue_vec(const int IP, double* vec);
-	// SB 09/2010
-	void getIPvalue_vec_phase(const int IP, int phase, double* vec);
-	void GetEleVelocity(double* vec);
-	Matrix Velocity;
-	Matrix Velocity0;
-
-private:
-	// Friend class
-	friend class ::CRFProcess;
-	friend class FiniteElement::CFiniteElementStd;
-	friend class ::COutput;  // OK
-	// Process
-	CRFProcess* pcs;
-	// Data
-	Matrix Velocity_g;
-};
 }  // end namespace
 
 /*------------------------------------------------------------------

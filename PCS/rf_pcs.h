@@ -185,7 +185,6 @@ public:
 	friend bool PCSRead(std::string);
 	//....................................................................
 	// 1-GEO
-	int ite_steps;  /// Newton step index;
 public:
 	int Phase_Transition_Model;  // BG, NB flag of Phase_Transition_Model
 	                             // (1...CO2-H2O-NaCl)
@@ -394,8 +393,6 @@ public:
 	int srand_seed;
 	const char* pcs_num_name[2];  // For monolithic scheme
 	FiniteElement::TimType tim_type;
-	const char* pcs_sol_name;
-	std::string cpl_type_name;
 	CNumerics* m_num;
 	//
 	bool selected;           // OK
@@ -520,11 +517,12 @@ public:
 	//  and it is related to ST, BC, IC, TIM and OUT. WW
 	void SetOBJNames();
 	// ST
-	void IncorporateSourceTerms(const int rank = -1);
+	void IncorporateSourceTerms();
 	void IncorporateBoundaryConditions(const int rank = -1,
 	                                   bool updateA = true,
 	                                   bool updateRHS = true,
-	                                   bool isResidual = false);
+	                                   bool isResidual = false,
+	                                   bool updateNodalValues = false);
 	// PCH for FLUID_MOMENTUM
 	void IncorporateBoundaryConditionsFM(const int rank, const int axis);
 #if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
@@ -625,6 +623,7 @@ public:
 	CRFProcess* CopyPCStoTH_PCS();
 	bool Check();
 
+	bool use_total_stress_coupling = false;
 	bool calcDiffFromStress0;
 	bool resetStrain;
 	bool scaleUnknowns;
@@ -720,7 +719,6 @@ extern double PCSGetELEValue(long index,
 extern void PCSRestart();
 // PCS global variables
 extern int pcs_no_components;
-extern int pcs_deformation;
 
 // ToDo
 // SB

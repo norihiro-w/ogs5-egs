@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-namespace Math_Group {class SparseTable; }
+namespace Math_Group {struct SparseTable; }
 namespace MeshLib {class CFEMesh; }
 class CRFProcess;
 

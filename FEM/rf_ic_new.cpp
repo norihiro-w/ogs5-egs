@@ -610,7 +610,13 @@ void CInitialCondition::SetByElementValues(int nidx)
 	}
 
 	CRFProcess* pcs = this->getProcess();
-	// MeshLib::CFEMesh* msh = pcs->m_msh;
+#ifdef USE_PETSC
+	MeshLib::CFEMesh* msh = pcs->m_msh;
+	std::map<size_t, size_t> map_global2local_ele_id;
+	for (size_t i=0; i<map_global2local_ele_id.size(); i++)
+		map_global2local_ele_id.insert(std::make_pair((size_t)msh->getElementVector()[i]->GetGlobalIndex(), i));
+#endif
+
 	// read element values
 	std::vector<long> ic_ele_ids;
 	std::map<long, double> map_eleId_values;
@@ -625,10 +631,17 @@ void CInitialCondition::SetByElementValues(int nidx)
 
 		in.str(line_string);
 		in >> ele_id >> val;
+		in.clear();
+#ifdef USE_PETSC
+		auto itr = map_global2local_ele_id.find(ele_id);
+		if (itr == map_global2local_ele_id.end())
+			continue;
+		ele_id = itr->second;
+#endif
 		ic_ele_ids.push_back(ele_id);
 		map_eleId_values[ele_id] = val;
-		in.clear();
 	}
+
 
 	//// interpolate nodal values
 	// std::vector<double> vec_nod_values;

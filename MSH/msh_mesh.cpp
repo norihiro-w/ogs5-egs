@@ -756,20 +756,31 @@ void CFEMesh::ConstructGrid()
 	ScreenMessage2d("-> detect bbox ... \n");
 	double x_sum(0.0), y_sum(0.0), z_sum(0.0);
 	Eqs2Global_NodeIndex.clear();
+	Eqs2Global_NodeIndex_Q.clear();
 	double xyz_max[3] =  // NW
 	    {-DBL_MAX, -DBL_MAX, -DBL_MAX};
 	double xyz_min[3] =  // NW
 	    {DBL_MAX, DBL_MAX, DBL_MAX};
 
+#if defined(USE_PETSC)
+	if (this->hasHigherOrderNodes()) {
+		Eqs2Global_NodeIndex_Q.reserve(nod_vector.size());
+		for (size_t e = 0; e < nod_vector.size(); e++)
+			Eqs2Global_NodeIndex_Q.push_back(nod_vector[e]->GetEquationIndex(true));
+	}
+#endif
+	Eqs2Global_NodeIndex.reserve(nod_vector.size());
 	for (size_t e = 0; e < nod_vector.size(); e++)
 	{
-#if defined( \
-    USE_PETSC)  // ||defined(USE_OTHER Parallel solver lib) //WW 01.06.2012
+#if defined(USE_PETSC)
 		Eqs2Global_NodeIndex.push_back(nod_vector[e]->GetEquationIndex());
 #else
 		nod_vector[e]->SetEquationIndex(e);
 		Eqs2Global_NodeIndex.push_back(nod_vector[e]->GetIndex());
 #endif
+	}
+	for (size_t e = 0; e < nod_vector.size(); e++)
+	{
 		double const* const coords(nod_vector[e]->getData());
 		x_sum += fabs(coords[0]);
 		y_sum += fabs(coords[1]);
@@ -1128,6 +1139,29 @@ void CFEMesh::GenerateHighOrderNodes()
 	   nod_vector[e]->Write(n_out);
 	   n_out.close();
 	 */
+
+#if 0
+	{
+		std::ofstream os("mesh_q_ogs.txt");
+		os << "--Nodes:\n";
+		os << NodesNumber_Linear << " " << NodesNumber_Quadratic << "\n";
+		for (long i=0; i<NodesNumber_Quadratic; i++)
+		{
+			CNode* node = nod_vector[i];
+			os << i << " " << (*node)[0] << " " << (*node)[1] << " " << (*node)[2] << "\n";
+		}
+		os << "--Elements:\n";
+		for (size_t i=0; i<ele_vector.size(); i++)
+		{
+			CElem* ele = ele_vector[i];
+			os << i;
+			for (int j=0; j<ele->GetNodesNumber(true); j++)
+				os << " " << ele->GetNodeIndex(j);
+			os << "\n";
+		}
+	}
+#endif
+
 }
 
 /**************************************************************************

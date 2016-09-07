@@ -3,11 +3,12 @@
 APPEND_SOURCE_FILES(SOURCES)
 
 IF(NOT OGS_FEM_PETSC)
-	LIST(REMOVE_ITEM SOURCES fct_mpi.h fct_mpi.cpp)
+	LIST(REMOVE_ITEM SOURCES rf_pcs1.cpp)
 ENDIF()
 
-APPEND_SOURCE_FILES(SOURCES FileIO)
-
+IF(OGS_ONLY_TH)
+	LIST(REMOVE_ITEM SOURCES rf_random_walk.h rf_random_walk.cpp)
+ENDIF( )
 
 include_directories(
 	${CMAKE_SOURCE_DIR}/Base
@@ -28,13 +29,13 @@ IF (PARALLEL_USE_MPI)
 ENDIF (PARALLEL_USE_MPI)
 
 # Create the library
-add_library( FEM STATIC ${SOURCES} )
+add_library( PCS STATIC ${SOURCES} )
 
-target_link_libraries(FEM
+target_link_libraries(PCS
 	Base
 	GEO
 	MSH
+	FEM
 	MAT
-	PCS
 )
 

@@ -99,9 +99,29 @@ public:
 
 	void SetCoordinates(const double* argCoord);
 
-	int GetEquationIndex() const { return eqs_index; }
+	int GetEquationIndex(bool quadratic = false) const { return !quadratic ? eqs_index : eqs_index_quadratic; }
 
-	void SetEquationIndex(long eqIndex) { eqs_index = eqIndex; }
+	void SetEquationIndex(long eqIndex, bool quadratic = false)
+	{
+		if (!quadratic)
+			eqs_index = eqIndex;
+		else
+			eqs_index_quadratic = eqIndex;
+	}
+
+	int GetGlobalIndex() const
+	{
+#ifdef USE_PETSC
+		return global_index;
+#else
+		return GetIndex();
+#endif
+	}
+
+	void SetGlobalIndex(long index)
+	{
+		global_index = index;
+	}
 
 	// Output
 	void Write(std::ostream& os = std::cout) const;
@@ -127,7 +147,9 @@ public:
 
 private:
 	double coordinate[3];
+	long global_index = -1;
 	long eqs_index = -1;
+	long eqs_index_quadratic = -1;
 	std::vector<size_t> _connected_nodes;
 	std::vector<size_t> _connected_elements;
 };

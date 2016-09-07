@@ -44,7 +44,6 @@
 #include "tools.h"
 
 using namespace std;
-using SolidProp::CSolidProperties;
 using namespace Math_Group;
 
 vector<CKinReact*> KinReact_vector;  // declare instance CKinReact_vector
