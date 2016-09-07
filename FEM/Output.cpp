@@ -1363,14 +1363,21 @@ double COutput::NODWritePLYDataTEC(int number)
 	double ss[6];
 	double val_n = 0.;
 
+	bool isCSV = (dat_type_name.compare("CSV") == 0);
+
 
 	// File handling
-	std::string tec_file_name = file_base_name + "_ply_" + geo_name + "_t" +
-	                            number2str<size_t>(_id);
+	std::string tec_file_name = file_base_name + "_ply_" + geo_name;
+	if (!isCSV)
+		tec_file_name += "_t" + number2str<size_t>(_id);
 	if (getProcessType() != FiniteElement::INVALID_PROCESS)
 		tec_file_name += "_" + convertProcessTypeToString(getProcessType());
 	if (msh_type_name.size() > 0) tec_file_name += "_" + msh_type_name;
-	if (dat_type_name.compare("CSV") == 0)
+
+	if (isCSV)
+		tec_file_name += "_" + std::to_string(number);
+
+	if (isCSV)
 		tec_file_name += ".csv";
 	else
 		tec_file_name += TEC_FILE_EXTENSION;
@@ -1411,41 +1418,48 @@ double COutput::NODWritePLYDataTEC(int number)
 	// Write header
 	if (!_new_file_opened)
 	{
-		// project_title;
-		std::string project_title_string = "Profiles along polylines";
-
-		if (dat_type_name.compare("GNUPLOT") != 0)  // 5.3.07 JOD
-			tec_file << " TITLE = \"" << project_title_string << "\""
-			         << "\n";
-		else
-			tec_file << "# ";
-
-		tec_file << " VARIABLES = \"DIST\" ";
-		for (size_t k = 0; k < no_variables; k++)
+		if (!isCSV)
 		{
-			tec_file << "\"" << _nod_value_vector[k] << "\" ";
-			//-------------------------------------WW
-			m_pcs = GetPCS(_nod_value_vector[k]);
-			if (m_pcs && m_pcs->type == 1212 &&
-			    _nod_value_vector[k].find("SATURATION") != string::npos)
-				tec_file << "SATURATION2 ";
-			//-------------------------------------WW
-			if (_nod_value_vector[k].compare("FLUX") == 0)
-				tec_file << "FLUX_INNER"
-				         << " ";
-		}
-		//....................................................................
-		// OK4709
-		for (size_t k = 0; k < mfp_value_vector.size(); k++)
-			tec_file << "\"" << mfp_value_vector[k] << "\" ";
-		//....................................................................
-		// WW: M specific data
-		if (dm_pcs)  // WW
+			// project_title;
+			std::string project_title_string = "Profiles along polylines";
+			if (dat_type_name.compare("GNUPLOT") != 0)  // 5.3.07 JOD
+				tec_file << " TITLE = \"" << project_title_string << "\""
+						 << "\n";
+			else
+				tec_file << "# ";
 
-			tec_file << " p_(1st_Invariant) "
-			         << " q_(2nd_Invariant)  "
-			         << " Effective_Strain";
-		tec_file << "\n";
+			tec_file << " VARIABLES = \"DIST\" ";
+			for (size_t k = 0; k < no_variables; k++)
+			{
+				tec_file << "\"" << _nod_value_vector[k] << "\" ";
+				//-------------------------------------WW
+				m_pcs = GetPCS(_nod_value_vector[k]);
+				if (m_pcs && m_pcs->type == 1212 &&
+					_nod_value_vector[k].find("SATURATION") != string::npos)
+					tec_file << "SATURATION2 ";
+				//-------------------------------------WW
+				if (_nod_value_vector[k].compare("FLUX") == 0)
+					tec_file << "FLUX_INNER"
+							 << " ";
+			}
+			//....................................................................
+			// OK4709
+			for (size_t k = 0; k < mfp_value_vector.size(); k++)
+				tec_file << "\"" << mfp_value_vector[k] << "\" ";
+			//....................................................................
+			// WW: M specific data
+			if (dm_pcs)  // WW
+
+				tec_file << " p_(1st_Invariant) "
+						 << " q_(2nd_Invariant)  "
+						 << " Effective_Strain";
+			tec_file << "\n";
+		} else {
+			tec_file << "\"DIST\"";
+			for (size_t k = 0; k < no_variables; k++)
+				tec_file << ", \"" << _nod_value_vector[k] << "\"";
+			tec_file << "\n";
+		}
 	}
 	//....................................................................
 	// WW: M specific data
@@ -1474,8 +1488,8 @@ double COutput::NODWritePLYDataTEC(int number)
 	if (dat_type_name.compare("GNUPLOT") == 0)  // 6/2012 JOD
 		tec_file << "# ";
 
-	tec_file << " ZONE T=\"TIME=" << _time << "\""
-	         << "\n";
+	if (!isCSV)
+		tec_file << " ZONE T=\"TIME=" << _time << "\"" << "\n";
 	//----------------------------------------------------------------------
 	// Write data
 	//======================================================================
@@ -1496,23 +1510,20 @@ double COutput::NODWritePLYDataTEC(int number)
 	m_msh->getPointsForInterpolationAlongPolyline(ply, interpolation_points);
 	m_msh->setMinEdgeLength(tmp_min_edge_length);
 
+	const std::string delim = isCSV ? ", " : " ";
+
 	//   std::cout << "size of nodes_vector: " << nodes_vector.size() << ", size
 	//   of old_nodes_vector: " << old_nodes_vector.size() << "\n";
 	// bool b_specified_pcs = (m_pcs != NULL); //NW m_pcs =
 	// PCSGet(pcs_type_name);
 	for (size_t j(0); j < nodes_vector.size(); j++)
 	{
-		//		tec_file << m_ply->getSBuffer()[j] << " ";
-		tec_file << interpolation_points[j] << " ";
-		// WW
-		//		long old_gnode = nodes_vector[m_ply->getOrderedPoints()[j]];
+		tec_file << interpolation_points[j];
+
 		gnode = nodes_vector[j];
 		for (size_t k = 0; k < no_variables; k++)
 		{
-			// if(!(_nod_value_vector[k].compare("FLUX")==0))  // removed JOD,
-			// does not work for multiple flow processes
-			// if (!b_specified_pcs) //NW
-			if (msh_type_name != "COMPARTMENT")  // JOD 4.10.01
+			if (msh_type_name != "COMPARTMENT")
 				m_pcs = PCSGet(_nod_value_vector[k], bdummy);
 
 			if (!m_pcs)
@@ -1524,58 +1535,42 @@ double COutput::NODWritePLYDataTEC(int number)
 				    << "\n";
 				return 0.0;
 			}
-			// WW
-			//			double old_val_n = m_pcs->GetNodeValue(old_gnode,
-			// NodeIndex[k]);
 			val_n = m_pcs->GetNodeValue(gnode, NodeIndex[k]);
-			//			tec_file << old_val_n << " ";
-			tec_file << val_n << " ";
-			if (m_pcs->type == 1212 &&
-			    (_nod_value_vector[k].find("SATURATION") != string::npos))
-				tec_file << 1. - val_n << " ";
 
-			if (_nod_value_vector[k].compare("FLUX") == 0)
-			{
-				if (aktueller_zeitschritt == 0)  // OK
-					flux_nod = 0.0;
-				else
-					flux_nod = NODFlux(gnode);
-				tec_file << flux_nod << " ";
-				// flux_sum += abs(m_pcs->eqs->b[gnode]);
-				flux_sum += abs(flux_nod);
-				// OK cout << gnode << " " << flux_nod << " " << flux_sum <<
-				// endl;
-			}
+			tec_file << delim << val_n;
 		}
-		if (dm_pcs)  // WW
+		if (!isCSV)
 		{
-			for (size_t i = 0; i < ns; i++)
-				ss[i] = dm_pcs->GetNodeValue(gnode, stress_i[i]);
-			tec_file << -DeviatoricStress(ss) / 3.0 << " ";
-			tec_file << sqrt(3.0 *
-			                 TensorMutiplication2(
-			                     ss, ss, m_msh->GetCoordinateFlag() / 10) /
-			                 2.0) << "  ";
-			for (size_t i = 0; i < ns; i++)
-				ss[i] = dm_pcs->GetNodeValue(gnode, strain_i[i]);
-			DeviatoricStress(ss);
-			tec_file << sqrt(
-			    3.0 *
-			    TensorMutiplication2(ss, ss, m_msh->GetCoordinateFlag() / 10) /
-			    2.0);
-		}
+			if (dm_pcs)
+			{
+				for (size_t i = 0; i < ns; i++)
+					ss[i] = dm_pcs->GetNodeValue(gnode, stress_i[i]);
+				tec_file << -DeviatoricStress(ss) / 3.0 << " ";
+				tec_file << sqrt(3.0 *
+								 TensorMutiplication2(
+									 ss, ss, m_msh->GetCoordinateFlag() / 10) /
+								 2.0) << "  ";
+				for (size_t i = 0; i < ns; i++)
+					ss[i] = dm_pcs->GetNodeValue(gnode, strain_i[i]);
+				DeviatoricStress(ss);
+				tec_file << sqrt(
+					3.0 *
+					TensorMutiplication2(ss, ss, m_msh->GetCoordinateFlag() / 10) /
+					2.0);
+			}
 
-		// MFP //OK4704
-		// OK4704
-		for (size_t k = 0; k < mfp_value_vector.size(); k++)
-			//     tec_file << MFPGetNodeValue(gnode,mfp_value_vector[k],0) << "
-			//     "; //NB
-			tec_file
-			    << MFPGetNodeValue(
-			           gnode, mfp_value_vector[k],
-			           atoi(&mfp_value_vector[k][mfp_value_vector[k].size() -
-			                                     1]) -
-			               1) << " ";  // NB: MFP output for all phases
+			// MFP //OK4704
+			// OK4704
+			for (size_t k = 0; k < mfp_value_vector.size(); k++)
+				//     tec_file << MFPGetNodeValue(gnode,mfp_value_vector[k],0) << "
+				//     "; //NB
+				tec_file
+					<< MFPGetNodeValue(
+						   gnode, mfp_value_vector[k],
+						   atoi(&mfp_value_vector[k][mfp_value_vector[k].size() -
+													 1]) -
+							   1) << " ";  // NB: MFP output for all phases
+		}
 
 		tec_file << "\n";
 	}
