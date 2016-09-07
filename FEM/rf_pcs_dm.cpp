@@ -777,62 +777,7 @@ void CRFProcessDeformation::InitGauss(void)
 	if (num_type_name.find("EXCAVATION") != 0) Extropolation_GaussValue();
 	//
 }
-/*************************************************************************
-   ROCKFLOW - Function: Calculations of initial stress and released load
-   Programming:
-   09/2007 WW
- **************************************************************************/
-void CRFProcessDeformation::CreateInitialState4Excavation()
-{
-	size_t i;
-	int j;
-	int Idx_Strain[9];
-	int NS = 4;
-	if (num_type_name.find("EXCAVATION") != 0) return;
-	//
-	Idx_Strain[0] = GetNodeValueIndex("STRAIN_XX");
-	Idx_Strain[1] = GetNodeValueIndex("STRAIN_YY");
-	Idx_Strain[2] = GetNodeValueIndex("STRAIN_ZZ");
-	Idx_Strain[3] = GetNodeValueIndex("STRAIN_XY");
 
-	if (problem_dimension_dm == 3)
-	{
-		NS = 6;
-		Idx_Strain[4] = GetNodeValueIndex("STRAIN_XZ");
-		Idx_Strain[5] = GetNodeValueIndex("STRAIN_YZ");
-	}
-	Idx_Strain[NS] = GetNodeValueIndex("STRAIN_PLS");
-	// For excavation simulation. Moved here on 05.09.2007 WW
-	if ((idata_type == write_all_binary || idata_type == none) &&
-	    reload != -1000)
-	//	if(reload < 2 && reload != -1000)
-	{
-		GravityForce = true;
-		cout << "\n ***Excavation simulation: 1. Establish initial stress "
-		        "profile..." << endl;
-		counter = 0;
-		Execute(0);
-	}
-	else
-		UpdateInitialStress(true);  // s0 = 0
-	//
-	Extropolation_GaussValue();
-	//
-	cout << "\n ***Excavation simulation: 2. Excavating..." << endl;
-	counter = 0;
-	InitializeNewtonSteps(true);
-	GravityForce = false;
-	//
-	ReleaseLoadingByExcavation();
-	// GravityForce = true;
-	UpdateInitialStress(false);  // s-->s0
-	m_msh->ConnectedElements2Node();
-	for (i = 0; i < m_msh->GetNodesNumber(false); i++)
-		for (j = 0; j < NS + 1; j++)
-			SetNodeValue(i, Idx_Strain[j], 0.0);
-
-	if (reload == -1000) reload = 1;
-}
 
 /*************************************************************************
    ROCKFLOW - Function: CRFProcess::InitializeStress_EachCouplingStep()
@@ -1896,108 +1841,84 @@ long CRFProcessDeformation::MarkBifurcatedNeighbor(const int PathIndex)
 **************************************************************************/
 void CRFProcessDeformation::GlobalAssembly()
 {
-	// WW
-	{
-//		MatInfo info;
-//		MatGetInfo(eqs_new->A, MAT_LOCAL, &info);
-//		ScreenMessage("-> MatInfo: nz_allocated=%g, memory=%g, assemblies=%g, mallocs=%g \n", info.nz_allocated, info.memory, info.assemblies, info.mallocs);
-		GlobalAssembly_DM();
+	GlobalAssembly_DM();
 
-		if (type / 10 == 4)
-		{  // p-u monolithic scheme
+	if (type / 10 == 4)
+	{  // p-u monolithic scheme
 
-			// if(!fem_dm->dynamic)   ///
-			//  RecoverSolution(1);  // p_i-->p_0
-			// 2.
-			// Assemble pressure eqs
-			// Changes for OpenMP
-			GlobalAssembly_std(true);
+		// if(!fem_dm->dynamic)   ///
+		//  RecoverSolution(1);  // p_i-->p_0
+		GlobalAssembly_std(true);
 #if 0
-            const size_t n_nodes_linear = m_msh->GetNodesNumber(false);
-            const size_t n_nodes_quard = m_msh->GetNodesNumber(true);
-            const size_t offset_H = problem_dimension_dm * n_nodes_quard;
-			if (this->eqs_new->size_A > offset_H + n_nodes_linear)
-			{
-	            // set dummy diagonal entry of rows corresponding to unused quadratic nodes for H
-	            std::cout << "set dummy diagonal entry of rows corresponding to unused quadratic nodes for H\n";
-	            std::cout << "-> Linear nodes = " << n_nodes_linear << ", Quadratic nodes = " << n_nodes_quard << "\n";
-	            std::cout << "-> Constrain equation index from " << offset_H +  n_nodes_linear << " to " << offset_H + n_nodes_quard << "\n";
-	            for (size_t i=n_nodes_linear; i<n_nodes_quard; i++) {
-	                (*this->eqs_new->A)(offset_H+i,offset_H+i)=1.0;
-	            }
+		const size_t n_nodes_linear = m_msh->GetNodesNumber(false);
+		const size_t n_nodes_quard = m_msh->GetNodesNumber(true);
+		const size_t offset_H = problem_dimension_dm * n_nodes_quard;
+		if (this->eqs_new->size_A > offset_H + n_nodes_linear)
+		{
+			// set dummy diagonal entry of rows corresponding to unused quadratic nodes for H
+			std::cout << "set dummy diagonal entry of rows corresponding to unused quadratic nodes for H\n";
+			std::cout << "-> Linear nodes = " << n_nodes_linear << ", Quadratic nodes = " << n_nodes_quard << "\n";
+			std::cout << "-> Constrain equation index from " << offset_H +  n_nodes_linear << " to " << offset_H + n_nodes_quard << "\n";
+			for (size_t i=n_nodes_linear; i<n_nodes_quard; i++) {
+				(*this->eqs_new->A)(offset_H+i,offset_H+i)=1.0;
 			}
-#if defined(USE_PETSC)  //|| defined(other parallel libs)//03~04.3012. WW
-            eqs_new->EQSV_Viewer("eqs" + number2str(aktueller_zeitschritt) + "a");
-#endif
-#endif
 		}
-// if(!fem_dm->dynamic)
-//   RecoverSolution(2);  // p_i-->p_0
+#if defined(USE_PETSC)
+		eqs_new->EQSV_Viewer("eqs" + number2str(aktueller_zeitschritt) + "a");
+#endif
+#endif
+	}
 
-//----------------------------------------------------------------------
-//
-// {			 MXDumpGLS("rf_pcs1.txt",1,eqs->b,eqs->x); // abort();}
+	//   RecoverSolution(2);  // p_i-->p_0
 
-// DumpEqs("rf_pcs1.txt");
 
 #if 0
-            {
-		   ofstream Dum(std::string("eqs_after_assembly.txt").c_str(), ios::out); // WW
-		   this->eqs_new->Write(Dum);
-		   Dum.close();
-            }
+	{
+		ofstream Dum(std::string("eqs_after_assembly.txt").c_str(), ios::out); // WW
+		this->eqs_new->Write(Dum);
+		Dum.close();
+	}
 #endif
-		// Apply Neumann BC
-		IncorporateSourceTerms();
-// DumpEqs("rf_pcs2.txt");
+	// Apply Neumann BC
+	ScreenMessage("-> impose Neumann BC and source/sink terms\n");
+	IncorporateSourceTerms();
 
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012.
-		ScreenMessage2d("assemble PETSc matrix and vectors...\n");
-		eqs_new->AssembleUnkowns_PETSc();
-		eqs_new->AssembleRHS_PETSc();
-		eqs_new->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY);
+#if defined(USE_PETSC)
+	ScreenMessage2d("assemble PETSc matrix and vectors...\n");
+	eqs_new->AssembleUnkowns_PETSc();
+	eqs_new->AssembleRHS_PETSc();
+	eqs_new->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY);
 //		eqs_new->EQSV_Viewer("eqs_after_assembl");
 #endif
 
-		// {			MXDumpGLS("rf_pcs1.txt",1,eqs->b,eqs->x); // abort();}
-		//#if defined(USE_PETSC)  // || defined(other parallel
-		// libs)//03~04.3012.
-		////		eqs_new->EQSV_Viewer("eqs_after_ST");
-		//		eqs_new->AssembleRHS_PETSc();
-		//#endif
-
-		// Apply Dirchlete bounday condition
-		IncorporateBoundaryConditions();
-//  {			 MXDumpGLS("rf_pcs_dm1.txt",1,eqs->b,eqs->x);  //abort();}
-//
+	// Apply Dirchlete bounday condition
+	ScreenMessage("-> impose Dirichlet BC\n");
+	IncorporateBoundaryConditions();
 
 #if 0
-            {
-           ofstream Dum(std::string("eqs_after_BCST.txt").c_str(), ios::out); // WW
-           this->eqs_new->Write(Dum);
-           Dum.close();
-            }
+	{
+		ofstream Dum(std::string("eqs_after_BCST.txt").c_str(), ios::out); // WW
+		this->eqs_new->Write(Dum);
+		Dum.close();
+	}
 #endif
 
 #define atest_dump
 #ifdef test_dump
-		string fname = FileName + "rf_pcs_omp.txt";
-		ofstream Dum1(fname.c_str(), ios::out);  // WW
-		eqs_new->Write(Dum1);
-		Dum1.close();  //   abort();
+	string fname = FileName + "rf_pcs_omp.txt";
+	ofstream Dum1(fname.c_str(), ios::out);  // WW
+	eqs_new->Write(Dum1);
+	Dum1.close();  //   abort();
 #endif
 
 #define atest_bin_dump
 #ifdef test_bin_dump  // WW
-		string fname = FileName + ".eqiation_binary.bin";
+	string fname = FileName + ".eqiation_binary.bin";
 
-		ofstream Dum1(fname.data(), ios::out | ios::binary | ios::trunc);
-		if (Dum1.good()) eqs_new->Write_BIN(Dum1);
-		Dum1.close();
+	ofstream Dum1(fname.data(), ios::out | ios::binary | ios::trunc);
+	if (Dum1.good()) eqs_new->Write_BIN(Dum1);
+	Dum1.close();
 #endif
-		//
-	}
-	ScreenMessage("Global assembly is done\n");
 }
 
 /*!  \brief Assembe matrix and vectors
@@ -2027,6 +1948,8 @@ void CRFProcessDeformation::GlobalAssembly_DM()
 		fem_dm->ConfigElement(elem);
 		fem_dm->LocalAssembly(0);
 	}
+	if (print_progress)
+		ScreenMessage("done\n");
 }
 
 /**************************************************************************
@@ -2175,197 +2098,6 @@ void CRFProcessDeformation::ReadElementStress()
 	}
 	//
 	file_stress.close();
-}
-
-/**************************************************************************
-   ROCKFLOW - Funktion: ReleaseLoadingByExcavation()
-
-   Aufgabe:
-   Compute the nodal forces produced by excavated body
-
-   Programmaenderungen:
-   04/2005  WW  Erste Version
-   09/2007  WW  Set as a boundary condition
-   letzte Aenderung:
-
-**************************************************************************/
-void CRFProcessDeformation::ReleaseLoadingByExcavation()
-{
-	long i, actElements;
-	int j, k, l, SizeSt, SizeSubD;
-	ElementValue_DM* ele_val = NULL;
-
-	std::vector<int> ExcavDomainIndex;
-	std::vector<long> NodesOnCaveSurface;
-
-	CSourceTerm* m_st = NULL;
-	SizeSt = (int)st_vector.size();
-	bool exist = false;
-	double* eqs_b = NULL;
-
-#if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
-// TODO
-#elif defined(NEW_EQS)
-	eqs_b = eqs_new->b;
-#else
-	eqs_b = eqs->b;
-#endif
-
-	for (k = 0; k < SizeSt; k++)
-	{
-		m_st = st_vector[k];
-		if (m_st->getProcessPrimaryVariable() == FiniteElement::EXCAVATION)
-		{
-			// ---- 16.01.2009 WW
-			exist = false;
-
-			for (j = k + 1; j < SizeSt; j++)
-				if (m_st->getSubDomainIndex() ==
-				    st_vector[j]->getSubDomainIndex())
-				{
-					exist = true;
-					break;
-				}
-			if (!exist) ExcavDomainIndex.push_back(m_st->getSubDomainIndex());
-		}
-	}
-	SizeSubD = (int)ExcavDomainIndex.size();
-	if (SizeSubD == 0) return;  // 05.09.2007 WW
-	exist = false;              // 16.02
-	// 1. De-active host domain to be exvacated
-	actElements = 0;
-	MeshLib::CElem* elem = NULL;
-	for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
-	{
-		elem = m_msh->ele_vector[i];
-		elem->SetMark(false);
-		for (k = 0; k < SizeSubD; k++)
-			if (elem->GetPatchIndex() ==
-			    static_cast<size_t>(ExcavDomainIndex[k]))
-				elem->SetMark(true);
-		if (elem->GetMark()) actElements++;
-	}
-	if (actElements == 0)
-	{
-		cout << "No element specified for excavation. Please check data in .st "
-		        "file " << endl;
-		abort();
-	}
-// 2. Compute the released node loading
-
-	for (i = 0; i < 4; i++)  // In case the domain decomposition is employed
-		fem_dm->NodeShift[i] = Shift[i];
-	//
-	PreLoad = 11;
-	LoadFactor = 1.0;
-	for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
-	{
-		elem = m_msh->ele_vector[i];
-		if (elem->GetMark())  // Marked for use
-		{
-			fem_dm->ConfigElement(elem);
-			fem_dm->LocalAssembly(0);
-			ele_val = ele_value_dm[i];
-			// Clear stresses in excavated domain
-			(*ele_val->Stress0) = 0.0;
-			(*ele_val->Stress) = 0.0;
-			if (ele_val->Stress_j) (*ele_val->Stress_j) = 0.0;
-		}
-	}
-
-	// 3 --------------------------------------------------------
-	// Store the released loads to source term buffer
-	long number_of_nodes;
-	CNodeValue* m_node_value = NULL;
-	std::vector<long> nodes_vector(0);
-
-	number_of_nodes = 0;
-	RecordNodeVSize((long)st_node_value.size());
-
-	// TEST
-	st_node_value.clear();
-	//
-
-	for (k = 0; k < SizeSt; k++)
-	{
-		// Get nodes on cave surface
-		m_st = st_vector[k];
-		if (m_st->getProcessPrimaryVariable() != FiniteElement::EXCAVATION)
-			continue;
-		if (m_st->getGeoType() == GEOLIB::POLYLINE)
-		{
-			CGLPolyline* m_polyline(GEOGetPLYByName(m_st->getGeoName()));
-
-			// reset the min edge length of mesh
-			double mesh_min_edge_length(m_msh->getMinEdgeLength());
-			m_msh->setMinEdgeLength(m_polyline->epsilon);
-
-			if (m_st->getGeoObj())
-			{
-				m_msh->GetNODOnPLY(
-				    static_cast<const GEOLIB::Polyline*>(m_st->getGeoObj()),
-				    nodes_vector);
-				// reset min edge length of mesh
-				m_msh->setMinEdgeLength(mesh_min_edge_length);
-			}
-			m_msh->setMinEdgeLength(mesh_min_edge_length);
-		}
-		if (m_st->getGeoType() == GEOLIB::SURFACE)
-		{
-			// CC 10/05
-			Surface* m_surface = GEOGetSFCByName(m_st->getGeoName());
-			//			 07/2010 TF ToDo: to do away with the global vector
-			// surface_vector
-			//			                  fetch the geometry from CFEMesh
-			//			Surface *m_surface
-			//(surface_vector[m_st->getGeoObjIdx()]);
-			if (m_surface)
-			{
-				if (m_surface->type == 100)
-					m_msh->GetNodesOnCylindricalSurface(m_surface,
-					                                    nodes_vector);
-				else
-					m_msh->GetNODOnSFC_PLY(m_surface, nodes_vector);
-			}
-		}
-		// Set released node forces from eqs->b;
-		number_of_nodes = (int)nodes_vector.size();
-		for (j = 0; j < problem_dimension_dm; j++)
-			for (i = 0; i < number_of_nodes; i++)
-			{
-				m_node_value = new CNodeValue();
-				m_node_value->msh_node_number = nodes_vector[i] + Shift[j];
-				m_node_value->geo_node_number = nodes_vector[i];
-				m_node_value->node_value =
-				    -eqs_b[m_node_value->geo_node_number + Shift[j]];
-				m_node_value->CurveIndex = m_st->CurveIndex;
-				// Each node only take once
-				exist = false;
-				for (l = 0; l < (int)st_node_value[k].size(); l++)
-					if (st_node_value[k][l]->msh_node_number ==
-					    m_node_value->msh_node_number)
-					{
-						exist = true;
-						break;
-					}
-				if (!exist) st_node_value[k].push_back(m_node_value);
-			}
-	}
-	//
-	// Deactivate the subdomains to be excavated
-	Deactivated_SubDomain.resize(SizeSubD);
-	for (j = 0; j < SizeSubD; j++)
-		Deactivated_SubDomain[j] = ExcavDomainIndex[j];
-
-	// Activate the host domain for excavtion analysis
-	for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
-	{
-		elem = m_msh->ele_vector[i];
-		if (!elem->GetMark()) elem->SetMark(true);
-	}
-	PreLoad = 1;
-	// TEST OUTPUT
-	//   {MXDumpGLS("rf_pcs.txt",1,eqs->b,eqs->x);  abort();}
 }
 
 /*************************************************************************
