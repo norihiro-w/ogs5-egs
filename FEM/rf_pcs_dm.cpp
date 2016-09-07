@@ -1841,108 +1841,84 @@ long CRFProcessDeformation::MarkBifurcatedNeighbor(const int PathIndex)
 **************************************************************************/
 void CRFProcessDeformation::GlobalAssembly()
 {
-	// WW
-	{
-//		MatInfo info;
-//		MatGetInfo(eqs_new->A, MAT_LOCAL, &info);
-//		ScreenMessage("-> MatInfo: nz_allocated=%g, memory=%g, assemblies=%g, mallocs=%g \n", info.nz_allocated, info.memory, info.assemblies, info.mallocs);
-		GlobalAssembly_DM();
+	GlobalAssembly_DM();
 
-		if (type / 10 == 4)
-		{  // p-u monolithic scheme
+	if (type / 10 == 4)
+	{  // p-u monolithic scheme
 
-			// if(!fem_dm->dynamic)   ///
-			//  RecoverSolution(1);  // p_i-->p_0
-			// 2.
-			// Assemble pressure eqs
-			// Changes for OpenMP
-			GlobalAssembly_std(true);
+		// if(!fem_dm->dynamic)   ///
+		//  RecoverSolution(1);  // p_i-->p_0
+		GlobalAssembly_std(true);
 #if 0
-            const size_t n_nodes_linear = m_msh->GetNodesNumber(false);
-            const size_t n_nodes_quard = m_msh->GetNodesNumber(true);
-            const size_t offset_H = problem_dimension_dm * n_nodes_quard;
-			if (this->eqs_new->size_A > offset_H + n_nodes_linear)
-			{
-	            // set dummy diagonal entry of rows corresponding to unused quadratic nodes for H
-	            std::cout << "set dummy diagonal entry of rows corresponding to unused quadratic nodes for H\n";
-	            std::cout << "-> Linear nodes = " << n_nodes_linear << ", Quadratic nodes = " << n_nodes_quard << "\n";
-	            std::cout << "-> Constrain equation index from " << offset_H +  n_nodes_linear << " to " << offset_H + n_nodes_quard << "\n";
-	            for (size_t i=n_nodes_linear; i<n_nodes_quard; i++) {
-	                (*this->eqs_new->A)(offset_H+i,offset_H+i)=1.0;
-	            }
+		const size_t n_nodes_linear = m_msh->GetNodesNumber(false);
+		const size_t n_nodes_quard = m_msh->GetNodesNumber(true);
+		const size_t offset_H = problem_dimension_dm * n_nodes_quard;
+		if (this->eqs_new->size_A > offset_H + n_nodes_linear)
+		{
+			// set dummy diagonal entry of rows corresponding to unused quadratic nodes for H
+			std::cout << "set dummy diagonal entry of rows corresponding to unused quadratic nodes for H\n";
+			std::cout << "-> Linear nodes = " << n_nodes_linear << ", Quadratic nodes = " << n_nodes_quard << "\n";
+			std::cout << "-> Constrain equation index from " << offset_H +  n_nodes_linear << " to " << offset_H + n_nodes_quard << "\n";
+			for (size_t i=n_nodes_linear; i<n_nodes_quard; i++) {
+				(*this->eqs_new->A)(offset_H+i,offset_H+i)=1.0;
 			}
-#if defined(USE_PETSC)  //|| defined(other parallel libs)//03~04.3012. WW
-            eqs_new->EQSV_Viewer("eqs" + number2str(aktueller_zeitschritt) + "a");
-#endif
-#endif
 		}
-// if(!fem_dm->dynamic)
-//   RecoverSolution(2);  // p_i-->p_0
+#if defined(USE_PETSC)
+		eqs_new->EQSV_Viewer("eqs" + number2str(aktueller_zeitschritt) + "a");
+#endif
+#endif
+	}
 
-//----------------------------------------------------------------------
-//
-// {			 MXDumpGLS("rf_pcs1.txt",1,eqs->b,eqs->x); // abort();}
+	//   RecoverSolution(2);  // p_i-->p_0
 
-// DumpEqs("rf_pcs1.txt");
 
 #if 0
-            {
-		   ofstream Dum(std::string("eqs_after_assembly.txt").c_str(), ios::out); // WW
-		   this->eqs_new->Write(Dum);
-		   Dum.close();
-            }
+	{
+		ofstream Dum(std::string("eqs_after_assembly.txt").c_str(), ios::out); // WW
+		this->eqs_new->Write(Dum);
+		Dum.close();
+	}
 #endif
-		// Apply Neumann BC
-		IncorporateSourceTerms();
-// DumpEqs("rf_pcs2.txt");
+	// Apply Neumann BC
+	ScreenMessage("-> impose Neumann BC and source/sink terms\n");
+	IncorporateSourceTerms();
 
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012.
-		ScreenMessage2d("assemble PETSc matrix and vectors...\n");
-		eqs_new->AssembleUnkowns_PETSc();
-		eqs_new->AssembleRHS_PETSc();
-		eqs_new->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY);
+#if defined(USE_PETSC)
+	ScreenMessage2d("assemble PETSc matrix and vectors...\n");
+	eqs_new->AssembleUnkowns_PETSc();
+	eqs_new->AssembleRHS_PETSc();
+	eqs_new->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY);
 //		eqs_new->EQSV_Viewer("eqs_after_assembl");
 #endif
 
-		// {			MXDumpGLS("rf_pcs1.txt",1,eqs->b,eqs->x); // abort();}
-		//#if defined(USE_PETSC)  // || defined(other parallel
-		// libs)//03~04.3012.
-		////		eqs_new->EQSV_Viewer("eqs_after_ST");
-		//		eqs_new->AssembleRHS_PETSc();
-		//#endif
-
-		// Apply Dirchlete bounday condition
-		IncorporateBoundaryConditions();
-//  {			 MXDumpGLS("rf_pcs_dm1.txt",1,eqs->b,eqs->x);  //abort();}
-//
+	// Apply Dirchlete bounday condition
+	ScreenMessage("-> impose Dirichlet BC\n");
+	IncorporateBoundaryConditions();
 
 #if 0
-            {
-           ofstream Dum(std::string("eqs_after_BCST.txt").c_str(), ios::out); // WW
-           this->eqs_new->Write(Dum);
-           Dum.close();
-            }
+	{
+		ofstream Dum(std::string("eqs_after_BCST.txt").c_str(), ios::out); // WW
+		this->eqs_new->Write(Dum);
+		Dum.close();
+	}
 #endif
 
 #define atest_dump
 #ifdef test_dump
-		string fname = FileName + "rf_pcs_omp.txt";
-		ofstream Dum1(fname.c_str(), ios::out);  // WW
-		eqs_new->Write(Dum1);
-		Dum1.close();  //   abort();
+	string fname = FileName + "rf_pcs_omp.txt";
+	ofstream Dum1(fname.c_str(), ios::out);  // WW
+	eqs_new->Write(Dum1);
+	Dum1.close();  //   abort();
 #endif
 
 #define atest_bin_dump
 #ifdef test_bin_dump  // WW
-		string fname = FileName + ".eqiation_binary.bin";
+	string fname = FileName + ".eqiation_binary.bin";
 
-		ofstream Dum1(fname.data(), ios::out | ios::binary | ios::trunc);
-		if (Dum1.good()) eqs_new->Write_BIN(Dum1);
-		Dum1.close();
+	ofstream Dum1(fname.data(), ios::out | ios::binary | ios::trunc);
+	if (Dum1.good()) eqs_new->Write_BIN(Dum1);
+	Dum1.close();
 #endif
-		//
-	}
-	ScreenMessage("Global assembly is done\n");
 }
 
 /*!  \brief Assembe matrix and vectors
@@ -1972,6 +1948,8 @@ void CRFProcessDeformation::GlobalAssembly_DM()
 		fem_dm->ConfigElement(elem);
 		fem_dm->LocalAssembly(0);
 	}
+	if (print_progress)
+		ScreenMessage("done\n");
 }
 
 /**************************************************************************
