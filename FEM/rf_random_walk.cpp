@@ -1035,7 +1035,7 @@ void RandomWalk::InterpolateVelocityOfTheParticleByBilinear(int option,
 						fem->Assembly(0, d);
 					}
 
-					m_pcs->IncorporateBoundaryConditions(-1, d);
+					m_pcs->IncorporateBoundaryConditionsFM(-1, d);
 
 // Solve for velocity
 #if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
