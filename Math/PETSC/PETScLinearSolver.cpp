@@ -51,7 +51,7 @@ PETScLinearSolver::~PETScLinearSolver()
 	if (global_x1) delete[] global_x1;
 	if (global_buff) delete[] global_buff;
 
-	PetscPrintf(PETSC_COMM_WORLD, "\n>>Number of Unknows: %d\n", m_size);
+	PetscPrintf(PETSC_COMM_WORLD, "\n>>Number of Unknowns: %d\n", m_size);
 	PetscPrintf(PETSC_COMM_WORLD, ">>Elapsed time in linear solver: %fs\n",
 	            time_elapsed);
 }
@@ -196,7 +196,7 @@ void PETScLinearSolver::CreateMatrixVectors(SparseIndex& sparse_index)
 	ScreenMessage("-> matrix: global nrows=%d, ncols=%d\n", M, N);
 	PetscInt m, n;
 	MatGetLocalSize(A, &m, &n);
-	ScreenMessage2("-> matrix: local nrows=%d, ncols=%d\n", m, n);
+	//ScreenMessage2("-> matrix: local nrows=%d, ncols=%d\n", m, n);
 	CHKERRABORT(PETSC_COMM_WORLD, ierr);
 
 	MatSetType(A, MATMPIAIJ);
@@ -211,9 +211,9 @@ void PETScLinearSolver::CreateMatrixVectors(SparseIndex& sparse_index)
 	MatSetOption(A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE);
 	MatSetOption(A, MAT_NO_OFF_PROC_ENTRIES, PETSC_TRUE);
 
-	MatInfo info;
-	MatGetInfo(A, MAT_LOCAL, &info);
-	ScreenMessage2("-> MatInfo: number of nonzeros=%g, allocated memory=%g MB\n", info.nz_allocated, info.memory/(1024*1024));
+//	MatInfo info;
+//	MatGetInfo(A, MAT_LOCAL, &info);
+//	ScreenMessage2("-> MatInfo: number of nonzeros=%g, allocated memory=%g MB\n", info.nz_allocated, info.memory/(1024*1024));
 #else
 	ScreenMessage("-> do not preallocate PETSc\n");
 	MatSetUp(A);
@@ -234,6 +234,7 @@ void PETScLinearSolver::CreateMatrixVectors(SparseIndex& sparse_index)
 	VecSetOption(x, VEC_IGNORE_NEGATIVE_INDICES,PETSC_TRUE);
 	VecSetOption(b, VEC_IGNORE_NEGATIVE_INDICES,PETSC_TRUE);
 
+#if 0
 	VecGetSize(x, &M);
 	ScreenMessage("-> x: global nrows=%d\n", M);
 	VecGetLocalSize(x, &m);
@@ -242,6 +243,7 @@ void PETScLinearSolver::CreateMatrixVectors(SparseIndex& sparse_index)
 	ScreenMessage("-> b: global nrows=%d\n", M);
 	VecGetLocalSize(b, &m);
 	ScreenMessage2("-> b: local nrows=%d\n", m);
+#endif
 //	VecCreate(PETSC_COMM_WORLD, &b);
 //	////VecCreateMPI(PETSC_COMM_WORLD,m_size_loc, m, &b);
 //	// VecSetSizes(b, m_size_loc, m);

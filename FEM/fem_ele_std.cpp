@@ -5959,7 +5959,7 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 		add2GlobalMatrixII_Split(updateA, updateRHS);
 		return;
 	}
-#if 1
+#if 0
 	if (myrank>=0 && act_nodes != nnodes) {
 		bool found = false;
 		for (int i=0; i<nnodes; i++)
@@ -6015,15 +6015,15 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 		}
 	}
 
-	std::stringstream ss;
-	ss  << "\nElement: local=" << MeshElement->GetIndex();
-	ss  << "\nrow_ids = ";
-	for (int i=0; i<nnodes*dof; i++)
-		ss << row_ids[i] << " ";
-	ss  << "\ncol_ids = ";
-	for (int i=0; i<nnodes*dof; i++)
-		ss << col_ids[i] << " ";
-	ScreenMessage2("%s\n", ss.str().data());
+//	std::stringstream ss;
+//	ss  << "\nElement: local=" << MeshElement->GetIndex() << ", global=" << MeshElement->GetGlobalIndex();
+//	ss  << "\nrow_ids = ";
+//	for (int i=0; i<nnodes*dof; i++)
+//		ss << row_ids[i] << " ";
+//	ss  << "\ncol_ids = ";
+//	for (int i=0; i<nnodes*dof; i++)
+//		ss << col_ids[i] << " ";
+//	ScreenMessage2("%s\n", ss.str().data());
 
 	petsc_group::PETScLinearSolver* eqs = pcs->eqs_new;
 	if (updateA)
