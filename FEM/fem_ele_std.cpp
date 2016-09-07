@@ -368,8 +368,8 @@ CFiniteElementStd::CFiniteElementStd(CRFProcess* Pcs, const int C_Sys_Flad,
 	NodalVal0 = new double[size_m];
 
 #if defined(USE_PETSC)       // || defined(other parallel libs)//03~04.3012. WW
-	idxm = new int[size_m];  //> global indices of local matrix rows
-	idxn = new int[size_m];  //> global indices of local matrix columns
+	row_ids = new int[size_m];  //> global indices of local matrix rows
+	col_ids = new int[size_m];  //> global indices of local matrix columns
 	local_idx = new int[size_m];  //> local index for local assemble
 // local_matrix = new double[size_m * size_m]; //> local matrix
 // local_vec = new double[size_m]; //> local vector
@@ -6024,7 +6024,7 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 			const int i_buff = MeshElement->GetNode(i)->GetEquationIndex() * dof;
 			for (int k = 0; k < dof; k++)
 			{
-				idxn[k * nnodes + i] = i_buff + k;
+				col_ids[k * nnodes + i] = i_buff + k;
 			}
 			// local_vec[i] = 0.;
 		}
@@ -6039,7 +6039,7 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 			local_vec[i] = loc_v[i_full];
 			i_full *= dim_full;
 
-			idxm[i] =
+			row_ids[i] =
 			    MeshElement->GetNode(local_idx[in])->GetEquationIndex() * dof +
 			    i_dom;
 
@@ -6073,8 +6073,8 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 			for (int k = 0; k < dof; k++)
 			{
 				const int ki = k * nnodes + i;
-				idxm[ki] = i_buff + k;
-				idxn[ki] = idxm[ki];
+				row_ids[ki] = i_buff + k;
+				col_ids[ki] = row_ids[ki];
 			}
 			// local_vec[i] = 0.;
 		}
@@ -6110,8 +6110,8 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 	os_t.close();
 #endif  // ifdef assmb_petsc_test
 
-	if (updateA) eqs->addMatrixEntries(m_dim, idxm, n_dim, idxn, local_matrix);
-	if (updateRHS) eqs->setArrayValues(1, m_dim, idxm, local_vec);
+	if (updateA) eqs->addMatrixEntries(m_dim, row_ids, n_dim, col_ids, local_matrix);
+	if (updateRHS) eqs->setArrayValues(1, m_dim, row_ids, local_vec);
 	// eqs->AssembleRHS_PETSc();
 	// eqs->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY );
 }
@@ -6128,9 +6128,9 @@ void CFiniteElementStd::add2GlobalMatrixII_Split(bool updateA, bool updateRHS)
 	const int m_dim = hasGhostNodes ? act_nodes : nnodes;
 	const int n_dim = nnodes;
 	for (int i = 0; i < n_dim; i++)
-		idxn[i] = MeshElement->GetNode(i)->GetEquationIndex();
+		col_ids[i] = MeshElement->GetNode(i)->GetEquationIndex();
 	for (int i = 0; i < m_dim; i++)
-		idxm[i] = MeshElement->GetNode(local_idx[i])->GetEquationIndex();
+		row_ids[i] = MeshElement->GetNode(local_idx[i])->GetEquationIndex();
 	double const* const loc_cpl_mat = StiffMatrix->getEntryArray();
 	double const* const loc_cpl_rhs = RHS->getEntryArray();
 	const unsigned n_cpl_mat_columns = nnodes * dof;
@@ -6230,8 +6230,8 @@ void CFiniteElementStd::add2GlobalMatrixII_Split(bool updateA, bool updateRHS)
 						    loc_cpl_mat[i_offest + j];
 					}
 				}
-				ierr = MatSetValues(eqs->vec_subA[ii * dof + jj], m_dim, idxm,
-				                    n_dim, idxn, local_matrix, ADD_VALUES);
+				ierr = MatSetValues(eqs->vec_subA[ii * dof + jj], m_dim, row_ids,
+				                    n_dim, col_ids, local_matrix, ADD_VALUES);
 				CHKERRABORT(PETSC_COMM_WORLD, ierr);
 			}
 		}
@@ -6244,7 +6244,7 @@ void CFiniteElementStd::add2GlobalMatrixII_Split(bool updateA, bool updateRHS)
 			for (int i = 0; i < m_dim; i++)
 				local_vec[i] = loc_cpl_rhs[local_idx[i] + ii * c_nnodes];
 
-			ierr = VecSetValues(eqs->vec_subRHS[ii], m_dim, idxm, local_vec,
+			ierr = VecSetValues(eqs->vec_subRHS[ii], m_dim, row_ids, local_vec,
 			                    ADD_VALUES);
 			CHKERRABORT(PETSC_COMM_WORLD, ierr);
 		}  // update RHS

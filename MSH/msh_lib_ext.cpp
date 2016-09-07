@@ -549,7 +549,7 @@ int CFEMesh::calMaximumConnectedLocalNodes(bool quadratic, std::vector<int> &d_n
 {
 	d_nnz.resize(quadratic ? this->getNumNodesLocal_Q() : this->getNumNodesLocal());
 	size_t max_connected_nodes = 0;
-	const int node0_eqsId = nod_vector[0]->GetEquationIndex(quadratic);
+	const int node0_eqsId = nod_vector[0]->GetEquationIndex();
 	for (size_t i=0; i<this->GetNodesNumber(quadratic); i++)
 	{
 		CNode* node = nod_vector[i];
@@ -560,7 +560,7 @@ int CFEMesh::calMaximumConnectedLocalNodes(bool quadratic, std::vector<int> &d_n
 			if (this->isNodeLocal(node_id))
 				cnt_local++;
 		max_connected_nodes = std::max(max_connected_nodes, cnt_local);
-		int eqs_id = node->GetEquationIndex(quadratic) - node0_eqsId;
+		int eqs_id = node->GetEquationIndex() - node0_eqsId;
 		d_nnz[eqs_id] = cnt_local;
 	}
 	ScreenMessage2d("-> max. connected local nodes = %d\n", max_connected_nodes);
@@ -571,7 +571,7 @@ int CFEMesh::calMaximumConnectedGhostNodes(bool quadratic, std::vector<int> &o_n
 {
 	o_nnz.resize(quadratic ? this->getNumNodesLocal_Q() : this->getNumNodesLocal());
 	size_t max_connected_nodes = 0;
-	const int node0_eqsId = nod_vector[0]->GetEquationIndex(quadratic);
+	const int node0_eqsId = nod_vector[0]->GetEquationIndex();
 	for (size_t i=0; i<this->GetNodesNumber(quadratic); i++)
 	{
 		CNode* node = nod_vector[i];
@@ -582,7 +582,7 @@ int CFEMesh::calMaximumConnectedGhostNodes(bool quadratic, std::vector<int> &o_n
 			if (!this->isNodeLocal(node_id))
 				cnt_ghost++;
 		max_connected_nodes = std::max(max_connected_nodes, cnt_ghost);
-		int eqs_id = node->GetEquationIndex(quadratic) - node0_eqsId;
+		int eqs_id = node->GetEquationIndex() - node0_eqsId;
 		o_nnz[eqs_id] = cnt_ghost;
 	}
 	ScreenMessage2d("-> max. connected ghost nodes = %d\n", max_connected_nodes);
