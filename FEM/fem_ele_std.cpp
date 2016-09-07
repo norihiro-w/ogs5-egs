@@ -368,8 +368,8 @@ CFiniteElementStd::CFiniteElementStd(CRFProcess* Pcs, const int C_Sys_Flad,
 	NodalVal0 = new double[size_m];
 
 #if defined(USE_PETSC)       // || defined(other parallel libs)//03~04.3012. WW
-	idxm = new int[size_m];  //> global indices of local matrix rows
-	idxn = new int[size_m];  //> global indices of local matrix columns
+	row_ids = new int[size_m];  //> global indices of local matrix rows
+	col_ids = new int[size_m];  //> global indices of local matrix columns
 	local_idx = new int[size_m];  //> local index for local assemble
 // local_matrix = new double[size_m * size_m]; //> local matrix
 // local_vec = new double[size_m]; //> local vector
@@ -2944,38 +2944,38 @@ void CFiniteElementStd::CalcMass()
 			// Mphi2D_SPG
 			if (pcs->m_num->ele_upwind_method > 0)
 				UpwindSummandMass(gp, gp_r, gp_s, gp_t, alpha, summand);
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-			for (i = 0; i < act_nodes; i++)
-			{
-				const int ia = local_idx[i];
-				for (j = 0; j < nnodes; j++)
-				{
-					(*Mass)(ia, j) +=
-					    mat_fac * (shapefct[ia] + summand[ia]) * shapefct[j];
-				}
-			}
-#else
+//#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+//			for (i = 0; i < act_nodes; i++)
+//			{
+//				const int ia = local_idx[i];
+//				for (j = 0; j < nnodes; j++)
+//				{
+//					(*Mass)(ia, j) +=
+//					    mat_fac * (shapefct[ia] + summand[ia]) * shapefct[j];
+//				}
+//			}
+//#else
 			for (i = 0; i < nnodes; i++)
 				for (j = 0; j < nnodes; j++)
 					// bei CT: phi * omega; phi beinh. uw-fakt.
 					(*Mass)(i, j) +=
 					    mat_fac * (shapefct[i] + summand[i]) * shapefct[j];
-#endif
+//#endif
 			// TEST OUTPUT
 		}
 		else
 #endif
 		{
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-			for (i = 0; i < act_nodes; i++)
-			{
-				const int ia = local_idx[i];
-				for (j = 0; j < nnodes; j++)
-				{
-					(*Mass)(ia, j) += mat_fac * shapefct[ia] * shapefct[j];
-				}
-			}
-#else
+//#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+//			for (i = 0; i < act_nodes; i++)
+//			{
+//				const int ia = local_idx[i];
+//				for (j = 0; j < nnodes; j++)
+//				{
+//					(*Mass)(ia, j) += mat_fac * shapefct[ia] * shapefct[j];
+//				}
+//			}
+//#else
 			for (i = 0; i < nnodes; i++)
 				for (j = 0; j < nnodes; j++)
 				{
@@ -2984,7 +2984,7 @@ void CFiniteElementStd::CalcMass()
 						if (j > i) continue;
 					(*Mass)(i, j) += mat_fac * shapefct[i] * shapefct[j];
 				}
-#endif
+//#endif
 			if (pcs->m_num->ele_supg_method > 0)  // NW
 			{
 				vel[0] = gp_ele->Velocity(0, gp);
@@ -2995,35 +2995,35 @@ void CFiniteElementStd::CalcMass()
 				CalcSUPGWeightingFunction(vel, gp, tau, weight_func);
 
 // tau*({v}[dN])^T*[N]
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-				for (i = 0; i < act_nodes; i++)
-				{
-					const int ia = local_idx[i];
-					for (j = 0; j < nnodes; j++)
-					{
-						(*Mass)(ia, j) +=
-						    mat_fac * tau * weight_func[ia] * shapefct[j];
-					}
-				}
-#else
+//#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+//				for (i = 0; i < act_nodes; i++)
+//				{
+//					const int ia = local_idx[i];
+//					for (j = 0; j < nnodes; j++)
+//					{
+//						(*Mass)(ia, j) +=
+//						    mat_fac * tau * weight_func[ia] * shapefct[j];
+//					}
+//				}
+//#else
 				for (i = 0; i < nnodes; i++)
 					for (j = 0; j < nnodes; j++)
 						(*Mass)(i, j) +=
 						    mat_fac * tau * weight_func[i] * shapefct[j];
-#endif
+//#endif
 			}
 		}  // end else
 	}      // loop gauss points
 
 // WW/CB //NW
-#ifndef USE_PETSC
+//#ifndef USE_PETSC
 	if (PcsType != T && pcs->m_num->ele_supg_method == 0)
 	{
 		for (i = 0; i < nnodes; i++)
 			for (j = 0; j < nnodes; j++)
 				if (j > i) (*Mass)(i, j) = (*Mass)(j, i);
 	}
-#endif
+//#endif
 	// Test Output
 	// Mass->Write();
 }
@@ -3601,18 +3601,18 @@ void CFiniteElementStd::CalcMass2()
 				mat_fac *= fkt;
 				// Calculate mass matrix
 				const int jsh = jn * nnodes;
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-				for (i = 0; i < act_nodes; i++)
-				{
-					const int ia = local_idx[i];  // local_idx[ia]
-					const int ish = ia + in * nnodes;
-					for (j = 0; j < nnodes; j++)
-					{
-						(*Mass2)(ish, j + jsh) +=
-						    mat_fac * shapefct[ia] * shapefct[j];
-					}
-				}
-#else
+//#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+//				for (i = 0; i < act_nodes; i++)
+//				{
+//					const int ia = local_idx[i];  // local_idx[ia]
+//					const int ish = ia + in * nnodes;
+//					for (j = 0; j < nnodes; j++)
+//					{
+//						(*Mass2)(ish, j + jsh) +=
+//						    mat_fac * shapefct[ia] * shapefct[j];
+//					}
+//				}
+//#else
 				for (i = 0; i < nnodes; i++)
 				{
 					const int ish = i + in * nnodes;
@@ -3620,7 +3620,7 @@ void CFiniteElementStd::CalcMass2()
 						(*Mass2)(ish, j + jsh) +=
 						    mat_fac * shapefct[i] * shapefct[j];
 				}
-#endif
+//#endif
 			}
 	}
 }
@@ -3659,23 +3659,23 @@ void CFiniteElementStd::CalcMassPSGLOBAL()
 				mat_fac = CalCoefMassPSGLOBAL(in * dof_n + jn);
 				mat_fac *= fkt;
 // Calculate mass matrix
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-				for (i = 0; i < act_nodes; i++)
-				{
-					const int ia = local_idx[i];
-					for (j = 0; j < nnodes; j++)
-					{
-						(*Mass2)(ia + in * nnodes, j + jn * nnodes) +=
-						    mat_fac * shapefct[ia] * shapefct[j];
-					}
-				}
+//#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+//				for (i = 0; i < act_nodes; i++)
+//				{
+//					const int ia = local_idx[i];
+//					for (j = 0; j < nnodes; j++)
+//					{
+//						(*Mass2)(ia + in * nnodes, j + jn * nnodes) +=
+//						    mat_fac * shapefct[ia] * shapefct[j];
+//					}
+//				}
 
-#else
+//#else
 				for (i = 0; i < nnodes; i++)
 					for (j = 0; j < nnodes; j++)
 						(*Mass2)(i + in * nnodes, j + jn * nnodes) +=
 						    mat_fac * shapefct[i] * shapefct[j];
-#endif
+//#endif
 			}
 	}
 }
@@ -3723,16 +3723,16 @@ void CFiniteElementStd::CalcLumpedMass()
 	factor = CalCoefMass();
 	pcs->timebuffer = factor;  // Tim Control "Neumann"
 	factor *= vol / (double)nnodes;
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-	for (i = 0; i < act_nodes; i++)
-	{
-		const int ia = local_idx[i];
-		(*Mass)(ia, ia) = factor;
-	}
-#else
+//#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+//	for (i = 0; i < act_nodes; i++)
+//	{
+//		const int ia = local_idx[i];
+//		(*Mass)(ia, ia) = factor;
+//	}
+//#else
 	for (i = 0; i < nnodes; i++)
 		(*Mass)(i, i) = factor;
-#endif
+//#endif
 //
 #ifdef otherLumpedMass
 	int i, j;
@@ -3797,16 +3797,16 @@ void CFiniteElementStd::CalcLumpedMass2()
 			// Volume
 			factor *= vol / (double)nnodes;
 			const int jsh = jn * nnodes;  // WW
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-			for (i = 0; i < act_nodes; i++)
-			{
-				const int ia = local_idx[i];
-				(*Mass2)(ia + ish, ia + jsh) = factor;
-			}
-#else
+//#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+//			for (i = 0; i < act_nodes; i++)
+//			{
+//				const int ia = local_idx[i];
+//				(*Mass2)(ia + ish, ia + jsh) = factor;
+//			}
+//#else
 			for (i = 0; i < nnodes; i++)
 				(*Mass2)(i + ish, i + jsh) = factor;
-#endif
+//#endif
 		}
 	}
 	// TEST OUT
@@ -3855,16 +3855,16 @@ void CFiniteElementStd::CalcLumpedMassPSGLOBAL()
 			// Volume
 			factor *= vol / (double)nnodes;
 			const int jsh = jn * nnodes;  // WW
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-			for (i = 0; i < act_nodes; i++)
-			{
-				const int ia = local_idx[i];
-				(*Mass2)(ia + ish, ia + jsh) = factor;
-			}
-#else
+//#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+//			for (i = 0; i < act_nodes; i++)
+//			{
+//				const int ia = local_idx[i];
+//				(*Mass2)(ia + ish, ia + jsh) = factor;
+//			}
+//#else
 			for (i = 0; i < nnodes; i++)
 				(*Mass2)(i + ish, i + jsh) = factor;
-#endif
+//#endif
 		}
 	}
 	// TEST OUT
@@ -3906,20 +3906,20 @@ void CFiniteElementStd::CalcStorage()
 		// GEO factor
 		fkt *= mat_fac;
 // Calculate mass matrix
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-		for (i = 0; i < act_nodes; i++)
-		{
-			const int ia = local_idx[i];
-			for (j = 0; j < nnodes; j++)
-			{
-				(*Storage)(ia, j) += fkt * shapefct[ia] * shapefct[j];
-			}
-		}
-#else
+//#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+//		for (i = 0; i < act_nodes; i++)
+//		{
+//			const int ia = local_idx[i];
+//			for (j = 0; j < nnodes; j++)
+//			{
+//				(*Storage)(ia, j) += fkt * shapefct[ia] * shapefct[j];
+//			}
+//		}
+//#else
 		for (i = 0; i < nnodes; i++)
 			for (j = 0; j < nnodes; j++)
 				(*Storage)(i, j) += fkt * shapefct[i] * shapefct[j];
-#endif
+//#endif
 	}
 	// TEST OUTPUT
 	//  if(Index == 195){cout << "Storage Matrix: " << "\n"; Storage->Write(); }
@@ -3960,21 +3960,21 @@ void CFiniteElementStd::CalcContent()
 		// GEO factor
 		fkt *= mat_fac;
 // Calculate mass matrix
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-		for (i = 0; i < act_nodes; i++)
-		{
-			const int ia = local_idx[i];
-			for (j = 0; j < nnodes; j++)
-			{
-				(*Content)(ia, j) += fkt * shapefct[ia] * shapefct[j];
-			}
-		}
+//#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+//		for (i = 0; i < act_nodes; i++)
+//		{
+//			const int ia = local_idx[i];
+//			for (j = 0; j < nnodes; j++)
+//			{
+//				(*Content)(ia, j) += fkt * shapefct[ia] * shapefct[j];
+//			}
+//		}
 
-#else
+//#else
 		for (i = 0; i < nnodes; i++)
 			for (j = 0; j < nnodes; j++)
 				(*Content)(i, j) += fkt * shapefct[i] * shapefct[j];
-#endif
+//#endif
 	}
 }
 
@@ -4049,30 +4049,30 @@ void CFiniteElementStd::CalcLaplace()
 				}
 #endif
 				const int jsh = jn * nnodes;
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-				//---------------------------------------------------------
-				for (i = 0; i < act_nodes; i++)
-				{
-					const int ia = local_idx[i];
-					const int iish = ia + ish;
-					for (j = 0; j < nnodes; j++)
-					{
-						const int jjsh = j + jsh;
-						//  if(j>i) continue;
-						for (k = 0; k < dim; k++)
-						{
-							const int ksh = k * nnodes + ia;
-							const int km = dim * k;
-							for (l = 0; l < (int)dim; l++)
-							{
-								(*Laplace)(iish, jjsh) +=
-								    fkt * dshapefct[ksh] * mat[km + l] *
-								    dshapefct[l * nnodes + j];
-							}
-						}
-					}  // j: nodes
-				}      // i: nodes
-#else
+//#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+//				//---------------------------------------------------------
+//				for (i = 0; i < act_nodes; i++)
+//				{
+//					const int ia = local_idx[i];
+//					const int iish = ia + ish;
+//					for (j = 0; j < nnodes; j++)
+//					{
+//						const int jjsh = j + jsh;
+//						//  if(j>i) continue;
+//						for (k = 0; k < dim; k++)
+//						{
+//							const int ksh = k * nnodes + ia;
+//							const int km = dim * k;
+//							for (l = 0; l < (int)dim; l++)
+//							{
+//								(*Laplace)(iish, jjsh) +=
+//								    fkt * dshapefct[ksh] * mat[km + l] *
+//								    dshapefct[l * nnodes + j];
+//							}
+//						}
+//					}  // j: nodes
+//				}      // i: nodes
+//#else
 				//---------------------------------------------------------
 				for (i = 0; i < nnodes; i++)
 				{
@@ -4094,7 +4094,7 @@ void CFiniteElementStd::CalcLaplace()
 						}
 					}  // j: nodes
 				}      // i: nodes
-#endif
+//#endif
 			}
 		}  //	//TEST OUTPUT
 	}
@@ -4356,24 +4356,24 @@ void CFiniteElementStd::CalcAdvection()
 			             index, m_pcs->GetElementValueIndex("VELOCITY1_Z") + 1);
 		}
 #endif
-#if defined(USE_PETSC)  //|| defined (other parallel solver)
-		for (i = 0; i < act_nodes; i++)
-		{
-			const int ia = local_idx[i];
-			for (j = 0; j < nnodes; j++)
-			{
-				for (size_t k = 0; k < dim; k++)
-					(*Advection)(ia, j) +=
-					    fkt * shapefct[ia] * vel[k] * dshapefct[k * nnodes + j];
-			}
-		}
-#else
+//#if defined(USE_PETSC)  //|| defined (other parallel solver)
+//		for (i = 0; i < act_nodes; i++)
+//		{
+//			const int ia = local_idx[i];
+//			for (j = 0; j < nnodes; j++)
+//			{
+//				for (size_t k = 0; k < dim; k++)
+//					(*Advection)(ia, j) +=
+//					    fkt * shapefct[ia] * vel[k] * dshapefct[k * nnodes + j];
+//			}
+//		}
+//#else
 		for (i = 0; i < nnodes; i++)
 			for (j = 0; j < nnodes; j++)
 				for (size_t k = 0; k < dim; k++)
 					(*Advection)(i, j) +=
 					    fkt * shapefct[i] * vel[k] * dshapefct[k * nnodes + j];
-#endif
+//#endif
 		if (pcs->m_num->ele_supg_method > 0)  // NW
 		{
 			vel[0] = gp_ele->Velocity(0, gp);
@@ -4726,14 +4726,14 @@ void CFiniteElementStd::Assemble_Gravity()
 			}
 			// Calculate mass matrix
 			const int iinn = ii * nnodes;  // 19.06.2012. WW
-#if defined(USE_PETSC)  //|| defined (other parallel solver) //19.06.2012
-			for (int ia = 0; ia < act_nodes; ia++)
-			{
-				const int i = local_idx[ia];
-#else
+//#if defined(USE_PETSC)  //|| defined (other parallel solver) //19.06.2012
+//			for (int ia = 0; ia < act_nodes; ia++)
+//			{
+//				const int i = local_idx[ia];
+//#else
 			for (i = 0; i < nnodes; i++)
 			{
-#endif
+//#endif
 				const int ipiinn = iinn + i;  // 19.06.2012. WW
 				for (size_t k = 0; k < dim; k++)
 				{
@@ -5960,45 +5960,78 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 		return;
 	}
 #if 0
-	if (myrank==1 && act_nodes != nnodes) {
+	if (myrank>=0 && act_nodes != nnodes) {
 		bool found = false;
 		for (int i=0; i<nnodes; i++)
 			if (MeshElement->GetNode(i)->GetEquationIndex()==292) found = true;
+		found = true;
 		if (found) {
-			std::cout << "-> Index: " << Index << "\n";
-			std::cout << "-> Nodes: \n";
+			std::stringstream ss;
+			ss << "-> Index: " << Index << "\n";
+			ss << "-> Nodes: \n";
 			for (int i=0; i<nnodes; i++)
-				std::cout << MeshElement->GetNode(i)->GetEquationIndex() << " ";
-			std::cout << "\n";
-			std::cout << "-> u0,u1: \n";
+				ss << MeshElement->GetNode(i)->GetEquationIndex() << " ";
+			ss << "\n";
+			ss << "-> u0,u1: \n";
 			for (int i=0; i<nnodes; i++) {
-				std::cout << NodalVal_p0[i] << " "<< NodalVal_p1[i] << " "<< NodalVal_T0[i] << " "<< NodalVal_T1[i] << "\n";
+				ss << NodalVal_p0[i] << " "<< NodalVal_p1[i] << " "<< NodalVal_T0[i] << " "<< NodalVal_T1[i] << "\n";
 			}
-			std::cout << "\n";
+			ss << "\n";
 
-			std::cout << "-> Velocity: \n";
-			ele_gp_value[Index]->Velocity.Write();
-			std::cout << "-> StiffMatrix: \n";
-			StiffMatrix->Write(std::cout);
-			std::cout << "-> RHS: \n";
-			RHS->Write(std::cout);
-			std::cout << "-> act_nodes =" << act_nodes << "\n";
-			std::cout << "-> local_idx: \n";
+			ss << "-> Velocity: \n";
+			ele_gp_value[Index]->Velocity.Write(ss);
+			ss << "-> StiffMatrix: \n";
+			StiffMatrix->Write(ss);
+			ss << "-> RHS: \n";
+			RHS->Write(ss);
+			ss << "-> act_nodes =" << act_nodes << "\n";
+			ss << "-> local_idx: \n";
 			for (int i = 0; i < act_nodes; i++)
-				std::cout << local_idx[i] << " ";
-			std::cout << "\n";
-			std::cout << "\n";
+				ss << local_idx[i] << " ";
+			ss << "\n";
+			ss << "\n";
+			ScreenMessage2("\n%s\n", ss.str().data());
 		}
 	}
 #endif
 
-	const int dof =
-	    (pcs->GetContinnumType() == 1) ? 1 : pcs->pcs_number_of_primary_nvals;
+	const int dof = (pcs->GetContinnumType() == 1) ? 1 : pcs->pcs_number_of_primary_nvals;
 
-	double* local_matrix = NULL;
-	double* local_vec = NULL;
+	const int m_dim = nnodes * dof;
+	const int n_dim = m_dim;
+	double* local_matrix = StiffMatrix->getEntryArray();
+	double* local_vec = RHS->getEntryArray();
+
+	for (int i = 0; i < nnodes; i++)
+	{
+		MeshLib::CNode* node = MeshElement->GetNode(i);
+		const int offset = node->GetEquationIndex() * dof;
+		const bool isGhost = !pcs->m_msh->isNodeLocal(node->GetIndex());
+		for (int k = 0; k < dof; k++)
+		{
+			const int ki = k * nnodes + i;
+			row_ids[ki] = isGhost ? -1 : (offset + k);
+			col_ids[ki] = offset + k;
+		}
+	}
+
+//	std::stringstream ss;
+//	ss  << "\nElement: local=" << MeshElement->GetIndex() << ", global=" << MeshElement->GetGlobalIndex();
+//	ss  << "\nrow_ids = ";
+//	for (int i=0; i<nnodes*dof; i++)
+//		ss << row_ids[i] << " ";
+//	ss  << "\ncol_ids = ";
+//	for (int i=0; i<nnodes*dof; i++)
+//		ss << col_ids[i] << " ";
+//	ScreenMessage2("%s\n", ss.str().data());
+
 	petsc_group::PETScLinearSolver* eqs = pcs->eqs_new;
+	if (updateA)
+		eqs->addMatrixEntries(m_dim, row_ids, n_dim, col_ids, local_matrix);
+	if (updateRHS)
+		eqs->setArrayValues(1, m_dim, row_ids, local_vec);
 
+#if 0
 //#define assmb_petsc_test
 #ifdef assmb_petsc_test
 	char rank_char[10];
@@ -6024,7 +6057,7 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 			const int i_buff = MeshElement->GetNode(i)->GetEquationIndex() * dof;
 			for (int k = 0; k < dof; k++)
 			{
-				idxn[k * nnodes + i] = i_buff + k;
+				col_ids[k * nnodes + i] = i_buff + k;
 			}
 			// local_vec[i] = 0.;
 		}
@@ -6039,7 +6072,7 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 			local_vec[i] = loc_v[i_full];
 			i_full *= dim_full;
 
-			idxm[i] =
+			row_ids[i] =
 			    MeshElement->GetNode(local_idx[in])->GetEquationIndex() * dof +
 			    i_dom;
 
@@ -6073,8 +6106,8 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 			for (int k = 0; k < dof; k++)
 			{
 				const int ki = k * nnodes + i;
-				idxm[ki] = i_buff + k;
-				idxn[ki] = idxm[ki];
+				row_ids[ki] = i_buff + k;
+				col_ids[ki] = row_ids[ki];
 			}
 			// local_vec[i] = 0.;
 		}
@@ -6110,10 +6143,12 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 	os_t.close();
 #endif  // ifdef assmb_petsc_test
 
-	if (updateA) eqs->addMatrixEntries(m_dim, idxm, n_dim, idxn, local_matrix);
-	if (updateRHS) eqs->setArrayValues(1, m_dim, idxm, local_vec);
+	if (updateA) eqs->addMatrixEntries(m_dim, row_ids, n_dim, col_ids, local_matrix);
+	if (updateRHS) eqs->setArrayValues(1, m_dim, row_ids, local_vec);
 	// eqs->AssembleRHS_PETSc();
 	// eqs->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY );
+#endif
+
 }
 
 void CFiniteElementStd::add2GlobalMatrixII_Split(bool updateA, bool updateRHS)
@@ -6128,9 +6163,9 @@ void CFiniteElementStd::add2GlobalMatrixII_Split(bool updateA, bool updateRHS)
 	const int m_dim = hasGhostNodes ? act_nodes : nnodes;
 	const int n_dim = nnodes;
 	for (int i = 0; i < n_dim; i++)
-		idxn[i] = MeshElement->GetNode(i)->GetEquationIndex();
+		col_ids[i] = MeshElement->GetNode(i)->GetEquationIndex();
 	for (int i = 0; i < m_dim; i++)
-		idxm[i] = MeshElement->GetNode(local_idx[i])->GetEquationIndex();
+		row_ids[i] = MeshElement->GetNode(local_idx[i])->GetEquationIndex();
 	double const* const loc_cpl_mat = StiffMatrix->getEntryArray();
 	double const* const loc_cpl_rhs = RHS->getEntryArray();
 	const unsigned n_cpl_mat_columns = nnodes * dof;
@@ -6230,8 +6265,8 @@ void CFiniteElementStd::add2GlobalMatrixII_Split(bool updateA, bool updateRHS)
 						    loc_cpl_mat[i_offest + j];
 					}
 				}
-				ierr = MatSetValues(eqs->vec_subA[ii * dof + jj], m_dim, idxm,
-				                    n_dim, idxn, local_matrix, ADD_VALUES);
+				ierr = MatSetValues(eqs->vec_subA[ii * dof + jj], m_dim, row_ids,
+				                    n_dim, col_ids, local_matrix, ADD_VALUES);
 				CHKERRABORT(PETSC_COMM_WORLD, ierr);
 			}
 		}
@@ -6244,7 +6279,7 @@ void CFiniteElementStd::add2GlobalMatrixII_Split(bool updateA, bool updateRHS)
 			for (int i = 0; i < m_dim; i++)
 				local_vec[i] = loc_cpl_rhs[local_idx[i] + ii * c_nnodes];
 
-			ierr = VecSetValues(eqs->vec_subRHS[ii], m_dim, idxm, local_vec,
+			ierr = VecSetValues(eqs->vec_subRHS[ii], m_dim, row_ids, local_vec,
 			                    ADD_VALUES);
 			CHKERRABORT(PETSC_COMM_WORLD, ierr);
 		}  // update RHS

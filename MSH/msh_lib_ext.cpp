@@ -68,8 +68,7 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 			else
 			{
 				ScreenMessage("-> cannot find a partitioned mesh file\n");
-				PetscFinalize();
-				exit(1);
+				MPI_Abort(MPI_COMM_WORLD, 1);
 			}
 		}
 		getline(is, str_var);
@@ -544,6 +543,50 @@ int CFEMesh::calMaximumConnectedNodes()
 	MPI_Allreduce(&local_max, &global_max, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
 	return global_max;
+}
+
+int CFEMesh::calMaximumConnectedLocalNodes(bool quadratic, std::vector<int> &d_nnz)
+{
+	d_nnz.resize(quadratic ? this->getNumNodesLocal_Q() : this->getNumNodesLocal());
+	size_t max_connected_nodes = 0;
+	const int node0_eqsId = nod_vector[0]->GetEquationIndex();
+	for (size_t i=0; i<this->GetNodesNumber(quadratic); i++)
+	{
+		CNode* node = nod_vector[i];
+		if (!this->isNodeLocal(node->GetIndex()))
+			continue;
+		size_t cnt_local = 0;
+		for (auto node_id : node->getConnectedNodes())
+			if (this->isNodeLocal(node_id))
+				cnt_local++;
+		max_connected_nodes = std::max(max_connected_nodes, cnt_local);
+		int eqs_id = node->GetEquationIndex() - node0_eqsId;
+		d_nnz[eqs_id] = cnt_local;
+	}
+	ScreenMessage2d("-> max. connected local nodes = %d\n", max_connected_nodes);
+	return max_connected_nodes;
+}
+
+int CFEMesh::calMaximumConnectedGhostNodes(bool quadratic, std::vector<int> &o_nnz)
+{
+	o_nnz.resize(quadratic ? this->getNumNodesLocal_Q() : this->getNumNodesLocal());
+	size_t max_connected_nodes = 0;
+	const int node0_eqsId = nod_vector[0]->GetEquationIndex();
+	for (size_t i=0; i<this->GetNodesNumber(quadratic); i++)
+	{
+		CNode* node = nod_vector[i];
+		if (!this->isNodeLocal(node->GetIndex()))
+			continue;
+		size_t cnt_ghost = 0;
+		for (auto node_id : node->getConnectedNodes())
+			if (!this->isNodeLocal(node_id))
+				cnt_ghost++;
+		max_connected_nodes = std::max(max_connected_nodes, cnt_ghost);
+		int eqs_id = node->GetEquationIndex() - node0_eqsId;
+		o_nnz[eqs_id] = cnt_ghost;
+	}
+	ScreenMessage2d("-> max. connected ghost nodes = %d\n", max_connected_nodes);
+	return max_connected_nodes;
 }
 
 int CFEMesh::getMaxNumNodesOfElement(bool quadratic) const

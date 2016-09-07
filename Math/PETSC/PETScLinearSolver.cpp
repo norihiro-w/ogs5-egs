@@ -7,12 +7,6 @@
  *
  */
 
-/*!
-   \brief Definition of member functions of class PETScLinearSolver
-
-   10~11.2011. WW
-
-*/
 #include "PETScLinearSolver.h"
 
 #include <iostream>
@@ -22,36 +16,13 @@
 #include <petscversion.h>
 #include <petsctime.h>
 
-#include "../../Base/display.h"
+#include "display.h"
 #include "StringTools.h"
 
 namespace petsc_group
 {
-PETScLinearSolver::PETScLinearSolver(const int size)
-    : A(NULL),
-      B(NULL),
-      b(NULL),
-      x(NULL),
-      snes(NULL),
-      lsolver(NULL),
-      prec(NULL),
-      total_x(NULL),
-      global_x0(NULL),
-      global_x1(NULL),
-      global_buff(NULL)
+PETScLinearSolver::PETScLinearSolver()
 {
-	i_start = i_end = 0;
-	ltolerance = 1.e-10;
-	m_size = size;
-	time_elapsed = 0.0;
-	d_nz = 10;
-	o_nz = 10;
-	nz = 10;
-	m_size_loc = PETSC_DECIDE;
-	mpi_size = 0;
-	rank = 0;
-	is_global_node_id = NULL;
-	is_local_node_id = NULL;
 }
 
 PETScLinearSolver::~PETScLinearSolver()
@@ -80,109 +51,26 @@ PETScLinearSolver::~PETScLinearSolver()
 	if (global_x1) delete[] global_x1;
 	if (global_buff) delete[] global_buff;
 
-	PetscPrintf(PETSC_COMM_WORLD, "\n>>Number of Unknows: %d\n", m_size);
+	PetscPrintf(PETSC_COMM_WORLD, "\n>>Number of Unknowns: %d\n", m_size);
 	PetscPrintf(PETSC_COMM_WORLD, ">>Elapsed time in linear solver: %fs\n",
 	            time_elapsed);
 }
 
-void PETScLinearSolver::Init(const int* sparse_index)
+void PETScLinearSolver::Init(int size_)
 {
-	if (sparse_index)
-	{
-		d_nz = sparse_index[0];
-		o_nz = sparse_index[1];
-		nz = sparse_index[2];
-		m_size_loc = sparse_index[3];
-	}
+	m_size = size_;
+//	if (sparse_index_)
+//	{
+//		_sparse_index = *sparse_index_;
+//	}
 
-	VectorCreate(m_size);
-	MatrixCreate(m_size, m_size);
+	CreateMatrixVectors(sparse_index);
 
 	global_x0 = new PetscScalar[m_size];
 	global_x1 = new PetscScalar[m_size];
 	global_buff = new PetscScalar[m_size];
 }
 
-/*!
-  \brief KSP and PC type
-
- KSPRICHARDSON "richardson"
- KSPCHEBYCHEV  "chebychev"
- KSPCG         "cg"
- KSPCGNE       "cgne"
- KSPNASH       "nash"
- KSPSTCG       "stcg"
- KSPGLTR       "gltr"
- KSPGMRES      "gmres"
- KSPFGMRES     "fgmres"
- KSPLGMRES     "lgmres"
- KSPDGMRES     "dgmres"
- KSPTCQMR      "tcqmr"
- KSPBCGS       "bcgs"
- KSPIBCGS        "ibcgs"
- KSPBCGSL        "bcgsl"
- KSPCGS        "cgs"
- KSPTFQMR      "tfqmr"
- KSPCR         "cr"
- KSPLSQR       "lsqr"
- KSPPREONLY    "preonly"
- KSPQCG        "qcg"
- KSPBICG       "bicg"
- KSPMINRES     "minres"
- KSPSYMMLQ     "symmlq"
- KSPLCD        "lcd"
- KSPPYTHON     "python"
- KSPBROYDEN    "broyden"
- KSPGCR        "gcr"
- KSPNGMRES     "ngmres"
- KSPSPECEST    "specest"
-
- PCNONE            "none"
- PCJACOBI          "jacobi"
- PCSOR             "sor"
- PCLU              "lu"
- PCSHELL           "shell"
- PCBJACOBI         "bjacobi"
- PCMG              "mg"
- PCEISENSTAT       "eisenstat"
- PCILU             "ilu"
- PCICC             "icc"
- PCASM             "asm"
- PCGASM            "gasm"
- PCKSP             "ksp"
- PCCOMPOSITE       "composite"
- PCREDUNDANT       "redundant"
- PCSPAI            "spai"
- PCNN              "nn"
- PCCHOLESKY        "cholesky"
- PCPBJACOBI        "pbjacobi"
- PCMAT             "mat"
- PCHYPRE           "hypre"
- PCPARMS           "parms"
- PCFIELDSPLIT      "fieldsplit"
- PCTFS             "tfs"
- PCML              "ml"
- PCPROMETHEUS      "prometheus"
- PCGALERKIN        "galerkin"
- PCEXOTIC          "exotic"
- PCHMPI            "hmpi"
- PCSUPPORTGRAPH    "supportgraph"
- PCASA             "asa"
- PCCP              "cp"
- PCBFBT            "bfbt"
- PCLSC             "lsc"
- PCPYTHON          "python"
- PCPFMG            "pfmg"
- PCSYSPFMG         "syspfmg"
- PCREDISTRIBUTE    "redistribute"
- PCSACUSP          "sacusp"
- PCSACUSPPOLY      "sacusppoly"
- PCBICGSTABCUSP    "bicgstabcusp"
- PCSVD             "svd"
- PCAINVCUSP        "ainvcusp"
- PCGAMG            "gamg"
-
-*/
 void PETScLinearSolver::Config(const PetscReal tol, const PetscInt maxits,
                                const KSPType lsol, const PCType prec_type,
                                const std::string& misc_setting, const std::string& prefix)
@@ -296,48 +184,77 @@ void PETScLinearSolver::ConfigLinear(const PetscReal tol, const PetscInt maxits,
 
 }
 
-//-----------------------------------------------------------------
-void PETScLinearSolver::VectorCreate(PetscInt m)
-{
-	// PetscErrorCode ierr;  // returned value from PETSc functions
-	VecCreate(PETSC_COMM_WORLD, &b);
-	////VecCreateMPI(PETSC_COMM_WORLD,m_size_loc, m, &b);
-	// VecSetSizes(b, m_size_loc, m);
-	VecSetSizes(b, PETSC_DECIDE, m);
-	VecSetFromOptions(b);
-	VecSetUp(b);  // kg44 for PETSC 3.3
-	VecDuplicate(b, &x);
-
-	// VecGetOwnershipRange(b, &i_start,&i_end);
-}
-
-void PETScLinearSolver::MatrixCreate(PetscInt m, PetscInt n)
+void PETScLinearSolver::CreateMatrixVectors(SparseIndex& sparse_index)
 {
 	PetscErrorCode ierr;
 	MatCreate(PETSC_COMM_WORLD, &A);
-	// TEST  MatSetSizes(A, m_size_loc, PETSC_DECIDE, m, n);
 
-	ierr = MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, m, n);
-	// MatSetSizes(A, m_size_loc, PETSC_DECIDE, m,  n);
-	CHKERRCONTINUE(ierr);
+	ierr = MatSetSizes(A, sparse_index.m_size_loc, sparse_index.m_size_loc, PETSC_DECIDE, PETSC_DECIDE);
+	//ierr = MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, n_global_rows, n_global_cols);
 
 	MatSetType(A, MATMPIAIJ);
 	MatSetFromOptions(A);
 #if 1
-	ScreenMessage2("-> preallocate PETSc matrix with d_nz=%d and o_nz=%d\n", d_nz, o_nz);
-	MatMPIAIJSetPreallocation(A, d_nz, PETSC_NULL, o_nz, PETSC_NULL);
-	MatSeqAIJSetPreallocation(A, d_nz, PETSC_NULL);
+	ScreenMessage2("-> preallocate PETSc matrix with d_nz=%d and o_nz=%d\n", sparse_index.d_nz, sparse_index.o_nz);
+	ierr = MatMPIAIJSetPreallocation(A, sparse_index.d_nz, sparse_index.d_nnz.empty() ? PETSC_NULL : &sparse_index.d_nnz[0],
+							  sparse_index.o_nz, sparse_index.o_nnz.empty() ? PETSC_NULL : &sparse_index.o_nnz[0]);
+	CHKERRABORT(PETSC_COMM_WORLD, ierr);
+	ierr = MatSeqAIJSetPreallocation(A, sparse_index.d_nz, sparse_index.d_nnz.empty() ? PETSC_NULL : &sparse_index.d_nnz[0]);
+	CHKERRABORT(PETSC_COMM_WORLD, ierr);
 	MatSetOption(A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE);
+	MatSetOption(A, MAT_NO_OFF_PROC_ENTRIES, PETSC_TRUE);
+
+//	MatInfo info;
+//	MatGetInfo(A, MAT_LOCAL, &info);
+//	ScreenMessage2("-> MatInfo: number of nonzeros=%g, allocated memory=%g MB\n", info.nz_allocated, info.memory/(1024*1024));
 #else
 	ScreenMessage("-> do not preallocate PETSc\n");
 	MatSetUp(A);
 #endif
 	MatSetOption(A, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE);  // for MatZeroRows()
+
+	PetscInt M, N;
+	MatGetSize(A, &M, &N);
+	ScreenMessage("-> matrix: global nrows=%d, ncols=%d\n", M, N);
+	PetscInt m, n;
+	MatGetLocalSize(A, &m, &n);
+	ScreenMessage2("-> matrix: local nrows=%d, ncols=%d\n", m, n);
+
 	MatGetOwnershipRange(A, &i_start, &i_end);
 	ScreenMessage2d("-> PETSc linear solver range: start=%d, end=%d\n", i_start,
 	                i_end);
 
 	//  std::cout<<"sub_a  "<<i_start<<";   sub_d "<<i_end<<"\n";
+
+	// PetscErrorCode ierr;  // returned value from PETSc functions
+#if (PETSC_VERSION_NUMBER >= 3060)
+	MatCreateVecs(A, &x, &b);
+#else
+	MatGetVecs(A, &x, &b);
+#endif
+	VecSetOption(x, VEC_IGNORE_NEGATIVE_INDICES,PETSC_TRUE);
+	VecSetOption(b, VEC_IGNORE_NEGATIVE_INDICES,PETSC_TRUE);
+
+#if 0
+	VecGetSize(x, &M);
+	ScreenMessage("-> x: global nrows=%d\n", M);
+	VecGetLocalSize(x, &m);
+	ScreenMessage2("-> x: local nrows=%d\n", m);
+	VecGetSize(b, &M);
+	ScreenMessage("-> b: global nrows=%d\n", M);
+	VecGetLocalSize(b, &m);
+	ScreenMessage2("-> b: local nrows=%d\n", m);
+#endif
+//	VecCreate(PETSC_COMM_WORLD, &b);
+//	////VecCreateMPI(PETSC_COMM_WORLD,m_size_loc, m, &b);
+//	// VecSetSizes(b, m_size_loc, m);
+//	VecSetSizes(b, PETSC_DECIDE, m);
+//	VecSetFromOptions(b);
+//	VecSetUp(b);  // kg44 for PETSC 3.3
+//	VecDuplicate(b, &x);
+
+	// VecGetOwnershipRange(b, &i_start,&i_end);
+
 }
 
 void PETScLinearSolver::getLocalRowColumnSizes(int* m, int* n)
@@ -386,7 +303,7 @@ int PETScLinearSolver::Solver()
 #ifdef TEST_MEM_PETSC
 	PetscLogDouble mem1, mem2;
 	PetscMemoryGetCurrentUsage(&mem1);
-	PetscPrintf(PETSC_COMM_WORLD, "-> memory usage: %f FB\n", mem1/(1024*1024*1024));
+	PetscPrintf(PETSC_COMM_WORLD, "-> memory usage: %f MB\n", mem1/(1024*1024));
 #endif
 
 	/*
@@ -521,7 +438,7 @@ int PETScLinearSolver::Solver()
 
 #ifdef TEST_MEM_PETSC
 	PetscMemoryGetCurrentUsage(&mem2);
-	PetscPrintf(PETSC_COMM_WORLD, "-> memory usage: %f FB\n", mem1/(1024*1024*1024));
+	PetscPrintf(PETSC_COMM_WORLD, "-> memory usage: %f MB\n", mem1/(1024*1024));
 #endif
 #undef TEST_MEM_PETSC
 	return its;
@@ -832,17 +749,17 @@ void PETScLinearSolver::EQSV_Viewer(const std::string& file_name, bool ascii)
 //"true" : "false");
 
 // PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_VTK);
-#if 0
-	  PetscObjectSetName((PetscObject)A,"Stiffness_matrix");
-	  MatView(A,viewer);
 #if 1
-	  for (size_t i=0; i<vec_subA.size(); i++) {
-		  std::string name = "SubMatrix" + number2str(i);
+		PetscObjectSetName((PetscObject)A,"Stiffness_matrix");
+		MatView(A,viewer);
+#if 1
+		for (size_t i=0; i<vec_subA.size(); i++) {
+			std::string name = "SubMatrix" + number2str(i);
 //		  PetscOptionsGetBool(((PetscObject) vec_subA[i])->prefix, "-mat_ascii_output_large", &flg,NULL);
 //		  ScreenMessage2("subA[%d]: mat_ascii_output_large found: %s\n", i, flg==PETSC_TRUE ? "true" : "false");
-		  PetscObjectSetName((PetscObject)vec_subA[i],name.c_str());
-		  MatView(vec_subA[i],viewer);
-	  }
+			PetscObjectSetName((PetscObject)vec_subA[i],name.c_str());
+			MatView(vec_subA[i],viewer);
+		}
 #endif
 #endif
 		for (size_t i = 0; i < vec_subRHS.size(); i++)
@@ -864,9 +781,9 @@ void PETScLinearSolver::EQSV_Viewer(const std::string& file_name, bool ascii)
 		if (vec_subRHS.empty())
 		{
 			PetscObjectSetName((PetscObject)b, "RHS");
-			PetscObjectSetName((PetscObject)x, "Solution");
+			//PetscObjectSetName((PetscObject)x, "Solution");
 			VecView(b, viewer);
-			VecView(x, viewer);
+			//VecView(x, viewer);
 		}
 
 //#define  EXIT_TEST
