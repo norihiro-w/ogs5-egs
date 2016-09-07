@@ -205,8 +205,8 @@ protected:
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
 	int act_nodes;      //> activated nodes
 	int act_nodes_h;    //> activated nodes for high order elements
-	int* idxm;          //> global indices of local matrix rows
-	int* idxn;          //> global indices of local matrix columns
+	int* row_ids;          //> global indices of local matrix rows
+	int* col_ids;          //> global indices of local matrix columns
 	int* local_idx;     //> local index for local assemble
 // double *local_matrix; //>  local matrix
 // double *local_vec; //>  local vector
