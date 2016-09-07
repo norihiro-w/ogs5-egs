@@ -89,7 +89,7 @@ void PETScLinearSolver::Init(const int* sparse_index)
 		m_size_loc = sparse_index[3];
 	}
 
-	VectorCreate(m_size);
+	CreateMatrix(m_size, m_size);
 
 	global_x0 = new PetscScalar[m_size];
 	global_x1 = new PetscScalar[m_size];
