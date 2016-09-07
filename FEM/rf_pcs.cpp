@@ -4172,7 +4172,7 @@ void CRFProcess::AddFCT_CorrectionVector()
 {
 	int idx0 = 0;
 	int idx1 = idx0 + 1;
-	const double theta = this->m_num->ls_theta;
+	const double theta = this->m_num->time_theta;
 	const size_t node_size = m_msh->GetNodesNumber(false);
 	SparseMatrixDOK::mat_t& fct_f = this->FCT_AFlux->GetRawData();
 	SparseMatrixDOK::col_t* col;
@@ -6585,16 +6585,15 @@ void CRFProcess::SetIC()
 	// it is not necessary to use PrimaryVarible as second check.
 	// nidx will give the proper IC pointer.
 	if (this->getProcessType() == FiniteElement::MASS_TRANSPORT)
+	{
 		for (int i = 0; i < pcs_number_of_primary_nvals; i++)
 		{
 			int nidx = GetNodeValueIndex(pcs_primary_function_name[i]);
 
-			// PrimaryVariable pv_i
-			// (convertPrimaryVariable(pcs_primary_function_name[i]));
 			for (size_t j = 0; j < ic_vector.size(); j++)
 			{
 				m_ic = ic_vector[j];
-				m_ic->m_msh = m_msh;  // OK/MX
+				m_ic->m_msh = m_msh;
 
 				if (m_ic->getProcess() == this)
 				{
@@ -6603,8 +6602,9 @@ void CRFProcess::SetIC()
 				}
 			}
 		}
+	}
 	else  // otherwise PrimaryVariable check is still performed.
-
+	{
 		for (int i = 0; i < pcs_number_of_primary_nvals; i++)
 		{
 			int nidx = GetNodeValueIndex(pcs_primary_function_name[i]);
@@ -6614,7 +6614,7 @@ void CRFProcess::SetIC()
 			for (size_t j = 0; j < ic_vector.size(); j++)
 			{
 				m_ic = ic_vector[j];
-				m_ic->m_msh = m_msh;  // OK/MX
+				m_ic->m_msh = m_msh;
 
 				if (m_ic->getProcessType() != this->getProcessType()) continue;
 
@@ -6626,6 +6626,7 @@ void CRFProcess::SetIC()
 				}  // end of if
 			}      // end of for j
 		}          // end of for i
+	}
 
 	// end of if-else
 }

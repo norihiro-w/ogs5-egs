@@ -28,8 +28,8 @@ public:
 	std::ios::pos_type Read(std::ifstream*);
 	void Write(std::fstream*);
 
-	const char* getLinearSolverName() const { return lsover_name.c_str(); }
-	const char* getPreconditionerName() const { return pres_name.c_str(); }
+	const char* getLinearSolverName() const { return ls_sover_name.c_str(); }
+	const char* getPreconditionerName() const { return ls_precond_name.c_str(); }
 
 	void setNonLinearErrorMethod(FiniteElement::ErrorMethod err_method)
 	{
@@ -54,12 +54,11 @@ public:
 private:
 	FiniteElement::ErrorMethod _pcs_nls_error_method;
 	FiniteElement::ErrorMethod _pcs_cpl_error_method;
-	std::string lsover_name;
-	std::string pres_name;
+	std::string ls_sover_name;
+	std::string ls_precond_name;
 
 public:
 
-	std::string method_name;
 	std::string pcs_type_name;
 
 	//
@@ -68,7 +67,7 @@ public:
 	int ls_max_iterations;
 	int ls_error_method;
 	double ls_error_tolerance;
-	double ls_theta;
+	double time_theta;
 	int ls_precond;
 	int ls_storage_method;
 	std::string ls_extra_arg;
@@ -76,6 +75,7 @@ public:
 	bool petsc_split_fields;
 	bool petsc_use_snes;
 #endif
+
 
 	// NLS - Non-linear Solver
 	std::string nls_method_name;
