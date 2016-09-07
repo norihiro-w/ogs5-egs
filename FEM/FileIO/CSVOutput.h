@@ -20,6 +20,12 @@ public:
 	                  int timestep_number,
 	                  double current_time,
 	                  std::string const& baseFilename);
+
+	static void writePoyline(COutput* output,
+								   int timestep_number,
+								   double /*current_time*/,
+								   std::string const& baseFilename);
+
 };
 
 #endif  // CSVOUTPUT_H

@@ -11,10 +11,10 @@
 
 #include <cfloat>
 
+#include "mathlib.h"
+
 #include "msh_elem.h"
 
-#include "mathlib.h"
-#include "femlib.h"
 #include "rf_pcs.h"
 
 using namespace MeshLib;
@@ -107,8 +107,8 @@ CElement::CElement(int CoordFlag, const int order)
 #endif
 
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-	idxm = NULL;        //> global indices of local matrix rows
-	idxn = NULL;        //> global indices of local matrix columns
+	row_ids = NULL;        //> global indices of local matrix rows
+	col_ids = NULL;        //> global indices of local matrix columns
 	local_idx = NULL;   //> local index for local assemble
 	// local_matrix = NULL; //>  local matrix
 	// local_vec = NULL; //>  local vector
@@ -139,8 +139,8 @@ CElement::~CElement()
 	shapefctHQ = NULL;
 
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-	if (idxm) delete[] idxm;
-	if (idxn) delete[] idxn;
+	if (row_ids) delete[] row_ids;
+	if (col_ids) delete[] col_ids;
 	if (local_idx) delete[] local_idx;
 // if (local_idx)
 //  delete [] local_matrix;

@@ -18,17 +18,20 @@
 #include "rf_mfp_new.h"
 
 #include <cfloat>
+#include <sstream>
 
 #include "makros.h"
 #include "display.h"
 #include "FileToolsRF.h"
 
+#include "Curve.h"
+
 #include "eos.h"
 #include "fem_ele_std.h"
 #include "rfmat_cp.h"
+#include "rf_mmp_new.h"
+#include "rf_pcs.h"
 #include "tools.h"
-
-using namespace std;
 
 /* Umrechnungen SI - Amerikanisches System */
 // WW #include "steam67.h"
@@ -40,6 +43,9 @@ using namespace std;
 #define GAS_CONSTANT_V 461.5     // WW
 #define T_KILVIN_ZERO 273.15     // AKS
 double gravity_constant = 9.81;  // TEST for FEBEX OK 9.81;
+
+using namespace std;
+using namespace MeshLib;
 
 //==========================================================================
 std::vector<CFluidProperties*> mfp_vector;
@@ -857,16 +863,16 @@ void CFluidProperties::CalPrimaryVariable(
 			primary_variable_t0[i] = Fem_Ele_Std->interpolate(nidx0, m_pcs);
 			primary_variable_t1[i] = Fem_Ele_Std->interpolate(nidx1, m_pcs);
 			primary_variable[i] =
-			    (1. - Fem_Ele_Std->pcs->m_num->ls_theta) *
+			    (1. - Fem_Ele_Std->pcs->m_num->time_theta) *
 			        primary_variable_t0[i] +
-			    Fem_Ele_Std->pcs->m_num->ls_theta * primary_variable_t1[i];
+			    Fem_Ele_Std->pcs->m_num->time_theta * primary_variable_t1[i];
 		}
 		else if (mode == 2)  // Element average value
 		{
 			primary_variable[i] =
-			    (1. - Fem_Ele_Std->pcs->m_num->ls_theta) *
+			    (1. - Fem_Ele_Std->pcs->m_num->time_theta) *
 			        Fem_Ele_Std->elemnt_average(nidx0, m_pcs) +
-			    Fem_Ele_Std->pcs->m_num->ls_theta *
+			    Fem_Ele_Std->pcs->m_num->time_theta *
 			        Fem_Ele_Std->elemnt_average(nidx1, m_pcs);
 			primary_variable_t0[i] = Fem_Ele_Std->elemnt_average(nidx0, m_pcs);
 			primary_variable_t1[i] = Fem_Ele_Std->elemnt_average(nidx1, m_pcs);
@@ -2193,16 +2199,16 @@ double MFPCalcFluidsHeatCapacity(CFiniteElementStd* assem, double* var)
    {
    nidx0 = GetNodeValueIndex("SATURATION1");
    nidx1 = nidx0+1;
-   saturation_phase = (1.-assem->pcs->m_num->ls_theta)*assem->interpolate(nidx0)
- + assem->pcs->m_num->ls_theta*assem->interpolate(nidx1);
+   saturation_phase = (1.-assem->pcs->m_num->time_theta)*assem->interpolate(nidx0)
+ + assem->pcs->m_num->time_theta*assem->interpolate(nidx1);
    }
    else
    {
    nidx0 = PCSGetNODValueIndex("SATURATION1",0);
    nidx1 = PCSGetNODValueIndex("SATURATION1",1);
-   saturation_phase = (1.-assem->pcs->m_num->ls_theta)*assem->interpolate(nidx0)
+   saturation_phase = (1.-assem->pcs->m_num->time_theta)*assem->interpolate(nidx0)
  \
- + assem->pcs->m_num->ls_theta*assem->interpolate(nidx1);
+ + assem->pcs->m_num->time_theta*assem->interpolate(nidx1);
    }
    m_mfp = mfp_vector[0];
    heat_capacity_fluids = saturation_phase \
@@ -3818,7 +3824,7 @@ double CFluidProperties::SuperCompressibiltyFactor(int idx_elem, double p,
 	z2 = (A - 3.0 * pow(B, 2) - 2.0 * B);
 	z3 = (pow(B, 3) + pow(B, 2) - A * B);
 	NsPol3(z1, z2, z3, &roots);
-	h = FindMax(roots);
+	h = *std::max_element(roots.begin(), roots.end());
 	return h;
 }
 /**************************************************************************

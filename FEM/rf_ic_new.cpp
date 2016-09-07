@@ -369,7 +369,6 @@ ios::pos_type CInitialCondition::Read(std::ifstream* ic_file,
 				setGeoObj(pnt);
 
 				in.clear();
-				geo_name = "";  // REMOVE CANDIDATE
 			}
 			if (geo_type_name.find("POLYLINE") != string::npos)
 			{
@@ -523,7 +522,6 @@ void CInitialCondition::Set(int nidx)
 		{
 			case GEOLIB::POINT:
 				SetPoint(nidx);
-				std::cout << "WARNING: CInitialCondition::Set - ToDo" << endl;
 				break;
 			case GEOLIB::POLYLINE:
 				SetPolyline(nidx);
@@ -668,15 +666,21 @@ void CInitialCondition::SetByElementValues(int nidx)
 void CInitialCondition::SetPoint(int nidx)
 {
 	if (m_msh && this->getProcessDistributionType() == FiniteElement::CONSTANT)
-		this->getProcess()->SetNodeValue(
-		    this->getProcess()->m_msh->GetNODOnPNT(
-		        static_cast<const GEOLIB::Point*>(getGeoObj())),
-		    nidx,
-		    geo_node_value);
-	else
+	{
+		auto node_id = this->getProcess()->m_msh->GetNODOnPNT(static_cast<const GEOLIB::Point*>(getGeoObj()));
+		if (node_id >= 0) {
+			ScreenMessage2("-> node ID %d is found for POINT %s\n", node_id, getGeoName().data());
+			this->getProcess()->SetNodeValue(node_id, nidx, geo_node_value);
+		} else {
+#ifndef USE_PETSC
+			ScreenMessage("Error in CInitialCondition::SetPoint - point %s not found\n", getGeoName().data());
+#endif
+		}
+	} else {
 		std::cerr << "Error in CInitialCondition::SetPoint - point: "
 		          << *(static_cast<const GEOLIB::Point*>(getGeoObj()))
 		          << " not found" << endl;
+	}
 }
 
 /**************************************************************************
@@ -690,20 +694,20 @@ void CInitialCondition::SetEle(int nidx)
 	switch (getGeoType())
 	{
 		case GEOLIB::POINT:
-			std::cout << "Warning CInitialCondition::Set - ToDo"
+			std::cout << "Warning CInitialCondition::SetEle - ToDo"
 			          << "\n";
 			break;
 		case GEOLIB::POLYLINE:
 			// SetPolyline(nidx);
-			std::cout << "Warning CInitialCondition::Set - ToDo"
+			std::cout << "Warning CInitialCondition::SetEle - ToDo"
 			          << "\n";
 			break;
 		case GEOLIB::SURFACE:
-			std::cout << "Warning CInitialCondition::Set - ToDo"
+			std::cout << "Warning CInitialCondition::SetEle - ToDo"
 			          << "\n";
 			break;
 		case GEOLIB::VOLUME:
-			std::cout << "Warning CInitialCondition::Set - ToDo"
+			std::cout << "Warning CInitialCondition::SetEle - ToDo"
 			          << "\n";
 			break;
 		case GEOLIB::GEODOMAIN:

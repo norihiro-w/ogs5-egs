@@ -22,13 +22,7 @@ namespace MeshLib
    08/2011 NW Implementation
 **************************************************************************/
 CNode::CNode(size_t Index)
-    : CCore(Index),
-#ifndef OGS_ONLY_TH
-      free_surface(-1),
-      patch_area(-1.0),
-      crossroad(0),
-#endif
-      eqs_index(-1)
+    : CCore(Index)
 {
 	coordinate[0] = 0.0;
 	coordinate[1] = 0.0;
@@ -42,13 +36,7 @@ CNode::CNode(size_t Index)
    06/2005 WW Implementation
 **************************************************************************/
 CNode::CNode(size_t Index, double x, double y, double z)
-    : CCore(Index),
-#ifndef OGS_ONLY_TH
-      free_surface(-1),
-      patch_area(-1.0),
-      crossroad(false),
-#endif
-      eqs_index(-1)
+    : CCore(Index)
 {
 	coordinate[0] = x;
 	coordinate[1] = y;
@@ -56,13 +44,7 @@ CNode::CNode(size_t Index, double x, double y, double z)
 }
 
 CNode::CNode(size_t Index, double const* coordinates)
-    : CCore(Index),
-#ifndef OGS_ONLY_TH
-      free_surface(-1),
-      patch_area(-1.0),
-      crossroad(false),
-#endif
-      eqs_index(-1)
+    : CCore(Index)
 {
 	coordinate[0] = coordinates[0];
 	coordinate[1] = coordinates[1];
@@ -70,13 +52,7 @@ CNode::CNode(size_t Index, double const* coordinates)
 }
 
 CNode::CNode(double x, double y, double z)
-    : CCore(0),
-#ifndef OGS_ONLY_TH
-      free_surface(-1),
-      patch_area(-1.0),
-      crossroad(false),
-#endif
-      eqs_index(-1)
+    : CCore(0)
 {
 	coordinate[0] = x;
 	coordinate[1] = y;
@@ -84,13 +60,7 @@ CNode::CNode(double x, double y, double z)
 }
 
 CNode::CNode(double const* const coords)
-    : CCore(0),
-#ifndef OGS_ONLY_TH
-      free_surface(-1),
-      patch_area(-1.0),
-      crossroad(false),
-#endif
-      eqs_index(-1)
+    : CCore(0)
 {
 	coordinate[0] = coords[0];
 	coordinate[1] = coords[1];
@@ -104,13 +74,7 @@ CNode::CNode(double const* const coords)
    10/2009 NW Implementation
 **************************************************************************/
 CNode::CNode(size_t Index, const CNode* parent)
-    : CCore(Index),
-#ifndef OGS_ONLY_TH
-      free_surface(-1),
-      patch_area(-1.0),
-      crossroad(false),
-#endif
-      eqs_index(-1)
+    : CCore(Index)
 {
 	coordinate[0] = parent->coordinate[0];
 	coordinate[1] = parent->coordinate[1];
@@ -160,9 +124,9 @@ void CNode::Write(std::ostream& osm) const
 	osm << index << deli << coordinate[0] << deli << coordinate[1] << deli
 	    << coordinate[2] << deli;
 
-#ifndef OGS_ONLY_TH
-	if (patch_area > 0.0) osm << "$AREA" << deli << patch_area;
-#endif
+//#ifndef OGS_ONLY_TH
+//	if (patch_area > 0.0) osm << "$AREA" << deli << patch_area;
+//#endif
 	osm << "\n";
 }
 /**************************************************************************

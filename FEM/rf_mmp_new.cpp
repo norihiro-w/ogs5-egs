@@ -22,6 +22,8 @@
 #include "display.h"
 #include "FileToolsRF.h"
 
+#include "Curve.h"
+
 #include "mathlib.h"
 #include "fem_ele_std.h"
 #include "fem_ele_vec.h"
@@ -3037,7 +3039,7 @@ double* CMediumProperties::MassDispersionTensorNew(int ip,
 	double vg, PG, TG;
 	double D[9];
 	double alpha_l, alpha_t;
-	double theta = Fem_Ele_Std->pcs->m_num->ls_theta;
+	double theta = Fem_Ele_Std->pcs->m_num->time_theta;
 	double g[3] = {0., 0., 0.};
 	double l_char = 0.0;  // OK411 volume=0.0;
 	double saturation = 1.0;
@@ -3969,7 +3971,7 @@ double CMediumProperties::Porosity(CElement* assem)
 	{
 		str = porosity_pcs_name_vector[i];
 		pcs_temp = PCSGet(str, true);       // MX
-		theta = pcs_temp->m_num->ls_theta;  // WW
+		theta = pcs_temp->m_num->time_theta;  // WW
 		nidx0 = pcs_temp->GetNodeValueIndex(porosity_pcs_name_vector[i]);
 		nidx1 = nidx0 + 1;
 		if (mode == 0)  // Gauss point values
@@ -4118,7 +4120,7 @@ CMediumProperties::PorosityEffectiveConstrainedSwellingConstantIonicStrength(
 	    porosity_model_values[7]; /*minimal porosity after swelling compaction*/
 
 	/* Field v0ariables */
-	// WW theta = m_pcs->m_num->ls_theta;
+	// WW theta = m_pcs->m_num->time_theta;
 	// WW phase=1;
 	satu = saturation; /*only for fluid, phase=1*/
 

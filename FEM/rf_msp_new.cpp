@@ -16,6 +16,8 @@
 #include "FileToolsRF.h"
 #include "StringTools.h"
 
+#include "Curve.h"
+
 #include "fem_ele_std.h"
 #include "fem_ele_vec.h"
 #include "rf_pcs.h"
@@ -1128,9 +1130,9 @@ void CSolidProperties::HeatConductivityTensor(const int dim, double* tensor,
 	// check
 	if (thermal_conductivity_tensor_type > 0 &&
 	    dim != thermal_conductivity_tensor_dim)
-		cout << "***Error in CSolidProperties::HeatConductivityTensor(): "
-		        "problem dimension and the given tensor dimension are not same."
-		     << endl;
+		ScreenMessage("***Error in CSolidProperties::HeatConductivityTensor(): "
+		        "problem dimension (%d) and the given tensor dimension (%d) are not same.\n", dim, thermal_conductivity_tensor_dim);
+
 	// reset
 	for (i = 0; i < 9; i++)
 		tensor[i] = 0.0;
@@ -6323,17 +6325,17 @@ void CSolidProperties::CalPrimaryVariable(vector<string>& pcs_name_vector)
 		{
 			primary_variable_t0[i] = Fem_Ele_Std->interpolate(nidx0, m_pcs);
 			primary_variable_t1[i] = Fem_Ele_Std->interpolate(nidx1, m_pcs);
-			primary_variable[i] = (1. - Fem_Ele_Std->pcs->m_num->ls_theta) *
+			primary_variable[i] = (1. - Fem_Ele_Std->pcs->m_num->time_theta) *
 			                          Fem_Ele_Std->interpolate(nidx0, m_pcs) +
-			                      Fem_Ele_Std->pcs->m_num->ls_theta *
+			                      Fem_Ele_Std->pcs->m_num->time_theta *
 			                          Fem_Ele_Std->interpolate(nidx1, m_pcs);
 		}
 		else if (mode == 2)  // Element average value
 		{
 			primary_variable[i] =
-			    (1. - Fem_Ele_Std->pcs->m_num->ls_theta) *
+			    (1. - Fem_Ele_Std->pcs->m_num->time_theta) *
 			        Fem_Ele_Std->elemnt_average(nidx0, m_pcs) +
-			    Fem_Ele_Std->pcs->m_num->ls_theta *
+			    Fem_Ele_Std->pcs->m_num->time_theta *
 			        Fem_Ele_Std->elemnt_average(nidx1, m_pcs);
 			primary_variable_t0[i] = Fem_Ele_Std->elemnt_average(nidx0, m_pcs);
 			primary_variable_t1[i] = Fem_Ele_Std->elemnt_average(nidx1, m_pcs);

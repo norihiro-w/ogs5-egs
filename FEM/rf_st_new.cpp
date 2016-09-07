@@ -49,7 +49,9 @@
 #include "matrix_class.h"
 #include "rfmat_cp.h"
 #include "rf_mfp_new.h"
+#include "rf_mmp_new.h"
 #include "rf_node.h"
+#include "rf_pcs.h"
 #include "rf_tim_new.h"
 #include "SourceTerm.h"
 #include "tools.h"
@@ -1111,6 +1113,8 @@ void CSourceTermGroup::Set(CRFProcess* m_pcs, const int ShiftInNodeVector,
 			    m_pcs)
 				continue;
 
+		ScreenMessage("* %s on %s\n", FiniteElement::convertPrimaryVariableToString(st->getProcessPrimaryVariable()).data(), st->getGeoName().data());
+
 		//-- 23.02.3009. WW
 		if (st->getProcessDistributionType() == FiniteElement::DIRECT)
 		{   // NB For climate ST, the source terms (recharge in this case) will
@@ -1148,6 +1152,13 @@ void CSourceTermGroup::Set(CRFProcess* m_pcs, const int ShiftInNodeVector,
 		//------------------------------------------------------------------
 		nodes_vector.clear();
 		getNodesOnDistribution(distData, *m_msh, nodes_vector);
+		if (nodes_vector.empty())
+		{
+#ifndef USE_PETSC
+			ScreenMessage("-> ***ERROR* No nodes found on %s %s\n", st->getGeoName().data());
+#endif
+			continue;
+		}
 		//------------------------------------------------------------------
 		// Calculate ST values
 		//------------------------------------------------------------------
@@ -1990,8 +2001,8 @@ void CSourceTerm::FaceIntegration(CFEMesh* msh,
 			// Not a surface face
 			if (elem->GetDimension() == e_nei->GetDimension()) fac = 0.5;
 			CElem* face = new CElem(1);
-			face->SetFace(elem, j);
 			face->SetOrder(msh->getOrder());
+			face->SetFace(elem, j);
 			face->ComputeVolume();
 			if (active_elements == NULL) st_boundary_elements.push_back(face);
 			fem->setOrder(msh->getOrder() ? 2 : 1);

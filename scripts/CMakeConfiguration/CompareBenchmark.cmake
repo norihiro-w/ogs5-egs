@@ -2,7 +2,8 @@
 # file comparison with numdiff or cmake
 if(NUMDIFF_TOOL_PATH)
 	set(TESTER_COMMAND ${NUMDIFF_TOOL_PATH})
-	set(TESTER_ARGS --absolute-tolerance=1e-5 --relative-tolerance=1e-4 "-s'\n, '")
+	#set(TESTER_ARGS -a 0 -r 0)
+	#set(TESTER_ARGS --absolute-tolerance=1e-5 --relative-tolerance=1e-4 "-s'\n, '")
 	message("Using numdiff")
 else()
 	set(TESTER_COMMAND ${CMAKE_COMMAND} -E compare_files)
@@ -13,11 +14,13 @@ set(TESTER_COMMAND ${TESTER_COMMAND} )
 
 set(SCRIPT_EXIT_CODE 0)
 set(BENCHMARK_OUTPUT_DIRECTORY "${BENCHMARK_DIR_FOUND}/results")
-set(NUMDIFF_OUTPUT_FILE ${BENCHMARK_OUTPUT_DIRECTORY}/${benchmarkStrippedName}.numdiff)
+set(NUMDIFF_OUTPUT_FILE ${BENCHMARK_OUTPUT_DIRECTORY}/${benchmarkNameUnderscore}.numdiff)
+#set(NUMDIFF_OUTPUT_FILE ${BENCHMARK_OUTPUT_DIRECTORY}/${benchmarkStrippedName}.numdiff)
 execute_process(COMMAND ${CMAKE_COMMAND} -E remove ${NUMDIFF_OUTPUT_FILE})
-message(STATUS "OUTPUT_FILES: ${OUTPUT_FILES}")
 separate_arguments(OUTPUT_FILES) # reconstruct list
+#message(STATUS "OUTPUT_FILES: ${OUTPUT_FILES}")
 foreach(OUTPUT_FILE ${OUTPUT_FILES})
+	message(STATUS "OUTPUT_FILE: ${OUTPUT_FILE}")
 	execute_process(COMMAND ${TESTER_COMMAND} ${TESTER_ARGS}
 		${BENCHMARK_REF_DIR}/${OUTPUT_FILE}
 		${BENCHMARK_DIR_FOUND}/${OUTPUT_FILE}
@@ -27,7 +30,8 @@ foreach(OUTPUT_FILE ${OUTPUT_FILES})
 
 	if(EXIT_CODE GREATER 0)
 		if(NUMDIFF_TOOL_PATH)
-			execute_process(COMMAND ${TESTER_COMMAND} ${TESTER_ARGS} -E -S
+			#execute_process(COMMAND ${TESTER_COMMAND} ${TESTER_ARGS} -E -S
+			execute_process(COMMAND ${TESTER_COMMAND} ${TESTER_ARGS} 
 				${BENCHMARK_REF_DIR}/${OUTPUT_FILE}
 				${BENCHMARK_DIR_FOUND}/${OUTPUT_FILE}
 				ERROR_VARIABLE NUMDIFF_ERROR

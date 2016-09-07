@@ -10,7 +10,6 @@
 #ifndef fem_INC
 #define fem_INC
 
-#include "prototyp.h"
 #include "MSHEnums.h"
 #include "matrix_class.h"
 
@@ -155,6 +154,9 @@ protected:
 	double* dshapefctHQ;
 	//
 	double x1buff[3], x2buff[3], x3buff[3], x4buff[3];
+
+	typedef void (*VoidFuncDXCDX)(double*, const double*);
+
 	// Pointer to the linear interpolation function
 	VoidFuncDXCDX ShapeFunction;
 	// Pointer to the quadratic interpolation function
@@ -203,8 +205,8 @@ protected:
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
 	int act_nodes;      //> activated nodes
 	int act_nodes_h;    //> activated nodes for high order elements
-	int* idxm;          //> global indices of local matrix rows
-	int* idxn;          //> global indices of local matrix columns
+	int* row_ids;          //> global indices of local matrix rows
+	int* col_ids;          //> global indices of local matrix columns
 	int* local_idx;     //> local index for local assemble
 // double *local_matrix; //>  local matrix
 // double *local_vec; //>  local vector

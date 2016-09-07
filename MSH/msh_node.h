@@ -23,7 +23,6 @@ class CNode : public CCore
 {
 public:
 #ifndef OGS_ONLY_TH
-	int free_surface;  // MB ??? mobile
 	// The vector to store the representative element index.
 	// This can be used to extract the norm of the plane that the element lies
 	// on.
@@ -31,15 +30,7 @@ public:
 	// since this is bounded by velocity.
 	std::vector<long> connected_planes;  // PCH
 
-	// GUI control variables
-	double patch_area;  // OK4310
-	bool crossroad;  // KR changed to bool // PCH: Make theses privates can be
-	                 // done later on.
-	std::vector<long> connected_faces;  // BG, 09/2010, necessary for coupling
-	                                    // to Eclipse, index of faces where the
-	                                    // node is part of it
-	std::vector<double> distance_to_connected_faces;  // BG, 09/2010,  necessary
-                                                      // for coupling to Eclipse
+	bool crossroad = false;
 #endif
 
 	/** constructor */
@@ -136,8 +127,8 @@ public:
 
 private:
 	double coordinate[3];
-	long eqs_index;                        // renumber
-	std::vector<size_t> _connected_nodes;  // OK
+	long eqs_index = -1;
+	std::vector<size_t> _connected_nodes;
 	std::vector<size_t> _connected_elements;
 };
 

@@ -149,4 +149,6 @@ extern int myrank;
 #endif
 //---- MPI Parallel --------------
 
+extern void ogsAbort(int i);
+
 #endif

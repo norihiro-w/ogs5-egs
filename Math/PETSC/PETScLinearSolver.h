@@ -16,30 +16,39 @@
 #ifndef PETSC_LSOLVER_INC
 #define PETSC_LSOLVER_INC
 
+#include <cstdio>
+#include <cstring>
 #include <string>
 #include <vector>
-// kg needed for memcpy in petsc libs
-#include <stdio.h>
-#include <string.h>
 
-#include "petscmat.h"
-#include "petscksp.h"
-#include "petscsnes.h"
-
-#ifdef USEPETSC34
-#include "petsctime.h"
-#endif
+#include <petscksp.h>
+#include <petscmat.h>
+#include <petscsnes.h>
 
 typedef Mat PETSc_Mat;
 typedef Vec PETSc_Vec;
 
 namespace petsc_group
 {
+
+struct SparseIndex
+{
+	PetscInt d_nz = 0;
+	PetscInt o_nz = 0;
+	//PetscInt nz = 0;
+	PetscInt m_size_loc = 0;
+	std::vector<int> d_nnz;
+	std::vector<int> o_nnz;
+};
+
+
 class PETScLinearSolver
 {
 public:
-	PETScLinearSolver(const int size);
+	PETScLinearSolver();
 	~PETScLinearSolver();
+
+	void Init(int size);
 
 	void Config(const PetscReal tol, const PetscInt maxits, const KSPType lsol,
 	            const PCType prec_type, const std::string& misc_setting, const std::string& prefix);
@@ -50,7 +59,6 @@ public:
 	                  const KSPType lsol, const PCType prec_type,
 	                  const std::string& misc_setting, const std::string& prefix);
 
-	void Init(const int* sparse_index = NULL);
 
 	void CheckIfMatrixIsSame(const std::string& filename);
 	int Solver();
@@ -110,53 +118,44 @@ public:
 
 public:
 	//  private:
-	PETSc_Mat A;
-	PETSc_Mat B;
-	PETSc_Vec b;
-	PETSc_Vec x;
-	SNES snes;
-	KSP lsolver;
-	PC prec;
+	PETSc_Mat A = nullptr;
+	PETSc_Mat B = nullptr;
+	PETSc_Vec b = nullptr;
+	PETSc_Vec x = nullptr;
+	SNES snes = nullptr;
+	KSP lsolver = nullptr;
+	PC prec = nullptr;
 	std::vector<Mat> vec_subA; /* the four blocks */
 	std::vector<IS> vec_isg;   /* index sets of split "0" and "1" */
 	std::vector<Vec> vec_subRHS;
-	PETSc_Vec total_x;
+	PETSc_Vec total_x = nullptr;
 
-	PetscInt i_start;
-	PetscInt i_end;
+	PetscInt i_start = 0;
+	PetscInt i_end = 0;
 
-	PetscScalar* global_x0;
-	PetscScalar* global_x1;
-	PetscScalar* global_buff;
+	PetscScalar* global_x0 = nullptr;
+	PetscScalar* global_x1 = nullptr;
+	PetscScalar* global_buff = nullptr;
 
 	// Slover and preconditioner names, only for log
 	std::string sol_type;
 	std::string pc_type;
 
-	PetscLogDouble time_elapsed;
+	PetscLogDouble time_elapsed = 0;
 
-	PetscInt m_size;
-	PetscInt m_size_loc;
-	float ltolerance;
-	// Number of nonzeros per row in DIAGONAL portion of
-	// local submatrix (same value is used for all local rows)
-	PetscInt d_nz;
-	// Number of nonzeros per row in the OFF-DIAGONAL portion of
-	// local submatrix (same value is used for all local rows).
-	PetscInt o_nz;
-	// Number of nonzeros per row (same for all rows)
-	PetscInt nz;
+	PetscInt m_size = 0;
+	float ltolerance = 1e-10;
 
-	int mpi_size;
-	int rank;
+	int mpi_size = 0;
+	int rank = 0;
 
 	typedef std::pair<std::string, std::string> Para;
 	std::vector<Para> vec_para;
 
-	void VectorCreate(PetscInt m);
-	void MatrixCreate(PetscInt m, PetscInt n);
+	void CreateMatrixVectors(SparseIndex& sparse_index);
 
-	IS is_global_node_id, is_local_node_id;
+	IS is_global_node_id = nullptr, is_local_node_id = nullptr;
+	SparseIndex sparse_index;
 };
 
 // extern std::vector<PETScLinearSolver*> EQS_Vector;

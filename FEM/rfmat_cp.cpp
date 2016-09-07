@@ -32,6 +32,8 @@
 #include "FileToolsRF.h"
 #include "makros.h"
 
+#include "Curve.h"
+
 #include "rf_mfp_new.h"
 #include "rf_mmp_new.h"
 #include "rf_msp_new.h"
@@ -1186,7 +1188,7 @@ double CompProperties::CalcElementRetardationFactorNew(long index,
 {
 	static double porosity, density_rock, isotherm;
 	static double conc, retard = 0.0;
-	double theta = m_pcs->m_num->ls_theta;
+	double theta = m_pcs->m_num->time_theta;
 	int gueltig;
 	long group = 0;  // SB4200 ToDO
 	double fracture_width =
@@ -1311,7 +1313,7 @@ double CompProperties::CalcElementMeanConcNew(long index, CRFProcess* m_pcs)
 	elem = m_pcs->m_msh->ele_vector[index];
 	nn = elem->GetVertexNumber();
 	idx = m_pcs->GetNodeValueIndex((char*)compname.data());
-	theta = m_pcs->m_num->ls_theta;
+	theta = m_pcs->m_num->time_theta;
 	/* get Value after last iteration */
 	/*
 	   val1=0.0;

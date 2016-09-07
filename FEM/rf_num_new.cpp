@@ -7,13 +7,6 @@
  *
  */
 
-/**************************************************************************
-   FEMLib - Object: NUM
-   Task:
-   Programing:
-   11/2004 OK Implementation
-   last modified:
-**************************************************************************/
 #include "rf_num_new.h"
 
 #include <cfloat>
@@ -30,17 +23,14 @@
 #include "StringTools.h"
 
 #include "mathlib.h"
+
 #include "rf_pcs.h"
 #include "tools.h"
 
 using namespace std;
 
-extern std::ios::pos_type GetNextSubKeyword(ifstream* file, string* line,
-                                            bool* keyword);
-extern size_t max_dim;
-
-//==========================================================================
 vector<CNumerics*> num_vector;
+
 /**************************************************************************
    FEMLib-Method:
    Task: constructor
@@ -49,23 +39,20 @@ vector<CNumerics*> num_vector;
    10/2005 OK pcs_type_name
    07/2007 OK DEFORMATION
 **************************************************************************/
-CNumerics::CNumerics(string name)
+CNumerics::CNumerics(string const& name)
 {
-	pcs_type_name = name;  // OK
-	// GLOBAL
-	renumber_method = 0;
-	renumber_parameter = -1;
+	pcs_type_name = name;
+
 	//
 	// LS - Linear Solver
-	ls_method = 2;  // OK41
+	ls_method = 2;
 	ls_max_iterations = 1000;
 	ls_error_method = 1;
 	ls_error_tolerance = 1e-12;
-	ls_theta = 1.0;
+	time_theta = 1.0;
 	ls_precond = 1;
-	ls_storage_method = 2;  // OK41
-	m_cols = 5;             // 06.2010. WW
-	ls_extra_arg = "";      // NW
+	ls_storage_method = 2;
+	ls_extra_arg = "";
 #ifdef USE_PETSC
 	petsc_split_fields = false;
 	petsc_use_snes = false;
@@ -73,12 +60,11 @@ CNumerics::CNumerics(string name)
 	//
 	// NLS - Nonlinear Solver
 	nls_method_name = "PICARD";
-	nls_method = FiniteElement::INVALID_NL_TYPE;  // Default linear, 0: Picard.
-	                                              // 1: Newton. 2:JFNK
-	nls_error_method = 1;                         // JT2012
-	nls_max_iterations = 1;                       // OK
+	nls_method = FiniteElement::INVALID_NL_TYPE;
+	nls_error_method = 1;
+	nls_max_iterations = 1;
 	nls_relaxation = 0.0;
-	for (size_t i = 0; i < DOF_NUMBER_MAX; i++)  // JT2012
+	for (size_t i = 0; i < DOF_NUMBER_MAX; i++)
 		nls_error_tolerance[i] = -1.0;  // JT2012: should not default this.
 	                                    // Should always be entered by user!
 	nls_jacobian_level = 0;             // full
@@ -90,48 +76,24 @@ CNumerics::CNumerics(string name)
 	                                  // unless indicated
 	cpl_variable = "NONE";
 	cpl_variable_JOD = "FLUX";
-	cpl_max_iterations = 1;                      // OK
-	cpl_min_iterations = 1;                      // JT2012
-	for (size_t i = 0; i < DOF_NUMBER_MAX; i++)  // JT2012
+	cpl_max_iterations = 1;
+	cpl_min_iterations = 1;
+	for (size_t i = 0; i < DOF_NUMBER_MAX; i++)
 		cpl_error_tolerance[i] = -1.0;  // JT2012: should not default this.
 	                                    // Should always be entered by user!
 	//
 	// ELE
 	ele_gauss_points = 3;
 	ele_mass_lumping = 0;
-	ele_upwind_method = 0;  // CB
+	ele_upwind_method = 0;
 	ele_upwinding = 0;
-	ele_supg_method = 0;              // NW
-	ele_supg_method_length = 0;       // NW
-	ele_supg_method_diffusivity = 0;  // NW
-	fct_method = -1;                  // NW
-	fct_prelimiter_type = 0;          // NW
-	fct_const_alpha = -1.0;           // NW
-	//----------------------------------------------------------------------
-	// Deformation
-	GravityProfile = 0;
-	DynamicDamping = NULL;  // WW
-	if (pcs_type_name.compare("DEFORMATION") == 0)
-	{
-		ls_method = 2;
-		ls_error_method = 2;
-		ls_error_tolerance = 1e-12;
-		ls_max_iterations = 2000;
-		ls_precond = 100;
-		ls_storage_method = 4;
-	}
-	//----------------------------------------------------------------------
-	if (pcs_type_name.compare("RICHARDS_FLOW") == 0)
-	{
-		ele_mass_lumping = 1;
-		ele_upwinding = 0.5;
-		ls_max_iterations = 2000;
-		ls_error_method = 2;
-		ls_error_tolerance = 1e-10;
-		ls_precond = 4;
-		ls_storage_method = 4;
-		nls_max_iterations = 25;
-	}
+	ele_supg_method = 0;
+	ele_supg_method_length = 0;
+	ele_supg_method_diffusivity = 0;
+	fct_method = -1;
+	fct_prelimiter_type = 0;
+	fct_const_alpha = -1.0;
+
 	//
 	_pcs_cpl_error_method = FiniteElement::LMAX;
 	_pcs_nls_error_method = FiniteElement::LMAX;
@@ -146,8 +108,6 @@ CNumerics::CNumerics(string name)
 **************************************************************************/
 CNumerics::~CNumerics(void)
 {
-	if (DynamicDamping) delete[] DynamicDamping;
-	DynamicDamping = NULL;
 }
 
 /**************************************************************************
@@ -198,20 +158,6 @@ bool NUMRead(string file_base_name)
 		}                                                  // keyword found
 	}                                                      // eof
 	return true;
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   05/2005 WW Implementation
-**************************************************************************/
-bool CNumerics::CheckDynamic()
-{
-	if (DynamicDamping)
-		return true;
-	else
-		return false;
 }
 
 /**************************************************************************
@@ -333,16 +279,6 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 			continue;
 		}
 		//....................................................................
-		// subkeyword found
-		if (line_string.find("$RENUMBER") != string::npos)
-		{
-			line.str(GetLineFromFile1(num_file));
-			line >> renumber_method;
-			if (renumber_method == 2) line >> renumber_parameter;
-			line.clear();
-			continue;
-		}
-		//....................................................................
 		// JT->WW: Local tolerance previously found in $NON_LINEAR_SOLVER for
 		// NEWTON. Moved here for now.
 		if (line_string.find("$PLASTICITY_TOLERANCE") != string::npos)
@@ -354,12 +290,6 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 		// subkeyword found ($NON_LINEAR_ITERATION  -or- $NON_LINEAR_ITERATIONS)
 		if (line_string.find("$NON_LINEAR_ITERATION") != string::npos)
 		{
-			// JT:	in >> nls_method_name
-			//		in >> error_method_name
-			//		in >> max iter
-			//		in >> relaxation
-			//		in >> tolerance[1:dof]
-			//
 			line.str(GetLineFromFile1(num_file));
 			line >> nls_method_name;
 			line >> error_method_name;
@@ -475,12 +405,12 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 		// subkeyword found
 		if (line_string.find("$LINEAR_SOLVER") != string::npos)
 		{
-			std::string str_buf = GetLineFromFile1(num_file);  // WW
+			std::string str_buf = GetLineFromFile1(num_file);
 			line.str(str_buf);
-			if (str_buf.find("petsc") != string::npos)  // 03.2012. WW
+			if (str_buf.find("petsc") != string::npos)
 			{
-				line >> str_buf >> lsover_name >> pres_name >>
-				    ls_error_tolerance >> ls_max_iterations >> ls_theta;
+				line >> str_buf >> ls_sover_name >> ls_precond_name >>
+				    ls_error_tolerance >> ls_max_iterations >> time_theta;
 			}
 			else
 			{
@@ -488,12 +418,44 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 				line >> ls_error_method;
 				line >> ls_error_tolerance;
 				line >> ls_max_iterations;
-				line >> ls_theta;
+				line >> time_theta;
 				line >> ls_precond;
 				line >> ls_storage_method;
-				/// For GMRES. 06.2010. WW
-				if (ls_method == 13) line >> m_cols;
+#ifdef USE_PETSC
+				ls_sover_name = "bcgs";
+				ls_precond_name = "bjacobi";
+				if (ls_method == 4)
+					ls_sover_name = "bcgs";
+				else if (ls_method == 9)
+					ls_sover_name = "gmres";
+				if (ls_precond == 1)
+					ls_precond_name = "bjacobi";
+				else if (ls_precond == 2) // ILU
+					ls_precond_name = "bjacobi";
+				else if (ls_precond == 9) // ILUT
+					ls_precond_name = "bjacobi";
+
+				ScreenMessage("-> configure linear solver from Lis options (solver=%s, precon=%s)\n", ls_sover_name.data(), ls_precond_name.data());
+#endif
 			}
+			line.clear();
+			continue;
+		}
+		//....................................................................
+		// subkeyword found
+		if (line_string.find("$PETSC_LINEAR_SOLVER") != string::npos)
+		{
+			line.str(GetLineFromFile1(num_file));
+			line >> ls_sover_name >> ls_precond_name >> ls_error_tolerance >> ls_max_iterations;
+			line.clear();
+			continue;
+		}
+		//....................................................................
+		// subkeyword found
+		if (line_string.find("$TIME_THETA") != string::npos)
+		{
+			line.str(GetLineFromFile1(num_file));
+			line >> time_theta;
 			line.clear();
 			continue;
 		}
@@ -652,29 +614,7 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 			ScreenMessage("-> SUPG method is selected.\n");
 			continue;
 		}
-		// subkeyword found
-		if (line_string.find("$GRAVITY_PROFILE") != string::npos)
-		{
-			line.str(GetLineFromFile1(num_file));  // WW
-			line >> GravityProfile;
-			line.clear();
-			continue;
-		}
-		// subkeyword found
-		if (line_string.find("$DYNAMIC_DAMPING") != string::npos)
-		{
-			line.str(GetLineFromFile1(num_file));  // WW
-			DynamicDamping = new double[3];
-			// Default
-			DynamicDamping[0] = 0.515;
-			DynamicDamping[1] = 0.51;
-			DynamicDamping[2] = 0.51;
-			line >> DynamicDamping[0] >> DynamicDamping[1] >> DynamicDamping[2];
-			line.clear();
-			continue;
-		}
 		// Flux corrected transport by Kuzmin (2009)
-		// NW
 		if (line_string.find("$FEM_FCT") != string::npos)
 		{
 			line.str(GetLineFromFile1(num_file));
@@ -696,29 +636,6 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 		}
 #endif
 
-		//....................................................................
-		/*
-		    if(line_string.find("$TIME_STEPS")!=string::npos) { // subkeyword
-		   found
-		      while((!new_keyword)||(!new_subkeyword)||(!num_file->eof())){
-		        position = num_file->tellg();
-		        line_string = GetLineFromFile1(num_file);
-		        if(line_string.find("#")!=string::npos){
-		          return position;
-		        }
-		        if(line_string.find("$")!=string::npos){
-		          new_subkeyword = true;
-		          break;
-		   }
-		   line.str(line_string);
-		   line >> no_time_steps;
-		   line >> time_step_length;
-		   for(i=0;i<no_time_steps;i++)
-		   time_step_vector.push_back(time_step_length);
-		   line.clear();
-		   }
-		   }
-		 */
 		//....................................................................
 	}
 	return position;
@@ -799,7 +716,7 @@ void CNumerics::Write(fstream* num_file)
 	*num_file << " " << ls_error_method;
 	*num_file << " " << ls_error_tolerance;
 	*num_file << " " << ls_max_iterations;
-	*num_file << " " << ls_theta;
+	*num_file << " " << time_theta;
 	*num_file << " " << ls_precond;
 	*num_file << " " << ls_storage_method;
 	*num_file << endl;
@@ -839,24 +756,6 @@ int GetNumericsGaussPoints(int element_dimension)
 			break;
 	}
 	return m_gaussian_points;
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   05/2005 OK Implementation
-   last modification:
-**************************************************************************/
-CNumerics* NUMGet(string num_name)
-{
-	CNumerics* m_num = NULL;
-	for (int i = 0; i < (int)num_vector.size(); i++)
-	{
-		m_num = num_vector[i];
-		if (m_num->pcs_type_name.compare(num_name) == 0) return m_num;
-	}
-	return NULL;
 }
 
 /**************************************************************************

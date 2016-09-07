@@ -526,7 +526,7 @@ public:
 	                                   bool updateRHS = true,
 	                                   bool isResidual = false);
 	// PCH for FLUID_MOMENTUM
-	void IncorporateBoundaryConditions(const int rank, const int axis);
+	void IncorporateBoundaryConditionsFM(const int rank, const int axis);
 #if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
 	void SetBoundaryConditionSubDomain();  // WW
 #endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
@@ -563,18 +563,9 @@ public:
 	int cpl_num_dof_errors;         // JT2012
 	bool first_coupling_iteration;  // JT2012
 	//
-	// Specials
-	void PCSMoveNOD();
-	void PCSDumpModelNodeValues(void);
-	// BC for dynamic problems. WW
-	inline void setBC_danymic_problems();
-	inline void setST_danymic_problems();
-	inline void setIC_danymic_problems();
 	// Extropolate Gauss point values to node values. WW
 	void Extropolation_GaussValue();
 	void Extropolation_MatValue();  // WW
-	// WW. 05.2009
-	void Integration(std::vector<double>& node_velue);
 	// Auto time step size control. WW
 	void PI_TimeStepSize();  // WW
 	bool TimeStepAccept() const { return accepted; }
@@ -589,7 +580,6 @@ public:
 		return TempArry[index];
 	}
 	void LOPCopySwellingStrain(CRFProcess* m_pcs);
-	VoidFuncInt PCSSetIC_USER;
 	void SetIC();
 	// Remove argument. WW
 	void CalcSecondaryVariables(bool initial = false);

@@ -97,7 +97,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 #endif
 
 #if defined(NEW_EQS)
-	eqs_new->ConfigNumerics(m_num);
+	eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method, m_num->ls_max_iterations, m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
 #endif
 
 	// Begin Newton-Raphson steps
@@ -249,7 +249,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 #if defined(NEW_EQS)
 		bool compress_eqs =
 			(type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
-		iter_lin = eqs_new->Solver(this->m_num, compress_eqs);  // NW
+		iter_lin = eqs_new->Solver(compress_eqs);  // NW
 #elif defined(USE_PETSC)
 		//		if (write_leqs) {
 		//			std::string fname = FileName + "_" +
@@ -559,8 +559,8 @@ void CRFProcessTH::setSolver(petsc_group::PETScLinearSolver* petsc_solver)
 			ierr = MatSetFromOptions(eqs_new->vec_subA[i]);
 			CHKERRCONTINUE(ierr);
 			ierr = MatMPIAIJSetPreallocation(eqs_new->vec_subA[i],
-			                                 eqs_new->d_nz, PETSC_NULL,
-			                                 eqs_new->o_nz, PETSC_NULL);
+			                                 eqs_new->sparse_index.d_nz, PETSC_NULL,
+			                                 eqs_new->sparse_index.o_nz, PETSC_NULL);
 			CHKERRCONTINUE(ierr);
 			MatSetOption(eqs_new->vec_subA[i], MAT_NEW_NONZERO_ALLOCATION_ERR,
 			             PETSC_FALSE);

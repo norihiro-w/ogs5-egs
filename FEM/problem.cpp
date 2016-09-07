@@ -298,24 +298,15 @@ Problem::Problem(char* filename)
 		buffer_array = NULL;
 	buffer_array1 = NULL;
 	//========================================================================
-	CRFProcessDeformation* dm_pcs = NULL;
 
-	//  //WW
 	for (size_t i = 0; i < no_processes; i++)
 	{
 		m_pcs = pcs_vector[i];
-		m_pcs->CalcSecondaryVariables(true);  // WW
-		m_pcs->Extropolation_MatValue();      // WW
+		m_pcs->CalcSecondaryVariables(true);
+		m_pcs->Extropolation_MatValue();
 	}
-	// Calculation of the initial stress and released load for excavation
-	// simulation
-	// 07.09.2007  WW
-	// Excavation for defromation
-	dm_pcs = (CRFProcessDeformation*)total_processes[12];
-	if (dm_pcs) dm_pcs->CreateInitialState4Excavation();
 
 #ifdef OGS_DELETE_EDGES_AFTER_INIT
-	// Free memory occupied by edges. 09.2012. WW
 	if (!fluid_mom_pcs)
 	{
 		for (size_t k = 0; k < fem_msh_vector.size(); k++)
@@ -764,7 +755,7 @@ void Problem::SetTimeActiveProcesses()
    01/2009 WW Update
    03/2012 JT Many changes. Allow independent time stepping.
 **************************************************************************/
-void Problem::Euler_TimeDiscretize()
+bool Problem::Euler_TimeDiscretize()
 {
 #ifndef WIN32
 	BaseLib::MemWatch mem_watch;
@@ -1040,6 +1031,8 @@ void Problem::Euler_TimeDiscretize()
 #if defined(USE_MPI) || defined(USE_PETSC)  // JT2012
 	}
 #endif
+
+	return last_dt_accepted;
 }
 
 /*-----------------------------------------------------------------------

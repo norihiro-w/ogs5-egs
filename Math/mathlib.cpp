@@ -154,35 +154,19 @@
    07/2003     WW                   Triangle shape funtions
    06/2004     WW                   Generalized shape functions
  ***************************************************************************/
-// There is a name conflict between stdio.h and the MPI C++ binding
-// with respect to the names SEEK_SET, SEEK_CUR, and SEEK_END.  MPI
-// wants these in the MPI namespace, but stdio.h will #define these
-// to integer values.  #undef'ing these can cause obscure problems
-// with other include files (such as iostream), so we instead use
-// #error to indicate a fatal error.  Users can either #undef
-// the names before including mpi.h or include mpi.h *before* stdio.h
-// or iostream.
-#if defined(USE_MPI)
-#include <mpi.h>
-#endif
 
 /* Preprozessor-Definitionen */
 
 #include <cfloat>
 #include <cmath>
 #include <cstdlib>
-#include "femlib.h"  //CMCD 03 2004
+
 #include "makros.h"
 #include "memory.h"
 #include "display.h"
-#include "mathlib.h"
-#include "prototyp.h"
-#include "geo_mathlib.h"
-// WW----------------------
+
+
 double pai = 4.0 * atan(1.0);
-VoidFuncDXCDX ShapeFunction;
-VoidFuncDXCDX ShapeFunctionHQ;
-VoidFuncDXCDX GradShapeFunction = NULL;
 
 /*##########################################################################
    Mathematische Funktionen
@@ -212,33 +196,6 @@ double MBtrgVec(double* vec, long n)
 	return sqrt(zwo);
 }
 
-#ifdef obsolete  // 05.03.2010 WW
-/***************************************************************************
-   ROCKFLOW - Funktion: MGleichDouble
-   Aufgabe:
-           Vergleicht zwei double-Zahlen unter Beruecksichtigung
-           einer Fehlertoleranz
-   Formalparameter:
-           E: zahl1, zahl2
-           E: tol - Fehlertoleranz (positiv)
-   Ergebnis:
-            0 - ungleich
-            1 - gleich
-   Programmaenderungen:
-   07/1994     hh        Erste Version
-
- **************************************************************************/
-
-int MGleichDouble(double zahl1, double zahl2, double tol)
-{
-	int retval;
-	if (fabs(zahl1 - zahl2) <= tol)
-		retval = 1;
-	else
-		retval = 0;
-	return retval;
-}
-#endif  //#ifdef obsolete  //05.03.2010 WW
 
 ////////////////////////////////////////////////////////////
 #ifdef obsolete  // 05.03.2010 WW
@@ -3499,6 +3456,53 @@ double MXPGaussFkt(long grd, long pkt)
 	return 0.0;
 }
 
+
+/***************************************************************************
+   ROCKFLOW - Funktion: MXPGaussFktTri
+   Aufgabe:
+   X Punkt Gauss-Integration Dreieck
+           bestimmtes Integral
+           1/           X
+ | P(x)dx = Sigma  Fi*P(xi)
+ |
+          -1/          i=1
+   Formalparameter:
+           E: int anzgp:     Anzahl der Gauspunkte im Dreieck
+   E: long pkt:      Nr des Gauspunktes
+   return : Wichtung des Gauspunktes
+   Ergebnis:  double: Wichtung des Gauspunktes
+
+   Aenderungen/Korrekturen:
+   07/2003     mb        Erste Version
+
+ **************************************************************************/
+double MXPGaussFktTri(int anzgp, long pkt)
+{
+	if (anzgp == 1)
+		return 0.5;
+	else if (anzgp == 3)
+		return 0.166666666666666;
+	else if (anzgp == 4)
+	{
+		switch (pkt)
+		{
+			case 0:
+				return -0.281250000000000;
+				break;
+			case 1:
+				return 0.260416666666667;
+				break;
+			case 2:
+				return 0.260416666666667;
+				break;
+			case 3:
+				return 0.260416666666667;
+				break;
+		}
+	}
+	return 0.0;
+}
+
 ///////////////////////////////////////////////////////////////////
 
 //--------------------------------------------------------------------------
@@ -5281,30 +5285,4 @@ double GetFCTADiff(double K_ij, double K_ji)
  ##########################################################################
  ########################################################################## */
 
-/*!
-    \brief Binary search a array
-     The array must be sorted
 
-     \param arr     an array
-     \param target  searched index
-     \param start   the start index of the array
-     \parm  end     the end index of the array
-
-     By WW. 03.2011
-
- */
-long binarySearch(long* arr, long target, long start, long end)
-{
-	long middle;
-	while (start <= end)
-	{
-		middle = (start + end) / 2;
-		if (arr[middle] == target)
-			return middle;
-		else if (arr[middle] > target)
-			end = middle - 1;
-		else
-			start = middle + 1;
-	}
-	return -1;
-}

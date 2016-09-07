@@ -18,6 +18,10 @@
 #include <sstream>
 #include <vector>
 
+#ifdef USE_PETSC
+#include <mpi.h>
+#endif
+
 #include "display.h"
 #include "FileToolsRF.h"
 #include "memory.h"
@@ -337,11 +341,7 @@ bool CFEMesh::Read(std::ifstream* fem_file)
 				position = fem_file->tellg();
 				*fem_file >> s;
 				if (s.find("$AREA") != std::string::npos)
-#ifndef OGS_ONLY_TH
-					*fem_file >> newNode->patch_area;
-#else
 					*fem_file >> idx;  // dummy
-#endif
 				else
 					fem_file->seekg(position, std::ios::beg);
 				*fem_file >> std::ws;
@@ -811,6 +811,11 @@ void CFEMesh::ConstructGrid()
 		if (xyz_dim[0] > 0.0 && xyz_dim[2] > 0.0 && xyz_dim[1] < MKleinsteZahl)
 			coordinate_system = 32;
 	}
+#ifdef USE_PETSC
+	ScreenMessage2d("-> coordinate system = %d\n", coordinate_system);
+	MPI_Allreduce(&coordinate_system, &coordinate_system, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+	ScreenMessage("-> coordinate system = %d\n", coordinate_system);
+#endif
 
 	max_dim = coordinate_system / 10 - 1;
 	//----------------------------------------------------------------------
@@ -1178,8 +1183,8 @@ void CFEMesh::FillTransformMatrix()
 **************************************************************************/
 long CFEMesh::GetNODOnPNT(const GEOLIB::Point* const pnt) const
 {
-#if defined(USE_PETSC)  // || defined (other parallel linear solver lib). //WW.
-	                    // 05.2012
+//#if defined(USE_PETSC)
+#if 1
 	long node_id = -1;
 
 	const size_t nodes_in_usage = NodesInUsage();
@@ -1190,9 +1195,9 @@ long CFEMesh::GetNODOnPNT(const GEOLIB::Point* const pnt) const
 
 	for (size_t i = 0; i < nodes_in_usage; i++)
 	{
-		if (!isNodeLocal(i)) continue;  // NW
+		if (!isNodeLocal(i)) continue;
 		sqr_dist = MathLib::sqrDist(nod_vector[i]->getData(), pnt->getData());
-		if (sqr_dist < distmin)
+		if (std::sqrt(sqr_dist) < distmin)
 		{
 			node_id = i;
 			break;
@@ -2368,7 +2373,8 @@ void CFEMesh::ConnectedNodes(bool quadratic)
 		{
 			CElem* ele = ele_vector[ele_id];
 			for (size_t l = 0; l < ele->GetNodesNumber(quadratic); l++)
-				nod->getConnectedNodes().push_back(ele->GetNodeIndex(l));
+				if ((size_t)ele->GetNodeIndex(l) != nod->GetIndex())
+					nod->getConnectedNodes().push_back(ele->GetNodeIndex(l));
 		}
 	}
 

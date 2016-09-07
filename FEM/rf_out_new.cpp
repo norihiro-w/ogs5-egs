@@ -326,9 +326,7 @@ void OUTData(double time_current, int time_step_number, bool force_output)
 				case GEOLIB::POLYLINE:
 				{
 					ScreenMessage("-> Data output: Polyline - %s\n", m_out->getGeoName().c_str());
-					m_out->NODWritePLYDataTEC(time_step_number);
-					if (!m_out->_new_file_opened)
-						m_out->_new_file_opened = true;
+					CSVOutput::writePoyline(m_out, time_step_number, m_out->_time, m_out->file_base_name);
 					break;
 				}
 				default:
