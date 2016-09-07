@@ -1211,7 +1211,7 @@ double preos(const CFluidProperties* mfp, double T, double P)
 
 	NsPol3(z1, z2, z3, &roots);  // derives the roots of the polynomial
 
-	h = FindMin(roots);
+	h = *std::min_element(roots.begin(), roots.end());
 	return h;  // returns the lowest positive root
 }
 
@@ -1272,7 +1272,7 @@ double rkeos(double T, double P, int c)
 
 	NsPol3(z1, z2, z3, &roots);  // derives the roots of the polynomial
 
-	h = FindMax(roots);  // returns the lowest positive root (molar volume)
+	h = *std::max_element(roots.begin(), roots.end());
 	h = MM / h * 1000;   // density in kg/m3
 	return h;
 }
@@ -1307,7 +1307,7 @@ double rkeos(double T, double P, double MM, double a, double b)
 
 	NsPol3(z1, z2, z3, &roots);  // derives the roots of the polynomial
 
-	h = FindMax(roots);  // returns the lowest positive root (molar volume)
+	h = *std::max_element(roots.begin(), roots.end());
 	h = MM / h * 1000;   // density in kg/m3
 	return h;
 }

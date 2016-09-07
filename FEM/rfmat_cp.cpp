@@ -32,6 +32,8 @@
 #include "FileToolsRF.h"
 #include "makros.h"
 
+#include "Curve.h"
+
 #include "rf_mfp_new.h"
 #include "rf_mmp_new.h"
 #include "rf_msp_new.h"

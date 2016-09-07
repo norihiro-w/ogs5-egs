@@ -76,7 +76,7 @@ void writeNodeData(COutput* output, std::string const& filename)
 		vec_pcs_value_index.push_back(value_id);
 	}
 
-	auto const n_nodal_values = vec_output_val_name.size();
+	auto const n_nodal_values = vec_pcs_value_index.size();
 
 	std::string const delim = ", ";
 	// header
@@ -209,6 +209,7 @@ void writeElementData(COutput* output, std::string const& filename)
 
 	//
 	std::vector<std::string> vec_output_val_name;
+	vec_output_val_name.push_back("ElementID");
 	std::vector<CRFProcess*> vec_pcs;
 	std::vector<int> vec_pcs_value_index;
 	for (auto const& value_name : output->getElementValueVector())
@@ -245,7 +246,7 @@ void writeElementData(COutput* output, std::string const& filename)
 		vec_mfp_id.push_back(mfp_id);
 	}
 
-	auto const n_output_values = vec_output_val_name.size();
+	auto const n_output_values = vec_output_val_name.size() - 1; // exclude elemnt ID
 
 	std::string const delim = ", ";
 	// header
@@ -279,7 +280,7 @@ void writeElementData(COutput* output, std::string const& filename)
 			fem->ComputeShapefct(1);
 			CMediumProperties* mmp = mmp_vector[ele->GetPatchIndex()];
 			double mat_value = ELEMENT_MMP_VALUES::getValue(
-				mmp, vec_mmp_id[i], i, gp, theta);
+				mmp, vec_mmp_id[j], i, gp, theta);
 			tmp_values[j + shift] = mat_value;
 		}
 		shift += vec_mmp_id.size();
@@ -297,6 +298,7 @@ void writeElementData(COutput* output, std::string const& filename)
 			tmp_values[j + shift] = mat_value;
 		}
 		// output
+		os << i << delim;
 		writeLine(os, tmp_values, delim);
 	}
 }
@@ -328,4 +330,100 @@ void CSVOutput::writeDomain(COutput* output,
 	filename_ele_data += ".csv";
 	writeElementData(output, filename_ele_data);
 
+}
+
+void CSVOutput::writePoyline(COutput* output,
+							   int timestep_number,
+							   double /*current_time*/,
+							   std::string const& baseFilename)
+{
+	if (output->_nod_value_vector.empty())
+		return;
+
+	//----------------------------------------------------------------------------------
+	GEOLIB::Polyline const* const ply(
+	    dynamic_cast<GEOLIB::Polyline const* const>(output->getGeoObj()));
+	if (output->getGeoType() != GEOLIB::POLYLINE || ply == NULL)
+	{
+		std::cerr
+		    << "COutput::NODWritePLYDataTEC geometric object is not a polyline"
+		    << "\n";
+		return;
+	}
+
+	MeshLib::CFEMesh* msh = output->getMesh();
+	msh->SwitchOnQuadraticNodes(false);
+	std::vector<long> nodes_vector;
+
+	CGLPolyline* m_ply = GEOGetPLYByName(output->getGeoName());
+	double tmp_min_edge_length(msh->getMinEdgeLength());
+	msh->setMinEdgeLength(m_ply->epsilon);
+	msh->GetNODOnPLY(ply, nodes_vector);
+	if (nodes_vector.empty()) {
+		ScreenMessage2("-> Found no nodes on polyline %s\n", output->getGeoName().data());
+		return;
+	}
+
+	std::vector<double> interpolation_points;
+	msh->getPointsForInterpolationAlongPolyline(ply, interpolation_points);
+	msh->setMinEdgeLength(tmp_min_edge_length);
+
+
+
+	//----------------------------------------------------------------------------------
+	std::string filename_base = baseFilename;
+	if (output->getProcessType() != FiniteElement::INVALID_PROCESS)
+		filename_base += "_" + FiniteElement::convertProcessTypeToString(output->getProcessType());
+
+	std::string filename_node_data = filename_base + "_ply_" + output->getGeoName();
+	filename_node_data += "_" + std::to_string(timestep_number);
+	filename_node_data += ".csv";
+
+
+	std::ofstream os(filename_node_data);
+	if (!os) {
+		ScreenMessage2("***Error: cannot open %s for writing\n", filename_node_data.data());
+		return;
+	}
+	os.setf(ios::scientific, std::ios::floatfield);
+	os.precision(12);
+
+	//----------------------------------------------------------------------------------
+	std::vector<std::string> vec_output_val_name;
+	vec_output_val_name.push_back("DIST");
+	std::vector<CRFProcess*> vec_pcs;
+	std::vector<int> vec_pcs_value_index;
+	for (size_t i=0; i<output->_nod_value_vector.size(); i++)
+	{
+		auto& value_name = output->_nod_value_vector[i];
+		auto pcs = PCSGet(value_name, true);
+		if (!pcs)
+			continue;
+		auto value_id = pcs->GetNodeValueIndex(value_name);
+		if (value_id<0)
+			continue;
+		vec_output_val_name.push_back(value_name);
+		vec_pcs.push_back(pcs);
+		vec_pcs_value_index.push_back(value_id);
+	}
+
+	auto const n_nodal_values = vec_pcs_value_index.size();
+
+	std::string const delim = ", ";
+	// header
+	writeLine(os, vec_output_val_name, delim);
+
+	// values
+	std::vector<double> tmp_values(n_nodal_values);
+	for (size_t i=0; i<nodes_vector.size(); i++)
+	{
+		auto nodeID = nodes_vector[i];
+		os << interpolation_points[i] << delim;
+		for (size_t j=0; j<vec_pcs_value_index.size(); j++)
+		{
+			auto pcs = vec_pcs[j];
+			tmp_values[j] = pcs->GetNodeValue(nodeID, vec_pcs_value_index[j]);
+		}
+		writeLine(os, tmp_values, delim);
+	}
 }

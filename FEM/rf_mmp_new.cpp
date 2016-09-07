@@ -22,6 +22,8 @@
 #include "display.h"
 #include "FileToolsRF.h"
 
+#include "Curve.h"
+
 #include "mathlib.h"
 #include "fem_ele_std.h"
 #include "fem_ele_vec.h"

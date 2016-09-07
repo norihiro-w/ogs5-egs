@@ -17,15 +17,14 @@
 #ifndef rf_num_new_INC
 #define rf_num_new_INC
 
-#include "makros.h"  // JT
-#include "FEMEnums.h"
-
-#define NUM_FILE_EXTENSION ".num"
-// C++ STL
-#include "prototyp.h"
 #include <fstream>
 #include <string>
 #include <vector>
+
+#include "makros.h"
+#include "FEMEnums.h"
+
+#define NUM_FILE_EXTENSION ".num"
 
 //----------------------------------------------------------------
 class CNumerics

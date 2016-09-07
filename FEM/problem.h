@@ -29,7 +29,7 @@ public:
 	explicit Problem(char* filename);
 	~Problem();
 
-	void Euler_TimeDiscretize();
+	bool Euler_TimeDiscretize();
 	void RosenBrock_TimeDiscretize() {}
 	//
 	void SetActiveProcesses();

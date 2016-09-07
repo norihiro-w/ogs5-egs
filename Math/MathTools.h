@@ -107,5 +107,21 @@ double ComputeDetTex(const double* x1, const double* x2, const double* x3,
 void CrossProduction(const double* x, const double* y, double* z);
 double NormalizeVector(double* x, size_t n);
 
+/**
+ * Author: NB 4.9.05
+ * Finds all real roots of a third grade polynomial in the form:
+ * P(x) = x^3 + px^2 + qx + r
+ * employing the <a
+ * href="http://de.wikipedia.org/wiki/Kubische_Gleichung#Analytische_Bestimmung_reeller_L.C3.B6sungen">Cardano
+ * method</a>
+ * @param p coefficient of cubic equation
+ * @param q coefficient of cubic equation
+ * @param r coefficient of cubic equation
+ * @param t vector contains the roots
+ */
+extern void NsPol3(double p, double q, double r, std::vector<double>* t);
+
+extern int Signum(double);
+
 
 #endif /* MATHTOOLS_H_ */

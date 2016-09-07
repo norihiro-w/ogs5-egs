@@ -10,7 +10,6 @@
 #ifndef fem_INC
 #define fem_INC
 
-#include "prototyp.h"
 #include "MSHEnums.h"
 #include "matrix_class.h"
 
@@ -155,6 +154,9 @@ protected:
 	double* dshapefctHQ;
 	//
 	double x1buff[3], x2buff[3], x3buff[3], x4buff[3];
+
+	typedef void (*VoidFuncDXCDX)(double*, const double*);
+
 	// Pointer to the linear interpolation function
 	VoidFuncDXCDX ShapeFunction;
 	// Pointer to the quadratic interpolation function

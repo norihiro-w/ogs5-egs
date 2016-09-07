@@ -589,7 +589,6 @@ public:
 		return TempArry[index];
 	}
 	void LOPCopySwellingStrain(CRFProcess* m_pcs);
-	VoidFuncInt PCSSetIC_USER;
 	void SetIC();
 	// Remove argument. WW
 	void CalcSecondaryVariables(bool initial = false);

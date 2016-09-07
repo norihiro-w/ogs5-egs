@@ -7,55 +7,15 @@
  *
  */
 
-#ifndef sparse_table_INC
-#define sparse_table_INC
+#ifndef sparse_matrix_INC
+#define sparse_matrix_INC
 
 #include <iostream>
-
-namespace MeshLib
-{
-class CFEMesh;
-}
+#include "sparse_table.h"
 
 namespace Math_Group
 {
 
-#ifdef NEW_EQS
-//
-/// Sparse matrix storage type //04.2011. WW
-enum StorageType
-{
-	CRS,
-	JDS
-};
-class SparseTable
-{
-public:
-	SparseTable(MeshLib::CFEMesh* a_mesh,
-	            bool quadratic,
-	            bool symm = false,
-	            StorageType stype = JDS);
-	~SparseTable();
-	void Write(std::ostream& os = std::cout);
-
-private:
-	bool symmetry;
-	// Topology mapping from data array to matrix
-	long* entry_column;
-	long* num_column_entries;     // number of entries of each columns in sparse
-	                              // table
-	long* row_index_mapping_n2o;  // Row index of sparse table to row index of
-	                              // matrix
-	long* row_index_mapping_o2n;  // Inverse of last
-	long* diag_entry;             // Global index to the index of  entry_column
-	long size_entry_column;
-	long max_columns;
-	long rows;
-	StorageType storage_type;  // 04.2011. WW
-	friend class CSparseMatrix;
-};
-// 08.2007 WW
-// Jagged Diagonal Storage
 class CSparseMatrix
 {
 public:
@@ -94,7 +54,6 @@ public:
 		DOF = dof_n;
 	}
 	long Size() const { return rows; }
-#if defined(LIS) || defined(MKL) || defined(USE_PARALUTION)
 	// These two pointers are in need for Compressed Row Storage
 	IndexType nnz() const  // PCH
 	{
@@ -104,7 +63,6 @@ public:
 	IndexType* col_idx;
 	IndexType* entry_index;
 	int GetCRSValue(double* value);
-#endif
 	// Print
 	void Write(std::ostream& os = std::cout);
 	void Write_BIN(std::ostream& os);
@@ -132,13 +90,7 @@ private:
 	int DOF;
 };
 // Since the pointer to member funtions gives lower performance
-#endif
 
-//
-// Cross production x^y. WW 12.01.2005
-// const Vec& operator ^ (Vec& x,  Vec& y);
-
-// End of class Matrix
-}
+} // Math_Group
 
 #endif // sparse_table_INC

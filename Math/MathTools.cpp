@@ -151,3 +151,94 @@ void CrossProduction(const double* x, const double* y, double* z)
 	z[1] = x[2] * y[0] - x[0] * y[2];
 	z[2] = x[0] * y[1] - x[1] * y[0];
 }
+
+
+/****************************************************************************
+ * Finds all real roots of a third grade polynomial in the form:
+ * P(x) = x^3 + px^2 + qx + r
+ * roots are returned in a vector
+ *
+ * Programming: NB, Dec08
+ *****************************************************************************/
+void NsPol3(double p, double q, double r, std::vector<double>* roots)
+{
+	double eps = 7E-15;
+	double a, b, h, phi, D, z[3];
+	double pi = 3.1415926535897;
+	double nz;
+	int i;
+
+	b = (p / 3) * (p / 3);
+	a = q / 3 - b;
+	b = b * p / 3 + 0.5 * (r - p / 3 * q);
+	h = sqrt(fabs(a));
+
+	if (b < 0) h = -h;
+
+	D = MathLib::fastpow(a, 3) + b * b;
+
+	if (D <= (-eps))
+	{
+		nz = 3;
+		phi = acos(b / MathLib::fastpow(h, 3)) / 3;
+		z[0] = 2 * h * cos(pi / 3 - phi) - p / 3;
+		z[1] = 2 * h * cos(pi / 3 + phi) - p / 3;
+		z[2] = -2 * h * cos(phi) - p / 3;
+	}
+	else if (D < eps)
+	{
+		nz = 3;
+		z[0] = -2 * h - p / 3;
+		z[1] = h - p / 3;
+		z[2] = z[1];
+	}
+	else
+	{
+		nz = 1;
+		if (a >= eps)
+		{
+			b = b / MathLib::fastpow(h, 3);
+			phi = log(b + sqrt(b * b + 1)) / 3;
+			z[0] = -2 * h * sinh(phi) - p / 3;
+		}
+		else if (a > (-eps))
+		{
+			z[0] = pow((2 * std::abs(b)), 1. / 3.);
+			if (b > 0) z[0] = -z[0];
+			z[0] = z[0] - p / 3;
+		}
+		else
+		{
+			b = b / MathLib::fastpow(h, 3);
+			phi = log(b + sqrt(b * b - 1)) / 3;
+			z[0] = -2 * h * cosh(phi) - p / 3;
+		}
+	}
+
+	for (i = 0; i < nz; i++)
+		roots->push_back(z[i]);
+}
+
+
+/**************************************************************************/
+/* ROCKFLOW - Funktion: Signum
+ */
+/* Aufgabe:
+   Gibt abhaengig vom Vorzeichen -1,0,1 zurueck
+ */
+/* Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
+   E double zahl
+ */
+/* Ergebnis:
+   vorzeichen
+ */
+/* Programmaenderungen:
+   1/1998     C.Thorenz  Erste Version */
+/**************************************************************************/
+int Signum(double x)
+{
+	if (x > 0.) return 1;
+	if (fabs(x) < std::numeric_limits<double>::epsilon()) return 0;
+	if (x < 0.) return -1;
+	return 0;
+}

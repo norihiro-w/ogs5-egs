@@ -19,11 +19,8 @@
  **************************************************************************/
 
 #ifndef mathlib_INC
-
 #define mathlib_INC
-/* Schutz gegen mehrfaches Einfuegen */
 
-#include "Configure.h"
 #include <cstddef>
 
 #define noTESTMATH
@@ -284,7 +281,6 @@ extern void GradShapeFunctionPyraHQ13(double* dN, const double* u);
 
 extern double pai;
 
-extern long binarySearch(long* arr, long target, long start, long end);
 // WW Cubic spline
 // WW
 

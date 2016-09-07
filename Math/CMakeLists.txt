@@ -3,8 +3,10 @@ APPEND_SOURCE_FILES(SOURCES)
 APPEND_SOURCE_FILES(SOURCES InterpolationAlgorithms)
 APPEND_SOURCE_FILES(SOURCES LinAlg)
 IF(OGS_FEM_PETSC)
+	#LIST(REMOVE_ITEM SOURCES equation_class.h equation_class.cpp)
 	APPEND_SOURCE_FILES(SOURCES PETSC)
 ENDIF()
+
 
 # Create the library
 add_library( Math ${SOURCES} )
@@ -21,4 +23,19 @@ include_directories(
 target_link_libraries (	Math
 	Base
 )
+
+if (LIS)
+	target_link_libraries( Math ${LIS_LIBRARIES} )
+	if (WIN32)
+		set_target_properties( Math PROPERTIES LINK_FLAGS "/NODEFAULTLIB:libcmt" )
+	endif()
+endif()
+
+if (MKL)
+	target_link_libraries( Math ${MKL_LIBRARIES} )
+endif ()
+
+if (PARALLEL_USE_MPI)
+	target_link_libraries( Math ${MPI_LIBRARIES} )
+endif ()
 

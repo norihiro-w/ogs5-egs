@@ -34,6 +34,7 @@
 #include "StringTools.h"
 
 // MathLib
+#include "Curve.h"
 #include "InterpolationAlgorithms/InverseDistanceInterpolation.h"
 #include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
 
@@ -52,6 +53,8 @@
 #include "rfmat_cp.h"
 #include "rf_ic_new.h"
 #include "rf_fct.h"
+#include "rf_mfp_new.h"
+#include "rf_mmp_new.h"
 #include "rf_msp_new.h"
 #include "rf_node.h"
 #include "rf_pcs_dm.h"
@@ -211,9 +214,6 @@ CRFProcess::CRFProcess(void)
 	//----------------------------------------------------------------------
 	//
 	mobile_nodes_flag = -1;
-	//----------------------------------------------------------------------
-	// USER
-	PCSSetIC_USER = NULL;
 	//----------------------------------------------------------------------
 	// TIM
 	tim_type = FiniteElement::TIM_TRANSIENT;
@@ -396,9 +396,9 @@ CRFProcess::~CRFProcess(void)
 	ele_val_vector.clear();
 	//----------------------------------------------------------------------
 	// 11.08.2010. WW
-	DeleteArray(num_nodes_p_var);
+	delete [] num_nodes_p_var;
 	// 20.08.2010. WW
-	DeleteArray(p_var_index);
+	delete [] p_var_index;
 	//----------------------------------------------------------------------
 	if (this->m_num && this->m_num->fct_method > 0)  // NW
 	{
@@ -928,9 +928,6 @@ void CRFProcess::Create()
 		}
 	}
 
-	// Initialize the system equations
-	if (PCSSetIC_USER) PCSSetIC_USER(pcs_type_number);
-
 	if (compute_domain_face_normal)
 		m_msh->FaceNormal();
 	/// Variable index for equation. 20.08.2010. WW
@@ -943,7 +940,7 @@ void CRFProcess::Create()
 	size_unknowns = m_msh->GetNodesNumber(true) * pcs_number_of_primary_nvals;
 #elif defined(NEW_EQS)
 	{
-		size_unknowns = eqs_new->A->Dim();
+		size_unknowns = eqs_new->getA()->Dim();
 	}
 #endif
 
@@ -3736,7 +3733,7 @@ double CRFProcess::Execute()
 	{
 		//_new 02/2010. WW
 		eqs_new->SetDOF(pcs_number_of_primary_nvals);
-		eqs_new->ConfigNumerics(m_num);
+		eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method, m_num->ls_max_iterations, m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
 	}
 	eqs_new->Initialize();
 #endif
@@ -3829,7 +3826,7 @@ double CRFProcess::Execute()
 	eqs_new->MappingSolution();
 #elif defined(NEW_EQS)  // WW
 	bool compress_eqs = (type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
-	iter_lin = eqs_new->Solver(this->m_num, compress_eqs);  // NW
+	iter_lin = eqs_new->Solver(compress_eqs);  // NW
 #endif
 #ifndef WIN32
 	ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
@@ -7163,7 +7160,7 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 	double* eqs_b = eqs_new->b;
 	configured_in_nonlinearloop = true;
 	eqs_new->SetDOF(pcs_number_of_primary_nvals);
-	eqs_new->ConfigNumerics(m_num);
+	eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method, m_num->ls_max_iterations, m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
 #endif
 
 	if (Tim->GetPITimeStepCrtlType() > 0)

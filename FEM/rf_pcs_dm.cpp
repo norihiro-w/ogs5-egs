@@ -21,6 +21,8 @@
 #include "display.h"
 #include "StringTools.h"
 
+#include "Curve.h"
+
 #include "geo_sfc.h"
 
 #include "msh_elem.h"
@@ -322,7 +324,7 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 		CheckMarkedElement();
 
 #ifdef NEW_EQS
-	eqs_new->ConfigNumerics(m_num);
+	eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method, m_num->ls_max_iterations, m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
 #endif
 
 	if (this->first_coupling_iteration)
@@ -426,7 +428,7 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 #elif defined(NEW_EQS)
 			bool compress_eqs =
 				(type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
-			eqs_new->Solver(this->m_num, compress_eqs);
+			eqs_new->Solver(compress_eqs);
 #endif
 
 			if (!isLinearProblem)
@@ -897,7 +899,7 @@ void CRFProcessDeformation::SetInitialGuess_EQS_VEC()
 #if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
 // TODO
 #elif defined(NEW_EQS)
-	eqs_x = eqs_new->x;
+	eqs_x = eqs_new->getX();
 #else
 	eqs_x = eqs->x;
 #endif
@@ -949,7 +951,7 @@ void CRFProcessDeformation::UpdateIterativeStep(const double damp,
 #if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
 	eqs_x = eqs_new->GetGlobalSolution();
 #elif defined(NEW_EQS)
-	eqs_x = eqs_new->x;
+	eqs_x = eqs_new->getX();
 #else
 	eqs_x = eqs->x;
 #endif
