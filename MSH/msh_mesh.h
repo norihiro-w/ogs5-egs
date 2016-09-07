@@ -138,8 +138,8 @@ public:
 
 	void ConstructGrid();
 	void GenerateHighOrderNodes();
-/// For parallel computing. 03.2012. WW
-#if defined(USE_PETSC)  // || defined(other parallel solver libs)
+
+#if defined(USE_PETSC)
 	void ConfigHighOrderElements();
 
 	/*!
@@ -197,6 +197,8 @@ public:
 	{
 		return static_cast<size_t>(node_id) >= NodesNumber_Linear;
 	}
+
+	bool hasHigherOrderNodes() const { return NodesNumber_Linear != NodesNumber_Quadratic; }
 
 	int GetMaxElementDim() const { return max_ele_dim; }
 	void SwitchOnQuadraticNodes(bool quad) { useQuadratic = quad; }
