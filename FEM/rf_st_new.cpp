@@ -1113,6 +1113,8 @@ void CSourceTermGroup::Set(CRFProcess* m_pcs, const int ShiftInNodeVector,
 			    m_pcs)
 				continue;
 
+		ScreenMessage("* %s on %s\n", FiniteElement::convertPrimaryVariableToString(st->getProcessPrimaryVariable()).data(), st->getGeoName().data());
+
 		//-- 23.02.3009. WW
 		if (st->getProcessDistributionType() == FiniteElement::DIRECT)
 		{   // NB For climate ST, the source terms (recharge in this case) will
@@ -1150,6 +1152,13 @@ void CSourceTermGroup::Set(CRFProcess* m_pcs, const int ShiftInNodeVector,
 		//------------------------------------------------------------------
 		nodes_vector.clear();
 		getNodesOnDistribution(distData, *m_msh, nodes_vector);
+		if (nodes_vector.empty())
+		{
+#ifndef USE_PETSC
+			ScreenMessage("-> ***ERROR* No nodes found on %s %s\n", st->getGeoName().data());
+#endif
+			continue;
+		}
 		//------------------------------------------------------------------
 		// Calculate ST values
 		//------------------------------------------------------------------
