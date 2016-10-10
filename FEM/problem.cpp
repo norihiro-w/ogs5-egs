@@ -867,7 +867,7 @@ void Problem::PCSCreate()
 
 #if defined(USE_PETSC)  // || defined(other solver libs)//03.3012. WW
 	ScreenMessage("---------------------------------------------\n");
-	ScreenMessage("Create linear solvers");
+	ScreenMessage("Create linear solvers\n");
 	CreateEQS_LinearSolver();
 #endif
 
@@ -1506,10 +1506,8 @@ bool Problem::CouplingLoop()
 		{
 			ScreenMessage(
 			    "\n======================================================\n");
-			ScreenMessage("Outer coupling loop %d/%d complete.\n",
-			              outer_index + 1,
-			              cpl_overall_max_iterations);
-			ScreenMessage("Max coupling error (relative to tolerance): %g\n",
+			ScreenMessage("Outer coupling loop %d/%d: err=%g\n",
+			              outer_index + 1, cpl_overall_max_iterations,
 			              max_outer_error);
 			ScreenMessage(
 			    "======================================================\n");
