@@ -755,7 +755,7 @@ public:
 	//---
 	double Execute();
 	double ExecuteNonLinear(int loop_process_number, bool print_pcs = true);
-	void PrintStandardIterationInformation(bool write_std_errors = true);
+	void PrintStandardIterationInformation(bool write_std_errors, double nl_error);
 
 	virtual void CalculateElementMatrices(void);
 #if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
