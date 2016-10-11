@@ -1,73 +1,9 @@
 # Source files
-set( SOURCES
-	AxisAlignedBoundingBox.cpp
-	BruteForceClosestPair.cpp
-	geo_dom.cpp
-	geo_lib.cpp
-	geo_lin.cpp
-	geo_mathlib.cpp
-	geo_ply.cpp
-	geo_pnt.cpp
-	geo_sfc.cpp
-	geo_vol.cpp
-	GEOObjects.cpp
-	GeoType.cpp
-	Point.cpp
-	PointVec.cpp
-	Polygon.cpp
-	Polyline.cpp
-	PolylineWithSegmentMarker.cpp
-	ProjectData.cpp
-	Raster.cpp
-	SimplePolygonTree.cpp
-	Surface.cpp
-	SurfaceGrid.cpp
-	Triangle.cpp
-)
-
-# Header files
-set( HEADERS
-	AxisAlignedBoundingBox.h
-	BruteForceClosestPair.h
-	ClosestPair.h
-	geo_dom.h
-	geo_lib.h
-	geo_lin.h
-	geo_mathlib.h
-	geo_ply.h
-	geo_pnt.h
-	geo_sfc.h	
-	geo_vol.h
-	GeoObject.h
-	GEOObjects.h
-	GeoType.h
-	Grid.h
-	Point.h
-	PointVec.h
-	PointWithID.h
-	Polygon.h
-	Polyline.h
-	PolylineWithSegmentMarker.h
-	PolylineVec.h
-	ProjectData.h
-	PropertyBounds.h
-	QuadTree.h
-	Raster.h
-	SimplePolygonTree.h
-	Surface.h
-	SurfaceGrid.h
-	SurfaceVec.h
-	TemplatePoint.h
-	TemplateVec.h
-	Triangle.h
-)
+GET_SOURCE_FILES(SOURCES_GEO)
+set(SOURCES ${SOURCES_GEO})
 
 # Create the library
-add_library( GEO STATIC
-	${SOURCES}
-	${HEADERS}
-)
-
+add_library(GEO ${SOURCES})
 
 include_directories(
 	${CMAKE_SOURCE_DIR}/GEO

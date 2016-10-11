@@ -4,6 +4,30 @@ INCLUDE(DisableCompilerFlag)
 SET_DEFAULT_BUILD_TYPE(Release)
 INCLUDE(MSVCMultipleProcessCompile) # /MP Switch for VS
 
+# Set compiler helper variables
+
+if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
+    set(COMPILER_IS_CLANG TRUE CACHE INTERNAL "")
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+    set(COMPILER_IS_GCC TRUE CACHE INTERNAL "")
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
+    set(COMPILER_IS_INTEL TRUE CACHE INTERNAL "")
+elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
+    set(COMPILER_IS_MSVC TRUE CACHE INTERNAL "")
+endif() # CMAKE_CXX_COMPILER_ID
+
+# Better Clang warning suppression, see http://www.openwalnut.org/issues/230
+if(NOT COMPILER_IS_MSVC)
+    set( CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem" CACHE STRING "" FORCE )
+endif()
+
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+	message(STATUS "CCACHE found")
+	set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+	set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+endif(CCACHE_FOUND)
+
 IF (WIN32)
 	## For Visual Studio compiler
 	IF (MSVC)
@@ -38,11 +62,18 @@ ENDIF (WIN32)
 IF(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_GNUCC)
 	SET(GCC ON)
 	IF( NOT CMAKE_BUILD_TYPE STREQUAL "Debug" )
-		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG")
+		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -march=native -DNDEBUG")
 	ENDIF()
-	# -g
-	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated -Wall -Wextra -fno-nonansi-builtins -Wwrite-strings")
-
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+	#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic-errors") # disable GCC extensions
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-nonansi-builtins") # Disable built-in declarations of functions that are not mandated by ANSI/ISO C
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra")
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wwrite-strings")
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas -Wno-unused-result")
+	#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wshadow")
+	#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wconversion")
+	#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated")
 	IF (NOT (GCC_VERSION VERSION_LESS 4.8) ) 
 	  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-local-typedefs") # suppress warnings in Eigen
 	ENDIF()
@@ -68,6 +99,10 @@ IF(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_GNUCC)
 	
 ENDIF() # CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_GNUCC
 
+IF(COMPILER_IS_CLANG)
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wno-self-assign -Wno-deprecated-register")
+ENDIF()
+
 IF(OGS_COVERAGE)
-  INCLUDE(CodeCoverage)
+	INCLUDE(CodeCoverage)
 ENDIF()
