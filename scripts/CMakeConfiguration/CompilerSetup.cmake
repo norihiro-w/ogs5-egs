@@ -35,6 +35,8 @@ IF (WIN32)
 			-D_CRT_XNONSTDC_NO_WARNINGS)
 		# Sets warning level 3 and ignores some warnings
 		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /wd4290 /wd4267")
+        # Allow big object files generated for template heavy code
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
 		SET(GCC OFF)
 
 		DisableCompilerFlag(DEBUG /RTC1)
