@@ -11,6 +11,9 @@
  */
 
 #include "SurfaceGrid.h"
+
+#include <algorithm>
+
 #include "Surface.h"
 #include "Triangle.h"
 
