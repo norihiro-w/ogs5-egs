@@ -1,35 +1,51 @@
-language: cpp
-#dist: trusty
-compiler:
-  - gcc
-os:
-- linux
-cache:
-  - apt
+branches:
+  only:
+  - master
+  - develop
 
+# Ubuntu 14.04 Trusty support
+sudo: required
+dist: trusty
+
+language: cpp
+compiler: gcc
+
+git:
+  depth: 3
+
+# workaround to exclude the default job
 env:
-  - CASE=LIS CMAKE_ARGS="-DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=$TRAVIS_BUILD_DIR/lis-cmake-master/include  -DLIS_LIBRARIES=$TRAVIS_BUILD_DIR/lis-cmake-master/build/lib/liblis.a"
-  - CASE=PETSC CMAKE_ARGS="-DOGS_FEM_PETSC=ON -DPETSC_DIR=/usr/lib/petscdir/3.4.2/"
+  matrix:
+    - TRAVIS_EMPTY_JOB_WORKAROUND=true 
+
+matrix:
+  exclude:
+    - env: TRAVIS_EMPTY_JOB_WORKAROUND=true
+
+  include:
+    - env: CASE=LIS CMAKE_ARGS="-DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=$TRAVIS_BUILD_DIR/lis-cmake-master/include -DLIS_LIBRARIES=$TRAVIS_BUILD_DIR/lis-cmake-master/build/lib/liblis.a"
+      addons:
+        apt:
+          packages:
+            - gfortran
+    - env: CASE=PETSC CMAKE_ARGS="-DOGS_FEM_PETSC=ON -DPETSC_DIR=/usr/lib/petscdir/3.4.2/"
 
 before_install:
-  # -- External package sources --
-  - if [[ "$CASE" == "PETSC" ]]; then sudo add-apt-repository --yes ppa:feelpp/petsc; fi
-  - if [[ "$CASE" == "LIS" ]]; then sudo apt-get install gfortran; fi
-  - travis_retry sudo apt-get update -qq;
 
 install:
   # PetSc
   - if [[ "$CASE" == "PETSC" ]]; then travis_retry sudo apt-get install -qq libpetsc3.4.2-dev; fi
   # Lis
   - if [[ "$CASE" == "LIS" ]]; then wget https://github.com/norihiro-w/lis-cmake/archive/master.zip; fi
-  - if [[ "$CASE" == "LIS" ]]; then unzip master.zip && cd lis-cmake-master; fi
+  - if [[ "$CASE" == "LIS" ]]; then unzip master.zip && cd lis-cmake-master && rm -f ../master.zip; fi
   - if [[ "$CASE" == "LIS" ]]; then mkdir build && cd build && cmake .. && make && cd ../..; fi
 
 script:
   - mkdir build
   - cd build
+  - if [[ "$CASE" == "LIS" ]]; then export CMAKE_ARGS="${CMAKE_ARGS}"; fi
   - cmake $CMAKE_ARGS ..
-  - make
+  - make -j4
 
 notifications:
   email:
