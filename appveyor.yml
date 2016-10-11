@@ -1,0 +1,52 @@
+# Notes:
+#   - Minimal appveyor.yml file is an empty file. All sections are optional.
+#   - Indent each level of configuration with 2 spaces. Do not use tabs!
+#   - All section names are case-sensitive.
+#   - Section names should be unique on each level.
+
+#---------------------------------#
+#      general configuration      #
+#---------------------------------#
+
+# version format
+version: 1.0.{build}
+
+branches:
+  only:
+    - master
+    - develop
+
+
+#---------------------------------#
+#    environment configuration    #
+#---------------------------------#
+
+# Build worker image (VM template)
+image: Visual Studio 2013
+
+clone_folder: c:\projects\ogs
+clone_depth: 3
+
+
+install:
+  # Lis
+  - ps: wget https://github.com/norihiro-w/ogs5-egs/releases/download/v5.3.3-egs.1.8/precompiled.zip -OutFile "$pwd\precompiled.zip"
+  - ps: dir
+  - ps: 7z.exe x precompiled.zip
+  - ps: dir precompiled
+  - SET LIS_DIR=$pwd\precompiled
+
+
+#---------------------------------#
+#       build configuration       #
+#---------------------------------#
+
+platform: x64
+configuration: Release
+
+build_script:
+  - cd c:\projects\ogs
+  - mkdir build
+  - cd build
+  - cmake .. -G "Visual Studio 12 2013" -DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=c:\projects\ogs\precompiled -DLIS_LIBRARIES=c:\projects\ogs\precompiled\lisomp.lib
+  - cmake --build . --config Release
