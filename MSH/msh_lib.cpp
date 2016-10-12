@@ -104,15 +104,17 @@ void FEMDeleteAll()
 void FEMRead(const std::string& file_base_name, std::vector<CFEMesh*>& mesh_vec,
              GEOLIB::GEOObjects* geo_obj, std::string* unique_name)
 {
+	ScreenMessage("MSHRead:  ASCII file\n");
+
 	CFEMesh* mesh(NULL);
 	std::string msh_file_name(file_base_name + FEM_FILE_EXTENSION);
 
 	std::ifstream msh_file_ascii(msh_file_name.data(), std::ios::in);
-	if (!msh_file_ascii.is_open())
-		std::cout << "CFEMesh::FEMRead() - Could not open file...\n";
+	if (!msh_file_ascii.is_open()) {
+		ScreenMessage("*** error: Could not open file %s\n", msh_file_name.c_str());
+		return;
+	}
 
-	std::cout << "MSHRead:  ASCII file"
-	          << "\n";
 	std::string line_string("");
 	getline(msh_file_ascii, line_string);
 
@@ -146,6 +148,13 @@ void FEMRead(const std::string& file_base_name, std::vector<CFEMesh*>& mesh_vec,
 	}
 
 	msh_file_ascii.close();
+
+	for (size_t i = 0; i < mesh_vec.size(); i++)
+	{
+		CFEMesh* msh = mesh_vec[i];
+		ScreenMessage("-> Mesh %d: found %d nodes, %d elements\n",
+		              i, msh->nod_vector.size(), msh->ele_vector.size());
+	}
 }
 #endif
 

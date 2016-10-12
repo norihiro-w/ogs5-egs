@@ -867,7 +867,7 @@ void Problem::PCSCreate()
 
 #if defined(USE_PETSC)  // || defined(other solver libs)//03.3012. WW
 	ScreenMessage("---------------------------------------------\n");
-	ScreenMessage("Create linear solvers");
+	ScreenMessage("Create linear solvers\n");
 	CreateEQS_LinearSolver();
 #endif
 
@@ -995,7 +995,7 @@ void Problem::SetTimeActiveProcesses()
    01/2009 WW Update
    03/2012 JT Many changes. Allow independent time stepping.
 **************************************************************************/
-void Problem::Euler_TimeDiscretize()
+bool Problem::Euler_TimeDiscretize()
 {
 #ifndef WIN32
 	BaseLib::MemWatch mem_watch;
@@ -1271,6 +1271,8 @@ void Problem::Euler_TimeDiscretize()
 #if defined(USE_MPI) || defined(USE_PETSC)  // JT2012
 	}
 #endif
+
+	return last_dt_accepted;
 }
 
 /*-----------------------------------------------------------------------
@@ -1506,10 +1508,8 @@ bool Problem::CouplingLoop()
 		{
 			ScreenMessage(
 			    "\n======================================================\n");
-			ScreenMessage("Outer coupling loop %d/%d complete.\n",
-			              outer_index + 1,
-			              cpl_overall_max_iterations);
-			ScreenMessage("Max coupling error (relative to tolerance): %g\n",
+			ScreenMessage("Outer coupling loop %d/%d: err=%g\n",
+			              outer_index + 1, cpl_overall_max_iterations,
 			              max_outer_error);
 			ScreenMessage(
 			    "======================================================\n");
