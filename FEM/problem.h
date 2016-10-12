@@ -31,7 +31,8 @@ class Problem
 public:
 	Problem(char* filename = NULL);
 	~Problem();
-	void Euler_TimeDiscretize();
+
+	bool Euler_TimeDiscretize();
 	void RosenBrock_TimeDiscretize() {}
 	//
 	void SetActiveProcesses();

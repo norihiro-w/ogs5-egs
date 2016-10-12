@@ -4469,6 +4469,21 @@ double CRFProcess::Execute()
 #else
 	iter_lin = ExecuteLinearSolver();
 #endif
+	if (iter_lin == -1)
+	{
+		ScreenMessage("*** Linear solve failed\n");
+// abort
+#ifdef NEW_EQS  // WW
+		if (!configured_in_nonlinearloop)
+#if defined(USE_MPI)
+			dom->eqs->Clean();
+#else
+			// Also allocate temporary memory for linear solver. WW
+			eqs_new->Clean();
+#endif
+#endif
+		return -1;
+	}
 	iter_lin_max = std::max(iter_lin_max, iter_lin);
 
 	//----------------------------------------------------------------------
@@ -9558,13 +9573,20 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 	for (iter_nlin = 0; iter_nlin < m_num->nls_max_iterations; iter_nlin++)
 	{
 		nl_itr_err = Execute();
+		if (nl_itr_err == -1.)  // linear solve broken
+		{
+			ScreenMessage("*** Nonlinear solve failed\n");
+			accepted = false;
+			Tim->last_dt_accepted = false;
+			break;
+		}
 		//
 		// ---------------------------------------------------
 		// LINEAR SOLUTION
 		// ---------------------------------------------------
 		if (m_num->nls_method == FiniteElement::INVALID_NL_TYPE)
 		{
-			PrintStandardIterationInformation(true);
+			PrintStandardIterationInformation(true, nl_itr_err);
 			converged = true;
 		}
 		else
@@ -9578,7 +9600,7 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 			{
 				// For most error methods (also works for Newton)
 				default:
-					PrintStandardIterationInformation(true);
+					PrintStandardIterationInformation(true, nl_itr_err);
 					if (iter_nlin == 0)
 						percent_difference = .0;
 					else
@@ -9628,7 +9650,7 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 
 				// For (OGS) classic Newton error control
 				case FiniteElement::BNORM:
-					PrintStandardIterationInformation(false);
+					PrintStandardIterationInformation(false, nl_itr_err);
 //
 #if defined(USE_PETSC)  // || defined(other parallel libs)//06.3012. WW
 					norm_x = eqs_new->GetVecNormX();
@@ -9861,7 +9883,8 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
    Programing:
    3/2012  JT
 **************************************************************************/
-void CRFProcess::PrintStandardIterationInformation(bool write_std_errors)
+void CRFProcess::PrintStandardIterationInformation(bool write_std_errors,
+                                                   double nl_error)
 {
 	int ii;
 	//
@@ -9882,8 +9905,8 @@ void CRFProcess::PrintStandardIterationInformation(bool write_std_errors)
 	//
 	// NON-LINEAR METHODS
 	if (m_num->nls_method == FiniteElement::NL_PICARD)
-		ScreenMessage("-->End of PICARD iteration: %d/%d \n", iter_nlin,
-		              m_num->nls_max_iterations);
+		ScreenMessage("-->End of PICARD iteration: %d/%d, error=%g \n",
+		              iter_nlin, m_num->nls_max_iterations, nl_error);
 	else
 		ScreenMessage("-->End of NEWTON-RAPHSON iteration: %d/%d \n", iter_nlin,
 		              m_num->nls_max_iterations);

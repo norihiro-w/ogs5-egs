@@ -7,88 +7,53 @@
  *
  */
 
-/**************************************************************************/
-/* ROCKFLOW - Modul: rf.c
- */
-/* Aufgabe:
-   ROCKFLOW-FEM - Hauptprogramm
- */
-/* Programmaenderungen:
-   07/1996     MSR        Erste Version
-   06/1998     AH         Konfigurationsdatei
-   08/1999     OK         RF-FEM Applikation
-   10/1999     AH         Systemzeit
-
-   last modified: OK 14.12.1999
- */
-/**************************************************************************/
 
 #include <cstdlib>
-/**
- * the preprocessor directive RFW_FRACTURE is only useable until version 4.11 of
- * OGS
- * */
-#include "Configure.h"
-#include "BuildInfo.h"
+#include <ctime>
+#ifdef SUPERCOMPUTER
+// kg44 test for buffered output
+#include <cstdio>
+#include <unistd.h>
+#endif
 
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || \
-    defined(USE_MPI_REGSOIL) || defined(USE_MPI_GEMS)
-#include "par_ddc.h"
-#include <mpi.h>
-#endif
-#ifdef LIS
-#include "lis.h"
-#endif
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+#if defined(USE_MPI)
+#include <mpi.h>
+#endif
 
+#ifdef LIS
+#include <lis.h>
+#endif
 #ifdef USE_PETSC
+#include <petscksp.h>
 #include <petsctime.h>
 #endif
 
+#include "Configure.h"
 #include "BuildInfo.h"
 
-/* Preprozessor-Definitionen */
+#include "break.h"
+#include "display.h"
+#include "FileTools.h"
 #include "makros.h"
 #include "memory.h"
 #include "MemWatch.h"
-#include "display.h"
-#include "ogs_display.h"
-#define TEST
-/* Benutzte Module */
-#include "break.h"
+#include "RunTime.h"
 #include "timer.h"
-// 16.12.2008. WW #include "rf_apl.h"
-#include "FileTools.h"
+
 #include "files0.h"
-#ifdef SUPERCOMPUTER
-// kg44 test for buffered outputh
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#endif
 #include "problem.h"
 
-/* Deklarationen */
-int main(int argc, char* argv[]);
-void ShowSwitches(void);
-// LB,string FileName; //WW
-// LB,string FilePath; //23.02.2009. WW
-// ------  12.09.2007 WW:
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || \
-    defined(USE_MPI_REGSOIL) || defined(USE_MPI_GEMS)
+#include "ogs_display.h"
+
+#define TEST
+
+#if defined(USE_MPI)
 double elapsed_time_mpi;
-// ------
 #endif
 
-// Use PETSc. WW
-#ifdef USE_PETSC
-#include "petscksp.h"
-#ifdef USEPETSC34
-#include "petsctime.h"
-#endif
-#endif
 
 /* Definitionen */
 
@@ -195,8 +160,7 @@ int main(int argc, char* argv[])
 //**********************************************************************
 #endif
 /*---------- MPI Initialization ----------------------------------*/
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || \
-    defined(USE_MPI_REGSOIL) || defined(USE_MPI_GEMS)
+#if defined(USE_MPI)
 	printf("Before MPI_Init\n");
 	MPI_Init(&argc, &argv);
 	MPI_Barrier(MPI_COMM_WORLD);      // 12.09.2007 WW
@@ -235,6 +199,8 @@ int main(int argc, char* argv[])
 /* Timer fuer Gesamtzeit starten */
 #ifdef TESTTIME
 	TStartTimer(0);
+	BaseLib::RunTime runTime;
+	runTime.start();
 #endif
 /* Intro ausgeben */
 #if defined(USE_MPI) || defined(USE_PETSC)
@@ -283,8 +249,8 @@ int main(int argc, char* argv[])
 	}
 
 	ScreenMessage("\n---------------------------------------------\n");
-	ScreenMessage("ogs version: %s\n", OGS_VERSION);
-	ScreenMessage("ogs date: %s\n", OGS_DATE);
+	ScreenMessage("ogs version    : %s\n", OGS_VERSION);
+	ScreenMessage("ogs date       : %s\n", OGS_DATE);
 #ifdef CMAKE_CMD_ARGS
 	ScreenMessage("cmake command line arguments: %s\n", CMAKE_CMD_ARGS);
 #endif  // CMAKE_CMD_ARGS
@@ -297,6 +263,11 @@ int main(int argc, char* argv[])
 #ifdef BUILD_TIMESTAMP
 	ScreenMessage("build timestamp: %s\n", BUILD_TIMESTAMP);
 #endif  // BUILD_TIMESTAMP
+
+	time_t tm =time(NULL );
+	struct tm * curtime = localtime ( &tm );
+	ScreenMessage("current time   : %s", asctime(curtime));
+
 #ifdef USE_PETSC
 	MPI_Barrier(PETSC_COMM_WORLD);
 #endif
@@ -318,48 +289,46 @@ int main(int argc, char* argv[])
 	ScreenMessage("\tcurrent mem: %d MB\n",
 	              mem_watch.getVirtMemUsage() / (1024 * 1024));
 #endif
-	aproblem->Euler_TimeDiscretize();
+	bool success = aproblem->Euler_TimeDiscretize();
 #ifdef USE_PETSC
 	MPI_Barrier(PETSC_COMM_WORLD);
 #endif
 	delete aproblem;
 	aproblem = NULL;
-#ifndef USE_PETSC
 #ifdef TESTTIME
-	ScreenMessage2("Simulation time: %ld s\n", TGetTimer(0));
-#endif
-#endif
-/* Abspann ausgeben */
-/* Ctrl-C wieder normal */
-// StandardBreak();
-/*--------- MPI Finalize ------------------*/
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || defined(USE_MPI_REGSOIL)
-	elapsed_time_mpi += MPI_Wtime();  // 12.09.2007 WW
-	std::cout << "\n *** Total CPU time of parallel modeling: "
-	          << elapsed_time_mpi << "\n";  // WW
-	// Count CPU time of post time loop WW
-	MPI_Finalize();
-#endif
-/*--------- MPI Finalize ------------------*/
-/*--------- LIS Finalize ------------------*/
-#ifdef LIS
-	lis_finalize();
-#endif
-	/*--------- LIS Finalize ------------------*/
-
-	free(dateiname);
-
-#ifdef USE_PETSC
+#if defined(USE_PETSC)
 // kg44 quick fix to compile PETSC with version PETSCV3.4
 #if (PETSC_VERSION_NUMBER >= 3040)
 	PetscTime(&v2);
 #else
 	PetscGetTime(&v2);
 #endif
-	PetscPrintf(PETSC_COMM_WORLD,
-	            "\t\n>>Total elapsed time by using PETSC:%f s\n", v2 - v1);
-	PetscFinalize();
+	PetscPrintf(PETSC_COMM_WORLD, "Elapsed time: %ld s\n", v2 - v1);
+#elif defined(USE_MPI)
+	elapsed_time_mpi += MPI_Wtime();  // 12.09.2007 WW
+	ScreenMessage2("Elapsed time    : %ld s\n", elapsed_time_mpi);
+#else
+	ScreenMessage2("CPU time    : %ld s\n", TGetTimer(0));
+	ScreenMessage2("Elapsed time: %g s\n", runTime.elapsed());
 #endif
 
-	return 0;
+#endif // TESTTIME
+/* Abspann ausgeben */
+/* Ctrl-C wieder normal */
+// StandardBreak();
+
+	// Finalize libraries
+#ifdef LIS
+	lis_finalize();
+#endif
+#if defined(USE_PETSC)
+	PetscFinalize();
+#elif defined(USE_MPI)
+	MPI_Finalize();
+#endif
+
+	free(dateiname);
+
+
+	return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
