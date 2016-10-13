@@ -7,16 +7,8 @@
  *
  */
 
-/**************************************************************************
-   FEMLib - Object: OUT
-   Task:
-   Programing:
-   06/2004 OK Implementation
-   last modified:
-**************************************************************************/
-#include "Configure.h"
-#include "makros.h"
-// C++ STL
+#include "rf_out_new.h"
+
 #include <cfloat>
 #include <cmath>
 #include <fstream>
@@ -24,70 +16,57 @@
 #include <limits>
 #include <list>
 #include <string>
+#include <vector>
 
-// Base
+#if defined(USE_PETSC) || defined(USE_MPI)
+#include <mpi.h>
+#endif
+
+#include "Configure.h"
 #include "display.h"
+#include "makros.h"
 #include "StringTools.h"
 
-// FEM-Makros
-#include "files0.h"
-#include "makros.h"
-// GeoSys-GeoLib
+#include "GeoIO.h"
 #include "GEOObjects.h"
-#include "files0.h"
 #include "geo_ply.h"
 #include "geo_sfc.h"
-// GeoSys-FEMLib
-#include "LegacyVtkInterface.h"
-#include "Output.h"
-#include "fem_ele_std.h"
-#include "mathlib.h"
-#include "rf_msp_new.h"
-#include "rf_out_new.h"
-#include "rf_pcs.h"
-#include "rf_pcs.h"
-#include "rf_random_walk.h"
-#include "rf_tim_new.h"
-// GeoSys-MSHLib
+
 #include "msh_lib.h"
 
-// FileIO/FEMIO
-#include "FEMIO/GeoIO.h"
-
-#include "problem.h"
-
-// Base
-#include "StringTools.h"
-
-extern size_t max_dim;  // OK411 todo
-
+#include "CSVOutput.h"
 #ifdef CHEMAPP
 #include "eqlink.h"
 #endif
+#include "fem_ele_std.h"
+#include "files0.h"
+#include "LegacyVtkInterface.h"
+#include "mathlib.h"
+#include "Output.h"
+#include "problem.h"
+#include "rf_msp_new.h"
+#include "rf_pcs.h"
+#include "rf_random_walk.h"
+#ifdef GEM_REACT
+#include "rf_REACT_GEM.h"
+#endif
+#include "rf_tim_new.h"
 #include "vtk.h"
-// MPI Parallel
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || defined(USE_MPI_REGSOIL)
-#include "par_ddc.h"
-#endif
 
-#if defined(USE_PETSC) || defined(USE_MPI) || defined(USE_MPI_PARPROC) || \
-    defined(USE_MPI_REGSOIL)  //|| defined(other parallel libs)//03.3012. WW
-#include <mpi.h>
-#endif
 
 #ifdef SUPERCOMPUTER
 // kg44 this is usefull for io-buffering as endl flushes the buffer
 #define endl '\n'
 #define MY_IO_BUFSIZE 4096
 #endif
-#ifdef GEM_REACT
-#include "rf_REACT_GEM.h"
-#endif
-using MeshLib::CFEMesh;
-//==========================================================================
+
+#define OUT_FILE_EXTENSION ".out"
+
 std::vector<COutput*> out_vector;
+extern size_t max_dim;
 
 using namespace std;
+using MeshLib::CFEMesh;
 
 /**************************************************************************
    FEMLib-Method:
@@ -235,198 +214,90 @@ void OUTWrite(string base_file_name)
 **************************************************************************/
 void OUTData(double time_current, int time_step_number, bool force_output)
 {
-#if defined(USE_MPI)  // JT2012
-	if (myrank != 0) return;
-#endif
-	//
-	COutput* m_out = NULL;
-	CRFProcess* m_pcs = NULL;
-	CFEMesh* m_msh = NULL;
-	double tim_value;
-
 	for (size_t i = 0; i < out_vector.size(); i++)
 	{
-		m_out = out_vector[i];
-		// MSH
-		//		m_msh = m_out->GetMSH();
-		m_msh = m_out->getMesh();
-		if (!m_msh) cout << "Warning in OUTData - no MSH data" << endl;
-		// OK continue;
-		// PCS
-		if (!m_out->_nod_value_vector.empty())
-			m_pcs = m_out->GetPCS(m_out->_nod_value_vector[0]);
-		if (m_out->getElementValueVector().size() > 0)
-			m_pcs = m_out->GetPCS_ELE(m_out->getElementValueVector()[0]);
-		if (!m_pcs) m_pcs = m_out->GetPCS();  // OK
-#ifndef NDEBUG
-		if (!m_pcs) cout << "Warning in OUTData - no PCS data" << endl;
-#endif
-		// OK4704 continue;
-		//--------------------------------------------------------------------
+		COutput* m_out = out_vector[i];
 		m_out->setTime(time_current);
-		const size_t no_times(m_out->time_vector.size());
-		//--------------------------------------------------------------------
-		bool OutputBySteps = false;
-		if (no_times == 0 && (m_out->nSteps > 0) &&
-		    (time_step_number % m_out->nSteps == 0))
-			OutputBySteps = true;
-		if (time_step_number == 0 || force_output)  // WW//JT
-			OutputBySteps = true;
+
+		CFEMesh* m_msh = m_out->getMesh();
+		if (!m_msh)
+			cout << "Warning in OUTData - no MSH data" << endl;
+
+		bool doOutput = false;
+		if (time_step_number == 0 || force_output)
+		{
+			doOutput = true;
+		}
+		else if (m_out->nSteps > 0 && (time_step_number % m_out->nSteps == 0))
+		{
+			doOutput = true;
+		}
+		else if (!m_out->time_vector.empty())
+		{
+			auto it = std::find_if(m_out->time_vector.begin(), m_out->time_vector.end(), [&](double t){return fabs(time_current-t)<MKleinsteZahl;});
+			if (it!=m_out->time_vector.end())
+				doOutput = true;
+		}
+
+		if (!doOutput)
+			continue;
+
 		//======================================================================
 		// TECPLOT
 		if (m_out->dat_type_name.compare("TECPLOT") == 0 ||
-		    m_out->dat_type_name.compare("MATLAB") == 0 ||
-		    m_out->dat_type_name.compare("GNUPLOT") == 0 ||
-		    m_out->dat_type_name.compare("CSV") == 0)
+		    m_out->dat_type_name.compare("MATLAB")  == 0 ||
+		    m_out->dat_type_name.compare("GNUPLOT") == 0)
 		{
-			//			m_out->matlab_delim = " ";
-			//			if (m_out->dat_type_name.compare("MATLAB") == 0) // JT,
-			//just
-			// for commenting header for matlab
-			//			if (m_out->dat_type_name.compare("GNUPLOT") == 0) //
-			//JOD,
-			// just for commenting header for gnupl
-			//				m_out->matlab_delim = "%";
 
 			switch (m_out->getGeoType())
 			{
-				case GEOLIB::GEODOMAIN:  // domain data
+				case GEOLIB::GEODOMAIN:
 					ScreenMessage("-> Data output: Domain");
-					if (OutputBySteps)
-					{
-						if (!m_out->_pcon_value_vector.empty())
-							m_out->PCONWriteDOMDataTEC();  // MX
-						else
-						{
-							m_out->NODWriteDOMDataTEC();
-							m_out->ELEWriteDOMDataTEC();
-						}
-						OutputBySteps = false;
-						if (!m_out->_new_file_opened)
-							// WW
-							m_out->_new_file_opened = true;
-					}
+					if (!m_out->_pcon_value_vector.empty())
+						m_out->PCONWriteDOMDataTEC();
 					else
 					{
-						for (size_t j = 0; j < no_times; j++)
-							if ((time_current > m_out->time_vector[j]) ||
-							    fabs(time_current - m_out->time_vector[j]) <
-							        MKleinsteZahl)  // WW MKleinsteZahl
-							{
-								if (!m_out->_pcon_value_vector.empty())
-									// MX
-									m_out->PCONWriteDOMDataTEC();
-								else
-								{
-									m_out->NODWriteDOMDataTEC();
-									m_out->ELEWriteDOMDataTEC();
-								}
-								m_out->time_vector.erase(
-								    m_out->time_vector.begin() + j);
-								if (!m_out->_new_file_opened)
-									// WW
-									m_out->_new_file_opened = true;
-								break;
-							}
+						m_out->NODWriteDOMDataTEC();
+						m_out->ELEWriteDOMDataTEC();
 					}
+					if (!m_out->_new_file_opened)
+						m_out->_new_file_opened = true;
 					break;
 				//------------------------------------------------------------------
-				case GEOLIB::POLYLINE:  // profiles along polylines
-					if (m_out->dat_type_name.compare("GNUPLOT") !=
-					    0)  // JOD !!!!!
-						ScreenMessage("-> Data output: Polyline profile - %s\n",
-						              m_out->getGeoName().c_str());
-					if (OutputBySteps)
-					{
-						tim_value = m_out->NODWritePLYDataTEC(time_step_number);
-						if (tim_value > 0.0)
-							// OK
-							m_out->TIMValue_TEC(tim_value);
-						if (!m_out->_new_file_opened)
-							// WW
-							m_out->_new_file_opened = true;
-						OutputBySteps = false;
-					}
-					else
-					{
-						for (size_t j = 0; j < no_times; j++)
-							if ((time_current > m_out->time_vector[j]) ||
-							    fabs(time_current - m_out->time_vector[j]) <
-							        MKleinsteZahl)  // WW MKleinsteZahl
-							{
-								// OK
-								tim_value = m_out->NODWritePLYDataTEC(j + 1);
-								if (tim_value > 0.0)
-									m_out->TIMValue_TEC(tim_value);
-								m_out->time_vector.erase(
-								    m_out->time_vector.begin() + j);
-								if (!m_out->_new_file_opened)
-									// WW
-									m_out->_new_file_opened = true;
-								break;
-							}
-					}
+				case GEOLIB::POLYLINE:
+				{
+					ScreenMessage("-> Data output: Polyline profile - %s\n", m_out->getGeoName().c_str());
+					double tim_value = m_out->NODWritePLYDataTEC(time_step_number);
+					if (tim_value > 0.0)
+						m_out->TIMValue_TEC(tim_value);
+					if (!m_out->_new_file_opened)
+						m_out->_new_file_opened = true;
 					//..............................................................
 					break;
+				}
 				//------------------------------------------------------------------
-				case GEOLIB::POINT:  // breakthrough curves in points
-					if (m_out->dat_type_name.compare("GNUPLOT") !=
-					    0)  // JOD !!!!!
-						ScreenMessage(
-						    "-> Data output: Breakthrough curves - %s\n",
-						    m_out->getGeoName().c_str());
+				case GEOLIB::POINT:
+					ScreenMessage("-> Data output: Breakthrough curves - %s\n", m_out->getGeoName().c_str());
 					m_out->NODWritePNTDataTEC(time_current, time_step_number);
 					if (!m_out->_new_file_opened)
-						m_out->_new_file_opened = true;  // WW
+						m_out->_new_file_opened = true;
 					break;
 				//------------------------------------------------------------------
-				case GEOLIB::SURFACE:  // profiles at surfaces
+				case GEOLIB::SURFACE:
 					ScreenMessage("-> Data output: Surface profile\n");
-					//..............................................................
-					//				if (m_out->_dis_type_name.compare("AVERAGE") ==
-					//0)
-					//{
-					if (m_out->getProcessDistributionType() ==
-					    FiniteElement::AVERAGE)
+					if (m_out->getProcessDistributionType() == FiniteElement::AVERAGE)
 					{
-						if (OutputBySteps)
-						{
-							m_out->NODWriteSFCAverageDataTEC(time_current,
-							                                 time_step_number);
-							OutputBySteps = false;
-							if (!m_out->_new_file_opened)
-								// WW
-								m_out->_new_file_opened = true;
-						}
+						m_out->NODWriteSFCAverageDataTEC(time_current,
+														 time_step_number);
+						if (!m_out->_new_file_opened)
+							m_out->_new_file_opened = true;
 					}
 					//..............................................................
 					else
 					{
-						if (OutputBySteps)
-						{
-							m_out->NODWriteSFCDataTEC(time_step_number);
-							OutputBySteps = false;
-							if (!m_out->_new_file_opened)
-								// WW
-								m_out->_new_file_opened = true;
-						}
-						else
-						{
-							for (size_t j = 0; j < no_times; j++)
-								if ((time_current > m_out->time_vector[j]) ||
-								    fabs(time_current - m_out->time_vector[j]) <
-								        MKleinsteZahl)  // WW MKleinsteZahl
-								// m_out->NODWriteSFCDataTEC(j);
-								{
-									m_out->NODWriteSFCDataTEC(j);
-									m_out->time_vector.erase(
-									    m_out->time_vector.begin() + j);
-									if (!m_out->_new_file_opened)
-										// WW
-										m_out->_new_file_opened = true;
-									break;
-								}
-						}
+						m_out->NODWriteSFCDataTEC(time_step_number);
+						if (!m_out->_new_file_opened)
+							m_out->_new_file_opened = true;
 					}
 					//..............................................................
 					// ELE data
@@ -434,32 +305,38 @@ void OUTData(double time_current, int time_step_number, bool force_output)
 						m_out->ELEWriteSFC_TEC();
 					//..............................................................
 					break;
-
-				//			case 'Y': // Layer
-				//				cout << "Data output: Layer" << endl;
-				//				if (OutputBySteps) {
-				//					m_out->NODWriteLAYDataTEC(time_step_number);
-				//					OutputBySteps = false;
-				//				} else {
-				//					for (j = 0; j < no_times; j++) {
-				//						if ((time_current > m_out->time_vector[j])
-				//||
-				// fabs(
-				//								time_current -
-				// m_out->time_vector[j])
-				//								<MKleinsteZahl) {
-				//							m_out->NODWriteLAYDataTEC(j);
-				//							m_out->time_vector.erase(m_out->time_vector.begin()
-				//									+ j);
-				//							break;
-				//						}
-				//					}
-				//				}
-				//
-				//				break;
-				//------------------------------------------------------------------
-
 				default:
+					break;
+			}
+		}
+		//--------------------------------------------------------------------
+		// CSV
+		else if (m_out->dat_type_name.compare("CSV") == 0)
+		{
+			switch (m_out->getGeoType())
+			{
+				case GEOLIB::GEODOMAIN:
+				{
+					ScreenMessage("-> Data output: Domain - CSV\n");
+					CSVOutput::writeDomain(m_out, time_step_number, m_out->_time, m_out->file_base_name);
+					break;
+				}
+				case GEOLIB::POINT:
+				{
+					ScreenMessage("-> Data output: Point - %s\n", m_out->getGeoName().c_str());
+					m_out->NODWritePNTDataTEC(time_current, time_step_number);
+					if (!m_out->_new_file_opened)
+						m_out->_new_file_opened = true;
+					break;
+				}
+				case GEOLIB::POLYLINE:
+				{
+					ScreenMessage("-> Data output: Polyline - %s\n", m_out->getGeoName().c_str());
+					CSVOutput::writePoyline(m_out, time_step_number, m_out->_time, m_out->file_base_name);
+					break;
+				}
+				default:
+					ScreenMessage("Warning - the given GEO_TYPE is not supported in CSV output\n");
 					break;
 			}
 		}
@@ -467,92 +344,27 @@ void OUTData(double time_current, int time_step_number, bool force_output)
 		// vtk
 		else if (m_out->dat_type_name.compare("VTK") == 0)
 		{
-			switch (m_out->getGeoType())
-			{
-				case GEOLIB::GEODOMAIN:  // domain data
-					if (OutputBySteps)
-					{
-						OutputBySteps = false;
-						// OK
-						// m_out->WriteDataVTK(time_step_number);
-						LegacyVtkInterface vtkOutput(m_msh,
-						                             m_out->_nod_value_vector,
-						                             m_out->_ele_value_vector,
-						                             m_out->mmp_value_vector,
-						                             m_out->msh_type_name,
-						                             m_out);
+			LegacyVtkInterface vtkOutput(m_msh,
+										 m_out->_nod_value_vector,
+										 m_out->_ele_value_vector,
+										 m_out->mmp_value_vector,
+										 m_out->msh_type_name,
+										 m_out);
 #if defined(USE_PETSC)
-						ScreenMessage2("-> output a VTK file\n");
-						vtkOutput.WriteDataVTKPETSC(time_step_number,
-						                            m_out->_time,
-						                            m_out->file_base_name);
+			ScreenMessage2("-> output a VTK file\n");
+			vtkOutput.WriteDataVTKPETSC(time_step_number,
+										m_out->_time,
+										m_out->file_base_name);
 #else
-						vtkOutput.WriteDataVTK(time_step_number,
-						                       m_out->_time,
-						                       m_out->file_base_name);
+			vtkOutput.WriteDataVTK(time_step_number,
+								   m_out->_time,
+								   m_out->file_base_name);
 #endif
-						if (!m_out->_new_file_opened)
-							// WW
-							m_out->_new_file_opened = true;
-					}
-					else
-					{
-						for (size_t j = 0; j < no_times; j++)
-							if (time_current >= m_out->time_vector[j])
-							{
-								// OK
-								// m_out->WriteDataVTK(time_step_number);
-								LegacyVtkInterface vtkOutput(
-								    m_msh,
-								    m_out->_nod_value_vector,
-								    m_out->_ele_value_vector,
-								    m_out->mmp_value_vector,
-								    m_out->msh_type_name,
-								    m_out);
-#if defined(USE_PETSC)
-								ScreenMessage2("-> output a VTK file\n");
-								vtkOutput.WriteDataVTKPETSC(
-								    time_step_number,
-								    m_out->_time,
-								    m_out->file_base_name);
-								m_out->time_vector.erase(
-								    m_out->time_vector.begin() + j);
-#else
-								vtkOutput.WriteDataVTK(time_step_number,
-								                       m_out->_time,
-								                       m_out->file_base_name);
-								m_out->time_vector.erase(
-								    m_out->time_vector.begin() + j);
-
-#endif
-								if (!m_out->_new_file_opened)
-									// WW
-									m_out->_new_file_opened = true;
-								break;
-							}
-					}
-					break;
-				default:
-					break;
-			}
+			if (!m_out->_new_file_opened)
+				m_out->_new_file_opened = true;
 		}  // PVD (ParaView)
 		else if (m_out->dat_type_name.find("PVD") != string::npos)
 		{
-			// check output
-			bool do_output = OutputBySteps;
-			if (!OutputBySteps)
-			{
-				for (size_t j = 0; j < no_times; j++)
-				{
-					if (time_current < m_out->time_vector[j]) continue;
-					m_out->time_vector.erase(m_out->time_vector.begin() + j);
-					do_output = true;
-					break;
-				}
-			}
-			if (!do_output) continue;
-			OutputBySteps = false;
-
 			if (m_out->vtk == NULL)
 				m_out->CreateVTKInstance();  // WW m_out->vtk = new CVTK();
 			CVTK* vtk = m_out->vtk;
@@ -611,47 +423,17 @@ void OUTData(double time_current, int time_step_number, bool force_output)
 #endif
 			}
 		}
-		else if (m_out->dat_type_name.find("PETREL") != string::npos)  // NW
+		else if (m_out->dat_type_name.find("PETREL") != string::npos)
 		{
-			if (m_out->getGeoType() == GEOLIB::GEODOMAIN)
-			{
-				if (OutputBySteps)
-				{
-					OutputBySteps = false;
-					// write
-					m_out->WritePetrelElementData(time_step_number);
-
-					if (!m_out->_new_file_opened)
-						m_out->_new_file_opened = true;
-				}
-				else
-				{
-					for (size_t j = 0; j < no_times; j++)
-					{
-						if (time_current >= m_out->time_vector[j])
-						{
-							// write
-							m_out->WritePetrelElementData(time_step_number);
-
-							m_out->time_vector.erase(
-							    m_out->time_vector.begin() + j);
-							if (!m_out->_new_file_opened)
-								m_out->_new_file_opened = true;
-							break;
-						}
-					}
-				}
-			}
+			m_out->WritePetrelElementData(time_step_number);
+			if (!m_out->_new_file_opened)
+				m_out->_new_file_opened = true;
 		}
 		else if (m_out->dat_type_name.compare("WATER_BALANCE") == 0)
-			m_out->NODWriteWaterBalance(time_current);  // 6/2012 JOD, MW
+			m_out->NODWriteWaterBalance(time_current);
 		else if (m_out->dat_type_name.compare("COMBINE_POINTS") == 0)
-			m_out->NODWritePointsCombined(
-			    time_current);  // 6/2012 for calibration JOD
+			m_out->NODWritePointsCombined(time_current);
 
-		// ELE values, only called if ele values are defined for output, 05/2012
-		// BG
-		if (m_out->getElementValueVector().size() > 0) m_out->CalcELEFluxes();
 	}  // OUT loop
 	//======================================================================
 }
