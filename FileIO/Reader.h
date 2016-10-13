@@ -15,6 +15,10 @@
 #ifndef READER_H
 #define READER_H
 
+#include <fstream>
+#include <string>
+#include <sstream>
+
 namespace FileIO
 {
 /// @brief Base class which enables reading an object from string, stringstream

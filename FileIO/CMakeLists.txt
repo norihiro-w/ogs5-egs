@@ -1,34 +1,12 @@
-# Source files
-SET( SOURCES
-	Writer.cpp
-	OGSIOVer4.cpp
-	readNonBlankLineFromInputStream.cpp
-	FEMIO/GeoIO.cpp
-	FEMIO/ProcessIO.cpp
-	FEMIO/BoundaryConditionIO.cpp
-	MeshIO/LegacyVtkInterface.cpp
-	MeshIO/vtk.cpp
-	MeshIO/OGSMeshIO.cpp
-)
 
-# Header files
-SET( HEADERS
-	Writer.h
-	OGSIOVer4.h
-	readNonBlankLineFromInputStream.h
-	FEMIO/GeoIO.h
-	FEMIO/ProcessIO.h
-	FEMIO/BoundaryConditionIO.h
-	MathIO/CRSIO.h
-	MeshIO/LegacyVtkInterface.h
-	MeshIO/vtk.h
-	MeshIO/OGSMeshIO.h
-)
+APPEND_SOURCE_FILES(SOURCES)
+APPEND_SOURCE_FILES(SOURCES FEMIO)
+APPEND_SOURCE_FILES(SOURCES MeshIO)
+APPEND_SOURCE_FILES(SOURCES MathIO)
 
 # Create the library
 ADD_LIBRARY( FileIO STATIC
 	${SOURCES}
-	${HEADERS}
 )
 
 INCLUDE_DIRECTORIES(
