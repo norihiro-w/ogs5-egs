@@ -1732,150 +1732,23 @@ void CSourceTerm::FaceIntegration(CFEMesh* msh,
 	}
 
 	long i, j, k, l;
-	int nfaces;  //, nfn;
-	int nodesFace[8];
-	double nodesFVal[8];
 
-	bool Const = false;
-	if (this->getProcessDistributionType() == FiniteElement::CONSTANT ||
-	    this->getProcessDistributionType() == FiniteElement::CONSTANT_NEUMANN)
-		//	if (dis_type_name.find("CONSTANT") != std::string::npos)
-		Const = true;
-//----------------------------------------------------------------------
-// Interpolation of polygon values to nodes_on_sfc
-#if 0
-   if (!Const)                                    // Get node BC by interpolation with surface
-   {
-      int nPointsPly = 0;
-      double Area1, Area2;
-      double Tol = 1.0e-9;
-      bool Passed;
-      const int Size = (int) nodes_on_sfc.size();
-      double gC[3], p1[3], p2[3], vn[3], unit[3], NTri[3];
+	const long n_sfc_nodes = (long)nodes_on_sfc.size();
+	const long n_msh_nodes = (long)msh->nod_vector.size();
 
-      CGLPolyline* m_polyline = NULL;
-      Surface *m_surface = NULL;
-      m_surface = GEOGetSFCByName(geo_name);      //CC
 
-      // list<CGLPolyline*>::const_iterator p = m_surface->polyline_of_surface_list.begin();
-      std::vector<CGLPolyline*>::iterator p =
-         m_surface->polyline_of_surface_vector.begin();
-
-      for (j = 0; j < Size; j++)
-      {
-    	  double const*const pn (msh->nod_vector[nodes_on_sfc[j]]->getData());
-//         pn[0] = msh->nod_vector[nodes_on_sfc[j]]->X();
-//         pn[1] = msh->nod_vector[nodes_on_sfc[j]]->Y();
-//         pn[2] = msh->nod_vector[nodes_on_sfc[j]]->Z();
-         node_value_vector[j] = 0.0;
-         Passed = false;
-         // nodes close to first polyline
-         p = m_surface->polyline_of_surface_vector.begin();
-         while (p != m_surface->polyline_of_surface_vector.end())
-         {
-            m_polyline = *p;
-            // Grativity center of this polygon
-            for (i = 0; i < 3; i++)
-               gC[i] = 0.0;
-            vn[2] = 0.0;
-            nPointsPly = (int) m_polyline->point_vector.size();
-            for (i = 0; i < nPointsPly; i++)
-            {
-               gC[0] += m_polyline->point_vector[i]->x;
-               gC[1] += m_polyline->point_vector[i]->y;
-               gC[2] += m_polyline->point_vector[i]->z;
-
-               vn[2] += m_polyline->point_vector[i]->getPropert();
-            }
-            for (i = 0; i < 3; i++)
-               gC[i] /= (double) nPointsPly;
-            // BC value at center is an average of all point values of polygon
-            vn[2] /= (double) nPointsPly;
-
-            // Area of this polygon by the grativity center
-            for (i = 0; i < nPointsPly; i++)
-            {
-               p1[0] = m_polyline->point_vector[i]->x;
-               p1[1] = m_polyline->point_vector[i]->y;
-               p1[2] = m_polyline->point_vector[i]->z;
-               k = i + 1;
-               if (i == nPointsPly - 1)
-                  k = 0;
-               p2[0] = m_polyline->point_vector[k]->x;
-               p2[1] = m_polyline->point_vector[k]->y;
-               p2[2] = m_polyline->point_vector[k]->z;
-
-               vn[0] = m_polyline->point_vector[i]->getPropert();
-               vn[1] = m_polyline->point_vector[k]->getPropert();
-
-               Area1 = fabs(ComputeDetTri(p1, gC, p2));
-
-               Area2 = 0.0;
-               // Check if pn is in the triangle by points (p1, gC, p2)
-               Area2 = fabs(ComputeDetTri(p2, gC, pn));
-               unit[0] = fabs(ComputeDetTri(gC, p1, pn));
-               unit[1] = fabs(ComputeDetTri(p1, p2, pn));
-               Area2 += unit[0] + unit[1];
-               if (fabs(Area1 - Area2) < Tol)
-               {
-                  // Intopolation whin triangle (p1,p2,gC)
-                  // Shape function
-                  for (l = 0; l < 2; l++)
-                     unit[l] /= Area1;
-                  ShapeFunctionTri(NTri, unit);
-                  for (l = 0; l < 3; l++)
-                     node_value_vector[j] += vn[l] * NTri[l];
-                  Passed = true;
-                  break;
-               }
-
-            }
-            //
-            p++;
-            if (Passed)
-               break;
-         }                                        // while
-      }                                           //j
-   }
-#endif
-
-	int Axisymm = 1;  // ani-axisymmetry
-	// CFEMesh* msh = m_pcs->m_msh;
-	if (msh->isAxisymmetry()) Axisymm = -1;  // Axisymmetry is true
-	CElem* elem = NULL;
-	//   CElem* face = new CElem(1);
-	CElement* fem = new CElement(Axisymm * msh->GetCoordinateFlag());
-	CNode* e_node = NULL;
-	CElem* e_nei = NULL;
-	// vec<CNode*> e_nodes(20);
-	// vec<CElem*> e_neis(6);
-
-	const long this_number_of_nodes = (long)nodes_on_sfc.size();
-	const long nSize = (long)msh->nod_vector.size();
-	std::vector<long> G2L(nSize, -1);
-	std::vector<double> NVal(this_number_of_nodes, .0);
-
-#pragma omp parallel for
-	for (i = 0; i < nSize; i++)
+	//----------------------------------------------------------------------
+	// search element faces on the surface
+	//----------------------------------------------------------------------
+	#pragma omp parallel for
+	for (i = 0; i < n_msh_nodes; i++)
 	{
 		msh->nod_vector[i]->SetMark(false);
 	}
 
-#pragma omp parallel for private(k)
-	for (i = 0; i < this_number_of_nodes; i++)
-	{
-		k = nodes_on_sfc[i];
-		G2L[k] = i;
-	}
-
-	//----------------------------------------------------------------------
-	// NW 15.01.2010
-	// 1) search element faces on the surface
-	// 2) face integration
-
 	// init
 	const long n_ele = (long)msh->ele_vector.size();
-#pragma omp parallel for
+	#pragma omp parallel for
 	for (i = 0; i < n_ele; i++)
 	{
 		msh->ele_vector[i]->selected = 0;  // TODO can use a new variable
@@ -1899,11 +1772,10 @@ void CSourceTerm::FaceIntegration(CFEMesh* msh,
 	          << "\n";
 #endif
 
-// filtering elements: elements should have nodes on the surface
-// Notice: node-elements relation has to be constructed beforehand
-#pragma omp parallel for default(none) private(k, j, l) shared(msh, \
-                                                               nodes_on_sfc)
-	for (i = 0; i < this_number_of_nodes; i++)
+	// filtering elements: elements should have nodes on the surface
+	// Notice: node-elements relation has to be constructed beforehand
+	#pragma omp parallel for default(none) private(k, j, l) shared(msh, nodes_on_sfc)
+	for (i = 0; i < n_sfc_nodes; i++)
 	{
 		k = nodes_on_sfc[i];
 		CNode* nod = msh->nod_vector[k];
@@ -1912,17 +1784,19 @@ void CSourceTerm::FaceIntegration(CFEMesh* msh,
 		{
 			l = nod->getConnectedElementIDs()[j];
 			CElem* e = msh->ele_vector[l];
-#pragma omp atomic
+			#pragma omp atomic
 			e->selected++;  // remember how many nodes of an element are on the
 			                // surface
 		}
 	}
+
 	long n_selected_ele = 0;
-#pragma omp parallel for reduction(+ : n_selected_ele)
+	#pragma omp parallel for reduction(+ : n_selected_ele)
 	for (i = 0; i < n_ele; i++)
 	{
 		if (msh->ele_vector[i]->selected > 0) n_selected_ele++;
 	}
+
 	std::vector<long> vec_possible_elements;
 	vec_possible_elements.reserve(n_selected_ele);
 	for (i = 0; i < n_ele; i++)
@@ -1956,17 +1830,32 @@ void CSourceTerm::FaceIntegration(CFEMesh* msh,
 	}
 #endif
 
+	//----------------------------------------------------------------------
+	// face integration
+	//----------------------------------------------------------------------
 //#define ST_OMP
-
 #ifdef _OPENMP
 	std::cout << "[CSourceTerm::FaceIntegration] face integration ... "
 	          << std::flush;
-	double begin_int = omp_get_wtime();
+	//double begin_int = omp_get_wtime();
 #endif
+	std::vector<long> mshNodeId2sfcNodeId(n_msh_nodes, -1); // msh node id -> sfc node index
+	#pragma omp parallel for private(k)
+	for (i = 0; i < n_sfc_nodes; i++)
+	{
+		k = nodes_on_sfc[i];
+		mshNodeId2sfcNodeId[k] = i;
+	}
+	std::vector<double> sfc_node_values(n_sfc_nodes, .0);
+
+	const int Axisymm_sign = msh->isAxisymmetry() ? -1 : 1;
+	CElement* fem = new CElement(Axisymm_sign * msh->GetCoordinateFlag());
 	CElem face(1);
 	face.SetFace();
 	// search elements & face integration
 	const long n_vec_possible_elements = vec_possible_elements.size();
+	int face_nodes_local_index[8];
+	double face_node_values[8];
 //#define ST_OMP
 #ifdef ST_OMP
 #pragma omp parallel for default(none)                                         \
@@ -1977,131 +1866,89 @@ void CSourceTerm::FaceIntegration(CFEMesh* msh,
 #endif
 	for (i = 0; i < n_vec_possible_elements; i++)
 	{
-		elem = msh->ele_vector[vec_possible_elements[i]];
-		if (!elem->GetMark()) continue;
-		if (elem->GetDimension() < 3) continue;
-		if (active_elements && !(*active_elements)[i]) continue;
-		nfaces = elem->GetFacesNumber();
+		CElem* elem = msh->ele_vector[vec_possible_elements[i]];
+		if (!elem->GetMark())
+			continue;
+		if (elem->GetDimension() < 3)
+			continue;
+		if (active_elements && !(*active_elements)[i])
+			continue;
+
 		elem->SetOrder(msh->getOrder());
+
+		const int nfaces = elem->GetFacesNumber();
 		for (j = 0; j < nfaces; j++)
 		{
-			e_nei = elem->GetNeighbor(j);
-			const int nfn = elem->GetElementFaceNodes(j, nodesFace);
+			const int n_face_nodes = elem->GetElementFaceNodes(j, face_nodes_local_index);
 			// 1st check
-			if (elem->selected < nfn) continue;
+			if (elem->selected < n_face_nodes) continue;
 			// 2nd check: if all nodes of the face are on the surface
 			int count = 0;
-			for (k = 0; k < nfn; k++)
+			for (k = 0; k < n_face_nodes; k++)
 			{
-				e_node = elem->GetNode(nodesFace[k]);
+				CNode* face_node = elem->GetNode(face_nodes_local_index[k]);
 #ifdef UNIQUE_OMP
 				if (std::binary_search(unique_nodes_on_sfc.begin(),
 				                       unique_nodes_on_sfc.end(),
-				                       e_node->GetIndex()))
+				                       face_node->GetIndex()))
 //            if (std::find(unique_nodes_on_sfc.begin(),
 //            unique_nodes_on_sfc.end(), e_node->GetIndex()) !=
 //            unique_nodes_on_sfc.end())
 #else
-				if (set_nodes_on_sfc.count(e_node->GetIndex()) > 0)
+				if (set_nodes_on_sfc.count(face_node->GetIndex()) > 0)
 #endif
 				{
 					count++;
 				}
 			}
-			if (count != nfn) continue;
+			if (count != n_face_nodes)
+				continue;
+
 			// face integration
-			for (k = 0; k < nfn; k++)
+			for (k = 0; k < n_face_nodes; k++)
 			{
-				e_node = elem->GetNode(nodesFace[k]);
-				nodesFVal[k] = node_value_vector[G2L[e_node->GetIndex()]];
+				CNode* face_node = elem->GetNode(face_nodes_local_index[k]);
+				face_node_values[k] = node_value_vector[mshNodeId2sfcNodeId[face_node->GetIndex()]];
 			}
 			double fac = 1.0;
 			// Not a surface face
-			if (elem->GetDimension() == e_nei->GetDimension()) fac = 0.5;
+			CElem* e_neighbor = elem->GetNeighbor(j);
+			if (elem->GetDimension() == e_neighbor->GetDimension())
+				fac = 0.5;
+
 			CElem* face = new CElem(1);
-			face->SetFace(elem, j);
 			face->SetOrder(msh->getOrder());
+			face->SetFace(elem, j);
 			face->ComputeVolume();
-			if (active_elements == NULL) st_boundary_elements.push_back(face);
+			if (active_elements == NULL)
+				st_boundary_elements.push_back(face);
 			fem->setOrder(msh->getOrder() ? 2 : 1);
 			fem->ConfigElement(face, true);
-			fem->FaceIntegration(nodesFVal);
+			fem->FaceIntegration(face_node_values);
+
 			if (this->is_transfer_bc)
 			{
-				for (k = 0; k < nfn; k++)
-					nodesFVal[k] *=
-					    this->transfer_h_values[face->GetPatchIndex()];
+				for (k = 0; k < n_face_nodes; k++)
+					face_node_values[k] *= this->transfer_h_values[face->GetPatchIndex()];
 			}
-			for (k = 0; k < nfn; k++)
+
+			for (k = 0; k < n_face_nodes; k++)
 			{
-				e_node = elem->GetNode(nodesFace[k]);
-				long id = G2L[e_node->GetIndex()];
-#pragma omp atomic
-				NVal[id] += fac * nodesFVal[k];
+				CNode* face_node = elem->GetNode(face_nodes_local_index[k]);
+				long id = mshNodeId2sfcNodeId[face_node->GetIndex()];
+				#pragma omp atomic
+				sfc_node_values[id] += fac * face_node_values[k];
 			}
 		}
 	}
 
-/*
- //----------------------------------------------------------------------
- int count;
- double fac=1.0;
- for (i = 0; i < (long)msh->ele_vector.size(); i++)
- {
- elem = msh->ele_vector[i];
- if(!elem->GetMark()) continue;
- nfaces = elem->GetFacesNumber();
- elem->SetOrder(msh->getOrder());
- for(j=0; j<nfaces; j++)
-{
-e_nei =  elem->GetNeighbor(j);
-nfn = elem->GetElementFaceNodes(j, nodesFace);
-count=0;
-for(k=0; k<nfn; k++)
-{
-e_node = elem->GetNode(nodesFace[k]);
-for (l = 0; l <this_number_of_nodes; l++)
-{
-if(*e_node==*msh->nod_vector[nodes_on_sfc[l]])
-{
-count++;
-break;
-}
-}
-}
-if(count!=nfn) continue;
-for(k=0; k<nfn; k++)
-{
-e_node = elem->GetNode(nodesFace[k]);
-nodesFVal[k] = node_value_vector[G2L[e_node->GetIndex()]];
-}
-fac = 1.0;
-if(elem->GetDimension()==e_nei->GetDimension()) // Not a surface face
-fac = 0.5;
-face->SetFace(elem, j);
-face->SetOrder(msh->getOrder());
-face->ComputeVolume();
-fem->setOrder(msh->getOrder()+1);
-fem->ConfigElement(face, true);
-fem->FaceIntegration(nodesFVal);
-for(k=0; k<nfn; k++)
-{
-e_node = elem->GetNode(nodesFace[k]);
-NVal[G2L[e_node->GetIndex()]] += fac*nodesFVal[k];
-}
-}
-}
-*/
-
-#pragma omp for
-	for (i = 0; i < this_number_of_nodes; i++)
-		node_value_vector[i] = NVal[i];
-#pragma omp for
-	for (i = 0; i < nSize; i++)
+	#pragma omp for
+	for (i = 0; i < n_sfc_nodes; i++)
+		node_value_vector[i] = sfc_node_values[i];
+	#pragma omp for
+	for (i = 0; i < n_msh_nodes; i++)
 		msh->nod_vector[i]->SetMark(true);
 
-	NVal.clear();
-	G2L.clear();
 	delete fem;
 	// delete face;
 }
