@@ -72,4 +72,4 @@ Examples of OGS input files can be found on https://github.com/norihiro-w/ogs5-e
 
 
 [ogs]: http://www.opengeosys.org
-
+[license-source]: https://github.com/norihiro-w/ogs5-egs/blob/master/LICENSE.txt
