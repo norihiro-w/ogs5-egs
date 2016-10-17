@@ -28,14 +28,39 @@ waste deposition. OGS is developed by the
 
 ## Quickstart ##
 
+Prerequisite for the standard build
+- CMake
+- C++ compilier supporting C++11 (e.g. GCC/Clang on *nix, Visual Stuiod on Windows)
+- Lis library (http://www.ssisc.org/lis). Please use [v1.2.70](http://www.ssisc.org/lis/dl/lis-1.2.70.tar.gz). The newer versions are not supported yet.
+
+Compiling OGS
+
+For *nix users,
 ``` bash
 cd [source-directory]
 mkdir build
 cd build
-cmake ..
+cmake .. -DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=[path to lis include dir] -DLIS_LIBRARIES=[path to lis library]
+make
 ```
 
-Open the Visual Studio solution which was created in the build-directory or just type `make` on Linux.
+For Windows Visual Studio users,
+``` bash
+cd [source-directory]
+mkdir build
+cd build
+cmake .. -DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=[lis include dir] -DLIS_LIBRARIES=[lis library path]
+cmake .. -G "Visual Studio 12 2013" -DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=[path to lis include dir] -DLIS_LIBRARIES=[path to lis library]
+cmake --build . --config Release
+```
+
+After the compilation finished, the OGS executable `ogs` will be generated under `build/bin` or `build/Release`. To start a simulation, command
+``` bash
+ogs (input file name without a file extension)
+```
+
+Examples of OGS input files can be found on https://github.com/norihiro-w/ogs5-egs-benchmarks.
+
 
 ## License ##
 
