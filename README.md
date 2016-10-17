@@ -26,12 +26,20 @@ waste deposition. OGS is developed by the
 - Wiki: https://svn.ufz.de/ogs
 - Build instructions: https://docs.opengeosys.org/docs/devguide5/getting-started/introduction
 
+
+## License ##
+
+OpenGeoSys is distributed under a modified BSD License which encourages users to
+attribute the work of the OpenGeoSys Community especially in scientific
+publications. See the [LICENSE.txt][license-source] for the license text.
+
+
 ## Quickstart ##
 
 Prerequisite for the standard build
-- CMake
-- C++ compilier supporting C++11 (e.g. GCC/Clang on *nix, Visual Stuiod on Windows)
-- Lis library (http://www.ssisc.org/lis). Please use [v1.2.70](http://www.ssisc.org/lis/dl/lis-1.2.70.tar.gz). The newer versions are not supported yet.
+- [CMake](https://cmake.org/)
+- C++ compilier supporting C++11 (e.g. GCC/Clang on *nix, Visual Studio on Windows)
+- [Lis library](http://www.ssisc.org/lis): Please use [v1.2.70](http://www.ssisc.org/lis/dl/lis-1.2.70.tar.gz). The newer versions are not supported yet.
 
 Compiling OGS
 
@@ -62,11 +70,6 @@ ogs (input file name without a file extension)
 Examples of OGS input files can be found on https://github.com/norihiro-w/ogs5-egs-benchmarks.
 
 
-## License ##
-
-OpenGeoSys is distributed under a modified BSD License which encourages users to
-attribute the work of the OpenGeoSys Community especially in scientific
-publications. See the [LICENSE.txt][license-source] for the license text.
 
 [ogs]: http://www.opengeosys.org
 
