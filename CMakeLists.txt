@@ -91,11 +91,10 @@ INCLUDE(scripts/CMakeConfiguration/GeneralProjectSetup.cmake)
 ###########################################################################
 SET (OGS_VERSION_MAJOR 5)
 SET (OGS_VERSION_MINOR 3)
-SET (OGS_VERSION_PATCH 4-geothermal)
+SET (OGS_VERSION_PATCH 3-egs.1.9)
 SET (OGS_RELEASE_PERSONS "NW")
 SET (OGS_VERSION "${OGS_VERSION_MAJOR}.${OGS_VERSION_MINOR}.${OGS_VERSION_PATCH}(${OGS_RELEASE_PERSONS})")
-# should we use ISO dates: 2010-12-31 ?
-SET (OGS_DATE "2016-03-10")
+SET (OGS_DATE "2016-10-17")
 
 # Check for number of processors
 INCLUDE(ProcessorCount)
