@@ -97,38 +97,17 @@ ENDMACRO(COPY_FILE_INTO_EXECUTABLE_DIRECTORY)
 # Additional arguments add output files to compare
 FUNCTION (ADD_BENCHMARK authorName benchmarkName ogsConfiguration numProcesses)
 
-  SET (CONFIG_MATCH FALSE)
-  IF (${ogsConfiguration} STREQUAL "OGS_FEM" AND OGS_FEM)
-	SET (CONFIG_MATCH TRUE)
-  ENDIF (${ogsConfiguration} STREQUAL "OGS_FEM" AND OGS_FEM)
-  IF (${ogsConfiguration} STREQUAL "OGS_FEM_SP" AND OGS_FEM_SP)
-	SET (CONFIG_MATCH TRUE)
-  ENDIF (${ogsConfiguration} STREQUAL "OGS_FEM_SP" AND OGS_FEM_SP)
-  IF (${ogsConfiguration} STREQUAL "OGS_FEM_GEMS" AND OGS_FEM_GEMS)
-	SET (CONFIG_MATCH TRUE)
-  ENDIF (${ogsConfiguration} STREQUAL "OGS_FEM_GEMS" AND OGS_FEM_GEMS)
-  IF (${ogsConfiguration} STREQUAL "OGS_FEM_BRNS" AND OGS_FEM_BRNS)
-	SET (CONFIG_MATCH TRUE)
-  ENDIF (${ogsConfiguration} STREQUAL "OGS_FEM_BRNS" AND OGS_FEM_BRNS)
-  IF (${ogsConfiguration} STREQUAL "OGS_FEM_PQC" AND OGS_FEM_PQC)
-	SET (CONFIG_MATCH TRUE)
-  ENDIF (${ogsConfiguration} STREQUAL "OGS_FEM_PQC" AND OGS_FEM_PQC)
-  IF (UNIX) # Only supported on Linux
-	IF (${ogsConfiguration} STREQUAL "OGS_FEM_LIS" AND OGS_FEM_LIS)
-	  SET (CONFIG_MATCH TRUE)
-	ENDIF (${ogsConfiguration} STREQUAL "OGS_FEM_LIS" AND OGS_FEM_LIS)
-	IF (${ogsConfiguration} STREQUAL "OGS_FEM_MKL" AND OGS_FEM_MKL)
-	  SET (CONFIG_MATCH TRUE)
-	ENDIF (${ogsConfiguration} STREQUAL "OGS_FEM_MKL" AND OGS_FEM_MKL)
-	IF (${ogsConfiguration} STREQUAL "OGS_FEM_MPI" AND OGS_FEM_MPI)
-	  SET (CONFIG_MATCH TRUE)
-	ENDIF (${ogsConfiguration} STREQUAL "OGS_FEM_MPI" AND OGS_FEM_MPI)
-	IF (${ogsConfiguration} STREQUAL "OGS_FEM_PETSC" AND OGS_FEM_PETSC)
+	SET (CONFIG_MATCH FALSE)
+	IF (OGS_FEM_LIS)
 		SET (CONFIG_MATCH TRUE)
+		SET (OGS_BUILD_CONFIG "OGS_FEM_LIS")
 	ENDIF ()
-  ENDIF (UNIX)
+	IF (OGS_FEM_PETSC)
+		SET (CONFIG_MATCH TRUE)
+		SET (OGS_BUILD_CONFIG "OGS_FEM_PETSC")
+	ENDIF ()
 
-  IF (CONFIG_MATCH)
+#  IF (CONFIG_MATCH)
 	IF (WIN32)
 	  SET (ogsExe ${EXECUTABLE_OUTPUT_PATH}/Release/ogs)
 	ELSE (WIN32)
@@ -154,11 +133,19 @@ FUNCTION (ADD_BENCHMARK authorName benchmarkName ogsConfiguration numProcesses)
 
 	# Delete output files on testing
 	FOREACH (entry ${ARGN})
-	SET (FILES_TO_DELETE "${FILES_TO_DELETE} ${entry}")
+		SET (FILES_TO_DELETE "${FILES_TO_DELETE} ${entry}")
 	ENDFOREACH (entry ${ARGN})
 	IF(OGS_PROFILE)
 		SET (FILES_TO_DELETE "${FILES_TO_DELETE} gmon.out")
 	ENDIF()
+
+	find_program(CSVDIFF_TOOL_PATH csvdiff)
+	#find_program(NUMDIFF_TOOL_PATH numdiff)
+	#message(STATUS "NUMDIFF_TOOL_PATH=${NUMDIFF_TOOL_PATH}")
+	FOREACH (entry ${ARGN})
+		LIST (APPEND OUTPUT_FILES ${entry})
+	ENDFOREACH (entry ${ARGN})
+	string (REPLACE ";" " " OUTPUT_FILES "${OUTPUT_FILES}")
 
 	# Adds a benchmark run. This calls AddTest.cmake to execute several steps.
 	ADD_TEST (
@@ -174,29 +161,52 @@ FUNCTION (ADD_BENCHMARK authorName benchmarkName ogsConfiguration numProcesses)
 		-DGPROF_PATH=${GPROF_PATH}
 		-DDOT_TOOL_PATH=${DOT_TOOL_PATH}
 		-DBENCHMARK_TIMEOUT=${THIS_BENCHMARK_TIMEOUT}
-		-DOGS_FEM_CONFIG=${ogsConfiguration}
+		-DOGS_FEM_CONFIG=${OGS_BUILD_CONFIG} #${ogsConfiguration}
 		-DNUM_PROCESSES=${numProcesses}
 		-DBENCHMARK_DIR_FOUND=${BENCHMARK_DIR_FOUND}
 		-P ${PROJECT_SOURCE_DIR}/scripts/CMakeConfiguration/AddBenchmark.cmake
 	)
 
+	ADD_TEST (
+		${authorName}_FILECOMPARE_${benchmarkName}
+		${CMAKE_COMMAND}
+		-DPROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+		-DEXECUTABLE_OUTPUT_PATH=${EXECUTABLE_OUTPUT_PATH}
+		-DbenchmarkStrippedName=${benchmarkStrippedName}
+		-DbenchmarkNameUnderscore=${benchmarkNameUnderscore}
+		-DbenchmarkDir=${benchmarkDir}
+		-DFILES_TO_DELETE=${FILES_TO_DELETE}
+		-DOGS_PROFILE=${OGS_PROFILE}
+		-DOGS_OUTPUT_PROFILE=${OGS_OUTPUT_PROFILE}
+		-DGPROF_PATH=${GPROF_PATH}
+		-DDOT_TOOL_PATH=${DOT_TOOL_PATH}
+		-DBENCHMARK_TIMEOUT=${THIS_BENCHMARK_TIMEOUT}
+		-DOGS_FEM_CONFIG=${ogsConfiguration}
+		-DNUM_PROCESSES=${numProcesses}
+		-DBENCHMARK_DIR_FOUND=${BENCHMARK_DIR_FOUND}
+		-DNUMDIFF_TOOL_PATH=${CSVDIFF_TOOL_PATH}
+		-DOUTPUT_FILES=${OUTPUT_FILES}
+		-DBENCHMARK_REF_DIR=${BENCHMARK_REF_DIR_FOUND}
+		-P ${PROJECT_SOURCE_DIR}/scripts/CMakeConfiguration/CompareBenchmark.cmake
+	)
+
 	# compare file differences with python script
-	IF (PYTHONINTERP_FOUND)
-		FILE (REMOVE ${BENCHMARK_DIR_FOUND}/results/temp/temp_${benchmarkNameUnderscore}.txt)
-		FOREACH (entry ${ARGN})
-			FILE (APPEND ${BENCHMARK_DIR_FOUND}/results/temp/temp_${benchmarkNameUnderscore}.txt "${entry}\n")
-		ENDFOREACH (entry ${ARGN})
-		ADD_TEST (
-			${authorName}_FILECOMPARE_${benchmarkName}
-			${CMAKE_COMMAND} -E chdir ${BENCHMARK_DIR_FOUND}/results
-			${PYTHON_EXECUTABLE}
-			${PROJECT_SOURCE_DIR}/scripts/compare.py
-			temp/temp_${benchmarkNameUnderscore}.txt
-			${BENCHMARK_REF_DIR_FOUND}
-			${authorName}_${benchmarkNameUnderscore}.html
-			../
-		)
-	ENDIF (PYTHONINTERP_FOUND)
+#	IF (PYTHONINTERP_FOUND)
+#		FILE (REMOVE ${BENCHMARK_DIR_FOUND}/results/temp/temp_${benchmarkNameUnderscore}.txt)
+#		FOREACH (entry ${ARGN})
+#			FILE (APPEND ${BENCHMARK_DIR_FOUND}/results/temp/temp_${benchmarkNameUnderscore}.txt "${entry}\n")
+#		ENDFOREACH (entry ${ARGN})
+#		ADD_TEST (
+#			${authorName}_FILECOMPARE_${benchmarkName}
+#			${CMAKE_COMMAND} -E chdir ${BENCHMARK_DIR_FOUND}/results
+#			${PYTHON_EXECUTABLE}
+#			${PROJECT_SOURCE_DIR}/scripts/compare.py
+#			temp/temp_${benchmarkNameUnderscore}.txt
+#			${BENCHMARK_REF_DIR_FOUND}
+#			${authorName}_${benchmarkNameUnderscore}.html
+#			../
+#		)
+#	ENDIF (PYTHONINTERP_FOUND)
 
   # copy benchmark output files to reference directory
   IF (COPY_BENCHMARKS_TO_REF)
@@ -205,7 +215,7 @@ FUNCTION (ADD_BENCHMARK authorName benchmarkName ogsConfiguration numProcesses)
 	ENDFOREACH (entry ${ARGN})
   ENDIF (COPY_BENCHMARKS_TO_REF)
 
-  ENDIF (CONFIG_MATCH)
+#  ENDIF (CONFIG_MATCH)
 
 ENDFUNCTION (ADD_BENCHMARK authorName benchmarkName ogsConfiguration filesToCompare numProcesses)
 
@@ -213,16 +223,8 @@ ENDFUNCTION (ADD_BENCHMARK authorName benchmarkName ogsConfiguration filesToComp
 FUNCTION(CHECK_CONFIG)
 
 	SET(configs
-		"${OGS_USE_QT}"
-		"${OGS_FEM}"
-		"${OGS_FEM_SP}"
-		"${OGS_FEM_MPI}"
-		"${OGS_FEM_GEMS}"
-		"${OGS_FEM_BRNS}"
 		"${OGS_FEM_MKL}"
-		"${OGS_FEM_PQC}"
 		"${OGS_FEM_LIS}"
-		"${OGS_FEM_CHEMAPP}"
 		"${OGS_FEM_PETSC}")
 
 	SET(counter 0)
@@ -239,16 +241,8 @@ FUNCTION(CHECK_CONFIG)
 
 	IF (counter GREATER 1)
 		MESSAGE(FATAL_ERROR "Error: More than one OGS configuration given. Please use only one of the following configurations:
-			OGS_USE_QT (GUI configuration)
-			OGS_FEM (Default FEM configuration)
-			OGS_FEM_SP
-			OGS_FEM_MPI
-			OGS_FEM_GEMS
-			OGS_FEM_BRNS
 			OGS_FEM_MKL
-			OGS_FEM_PQC
 			OGS_FEM_LIS
-			OGS_FEM_CHEMAPP
 			OGS_FEM_PETSC")
 	ENDIF (counter GREATER 1)
 

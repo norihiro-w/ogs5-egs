@@ -48,6 +48,9 @@ benchmarkDir = ""
 if len(sys.argv) > 4:
 	benchmarkDir = sys.argv[4]
 
+#print "listFilename="+str(listFilename)
+#print "referenceBenchmarkDir="+str(referenceBenchmarkDir)
+
 outputFile = open(outputFilename, 'w')
 
 print >>outputFile, """
@@ -103,9 +106,13 @@ for line in listFile:
 		continue
 	else:
 		line = line.rstrip() # Removes line endings
-		file1 = os.path.normpath(referenceBenchmarkDir + line);
+		#file1 = os.path.normpath(referenceBenchmarkDir + line);
+		file1 = os.path.join(referenceBenchmarkDir, line)
 		file2 = './' + line
 		file2 = os.path.normpath(benchmarkDir + line)
+
+		#print "file1=" + file1
+		#print "file2=" + file2
 		
 		if not os.path.isfile(file1):
 			notExistingFiles = notExistingFiles + """

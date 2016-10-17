@@ -28,6 +28,7 @@ matrix:
         apt:
           packages:
             - gfortran
+            #- numdiff
     - env: CASE=PETSC CMAKE_ARGS="-DOGS_FEM_PETSC=ON -DPETSC_DIR=/usr/lib/petscdir/3.4.2/"
 
 before_install:
@@ -39,13 +40,25 @@ install:
   - if [[ "$CASE" == "LIS" ]]; then wget https://github.com/norihiro-w/lis-cmake/archive/master.zip; fi
   - if [[ "$CASE" == "LIS" ]]; then unzip master.zip && cd lis-cmake-master && rm -f ../master.zip; fi
   - if [[ "$CASE" == "LIS" ]]; then mkdir build && cd build && cmake .. && make && cd ../..; fi
+  - if [[ "$CASE" == "LIS" ]]; then wget https://github.com/norihiro-w/csvdiff/archive/master.zip; fi
+  - if [[ "$CASE" == "LIS" ]]; then unzip master.zip && cd csvdiff-master && rm -f ../master.zip; fi
+  - if [[ "$CASE" == "LIS" ]]; then mkdir build && cd build && cmake .. && make && cd ../..; fi
+  - if [[ "$CASE" == "LIS" ]]; then wget https://github.com/norihiro-w/ogs5-egs-benchmarks/archive/master.zip; fi
+  - if [[ "$CASE" == "LIS" ]]; then unzip master.zip && mv ogs5-egs-benchmarks-master benchmarks; fi
+  - if [[ "$CASE" == "LIS" ]]; then pwd && ls -l; fi
+  - export bench_input=`pwd`/benchmarks/input_files
+  - export bench_ref=`pwd`/benchmarks/ref_files
 
 script:
   - mkdir build
   - cd build
-  - if [[ "$CASE" == "LIS" ]]; then export CMAKE_ARGS="${CMAKE_ARGS}"; fi
+  - if [[ "$CASE" == "LIS" ]]; then export CMAKE_ARGS="${CMAKE_ARGS} -DCSVDIFF_TOOL_PATH=$TRAVIS_BUILD_DIR/csvdiff-master/build/csvdiff"; fi
+  - if [[ "$CASE" == "LIS" ]]; then export CMAKE_ARGS="${CMAKE_ARGS} -DBENCHMARK_DIR=${bench_input} -DBENCHMARK_REF_DIR=${bench_ref}"; fi
   - cmake $CMAKE_ARGS ..
   - make -j4
+  - if [[ "$CASE" == "LIS" ]]; then ctest -E 'Tests|FILE|EXCEED' -E '_M/|_HM/|_TM/'; fi
+  - if [[ "$CASE" == "LIS" ]]; then ctest -R 'FILECOMPARE' -E 'EXCEED' -E '_M/|_HM/|_TM/'; fi
+  - if [[ "$CASE" == "LIS" ]]; then find ${bench_input}/results/ -iname '*.numdiff' -exec echo -e "\n\n=======================\n{}" \;  -exec head -n 5000 {} \; || true ; fi
 
 notifications:
   email:
