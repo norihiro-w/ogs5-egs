@@ -61,7 +61,7 @@ artifacts:
 deploy:
   provider: GitHub
   auth_token:
-    secure: bbe61f941dc4863830ecdaf557430e3f068644f9 # your encrypted token from GitHub
+    secure: 58e7181e58b69d7b964e2e1849e0cb928e35cc8c # your encrypted token from GitHub
   artifact: build\bin\Release\ogs.exe
   draft: false
   prerelease: false
