@@ -50,3 +50,22 @@ build_script:
   - cd build
   - cmake .. -G "Visual Studio 12 2013" -DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=c:\projects\ogs\precompiled -DLIS_LIBRARIES=c:\projects\ogs\precompiled\lisomp.lib -DMSVC_RUNTIME=static
   - cmake --build . --config Release
+
+artifacts:
+  - path: c:\projects\ogs\build\bin\Release\ogs.exe
+    name: ogs
+
+#---------------------------------#
+#      deploy configuration       #
+#---------------------------------#
+deploy:
+  provider: GitHub
+  auth_token:
+    secure: bbe61f941dc4863830ecdaf557430e3f068644f9 # your encrypted token from GitHub
+  artifact: c:\projects\ogs\build\bin\Release\ogs.exe
+  draft: false
+  prerelease: false
+  on:
+    branch: master                 # release from master branch only
+    appveyor_repo_tag: true        # deploy on tag push only
+
