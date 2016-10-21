@@ -56,6 +56,13 @@ TARGET_LINK_LIBRARIES( ogs
 	${CMAKE_THREAD_LIBS_INIT}
 )
 
+if (WIN32)
+	if (LIS)
+		target_link_libraries( ogs ${LIS_LIBRARIES} ) 
+		set_target_properties( ogs PROPERTIES LINK_FLAGS "/NODEFAULTLIB:libcmt" )
+	endif (LIS)
+endif (WIN32)
+
 
 ### WW
 IF (OGS_FEM_PETSC)
