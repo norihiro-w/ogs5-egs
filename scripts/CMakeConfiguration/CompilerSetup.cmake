@@ -7,18 +7,18 @@ INCLUDE(MSVCMultipleProcessCompile) # /MP Switch for VS
 # Set compiler helper variables
 
 if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
-    set(COMPILER_IS_CLANG TRUE CACHE INTERNAL "")
+	set(COMPILER_IS_CLANG TRUE CACHE INTERNAL "")
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
-    set(COMPILER_IS_GCC TRUE CACHE INTERNAL "")
+	set(COMPILER_IS_GCC TRUE CACHE INTERNAL "")
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
-    set(COMPILER_IS_INTEL TRUE CACHE INTERNAL "")
+	set(COMPILER_IS_INTEL TRUE CACHE INTERNAL "")
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
-    set(COMPILER_IS_MSVC TRUE CACHE INTERNAL "")
+	set(COMPILER_IS_MSVC TRUE CACHE INTERNAL "")
 endif() # CMAKE_CXX_COMPILER_ID
 
 # Better Clang warning suppression, see http://www.openwalnut.org/issues/230
 if(NOT COMPILER_IS_MSVC)
-    set( CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem" CACHE STRING "" FORCE )
+	set( CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem" CACHE STRING "" FORCE )
 endif()
 
 find_program(CCACHE_FOUND ccache)
@@ -41,16 +41,16 @@ IF (WIN32)
 
 		DisableCompilerFlag(DEBUG /RTC1)
 
-    # Set $PATH to Visual Studio bin directory. Needed for finding dumpbin.exe
-    IF (MSVC80)
-      SET(ENV{PATH} "$ENV{PATH};$ENV{VS80COMNTOOLS}..\\..\\VC\\bin")
-    ENDIF ()
-    IF (MSVC90)
-      SET(ENV{PATH} "$ENV{PATH};$ENV{VS90COMNTOOLS}..\\..\\VC\\bin")
-    ENDIF ()
-    IF (MSVC10)
-      SET(ENV{PATH} "$ENV{PATH};$ENV{VS100COMNTOOLS}..\\..\\VC\\bin")
-    ENDIF ()
+		# Set $PATH to Visual Studio bin directory. Needed for finding dumpbin.exe
+		IF (MSVC80)
+			SET(ENV{PATH} "$ENV{PATH};$ENV{VS80COMNTOOLS}..\\..\\VC\\bin")
+		ENDIF ()
+		IF (MSVC90)
+			SET(ENV{PATH} "$ENV{PATH};$ENV{VS90COMNTOOLS}..\\..\\VC\\bin")
+		ENDIF ()
+		IF (MSVC10)
+			SET(ENV{PATH} "$ENV{PATH};$ENV{VS100COMNTOOLS}..\\..\\VC\\bin")
+		ENDIF ()
 
 	ELSE (MSVC)
 #FOR CYGWIN.  25.02.2010. WW
