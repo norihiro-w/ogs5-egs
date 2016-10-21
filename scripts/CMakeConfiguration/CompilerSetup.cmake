@@ -39,6 +39,18 @@ IF (WIN32)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
 		SET(GCC OFF)
 
+		IF(${MSVC_RUNTIME} STREQUAL "static")
+			MESSAGE(STATUS "Configure MSVC static linking")
+			foreach(flag_var CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+				if(${flag_var} MATCHES "/MD")
+					string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+				endif(${flag_var} MATCHES "/MD")
+				if(${flag_var} MATCHES "/MDd")
+					string(REGEX REPLACE "/MDd" "/MTd" ${flag_var} "${${flag_var}}")
+				endif(${flag_var} MATCHES "/MDd")
+			endforeach(flag_var)
+		ENDIF()
+
 		DisableCompilerFlag(DEBUG /RTC1)
 
 		# Set $PATH to Visual Studio bin directory. Needed for finding dumpbin.exe
