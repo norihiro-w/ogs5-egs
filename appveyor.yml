@@ -52,7 +52,7 @@ build_script:
   - cmake --build . --config Release
 
 artifacts:
-  - path: c:\projects\ogs\build\bin\Release\ogs.exe
+  - path: build\bin\Release\ogs.exe
     name: ogs
 
 #---------------------------------#
@@ -62,7 +62,7 @@ deploy:
   provider: GitHub
   auth_token:
     secure: bbe61f941dc4863830ecdaf557430e3f068644f9 # your encrypted token from GitHub
-  artifact: c:\projects\ogs\build\bin\Release\ogs.exe
+  artifact: build\bin\Release\ogs.exe
   draft: false
   prerelease: false
   on:
