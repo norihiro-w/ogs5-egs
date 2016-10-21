@@ -36,6 +36,8 @@ publications. See the [LICENSE.txt][license-source] for the license text.
 
 ## Quickstart ##
 
+For Windows user, the executable file might be available from [the GitHub release page](https://github.com/norihiro-w/ogs5-egs/releases/latest). For other environments, one needs to compile the code by themselves.
+
 Prerequisite for the standard build
 - [CMake](https://cmake.org/)
 - C++ compilier supporting C++11 (e.g. GCC/Clang on *nix, Visual Studio on Windows)
