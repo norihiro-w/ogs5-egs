@@ -58,14 +58,14 @@ artifacts:
 #---------------------------------#
 #      deploy configuration       #
 #---------------------------------#
-deploy:
-  provider: GitHub
-  auth_token:
-    secure: 58e7181e58b69d7b964e2e1849e0cb928e35cc8c # your encrypted token from GitHub
-  artifact: build\bin\Release\ogs.exe
-  draft: false
-  prerelease: false
-  on:
-    branch: master                 # release from master branch only
-    appveyor_repo_tag: true        # deploy on tag push only
+#deploy:
+#  provider: GitHub
+#  auth_token:
+#    secure: 58e7181e58b69d7b964e2e1849e0cb928e35cc8c # your encrypted token from GitHub
+#  artifact: build\bin\Release\ogs.exe
+#  draft: false
+#  prerelease: false
+#  on:
+#    branch: master                 # release from master branch only
+#    appveyor_repo_tag: true        # deploy on tag push only
 
