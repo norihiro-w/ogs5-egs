@@ -7,18 +7,18 @@ INCLUDE(MSVCMultipleProcessCompile) # /MP Switch for VS
 # Set compiler helper variables
 
 if(${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
-    set(COMPILER_IS_CLANG TRUE CACHE INTERNAL "")
+	set(COMPILER_IS_CLANG TRUE CACHE INTERNAL "")
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
-    set(COMPILER_IS_GCC TRUE CACHE INTERNAL "")
+	set(COMPILER_IS_GCC TRUE CACHE INTERNAL "")
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
-    set(COMPILER_IS_INTEL TRUE CACHE INTERNAL "")
+	set(COMPILER_IS_INTEL TRUE CACHE INTERNAL "")
 elseif(${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC")
-    set(COMPILER_IS_MSVC TRUE CACHE INTERNAL "")
+	set(COMPILER_IS_MSVC TRUE CACHE INTERNAL "")
 endif() # CMAKE_CXX_COMPILER_ID
 
 # Better Clang warning suppression, see http://www.openwalnut.org/issues/230
 if(NOT COMPILER_IS_MSVC)
-    set( CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem" CACHE STRING "" FORCE )
+	set( CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem" CACHE STRING "" FORCE )
 endif()
 
 find_program(CCACHE_FOUND ccache)
@@ -39,18 +39,30 @@ IF (WIN32)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
 		SET(GCC OFF)
 
+		IF(${MSVC_RUNTIME} STREQUAL "static")
+			MESSAGE(STATUS "Configure MSVC static linking")
+			foreach(flag_var CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+				if(${flag_var} MATCHES "/MD")
+					string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+				endif(${flag_var} MATCHES "/MD")
+				if(${flag_var} MATCHES "/MDd")
+					string(REGEX REPLACE "/MDd" "/MTd" ${flag_var} "${${flag_var}}")
+				endif(${flag_var} MATCHES "/MDd")
+			endforeach(flag_var)
+		ENDIF()
+
 		DisableCompilerFlag(DEBUG /RTC1)
 
-    # Set $PATH to Visual Studio bin directory. Needed for finding dumpbin.exe
-    IF (MSVC80)
-      SET(ENV{PATH} "$ENV{PATH};$ENV{VS80COMNTOOLS}..\\..\\VC\\bin")
-    ENDIF ()
-    IF (MSVC90)
-      SET(ENV{PATH} "$ENV{PATH};$ENV{VS90COMNTOOLS}..\\..\\VC\\bin")
-    ENDIF ()
-    IF (MSVC10)
-      SET(ENV{PATH} "$ENV{PATH};$ENV{VS100COMNTOOLS}..\\..\\VC\\bin")
-    ENDIF ()
+		# Set $PATH to Visual Studio bin directory. Needed for finding dumpbin.exe
+		IF (MSVC80)
+			SET(ENV{PATH} "$ENV{PATH};$ENV{VS80COMNTOOLS}..\\..\\VC\\bin")
+		ENDIF ()
+		IF (MSVC90)
+			SET(ENV{PATH} "$ENV{PATH};$ENV{VS90COMNTOOLS}..\\..\\VC\\bin")
+		ENDIF ()
+		IF (MSVC10)
+			SET(ENV{PATH} "$ENV{PATH};$ENV{VS100COMNTOOLS}..\\..\\VC\\bin")
+		ENDIF ()
 
 	ELSE (MSVC)
 #FOR CYGWIN.  25.02.2010. WW
