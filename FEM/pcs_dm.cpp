@@ -1650,14 +1650,11 @@ double CRFProcessDeformation::CaclMaxiumLoadRatio(void)
 **************************************************************************/
 void CRFProcessDeformation::Extropolation_GaussValue()
 {
-	int k, NS;
-	long i = 0;
-	int Idx_Stress[7];
 	const long LowOrderNodes = m_msh->GetNodesNumber(false);
-	MeshLib::CElem* elem = NULL;
 
 	// Clean nodal stresses
-	NS = 4;
+	int NS = 4;
+	int Idx_Stress[7];
 	Idx_Stress[0] = GetNodeValueIndex("STRESS_XX");
 	Idx_Stress[1] = GetNodeValueIndex("STRESS_YY");
 	Idx_Stress[2] = GetNodeValueIndex("STRESS_ZZ");
@@ -1670,23 +1667,36 @@ void CRFProcessDeformation::Extropolation_GaussValue()
 	}
 	Idx_Stress[NS] = GetNodeValueIndex("STRAIN_PLS");
 	NS++;
-	for (i = 0; i < LowOrderNodes; i++)
-		for (k = 0; k < NS; k++)
+	for (long i = 0; i < LowOrderNodes; i++)
+		for (int k = 0; k < NS; k++)
 			SetNodeValue(i, Idx_Stress[k], 0.0);
 
-	for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
+    // Clean nodal strain
+    NS = 4;
+    Idx_Stress[0] = GetNodeValueIndex("STRAIN_XX");
+    Idx_Stress[1] = GetNodeValueIndex("STRAIN_YY");
+    Idx_Stress[2] = GetNodeValueIndex("STRAIN_ZZ");
+    Idx_Stress[3] = GetNodeValueIndex("STRAIN_XY");
+    if (problem_dimension_dm == 3)
+    {
+        NS = 6;
+        Idx_Stress[4] = GetNodeValueIndex("STRAIN_XZ");
+        Idx_Stress[5] = GetNodeValueIndex("STRAIN_YZ");
+    }
+    for (long i = 0; i < LowOrderNodes; i++)
+        for (int k = 0; k < NS; k++)
+            SetNodeValue(i, Idx_Stress[k], 0.0);
+
+	// set extrapolated nodal values
+	for (long i = 0; i < (long)m_msh->ele_vector.size(); i++)
 	{
-		elem = m_msh->ele_vector[i];
-		if (elem->GetMark())  // Marked for use
-		{
-			fem_dm->ConfigElement(elem);
-			fem_dm->SetMaterial();
-			//         eval_DM = ele_value_dm[i];
-			// TEST        (*eval_DM->Stress) += (*eval_DM->Stress0);
-			fem_dm->ExtropolateGaussStress();
-			// TEST        if(!update)
-			//           (*eval_DM->Stress) -= (*eval_DM->Stress0);
-		}
+		MeshLib::CElem* elem = m_msh->ele_vector[i];
+		if (!elem->GetMark())
+			continue;
+		fem_dm->ConfigElement(elem);
+		fem_dm->SetMaterial();
+		fem_dm->ExtropolateGaussStrain();
+		fem_dm->ExtropolateGaussStress();
 	}
 }
 
