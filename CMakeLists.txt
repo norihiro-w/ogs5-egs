@@ -11,27 +11,16 @@ PROJECT(OGS5-EGS)
 ###############
 
 # Configurations
-OPTION(OGS_FEM "Default configuration" OFF)
-#OPTION(OGS_FEM_SP "Sparse matrix configuration" OFF)
-#OPTION(OGS_FEM_JFNK "Jacobi free Newton-Krylov method for H2M problem" OFF)
 OPTION(OGS_FEM_PETSC "Use PETSc parallel solver" OFF)
-#OPTION(OGS_FEM_GEMS "GEMS configuration" OFF)
-#OPTION(OGS_FEM_PQC "Phreeqc configuration" OFF)
-#OPTION(OGS_FEM_BRNS "BRNS configuration" OFF)
-#OPTION(OGS_FEM_CHEMAPP "CHEMAPP configuration" OFF)
-#OPTION(OGS_USE_QT "User interface configuration" OFF)
 OPTION(OGS_FEM_LIS "Library of Iterative Solvers for Linear Systems configuration" OFF)
 OPTION(OGS_FEM_MKL "Math kernel library configuration" OFF)
 
 OPTION(OGS_ONLY_TH "Optimize OGS for TH simulations" OFF)
 
-# supported on Linux and Windows
-#OPTION(OGS_FEM_MPI "Message passing interface configuration" OFF)
-
 # Set default configuration when no other config is given
-IF (NOT OGS_FEM AND NOT OGS_FEM_SP AND NOT OGS_FEM_GEMS AND NOT OGS_FEM_PQC AND NOT OGS_FEM_BRNS AND NOT OGS_FEM_CHEMAPP AND NOT OGS_FEM_LIS AND NOT OGS_FEM_MKL AND NOT OGS_FEM_MPI AND NOT OGS_USE_QT AND NOT OGS_FEM_PETSC)
+IF (NOT OGS_FEM_LIS AND NOT OGS_FEM_MKL AND NOT OGS_FEM_PETSC)
 	MESSAGE (STATUS "No configuration specified. Default confuguration is used.")
-	SET (OGS_FEM ON)
+        SET (OGS_FEM_LIS ON)
 ENDIF ()
 
 # Check if a valid OGS configuration is given (see Macros.cmake)
@@ -52,8 +41,6 @@ IF(GCC)
 	OPTION_REQUIRES(OGS_COVERAGE "Enables code coverage measurements with gcov/lcov." OGS_BUILD_TESTS)
 ENDIF() # GCC
 OPTION (OGS_BUILD_TESTS "Enables building of tests." OFF)
-OPTION (OGS_NO_EXTERNAL_LIBS "Builds OGS without any external dependencies."
-OFF)
 OPTION (OGS_DELETE_EDGES_AFTER_INIT "Delete mesh edges after initialization if possible" OFF)
 
 MARK_AS_ADVANCED(FORCE OGS_CMAKE_DEBUG OGS_BUILD_INFO CMAKE_CMD_ARGS)
@@ -79,9 +66,7 @@ ENDIF(OGS_FEM_MKL)
 INCLUDE(scripts/cmake/Functions.cmake)
 INCLUDE(scripts/CMakeConfiguration/CMakeSetup.cmake)
 INCLUDE(scripts/CMakeConfiguration/CompilerSetup.cmake)
-IF(NOT OGS_NO_EXTERNAL_LIBS)
-	INCLUDE (scripts/CMakeConfiguration/Find.cmake)
-ENDIF() # NOT OGS_NO_EXTERNAL_LIBS
+INCLUDE (scripts/CMakeConfiguration/Find.cmake)
 INCLUDE(scripts/CMakeConfiguration/GeneralProjectSetup.cmake)
 
 
@@ -109,10 +94,6 @@ ENDIF() # PROCESSOR_COUNT
 IF(OGS_ONLY_TH)
 	ADD_DEFINITIONS(-DOGS_ONLY_TH)
 ENDIF()
-
-IF(OGS_FEM)
-	 MESSAGE (STATUS	"Configuring for FEM command line" )
-ENDIF(OGS_FEM)
 
 IF(OGS_FEM_PETSC)
 	MESSAGE (STATUS "Configuring for PETSc" )
@@ -192,10 +173,6 @@ IF (BENCHMARK_DIR_FOUND OR GTEST_FOUND)
 	ENABLE_TESTING()
 ENDIF (BENCHMARK_DIR_FOUND OR GTEST_FOUND)
 
-IF (EXAMPLEDATA_DIR_FOUND)
-	INSTALL (DIRECTORY ${EXAMPLEDATA_DIR_FOUND} DESTINATION . PATTERN .svn EXCLUDE)
-ENDIF (EXAMPLEDATA_DIR_FOUND)
-
 IF (OGS_BUILD_TESTS)
 	ADD_SUBDIRECTORY(tests)
 ENDIF (OGS_BUILD_TESTS)
@@ -213,6 +190,7 @@ IF (BENCHMARK_DIR_FOUND)
 		MESSAGE (STATUS "On dev2: file comparing enabled")
 	ENDIF (${HOST_IS_DEV2})
 
+	MESSAGE(STATUS "Looking for benchmark cases")
 	FILE (GLOB BENCHMARK_CONFIGS "${BENCHMARK_DIR_FOUND}/*.cmake")
 #	FILE (GLOB BENCHMARK_CONFIGS "${PROJECT_SOURCE_DIR}/../benchmarks/*.cmake")
 	FOREACH (BENCHMARK_CONFIG ${BENCHMARK_CONFIGS})
@@ -222,26 +200,4 @@ IF (BENCHMARK_DIR_FOUND)
 
 	UNSET (COPY_BENCHMARKS_TO_REF CACHE)
 ENDIF (BENCHMARK_DIR_FOUND)
-
-
-## Documentation ##
-IF(DOXYGEN_FOUND)
-	OPTION(DOCS_GENERATE_DIAGRAMS "Use the DOT tool to generate class diagrams." OFF)
-	OPTION(DOCS_GENERATE_CALL_GRAPHS "Generate call dependency graphs." OFF)
-	OPTION(DOCS_GENERATE_COLLABORATION_GRAPHS "Generate collaboration graphs." OFF)
-	IF(DOT_TOOL_PATH AND DOCS_GENERATE_DIAGRAMS)
-		SET(DOT_FOUND "YES" CACHE INTERNAL "")
-	ENDIF() # DOT_TOOL_PATH AND DOCS_GENERATE_DIAGRAMS
-	IF(DOCS_GENERATE_CALL_GRAPHS)
-		SET(DOCS_GENERATE_CALL_GRAPHS_STRING "YES" CACHE INTERNAL "")
-	ENDIF() # DOCS_GENERATE_CALL_GRAPHS
-	IF(DOCS_GENERATE_COLLABORATION_GRAPHS)
-		SET(DOCS_GENERATE_COLLABORATION_GRAPHS_STRING "YES" CACHE INTERNAL "")
-	ENDIF() # DOCS_GENERATE_COLLABORATION_GRAPHS
-	GET_FILENAME_COMPONENT(DOT_TOOL_PATH_ONLY ${DOT_TOOL_PATH} PATH)
-	CONFIGURE_FILE(scripts/doxygen/Doxyfile.in ${PROJECT_BINARY_DIR}/Doxyfile)
-	ADD_CUSTOM_TARGET(doc ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/Doxyfile
-		WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-		COMMENT "Generating source code documentation with Doxygen." VERBATIM)
-ENDIF() # DOXYGEN_FOUND
 
