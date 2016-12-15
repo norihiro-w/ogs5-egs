@@ -1059,7 +1059,7 @@ void CFiniteElementVec::LocalAssembly(const int update)
 	// Get displacement_n
 	if (dynamic)
 	{
-		a_n = pcs->GetAuxArray();
+        a_n = pcs->GetLastTimeStepSolution();
 		for (size_t i = 0; i < dim; i++)
 			for (j = 0; j < nnodesHQ; j++)
 			{
@@ -1285,7 +1285,7 @@ bool CFiniteElementVec::GlobalAssembly()
 		MeshElement->MarkingAll(false);
 		*(eleV_DM->Stress) = 0.;
 		*(eleV_DM->Stress0) = 0.;
-		if (eleV_DM->Stress_j) (*eleV_DM->Stress_j) = 0.0;
+		if (eleV_DM->Stress_current_ts) (*eleV_DM->Stress_current_ts) = 0.0;
 		return false;
 	}
 
@@ -1795,7 +1795,7 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 		fact = bbeta1 * dt;
 		Residual = true;
 		// Solution of the previous step
-		a_n = pcs->GetAuxArray();
+        a_n = pcs->GetLastTimeStepSolution();
 	}
 	// Assemble coupling matrix
 	// If dynamic GetNodeValue(nodes[i],idx_P0) = 0;
@@ -2470,12 +2470,12 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 			for (i = 0; i < ns; i++)
 			{
 				(*eleV_DM->Stress)(i, gp) = dstress[i];
-				(*eleV_DM->Strain)(i, gp) += dstrain[i];
+                (*eleV_DM->Strain)(i, gp) += dstrain[i];
 			}
 	}
 	// The mapping of Gauss point strain to element nodes
 	if (update)
-		ExtropolateGuassStrain();
+        ExtropolateGaussStrain();
 	else if (smat->Creep_mode == 1000)  // HL_ODS. Strain increment by creep
 		smat->AccumulateEtr_HL_ODS(eleV_DM, nGaussPoints);
 
@@ -2571,7 +2571,7 @@ bool CFiniteElementVec::RecordGuassStrain(const int gp, const int gp_r,
    06/2004   WW
    02/2007   Make it work for all 2nd variables
  **************************************************************************/
-void CFiniteElementVec::ExtropolateGuassStrain()
+void CFiniteElementVec::ExtropolateGaussStrain()
 {
 	int i, j;
 	//  int l1,l2,l3,l4; //, counter;
@@ -2693,7 +2693,7 @@ void CFiniteElementVec::ExtropolateGuassStrain()
    06/2004   WW
    03/2007   WW  Generize for all 2nd variables
  **************************************************************************/
-void CFiniteElementVec::ExtropolateGuassStress()
+void CFiniteElementVec::ExtropolateGaussStress()
 {
 	int i, j, gp_r, gp_s, gp_t;
 	// int l1,l2,l3,l4; //, counter;
@@ -3645,7 +3645,7 @@ void CFiniteElementVec::LocalAssembly_EnhancedStrain(const int update)
 	{
 		// Update strains.
 		// The mapping of Gauss point strain to element nodes
-		ExtropolateGuassStrain();
+        ExtropolateGaussStrain();
 		// Update enhanced parameter
 		eleV_DM->disp_j = zeta_t1;
 		eleV_DM->tract_j = sj;
@@ -3668,7 +3668,7 @@ void CFiniteElementVec::LocalAssembly_EnhancedStrain(const int update)
  |    6   |  m        |
    ----------------------
    -----------------------------------------------------------------*/
-ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool HM_Staggered)
+ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool has_coupling_loop)
     : NodesOnPath(NULL), orientation(NULL)
 {
 	int Plastic = 1;
@@ -3707,14 +3707,17 @@ ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool HM_Staggered)
 		NGPoints = MathLib::fastpow(NGP, ele_dim);
 
 	Stress0 = new Matrix(LengthBS, NGPoints);
-	Stress_i = new Matrix(LengthBS, NGPoints);
-	Stress = Stress_i;
-	Strain = new Matrix(LengthBS, NGPoints);
-	if (HM_Staggered)
-		Stress_j = new Matrix(LengthBS, NGPoints);
+	Stress_last_ts = new Matrix(LengthBS, NGPoints);
+	if (has_coupling_loop)
+		Stress_current_ts = new Matrix(LengthBS, NGPoints);
 	else
-		Stress_j = NULL;  // for HM coupling iteration
-	//
+		Stress_current_ts = nullptr;
+	Stress = Stress_last_ts;
+
+	Strain = new Matrix(LengthBS, NGPoints);
+	if (has_coupling_loop)
+		Strain_last_ts = new Matrix(LengthBS, NGPoints);
+
 	if (Plastic > 0)
 	{
 		pStrain = new Matrix(NGPoints);
@@ -3753,7 +3756,7 @@ ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool HM_Staggered)
 void ElementValue_DM::Write_BIN(std::fstream& os)
 {
 	Stress0->Write_BIN(os);
-	Stress_i->Write_BIN(os);
+	Stress_last_ts->Write_BIN(os);
 	if (pStrain) pStrain->Write_BIN(os);
 	if (y_surface) y_surface->Write_BIN(os);
 	if (xi) xi->Write_BIN(os);
@@ -3770,7 +3773,7 @@ void ElementValue_DM::Write_BIN(std::fstream& os)
 void ElementValue_DM::Read_BIN(std::fstream& is)
 {
 	Stress0->Read_BIN(is);
-	Stress_i->Read_BIN(is);
+	Stress_last_ts->Read_BIN(is);
 	if (pStrain) pStrain->Read_BIN(is);
 	if (y_surface) y_surface->Read_BIN(is);
 	if (xi) xi->Read_BIN(is);
@@ -3798,29 +3801,34 @@ void ElementValue_DM::ReadElementStressASCI(std::fstream& is)
 			(*Stress0)(i, j) = (*Stress0)(i, 0);
 	}
 
-	*Stress_i = *Stress0;
+	*Stress_last_ts = *Stress0;
 }
 
 void ElementValue_DM::ResetStress(bool cpl_loop)
 {
-	if (cpl_loop)  // For coupling loop
-	{
-		(*Stress_j) = (*Stress_i);
-		Stress = Stress_j;
-	}
-	else  // Time loop
-	{
-		(*Stress_i) = (*Stress_j);
-		Stress = Stress_i;
-	}
+    if (Stress_current_ts == nullptr)
+        return;
+
+    if (cpl_loop)  // For coupling loop
+    {
+        (*Stress_current_ts) = (*Stress_last_ts);
+        Stress = Stress_current_ts;
+        (*Strain) = (*Strain_last_ts);
+    }
+    else  // Time loop
+    {
+        (*Stress_last_ts) = (*Stress_current_ts);
+        Stress = Stress_last_ts;
+        (*Strain_last_ts) = (*Strain);
+    }
 }
 
 ElementValue_DM::~ElementValue_DM()
 {
 	delete Stress0;
-	if (Stress_i) delete Stress_i;
-	if (Stress_j) delete Stress_j;
-	if (pStrain) delete pStrain;
+	if (Stress_last_ts) delete Stress_last_ts;
+	if (Stress_current_ts) delete Stress_current_ts;
+    if (pStrain) delete pStrain;
 	if (y_surface) delete y_surface;
 
 	// Preconsolidation pressure
@@ -3834,6 +3842,7 @@ ElementValue_DM::~ElementValue_DM()
 	if (orientation) delete orientation;
 
 	delete Strain;
+    delete Strain_last_ts;
 
 	NodesOnPath = NULL;
 	orientation = NULL;
@@ -3841,8 +3850,8 @@ ElementValue_DM::~ElementValue_DM()
 	Stress0 = NULL;
 	Stress = NULL;
 	Strain = NULL;
-	Stress_i = NULL;  // for HM coupling iteration
-	Stress_j = NULL;  // for HM coupling iteration
+	Stress_last_ts = NULL;  // for HM coupling iteration
+	Stress_current_ts = NULL;  // for HM coupling iteration
 	pStrain = NULL;
 	prep0 = NULL;
 	e_i = NULL;

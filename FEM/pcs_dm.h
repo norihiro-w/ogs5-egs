@@ -77,7 +77,7 @@ public:
 	double Execute(int loop_process_number);
 
 	// Aux. Memory
-	double* GetAuxArray() const { return ARRAY; }
+    double* GetLastTimeStepSolution() const { return lastTimeStepSolution; }
 	double* GetInitialFluidPressure() const { return p0; };
 
 	void ScalingNodeForce(const double SFactor);
@@ -87,8 +87,12 @@ public:
 	void UpdateIterativeStep(const double damp, const int u_type);
 	void InitializeNewtonSteps(const bool ini_excav = false);
 	double NormOfUpdatedNewton();
-	void StoreLastSolution(const int ty = 0);
-	void RecoverSolution(const int ty = 0);
+    void StoreLastTimeStepSolution(const int ty = 0);
+    void StoreLastCouplingIterationSolution();
+    void RecoverLastTimeStepSolution(const int ty = 0);
+    void CopyLastTimeStepDisplacementToCurrent();
+
+    void zeroNodalDU();
 	double NormOfDisp();
 #if !defined(USE_PETSC) && \
     !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
@@ -97,7 +101,7 @@ public:
 #endif
 	// Stress
 	// For partitioned HM coupled scheme
-	void ResetCouplingStep();
+    void ResetStress();
 	void ResetTimeStep();
 	//
 	void UpdateStress();
@@ -125,8 +129,9 @@ public:
 private:
 	CFiniteElementVec* fem_dm;
 	void InitialMBuffer();
-	double* ARRAY;
-	double* p0;
+    double* lastTimeStepSolution;
+    double* lastCouplingSolution = nullptr;
+    double* p0;
 	bool _isInitialStressNonZero;
 
 	int counter;

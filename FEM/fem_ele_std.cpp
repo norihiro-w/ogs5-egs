@@ -6858,7 +6858,7 @@ void CFiniteElementStd::AssembleParabolicEquation()
 	if (dynamic)
 	{
 		// Velocity of pressure of the previous step
-		p_n = dm_pcs->GetAuxArray();
+		p_n = dm_pcs->GetLastTimeStepSolution();
 		for (i = 0; i < nnodes; i++)
 			NodalVal0[i] = p_n[nodes[i] + NodeShift[dm_shift]];
 		Mass->multi(NodalVal0, NodalVal, -1.0);
@@ -7893,7 +7893,7 @@ void CFiniteElementStd::Assemble_strainCPL(const int phase)
 	{
 		Residual = 2;
 		fac = pcs->m_num->GetDynamicDamping_beta1() * dt;
-		u_n = dm_pcs->GetAuxArray();
+		u_n = dm_pcs->GetLastTimeStepSolution();
 	}
 	if (MediaProp->storage_model == 7)  // RW/WW
 		fac *= MediaProp->storage_model_values[0];

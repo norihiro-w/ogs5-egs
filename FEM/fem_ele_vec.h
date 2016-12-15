@@ -52,7 +52,7 @@ using MeshLib::CElem;
 class ElementValue_DM
 {
 public:
-	ElementValue_DM(CElem* ele, const int NGP, bool HM_Staggered);
+	ElementValue_DM(CElem* ele, const int NGP, bool has_coupling_loop);
 	~ElementValue_DM();
 	void ResetStress(bool cpl_loop);
 	void Write_BIN(std::fstream& os);
@@ -71,9 +71,11 @@ private:
 	friend class CFiniteElementVec;
 	Matrix* Stress0;  // Initial stress
 	Matrix* Stress;
-	Matrix* Stress_i;
-	Matrix* Stress_j;
+    Matrix* Stress_last_ts;
+    Matrix* Stress_current_ts;
+
 	Matrix* Strain;
+	Matrix* Strain_last_ts = nullptr;
 	Matrix* pStrain;
 	Matrix* y_surface;
 	// Preconsolidation pressure
@@ -231,8 +233,8 @@ private:
 	                       int gp_t);
 	// Effictive strain
 	double CalcStrain_v();
-	void ExtropolateGuassStrain();
-	void ExtropolateGuassStress();
+    void ExtropolateGaussStrain();
+    void ExtropolateGaussStress();
 	double CalcStress_eff();
 
 	// Compute the local finite element matrices
