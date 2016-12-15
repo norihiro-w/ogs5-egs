@@ -1721,7 +1721,7 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 
 #endif
 
-		if (dm_pcs)  // WW
+        if (dm_pcs && !isCSV)  // WW
 			tec_file << " p_(1st_Invariant) "
 			         << " q_(2nd_Invariant)  "
 			         << " Effective_Strain";
@@ -1887,7 +1887,7 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 
 #endif
 		//....................................................................
-		if (dm_pcs)  // WW
+        if (dm_pcs && !isCSV)  // WW
 		{
 			for (size_t i = 0; i < ns; i++)
 				ss[i] = dm_pcs->GetNodeValue(msh_node_number, stress_i[i]);

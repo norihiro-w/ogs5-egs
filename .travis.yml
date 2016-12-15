@@ -56,8 +56,8 @@ script:
   - if [[ "$CASE" == "LIS" ]]; then export CMAKE_ARGS="${CMAKE_ARGS} -DBENCHMARK_DIR=${bench_input} -DBENCHMARK_REF_DIR=${bench_ref}"; fi
   - cmake $CMAKE_ARGS ..
   - make -j4
-  - if [[ "$CASE" == "LIS" ]]; then ctest -E 'Tests|FILE|EXCEED' -E '_M/|_HM/|_TM/'; fi
-  - if [[ "$CASE" == "LIS" ]]; then ctest -R 'FILECOMPARE' -E 'EXCEED' -E '_M/|_HM/|_TM/'; fi
+  - if [[ "$CASE" == "LIS" ]]; then ctest -E 'Tests|FILE|EXCEED' -E '_HM/'; fi
+  - if [[ "$CASE" == "LIS" ]]; then ctest -R 'FILECOMPARE' -E 'EXCEED' -E '_HM/'; fi
   - if [[ "$CASE" == "LIS" ]]; then find ${bench_input}/results/ -iname '*.numdiff' -exec echo -e "\n\n=======================\n{}" \;  -exec head -n 5000 {} \; || true ; fi
 
 notifications:
