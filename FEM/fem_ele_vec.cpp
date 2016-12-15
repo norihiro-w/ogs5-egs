@@ -2381,8 +2381,7 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 			for (i = 0; i < ns; i++)
 				strain_ne[i] = 0.0;
 			if (PoroModel == 4)  // For swelling pressure
-
-				for (i = 0; i < 3; i++)
+                for (i = 0; i < 3; i++)
 					strain_ne[i] -= deporo;
 			//
 			if (T_Flag)  // Contribution by thermal expansion
@@ -2394,8 +2393,7 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 					Tem += shapefct[i] * Temp[i];
 					t1 += shapefct[i] * T1[i];
 				}
-				for (i = 0; i < 3;
-				     i++)  // JT: This was commented. SHOULDN'T BE!
+                for (i = 0; i < 3; i++)
 					strain_ne[i] -= ThermalExpansion * Tem;
 			}
 			// Strain increment by creep
@@ -2413,9 +2411,6 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 			}
 			// Stress deduced by thermal or swelling strain incremental:
 			De->multi(strain_ne, dstress);
-			for (i = 0; i < ns;
-			     i++)  // JT: This was commented. It shouldn't be.
-				dstrain[i] += strain_ne[i];
 		}
 		// Fluid coupling;
 		S_Water = 1.0;
