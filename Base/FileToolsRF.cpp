@@ -44,6 +44,7 @@
 
 #include <cmath>
 #include <cstdlib>
+#include <fstream>
 
 #include "makros.h"
 #include "Configure.h"
