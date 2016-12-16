@@ -218,33 +218,6 @@ typedef struct
 	                               */
 } LINEAR_SOLVER;
 
-#ifdef USE_MPI  // WW
-extern LINEAR_SOLVER* InitVectorLinearSolver(LINEAR_SOLVER*);
-#endif
-//#ifndef NEW_EQS                                   //WW 07.11.2008
-#if !defined(NEW_EQS) && \
-    !defined(            \
-        USE_PETSC)  // && !defined(other parallel solver) //WW. 04.10.2012
-
-extern LINEAR_SOLVER* InitLinearSolver(LINEAR_SOLVER*);
-//
-extern void SetLinearSolverType(LINEAR_SOLVER*, CNumerics*);
-extern LINEAR_SOLVER* InitializeLinearSolver(LINEAR_SOLVER*, CNumerics*);
-extern LINEAR_SOLVER* InitMemoryLinearSolver(LINEAR_SOLVER*, int);
-extern LINEAR_SOLVER* SetMemoryZeroLinearSolver(LINEAR_SOLVER*);
-extern LINEAR_SOLVER* SetZeroLinearSolver(LINEAR_SOLVER*);
-extern LINEAR_SOLVER* DestroyLinearSolver(LINEAR_SOLVER*);
-extern LINEAR_SOLVER* DestroyMemoryLinearSolver(LINEAR_SOLVER*);
-extern LINEAR_SOLVER* SetLinearSolver(LINEAR_SOLVER*);
-extern LINEAR_SOLVER* CreateLinearSolver(long store, long dim);
-extern LINEAR_SOLVER* CreateLinearSolverDim(long store,
-                                            int unknown_vector_dimension,
-                                            long dim);
-extern void ConfigSolverProperties(void);
-//
-//
-extern int GetUnknownVectorDimensionLinearSolver(LINEAR_SOLVER*);
-#endif  // ifndef NEW_EQS //WW 07.11.2008
 
 //////////////////////////////////////////////////////////////////////////
 // NUM

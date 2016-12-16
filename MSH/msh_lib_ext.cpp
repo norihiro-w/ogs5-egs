@@ -20,14 +20,10 @@
 //**************************************************************************
 #include "msh_lib.h"
 
-//#ifdef USET_PETSC
-// kg44 included for memcpy needed by petsc
 #include <stdio.h>
 #include <string.h>
 #include "petscksp.h"
-//#elif USE_MPI
 #include <mpi.h>
-//#endif
 #include <sstream>
 
 #include "StringTools.h"

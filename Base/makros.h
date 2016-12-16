@@ -21,30 +21,17 @@
 #ifndef makros_INC
 #define makros_INC
 
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <string>
+
 #include "BuildInfo.h"
 #include "Configure.h"
 
-/* Global benoetigte Header */
-//#include <stdlib.h>
-/* Speicherverwaltung */
-//#include <string.h>
-#include <string>
-
-/* Zeichenketten */
-//#include <float.h>
-/* Floating-Point */
-
-/* ROCKFLOW-Version */
-// LB: renamed ROCKFLOW_VERSION to OGS_VERSION and moved the #define to
-// Base/Configure.h.in. Please set the version in the top-level CMakeLists.txt!!
-// (see sources/CMakeLists.txt)
 
 /* Definitionen von Makros zur Steuerung der bedingten Compilierung */
 #define SWITCHES
-/* Ausgabe der Schalterstellungen zu Beginn des Programms */
-#ifdef MSVCPP6
-#pragma warning(disable : 4786)
-#endif
 
 /* Laufzeitausgaben */
 #define TESTTIME
@@ -256,7 +243,6 @@
 
 /**********************************************************************/
 /* Parallelization */
-#define noPARALLEL
 #define noCHEMAPP  // MX
 #define noREACTION_ELEMENT
 #define noSX
@@ -333,10 +319,8 @@ extern std::string FilePath;  // WW
 #define RESET_4410  // H2_ELE test
 
 //---- MPI Parallel --------------
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) ||      \
-    defined(USE_MPI_REGSOIL) || defined(USE_MPI_GEMS) || \
-    defined(USE_MPI_BRNS) || defined(USE_MPI_KRC) || defined(USE_PETSC)
-extern int mysize;  // WW
+#if defined(USE_MPI) || defined(USE_PETSC)
+extern int mysize;
 extern int myrank;
 #endif
 //---- MPI Parallel --------------

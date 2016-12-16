@@ -31,8 +31,6 @@ namespace MeshLib
 {
 class CFEMesh;
 }
-// 08.2007 WW
-class CPARDomain;
 #endif
 //#define OverLoadNEW_DELETE
 
@@ -265,7 +263,6 @@ public:
 	            bool quadratic,
 	            bool symm = false,
 	            StorageType stype = JDS);
-	SparseTable(CPARDomain& m_dom, bool quadratic, bool symm = false);
 	~SparseTable();
 	void Write(std::ostream& os = std::cout);
 
@@ -338,10 +335,6 @@ public:
 	// Print
 	void Write(std::ostream& os = std::cout);
 	void Write_BIN(std::ostream& os);
-// Domain decomposition
-#if defined(USE_MPI)
-	void DiagonalEntries(double* diag_e);
-#endif
 private:
 	// Data
 	double* entry;

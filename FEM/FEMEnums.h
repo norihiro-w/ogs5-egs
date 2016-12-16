@@ -318,13 +318,12 @@ enum NonlinearSolverType
 {
 	NL_LINEAR,
 	NL_PICARD,
-	NL_NEWTON,
-	NL_JFNK
+	NL_NEWTON
 };
 
 inline bool isNewtonKind(NonlinearSolverType type)
 {
-	return (type == NL_NEWTON || type == NL_JFNK);
+	return type == NL_NEWTON;
 }
 
 }  // end namespace FiniteElement

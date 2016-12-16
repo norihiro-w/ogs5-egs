@@ -22,10 +22,6 @@
 #include "mathlib.h"
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
 #include "PETSC/PETScLinearSolver.h"
-#else
-#ifndef NEW_EQS  // WW. 06.11.2008
-#include "matrix_routines.h"
-#endif
 #endif
 #include "pcs_dm.h"
 #include "rf_mfp_new.h"
@@ -74,9 +70,6 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 	Tem = 273.15 + 23.0;
 	h_pcs = NULL;
 	t_pcs = NULL;
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	m_dom = NULL;
-#endif
 
 	AuxNodal2 = NULL;
 	Idx_Vel = NULL;
@@ -859,10 +852,6 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 		// TEST             (*B_matrix_T)(j,k)*dstress[k]*fkt;
 		if (PreLoad == 11) continue;
 // Local assembly of stiffness matrix, B^T C B
-#ifdef JFNK_H2M
-		/// If JFNK. 18.10.2010. WW
-		if (pcs->m_num->nls_method == 2 && (!pcs->JFNK_precond)) continue;
-#endif
 		(*tmp_AuxMatrix2) = 0.0;
 		// NW
 		tmp_B_matrix_T->multi(*p_D, *tmp_AuxMatrix2);
@@ -968,11 +957,6 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
    Formalparameter:
            E:
          const int update  : indicator to update stress and strain only
-
-   Programming:
-   06/2004   WW   Generalize for different element types as a member of class
-   05/2005   WW   ...
-   08/2010   WW   JFNK method
  **************************************************************************/
 void CFiniteElementVec::LocalAssembly(const int update)
 {
@@ -1004,51 +988,17 @@ void CFiniteElementVec::LocalAssembly(const int update)
 	}
 #endif
 
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	if (m_dom)
-	{                   // Moved here from GlobalAssemly. 08.2010. WW
-#if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
-// TODO
-#elif defined(NEW_EQS)
-		b_rhs = m_dom->eqsH->b;
-#else
-		b_rhs = m_dom->eqs->b;
+#if defined(NEW_EQS)
+	b_rhs = pcs->eqs_new->b;
 #endif
-	}
-	else
-#endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
-	// WW
-	{
-#if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
-                        // TODO
-#elif defined(NEW_EQS)
-		b_rhs = pcs->eqs_new->b;
-#else
-		b_rhs = pcs->eqs->b;
-#endif
-	}
 	(*RHS) = 0.0;
 	(*Stiffness) = 0.0;
 	// 07.2011. WW
 	if (PressureC) (*PressureC) = 0.0;
 	if (PressureC_S) (*PressureC_S) = 0.0;
 	if (PressureC_S_dp) (*PressureC_S_dp) = 0.0;
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	if (m_dom)
-	{
-		// 06.2011. WW
-		for (size_t i = 0; i < pcs->GetPrimaryVNumber(); i++)
-			NodeShift[i] = m_dom->shift[i];
-		for (int i = 0; i < nnodesHQ; i++)
-			eqs_number[i] = element_nodes_dom[i];
-	}
-	else
-#endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
-	// WW
-	{
-		for (int i = 0; i < nnodesHQ; i++)
-			eqs_number[i] = MeshElement->nodes[i]->GetEquationIndex();
-	}
+	for (int i = 0; i < nnodesHQ; i++)
+		eqs_number[i] = MeshElement->nodes[i]->GetEquationIndex();
 
 	// For strain and stress extropolation all element types
 	// Number of elements associated to nodes
@@ -1315,40 +1265,11 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 	f1 = 1.0;
 	f2 = -1.0;
 
-#if defined(NEW_EQS) && defined(JFNK_H2M)
-	/// If not JFNK. 02.2011. WW
-	if (pcs->m_num->nls_method == 2)
-	{
-		if (!pcs->JFNK_precond) return;
-
-		long kk = 0;
-		// Assemble Jacobi preconditioner
-		for (size_t k = 0; k < ele_dim; k++)
-		{
-			for (size_t l = 0; l < ele_dim; l++)
-				for (i = 0; i < nnodesHQ; i++)
-				{
-					kk = eqs_number[i] + NodeShift[k];
-					for (j = 0; j < nnodesHQ; j++)
-					{
-						if (kk != eqs_number[j] + NodeShift[l]) continue;
-						pcs->eqs_new->prec_M[kk] +=
-						    (*Stiffness)(i + k * nnodesHQ, j + l * nnodesHQ);
-					}
-				}
-			// loop l
-		}  // loop k
-		return;
-	}
-#endif
 	double biot = 1.0;
 	biot = smat->biot_const;
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;
-	if (m_dom)
-		A = m_dom->eqsH->A;
-	else
-		A = pcs->eqs_new->A;
+	A = pcs->eqs_new->A;
 #endif
 
 	if (dynamic)
@@ -1363,17 +1284,9 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 				// Local assembly of stiffness matrix
 				for (size_t k = 0; k < ele_dim; k++)
 				{
-#if defined(USE_PETSC)  // || defined(other parallel libs)//10.3012. WW
-// TODO
-#else
 #ifdef NEW_EQS
 					(*A)(eqs_number[i] + NodeShift[k],
 					     eqs_number[j] + NodeShift[k]) += (*Mass)(i, j);
-#else
-					MXInc(eqs_number[i] + NodeShift[k],
-					      eqs_number[j] + NodeShift[k],
-					      (*Mass)(i, j));
-#endif
 #endif
 				}
 			}  // loop j
@@ -1403,11 +1316,9 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 #else
 #ifdef NEW_EQS
 					double& a = (*A)(globalRowId, globalColId);
-#pragma omp atomic
+					#pragma omp atomic
 					a += val;
 //(*A)(globalRowId,globalColId) += val;
-#else
-					MXInc(globalRowId, globalColId, val);
 #endif
 #endif
 				}
@@ -1434,70 +1345,6 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 	if (PressureC_S_dp)
 		GlobalAssembly_PressureCoupling(PressureC_S_dp, -f2 * biot, 0);
 
-	/*
-	   // Assemble coupling matrix
-	   if(Flow_Type>=0&&pcs->type/40 == 1)              // Monolithic scheme
-	   {
-
-	   f2 *= biot;
-
-	   double fact_NR = 0.;
-	   if(pcs->m_num->nls_method == 1) // If Newton-Raphson method
-	   {
-	      if(Flow_Type == 2)     // Multi-phase-flow: p_g-Sw*p_c
-	   {
-
-	   // P_g related:
-	   for (i=0;i<nnodesHQ;i++)
-	   {
-	   for (j=0;j<nnodes;j++)
-	   {
-	   for(k=0; k<ele_dim; k++)
-	   #ifdef NEW_EQS
-	   (*A)(NodeShift[k]+eqs_number[i], NodeShift[dim+1]+eqs_number[j])
-	   += f2*(*PressureC)(nnodesHQ*k+i,j);
-	   #else
-	   MXInc(NodeShift[k]+eqs_number[i], NodeShift[dim+1]+eqs_number[j],\
-	   f2*(*PressureC)(nnodesHQ*k+i,j));
-	   #endif
-	   }
-	   }
-
-	   fact_NR = 0.0;
-	   for (i=0;i<nnodes;i++)
-	   {
-	   fact_NR += AuxNodal_S[i];  /// Sw
-
-	   /// dS_dPcPc
-	   fact_NR +=
-	   m_mmp->SaturationPressureDependency(AuxNodal_S[i])*h_pcs->GetNodeValue(nodes[i],idx_P1);
-	   }
-
-	   fact_NR /= static_cast<double>(nnodes);
-
-	   f2 *= -1.0*fact_NR;
-
-	   }
-	   }
-
-	   // Add pressure coupling matrix to the stifness matrix
-	   for (i=0;i<nnodesHQ;i++)
-	   {
-	   for (j=0;j<nnodes;j++)
-	   {
-	   for(k=0; k<ele_dim; k++)
-	   #ifdef NEW_EQS
-	   (*A)(NodeShift[k]+eqs_number[i], NodeShift[dim]+eqs_number[j])
-	   += f2*(*PressureC)(nnodesHQ*k+i,j);
-	   #else
-	   MXInc(NodeShift[k]+eqs_number[i], NodeShift[dim]+eqs_number[j],\
-	   f2*(*PressureC)(nnodesHQ*k+i,j));
-	   #endif
-	   }
-	   }
-
-	   }
-	 */
 	// TEST OUT
 	// PressureC->Write();
 }
@@ -1526,10 +1373,7 @@ void CFiniteElementVec::GlobalAssembly_PressureCoupling(Matrix* pCMatrix,
 {
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;
-	if (m_dom)
-		A = m_dom->eqsH->A;
-	else
-		A = pcs->eqs_new->A;
+	A = pcs->eqs_new->A;
 #endif
 
 	int dim_shift = dim + phase;
@@ -1544,10 +1388,6 @@ void CFiniteElementVec::GlobalAssembly_PressureCoupling(Matrix* pCMatrix,
 				(*A)(NodeShift[k] + eqs_number[i],
 				     NodeShift[dim_shift] + eqs_number[j]) +=
 				    fct * (*pCMatrix)(nnodesHQ* k + i, j);
-#else
-				MXInc(NodeShift[k] + eqs_number[i],
-				      NodeShift[dim_shift] + eqs_number[j],
-				      fct * (*pCMatrix)(nnodesHQ* k + i, j));
 #endif
 			}
 		}
@@ -2096,11 +1936,6 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 	double t1 = 0.0;
 	bool Strain_TCS = false;
 
-#ifdef JFNK_H2M
-	bool JFNK = false;
-	if (pcs->m_num->nls_method == 2)  // 10.09.2010. WW
-		JFNK = true;
-#endif
 	//
 	ThermalExpansion = 0.0;
 	// Thermal effect
@@ -2153,45 +1988,8 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 			*De = *(smat->getD_tran());  // UJG/WW
 	}
 
-	if (PModel == 5) smat->CalculateCoefficent_HOEKBROWN();  // WX:02.2011
-	                                                         /*
-	                                                            string fname=FileName+"_D.txt";
-	                                                            ofstream out_f(fname.c_str());
-	                                                            De->Write(out_f);
-	                                                          */
+	if (PModel == 5) smat->CalculateCoefficent_HOEKBROWN();
 
-	/*
-	   //TEST
-	   fstream oss;
-	   if(update)
-	   {
-	   char tf_name[10];
-	   #ifdef USE_MPI
-	   sprintf(tf_name,"%d",myrank);
-	    string fname = FileName+tf_name+".stress";
-	   #else
-	    string fname = FileName+".stress";
-	   #endif
-	   oss.open(fname.c_str(), ios::app|ios::out);
-	   //    oss.open(fname.c_str(), ios::trunc|ios::out);
-	   oss<<"\nElement  "<<Index<<endl;
-	   oss<<endl;
-
-	   oss<<"Diaplacement "<<endl;
-	   for(i=0;i<nnodesHQ;i++)
-	   {
-	   oss<<nodes[i]<<"  ";
-	   for(int ii=0; ii<dim; ii++)
-	   oss<<Disp[ii*nnodesHQ+i]<<"  ";
-	   oss<<endl;
-	   }
-	   oss<<"Temperature "<<endl;
-	   for(i=0; i<nnodes;i++)
-	   oss<<Temp[i]<<"  ";
-	   oss<<endl;
-	   oss.close();
-	   }
-	 */
 	//
 	if (PoroModel == 4 || T_Flag || smat->Creep_mode > 0) Strain_TCS = true;
 	//
@@ -2262,14 +2060,8 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 					dstress[i] += (*eleV_DM->Stress)(i, gp);
 				break;
 			case 1:  // Drucker-Prager model
-#ifdef JFNK_H2M
-				if (smat->StressIntegrationDP(gp, eleV_DM, dstress, dPhi,
-				                              update) &&
-				    !JFNK)
-#else
 				if (smat->StressIntegrationDP(gp, eleV_DM, dstress, dPhi,
 				                              update))
-#endif
 
 					// WW DevStress = smat->devS;
 					smat->ConsistentTangentialDP(ConsistDep, dPhi, ele_dim);

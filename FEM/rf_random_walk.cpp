@@ -1023,8 +1023,6 @@ void RandomWalk::InterpolateVelocityOfTheParticleByBilinear(int option,
 // Todo
 #elif NEW_EQS  // WW
 					m_pcs->EQSInitialize();
-#else
-					SetZeroLinearSolver(m_pcs->getEQSPointer());
 #endif
 
 					for (int i = 0; i < (long)m_msh->ele_vector.size(); i++)

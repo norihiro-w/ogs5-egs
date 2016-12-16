@@ -48,12 +48,6 @@
 #include "display.h"
 #include "memory.h"
 #include "FileTools.h"
-//#include "makros.h"
-//#ifndef NEW_EQS //WW. 07.11.2008
-//#include "solver.h"
-//#endif
-//#include "rf_pcs.h"
-//#include "rf_mmp_new.h"
 #include "rf_bc_new.h"
 #include "rf_ic_new.h"
 #include "rf_st_new.h"

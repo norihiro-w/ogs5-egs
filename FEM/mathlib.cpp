@@ -154,30 +154,19 @@
    07/2003     WW                   Triangle shape funtions
    06/2004     WW                   Generalized shape functions
  ***************************************************************************/
-// There is a name conflict between stdio.h and the MPI C++ binding
-// with respect to the names SEEK_SET, SEEK_CUR, and SEEK_END.  MPI
-// wants these in the MPI namespace, but stdio.h will #define these
-// to integer values.  #undef'ing these can cause obscure problems
-// with other include files (such as iostream), so we instead use
-// #error to indicate a fatal error.  Users can either #undef
-// the names before including mpi.h or include mpi.h *before* stdio.h
-// or iostream.
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || defined(USE_MPI_REGSOIL)
-#include <mpi.h>
-#endif
 
 /* Preprozessor-Definitionen */
 
 #include <cfloat>
+#include <cmath>
 //#include <stdio.h>
 #include "femlib.h"  //CMCD 03 2004
 #include "makros.h"
 #include "memory.h"
 #include "display.h"
 #include "mathlib.h"
-// WW----------------------
-#include "par_ddc.h"
-// WW----------------------
+#include "prototyp.h"
+#include "geo_mathlib.h"
 double pai = 4.0 * atan(1.0);
 VoidFuncDXCDX ShapeFunction;
 VoidFuncDXCDX ShapeFunctionHQ;
