@@ -17,6 +17,7 @@ set( HEADERS
 	LinearFunctionData.h
 	mathlib.h
 	matrix_class.h
+	mechanics_utils.h
 	Output.h
 	pcs_dm.h
 	problem.h
@@ -64,6 +65,7 @@ set( SOURCES
 	LinearFunctionData.cpp
 	mathlib.cpp
 	matrix_class.cpp
+	mechanics_utils.cpp
 	Output.cpp
 	pcs_dm.cpp
 	problem.cpp

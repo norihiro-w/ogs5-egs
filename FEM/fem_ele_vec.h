@@ -58,10 +58,6 @@ public:
 	void Write_BIN(std::fstream& os);
 	void Read_BIN(std::fstream& is);
 	void ReadElementStressASCI(std::fstream& is);
-	double MeanStress(const int gp)
-	{
-		return (*Stress)(0, gp) + (*Stress)(1, gp) + (*Stress)(2, gp);
-	}
 
 private:
 	// Friend class

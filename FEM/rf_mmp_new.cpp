@@ -47,6 +47,8 @@ extern double gravity_constant;
 // MSHLib
 //#include "msh_lib.h"
 #include "pcs_dm.h"  //WX
+#include "mechanics_utils.h"
+
 using namespace std;
 
 // MAT-MP data base lists
@@ -3924,7 +3926,7 @@ double CMediumProperties::Porosity(long number, double theta)
 			break;
 		case 7:  // n = f(mean stress) WW
 			gval = ele_value_dm[number];
-			primary_variable[0] = -gval->MeanStress(assem->gp) / 3.0;
+            primary_variable[0] = - MeanStress(*gval->Stress, assem->gp) / 3.0;
 			porosity =
 			    GetCurveValue(porosity_curve, 0, primary_variable[0], &gueltig);
 			break;
@@ -4110,7 +4112,7 @@ double CMediumProperties::Porosity(CElement* assem)
 			break;
 		case 7:  // n = f(mean stress) WW
 			gval = ele_value_dm[number];
-			primary_variable[0] = -gval->MeanStress(assem->GetGPindex()) / 3.0;
+            primary_variable[0] = -MeanStress(*gval->Stress, assem->GetGPindex()) / 3.0;
 			porosity =
 			    GetCurveValue(porosity_curve, 0, primary_variable[0], &gueltig);
 			break;
