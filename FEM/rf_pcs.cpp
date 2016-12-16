@@ -13901,7 +13901,7 @@ void CreateEQS_LinearSolver()
 	for (i = 0; i < num_vector.size(); i++)
 	{
 		num = num_vector[i];
-		if (num->nls_method == 2)
+        if (num->nls_method == FiniteElement::NL_JFNK)
 		{
 			// Stiffness matrix of lower order grid may be used by more than one
 			// processes.
