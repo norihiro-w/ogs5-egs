@@ -389,6 +389,7 @@ private:
 	void Assemble_strainCPL(
 	    const int phase = 0);  // Assembly of strain coupling
 	void Assemble_strainCPL_Matrix(const double fac, const int phase = 0);
+    void Assemble_totalStressCPL(const int phase = 0);
 
 	void AssembleMassMatrix(int option);  // PCH
 	// Assembly of RHS by Darcy's gravity term

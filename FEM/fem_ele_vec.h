@@ -59,7 +59,6 @@ public:
 	void Read_BIN(std::fstream& is);
 	void ReadElementStressASCI(std::fstream& is);
 
-private:
 	// Friend class
 	friend class SolidProp::CSolidProperties;
 	friend class process::CRFProcessDeformation;
@@ -69,6 +68,7 @@ private:
 	Matrix* Stress;
     Matrix* Stress_last_ts;
     Matrix* Stress_current_ts;
+    Matrix* dTotalStress = nullptr;
 
 	Matrix* Strain;
 	Matrix* Strain_last_ts = nullptr;

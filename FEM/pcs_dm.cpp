@@ -670,6 +670,7 @@ void CRFProcessDeformation::InitGauss(void)
 			eleV_DM = ele_value_dm[i];
 			*(eleV_DM->Stress0) = 0.0;
 			*(eleV_DM->Stress) = 0.0;
+            *(eleV_DM->dTotalStress) = 0.0;
 			PModel = SMat->Plasticity_type;
 
 			for (j = 3; j < fem_dm->ns; j++)

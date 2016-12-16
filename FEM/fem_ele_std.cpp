@@ -52,6 +52,9 @@ using Math_Group::CSparseMatrix;
 #endif
 
 #include "pcs_dm.h"                 // displacement coupled
+#include "fem_ele_vec.h"
+#include "mechanics_utils.h"
+
 extern double gravity_constant;     // TEST, must be put in input file
 #define COMP_MOL_MASS_AIR 28.96     // kg/kmol WW  28.96
 #define COMP_MOL_MASS_WATER 18.016  // WW 18.016
@@ -1581,6 +1584,13 @@ double CFiniteElementStd::CalCoefMass()
 				    MediaProp->StorageFunctionEffStress(Index, nnodes, h_fem);
 				val *= storage_effstress;
 			}
+
+            if (M_Process && pcs->use_total_stress_coupling)
+            {
+                if (fabs(SolidProp->K) < DBL_MIN)
+                    SolidProp->Calculate_Lame_Constant();
+                val += std::pow(SolidProp->biot_const, 2) / SolidProp->K;
+            }
 
 			val /= time_unit_factor;
 			break;
@@ -7854,6 +7864,75 @@ void CFiniteElementStd::AssembleParabolicEquationNewtonJacobian(
 	// return jacob;
 }
 
+void CFiniteElementStd::Assemble_totalStressCPL(const int phase)
+{
+    if (this->pcs->tim_type == FiniteElement::TIM_STEADY)
+        return;
+
+    bool updateRHS = false;
+    if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION)
+    {
+        updateRHS = true;
+    }
+    else if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW
+             && FiniteElement::isNewtonKind(dm_pcs->m_num->nls_method))
+    {
+        updateRHS = true;
+    }
+
+    ElementValue_DM const* ev_dm = ele_value_dm[Index];
+    for (int k = 0; k < nnodes; k++)
+        NodalVal[k] = 0.0;
+
+    // r += -Np^T biot/K*d(TotalStress_v)/dt
+    for (int gp = 0; gp < nGaussPoints; gp++)
+    {
+        int gp_r, gp_s, gp_t;
+        double fkt = GetGaussData(gp, gp_r, gp_s, gp_t);
+        ComputeShapefct(1);
+
+        //
+        //double gp_p = interpolate(NodalVal1);
+
+        // increment of volumetric total stress
+        double dSv = MeanStress(*ev_dm->dTotalStress, gp);
+        //dSv -= SolidProp->biot_const * gp_p;
+
+        // alpha/K*dSv/dt
+        fkt *= - SolidProp->biot_const / SolidProp->K * dSv / dt;
+
+        //
+        for (int k = 0; k < nnodes; k++)
+        {
+            (*RHS)(k) += shapefct[k] * fkt;
+            NodalVal[k] += shapefct[k] * fkt;
+        }
+    }
+
+    if (updateRHS)
+    {
+#ifdef NEW_EQS
+        // add to global RHS
+        int shift_index = 0;
+        if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
+            shift_index = problem_dimension_dm + phase;
+
+        for (int i = 0; i < nnodes; i++)
+        {
+            eqs_rhs[NodeShift[shift_index] + eqs_number[i]] += NodalVal[i];
+        }
+#endif
+    }
+
+    //TODO MONO
+    if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
+    {
+        assert("Not supported yet.");
+        ogsAbort(1);
+        //Assemble_strainCPL_Matrix(fac, phase);
+    }
+}
+
 /***************************************************************************
    GeoSys - Funktion:
            CFiniteElementStd:: Assemby_strainCPL
@@ -7869,7 +7948,15 @@ void CFiniteElementStd::AssembleParabolicEquationNewtonJacobian(
  **************************************************************************/
 void CFiniteElementStd::Assemble_strainCPL(const int phase)
 {
-	int i, j;
+    if (this->pcs->tim_type == FiniteElement::TIM_STEADY) return;
+
+    if (pcs->use_total_stress_coupling)
+    {
+        Assemble_totalStressCPL(phase);
+        return;
+    }
+
+    int i, j;
 	double* u_n = NULL;  // Dynamic
 	double fac;
 	int Residual = -1;
@@ -7878,7 +7965,6 @@ void CFiniteElementStd::Assemble_strainCPL(const int phase)
 	int shift_index = problem_dimension_dm + phase;
 #endif
 
-	if (this->pcs->tim_type == FiniteElement::TIM_STEADY) return;
 
 	fac = 1.0 / dt;
 	fac *= SolidProp->biot_const;  // NW

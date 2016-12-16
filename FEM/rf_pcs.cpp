@@ -2258,7 +2258,16 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 				              dummy);
 			continue;
 		}
-		if (line_string.find("$SCALE_DOF") == 0)
+        if (line_string.find("$TOTAL_STRESS_COUPLING") == 0)
+        {
+            int dummy = 0;
+            *pcs_file >> dummy;
+            use_total_stress_coupling = (dummy != 0);
+            if (use_total_stress_coupling)
+                ScreenMessage("-> coupling with deformation will be done via total stress instead of strain\n", dummy);
+            continue;
+        }
+        if (line_string.find("$SCALE_DOF") == 0)
 		{
 			int n = 0;
 			*pcs_file >> n;
