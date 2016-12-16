@@ -1,6 +1,7 @@
 # Source files
 
 APPEND_SOURCE_FILES(SOURCES)
+APPEND_SOURCE_FILES(SOURCES FileIO)
 
 IF(OGS_FEM_PETSC)
 	LIST(REMOVE_ITEM SOURCES equation_class.h equation_class.cpp)
@@ -15,12 +16,12 @@ ENDIF( )
 include_directories(
 	${CMAKE_SOURCE_DIR}/Base
 	${CMAKE_SOURCE_DIR}/GEO
+	${CMAKE_SOURCE_DIR}/GEO/FileIO
 	${CMAKE_SOURCE_DIR}/FEM
-	${CMAKE_SOURCE_DIR}/FileIO
-	${CMAKE_SOURCE_DIR}/FileIO/FEMIO
-	${CMAKE_SOURCE_DIR}/FileIO/MeshIO
+	${CMAKE_SOURCE_DIR}/FEM/FileIO
 	${CMAKE_SOURCE_DIR}/Math
 	${CMAKE_SOURCE_DIR}/MSH
+	${CMAKE_SOURCE_DIR}/MSH/FileIO
 	${CMAKE_SOURCE_DIR}/ThirdParty
 )
 
@@ -41,7 +42,6 @@ add_library( FEM STATIC ${SOURCES} )
 
 target_link_libraries(FEM
 	Base
-	FileIO
 	GEO
 	MSH
 )
