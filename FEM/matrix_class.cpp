@@ -1909,14 +1909,9 @@ int CSparseMatrix::GetCRSValue(double* value)
 #endif  // LIS
 #endif  // NEW_EQS
 ///////////////////////////////////////////////////////////
-}  // Namespace
-
-using Math_Group::vec;
-using Math_Group::SymMatrix;
 
 template class vec<int>;
 template class vec<long>;
 template class vec<double>;
 
-// End of class Matrix
-//==========================================================================
+}  // Namespace
