@@ -300,7 +300,7 @@ POINT const* Grid<POINT>::getNearestPoint(double const* const pnt) const
 	size_t coords[3];
 	getGridCoords(pnt, coords);
 
-	double sqr_min_dist(MathLib::sqrDist(&_min_pnt, &_max_pnt));
+	double sqr_min_dist(sqrDist(&_min_pnt, &_max_pnt));
 	POINT* nearest_pnt(NULL);
 
 	double dists[6];

@@ -1370,7 +1370,7 @@ void Surface::WriteTINTecplot(const std::string& file_path)
 		//  CGSProject* m_gsp = GSPGetMember("gli");
 		// if(m_gsp)
 		tin_path = file_path;  // CC
-		string tin_file_name = TIN->name + TEC_FILE_EXTENSIONS;
+		string tin_file_name = TIN->name + TEC_FILE_EXTENSION;
 		string tin_path_base_type = tin_path + tin_file_name;
 		fstream tin_file(tin_path_base_type.data(), ios::trunc | ios::out);
 		tin_file.setf(ios::scientific, ios::floatfield);

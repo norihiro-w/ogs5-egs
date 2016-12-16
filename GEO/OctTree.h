@@ -101,7 +101,7 @@ public:
 		for (size_t k(0); k < _pnts.size() && !pnt_in_tree; k++)
 		{
 			const double sqr_dist(
-			    MathLib::sqrDist((_pnts[k])->getData(), pnt->getData()));
+			    sqrDist((_pnts[k])->getData(), pnt->getData()));
 			if (sqr_dist < std::numeric_limits<double>::epsilon())
 				pnt_in_tree = true;
 		}

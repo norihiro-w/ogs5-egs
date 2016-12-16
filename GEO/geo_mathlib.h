@@ -19,10 +19,8 @@
 #include <cmath>
 #include <limits>
 
-#define MKleinsteZahlen std::numeric_limits<double>::min()
-#define MAX_ZEILEN 2048  // 256 //2048 OK
-#define CSV_FILE_EXTENSIONS ".csv"
-#define TEC_FILE_EXTENSIONS ".tec"
+#include "makros.h"
+#include "Point.h"
 
 extern double EuklVek3dDist(double* x, double* y);
 extern double EuklVek3dDistCoor(
@@ -51,5 +49,23 @@ extern bool LineSegmentIntersection(vector<double>,
                                     vector<double>,
                                     vector<double>&);  // RFW 04/2005
 #endif
+
+/**
+ * Checks if two points are within a given distance of each other
+ * @param p0 The first point
+ * @param p1 the second point
+ * @param squaredDistance The square of the distance within which the two points
+ * should be
+ * @return true if p1 and p2 are within the given distance of each other, false
+ * otherwise
+ */
+bool checkDistance(GEOLIB::Point const& p0, GEOLIB::Point const& p1,
+				   double squaredDistance);
+
+/** squared euklid norm of the vector p0 */
+double sqrNrm2(const GEOLIB::Point* const p0);
+
+/** squared dist between GEOLIB::Points p0 and p1 */
+double sqrDist(const GEOLIB::Point* p0, const GEOLIB::Point* p1);
 
 #endif

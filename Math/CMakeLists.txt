@@ -17,7 +17,6 @@ include_directories(
 	${CMAKE_SOURCE_DIR}/Math/LinAlg
 	${CMAKE_SOURCE_DIR}/Math/PETSC
 	${CMAKE_SOURCE_DIR}/Base
-	${CMAKE_SOURCE_DIR}/GEO
 )
 
 target_link_libraries (Math

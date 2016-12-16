@@ -84,14 +84,14 @@ size_t max_dim = 0;  // OK411
 //	std::vector<MeshLib::CNode*> const& nod_vector(thread_param->_nod_vector);
 //	GEOLIB::Point const* const pnt(thread_param->_pnt);
 //
-//	double distmin(MathLib::sqrDist(nod_vector[start]->getData(),
+//	double distmin(sqrDist(nod_vector[start]->getData(),
 //	                                pnt->getData()));
 //	size_t number(start);
 //	double sqr_dist(distmin);
 //
 //	for (size_t i = start + 1; i < end; i++)
 //	{
-//		sqr_dist = MathLib::sqrDist(nod_vector[i]->getData(), pnt->getData());
+//		sqr_dist = sqrDist(nod_vector[i]->getData(), pnt->getData());
 //		if (sqr_dist < distmin)
 //		{
 //			distmin = sqr_dist;
@@ -1434,7 +1434,7 @@ long CFEMesh::GetNODOnPNT(const GEOLIB::Point* const pnt) const
 	for (size_t i = 0; i < nodes_in_usage; i++)
 	{
 		if (!isNodeLocal(i)) continue;  // NW
-		sqr_dist = MathLib::sqrDist(nod_vector[i]->getData(), pnt->getData());
+		sqr_dist = sqrDist(nod_vector[i]->getData(), pnt->getData());
 		if (sqr_dist < distmin)
 		{
 			node_id = i;
@@ -1450,12 +1450,12 @@ long CFEMesh::GetNODOnPNT(const GEOLIB::Point* const pnt) const
 #endif  // END: if use_petsc
 
 	//	const size_t nodes_in_usage(static_cast<size_t> (NodesInUsage()));
-	//	double sqr_dist(0.0), distmin(MathLib::sqrDist
+	//	double sqr_dist(0.0), distmin(sqrDist
 	//(nod_vector[0]->getData(), pnt->getData()));
 	//	size_t number(0);
 	//	for (size_t i = 1; i < nodes_in_usage; i++)
 	//	{
-	//		sqr_dist = MathLib::sqrDist (nod_vector[i]->getData(),
+	//		sqr_dist = sqrDist (nod_vector[i]->getData(),
 	// pnt->getData());
 	//		if (sqr_dist < distmin)
 	//		{
