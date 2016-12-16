@@ -993,7 +993,7 @@ void CRFProcessDeformation::setDUFromSolution()
         for (long j = 0; j < number_of_nodes; j++)
         {
 #ifdef USE_PETSC
-            long k = m_msh->Eqs2Global_NodeIndex_Q[j] * pcs_number_of_primary_nvals + i;
+            long k = m_msh->Eqs2Global_NodeIndex[j] * pcs_number_of_primary_nvals + i;
             double du = eqs_x[k];
 #else
             double du = eqs_x[j + shift];
@@ -1021,7 +1021,7 @@ void CRFProcessDeformation::setPressureFromSolution()
         for (long j = 0; j < number_of_nodes; j++)
         {
 #ifdef USE_PETSC
-            long k = m_msh->Eqs2Global_NodeIndex_Q[j] * pcs_number_of_primary_nvals + i;
+            long k = m_msh->Eqs2Global_NodeIndex[j] * pcs_number_of_primary_nvals + i;
 #else
             long k = j + shift;
 #endif
@@ -1069,7 +1069,7 @@ void CRFProcessDeformation::incrementNodalDUFromSolution()
         for (long j = 0; j < number_of_nodes; j++)
         {
 #ifdef USE_PETSC
-            long k = m_msh->Eqs2Global_NodeIndex_Q[j] * pcs_number_of_primary_nvals + i;
+            long k = m_msh->Eqs2Global_NodeIndex[j] * pcs_number_of_primary_nvals + i;
             double du = eqs_x[k];
 #else
             double du = eqs_x[j + shift];
@@ -1099,7 +1099,7 @@ void CRFProcessDeformation::incrementNodalPressureFromSolution()
         for (long j = 0; j < number_of_nodes; j++)
         {
 #ifdef USE_PETSC
-            long k = m_msh->Eqs2Global_NodeIndex_Q[j] * pcs_number_of_primary_nvals + i;
+            long k = m_msh->Eqs2Global_NodeIndex[j] * pcs_number_of_primary_nvals + i;
 #else
             long k = j + shift;
 #endif
