@@ -28,18 +28,6 @@
 
 #define noTESTMATH
 
-/* Andere oeffentlich benutzte Module */
-//#include "test.h"
-
-/* Die Schnittstellen der Gleichungsloeser und der Speichertechnik werden
-   sozusagen durchgeschleift: */
-/* #include "matrix_routines.h" */
-/* Speichertechnik fuer Matrix des Gesamtgleichungssystems */
-/* Iterative GLS-Loeser auf Basis der Speichertechnik aus 'matrix.h'
- * (herkoemmliche Verfahren) */
-
-// C++
-//#include <vector>
 
 /*##########################################################################
       Mathematische Funktionen

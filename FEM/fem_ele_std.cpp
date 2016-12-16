@@ -36,16 +36,7 @@
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
 #include "PETSC/PETScLinearSolver.h"
 #else
-#ifndef NEW_EQS  // WW. 06.11.2008
-// Sytem matrix
-#include "matrix_routines.h"
 #endif
-#endif
-// Parallel computing
-//#include "par_ddc.h"
-// MSHLib
-//#include "msh_elem.h"
-// Solver
 #ifdef NEW_EQS
 #include "equation_class.h"
 using Math_Group::CSparseMatrix;

@@ -46,9 +46,6 @@ extern size_t max_dim;
 #include "eqlink.h"
 #endif
 
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || defined(USE_MPI_REGSOIL)
-#include "par_ddc.h"
-#endif
 #ifdef SUPERCOMPUTER
 // kg44 this is usefull for io-buffering as endl flushes the buffer
 #define endl \
@@ -602,11 +599,6 @@ void COutput::NODWriteDOMDataTEC()
 	int te = 0;
 	string eleType;
 	string tec_file_name;
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || defined(USE_MPI_REGSOIL)
-	char tf_name[10];
-	std::cout << "Process " << myrank << " in WriteDOMDataTEC"
-	          << "\n";
-#endif
 	//----------------------------------------------------------------------
 	// Tests
 	// OK4704
@@ -715,11 +707,6 @@ void COutput::NODWriteDOMDataTEC()
    te=6;
    }
  */
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || defined(USE_MPI_REGSOIL)
-		sprintf(tf_name, "%d", myrank);
-		tec_file_name += "_" + string(tf_name);
-		std::cout << "Tecplot filename: " << tec_file_name << "\n";
-#endif
 #if defined(USE_PETSC)  //|| defined(other parallel libs)//03.3012. WW
 		tec_file_name += "_" + mrank_str;
 		std::cout << "Tecplot filename: " << tec_file_name << "\n";
@@ -751,146 +738,6 @@ void COutput::NODWriteDOMDataTEC()
 		}
 
 		tec_file.close();  // kg44 close file
-		//--------------------------------------------------------------------
-		// tri elements
-		// ***** 07/2010 TF commented out block since the global variable is
-		// always zero
-		//    if(msh_no_tris>0){
-		//    //string tec_file_name = pcs_type_name + "_" + "domain" + "_tri" +
-		//    TEC_FILE_EXTENSION;
-		//#ifdef SUPERCOMPUTER
-		//// buffer the output
-		//      char sxbuf1[MY_IO_BUFSIZE*MY_IO_BUFSIZE];
-		//#endif
-		//      string tec_file_name = file_base_name + "_" + "domain" + "_tri"
-		//      + TEC_FILE_EXTENSION;
-		//      fstream tec_file1 (tec_file_name.data(),ios::app|ios::out);
-		//      tec_file1.setf(ios::scientific,ios::floatfield);
-		//      tec_file1.precision(12);
-		//      if (!tec_file1.good()) return;
-		//#ifdef SUPERCOMPUTER
-		//      tec_file1.rdbuf()->pubsetbuf(sxbuf1,MY_IO_BUFSIZE*MY_IO_BUFSIZE);
-		//#endif
-		//      //OK  tec_file1.clear();
-		//      //OK  tec_file1.seekg(0L,ios::beg);
-		//      WriteTECHeader(tec_file1,4,"TRIANGLE");
-		//      WriteTECNodeData(tec_file1);
-		//      WriteTECElementData(tec_file1,4);
-		//      tec_file1.close(); // kg44 close file
-		//    }
-		//--------------------------------------------------------------------
-		// quad elements
-		// ***** 07/2010 TF commented out block since the global variable is
-		// always zero
-		//    if(msh_no_quad>0){
-		//      //string tec_file_name = pcs_type_name + "_" + "domain" +
-		//      "_quad" + TEC_FILE_EXTENSION;
-		//#ifdef SUPERCOMPUTER
-		//      char sxbuf2[MY_IO_BUFSIZE*MY_IO_BUFSIZE];
-		//#endif
-		//      string tec_file_name = file_base_name + "_" + "domain" + "_quad"
-		//      + TEC_FILE_EXTENSION;
-		//      fstream tec_file (tec_file_name.data(),ios::app|ios::out);
-		//
-		//      tec_file.setf(ios::scientific,ios::floatfield);
-		//      tec_file.precision(12);
-		//      if (!tec_file.good()) return;
-		//#ifdef SUPERCOMPUTER
-		//      tec_file.rdbuf()->pubsetbuf(sxbuf2,MY_IO_BUFSIZE*MY_IO_BUFSIZE);
-		//#endif
-		//      WriteTECHeader(tec_file,2,"QUADRILATERAL");
-		//      WriteTECNodeData(tec_file);
-		//      WriteTECElementData(tec_file,2);
-		//      tec_file.close(); // kg44 close file
-		//    }
-		//--------------------------------------------------------------------
-		// tet elements
-		// ***** 07/2010 TF commented out block since the global variable is
-		// always zero
-		//    if(msh_no_tets>0){
-		//      //string tec_file_name = pcs_type_name + "_" + "domain" + "_tet"
-		//      + TEC_FILE_EXTENSION;
-		//#ifdef SUPERCOMPUTER
-		//      char sxbuf3[MY_IO_BUFSIZE*MY_IO_BUFSIZE];
-		//#endif
-		//
-		//      string tec_file_name = file_base_name + "_" + "domain" + "_tet";
-		//
-		//#if defined(USE_MPI) || defined(USE_MPI_PARPROC) ||
-		// defined(USE_MPI_REGSOIL)
-		//      sprintf(tf_name, "%d", myrank);
-		//      tec_file_name += "_" + string(tf_name);
-		//#endif
-		//
-		//      tec_file_name += TEC_FILE_EXTENSION;
-		//
-		//      fstream tec_file (tec_file_name.data(),ios::app|ios::out);
-		//
-		//      tec_file.setf(ios::scientific,ios::floatfield);
-		//      tec_file.precision(12);
-		//      if (!tec_file.good()) return;
-		//#ifdef SUPERCOMPUTER
-		//      tec_file.rdbuf()->pubsetbuf(sxbuf3,MY_IO_BUFSIZE*MY_IO_BUFSIZE);
-		//#endif
-		//
-		//      WriteTECHeader(tec_file,5,"TETRAHEDRON");
-		//      WriteTECNodeData(tec_file);
-		//      WriteTECElementData(tec_file,5);
-		//      tec_file.close(); // kg44 close file
-		//    }
-		//--------------------------------------------------------------------
-		//    // pris elements
-		// ***** 07/2010 TF commented out block since the global variable is
-		// always zero
-		//    if(msh_no_pris>0){
-		//      //string tec_file_name = pcs_type_name + "_" + "domain" +
-		//      "_pris" + TEC_FILE_EXTENSION;
-		//#ifdef SUPERCOMPUTER
-		//        char sxbuf4[MY_IO_BUFSIZE*MY_IO_BUFSIZE];
-		//#endif
-		//      string tec_file_name = file_base_name + "_" + "domain" + "_pris"
-		//      + TEC_FILE_EXTENSION;
-		//      fstream tec_file (tec_file_name.data(),ios::app|ios::out);
-		//
-		//      tec_file.setf(ios::scientific,ios::floatfield);
-		//      tec_file.precision(12);
-		//      if (!tec_file.good()) return;
-		//#ifdef SUPERCOMPUTER
-		//      tec_file.rdbuf()->pubsetbuf(sxbuf4,MY_IO_BUFSIZE*MY_IO_BUFSIZE);
-		//#endif
-		//
-		//      WriteTECHeader(tec_file,6,"BRICK");
-		//      WriteTECNodeData(tec_file);
-		//      WriteTECElementData(tec_file,6);
-		//      tec_file.close(); // kg44 close file
-		//    }
-		//--------------------------------------------------------------------
-		// hex elements
-		// ***** 07/2010 TF commented out block since the global variable is
-		// always zero
-		//    if(msh_no_hexs>0){
-		//      //string tec_file_name = pcs_type_name + "_" + "domain" + "_hex"
-		//      + TEC_FILE_EXTENSION;
-		//#ifdef SUPERCOMPUTER
-		//        char sxbuf5[MY_IO_BUFSIZE*MY_IO_BUFSIZE];
-		//#endif
-		//
-		//      string tec_file_name = file_base_name + "_" + "domain" + "_hex"
-		//      + TEC_FILE_EXTENSION;
-		//      fstream tec_file (tec_file_name.data(),ios::app|ios::out);
-		//
-		//
-		//      tec_file.setf(ios::scientific,ios::floatfield);
-		//      tec_file.precision(12);
-		//      if (!tec_file.good()) return;
-		//#ifdef SUPERCOMPUTER
-		//      tec_file.rdbuf()->pubsetbuf(sxbuf5,MY_IO_BUFSIZE*MY_IO_BUFSIZE);
-		//#endif
-		//      WriteTECHeader(tec_file,3,"BRICK");
-		//      WriteTECNodeData(tec_file);
-		//      WriteTECElementData(tec_file,3);
-		//      tec_file.close(); // kg44 close file
-		//    }
 	}
 }
 
@@ -3050,11 +2897,6 @@ void COutput::PCONWriteDOMDataTEC()
 	int te = 0;
 	string eleType;
 	string tec_file_name;
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || defined(USE_MPI_REGSOIL)
-	char tf_name[10];
-	std::cout << "Process " << myrank << " in WriteDOMDataTEC"
-	          << "\n";
-#endif
 
 	//----------------------------------------------------------------------
 	// Tests
@@ -3159,11 +3001,6 @@ void COutput::PCONWriteDOMDataTEC()
    te=6;
    }
  */
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) || defined(USE_MPI_REGSOIL)
-		sprintf(tf_name, "%d", myrank);
-		tec_file_name += "_" + string(tf_name);
-		std::cout << "Tecplot filename: " << tec_file_name << endl;
-#endif
 		tec_file_name += TEC_FILE_EXTENSION;
 		// WW
 		if (!_new_file_opened) remove(tec_file_name.c_str());
@@ -3180,147 +3017,7 @@ void COutput::PCONWriteDOMDataTEC()
 		WriteTECHeader(tec_file, te, eleType);
 		WriteTECNodePCONData(tec_file);
 		WriteTECElementData(tec_file, te);
-		tec_file.close();  // kg44 close file
-		//--------------------------------------------------------------------
-		// tri elements
-		// ***** 07/2010 TF commented out block since the global variable is
-		// always zero
-		//    if(msh_no_tris>0){
-		//    //string tec_file_name = pcs_type_name + "_" + "domain" + "_tri" +
-		//    TEC_FILE_EXTENSION;
-		//#ifdef SUPERCOMPUTER
-		//// buffer the output
-		//      char sxbuf1[MY_IO_BUFSIZE*MY_IO_BUFSIZE];
-		//#endif
-		//      string tec_file_name = file_base_name + "_" + "domain" + "_tri"
-		//      + TEC_FILE_EXTENSION;
-		//      fstream tec_file1 (tec_file_name.data(),ios::app|ios::out);
-		//      tec_file1.setf(ios::scientific,ios::floatfield);
-		//      tec_file1.precision(12);
-		//      if (!tec_file1.good()) return;
-		//#ifdef SUPERCOMPUTER
-		//      tec_file1.rdbuf()->pubsetbuf(sxbuf1,MY_IO_BUFSIZE*MY_IO_BUFSIZE);
-		//#endif
-		//      //OK  tec_file1.clear();
-		//      //OK  tec_file1.seekg(0L,ios::beg);
-		//      WriteTECHeader(tec_file1,4,"TRIANGLE");
-		//      WriteTECNodeData(tec_file1);
-		//      WriteTECElementData(tec_file1,4);
-		//      tec_file1.close(); // kg44 close file
-		//    }
-		//--------------------------------------------------------------------
-		// ***** 07/2010 TF commented out block since the global variable is
-		// always zero
-		// quad elements
-		//    if(msh_no_quad>0){
-		//      //string tec_file_name = pcs_type_name + "_" + "domain" +
-		//      "_quad" + TEC_FILE_EXTENSION;
-		//#ifdef SUPERCOMPUTER
-		//      char sxbuf2[MY_IO_BUFSIZE*MY_IO_BUFSIZE];
-		//#endif
-		//      string tec_file_name = file_base_name + "_" + "domain" + "_quad"
-		//      + TEC_FILE_EXTENSION;
-		//      fstream tec_file (tec_file_name.data(),ios::app|ios::out);
-		//
-		//      tec_file.setf(ios::scientific,ios::floatfield);
-		//      tec_file.precision(12);
-		//      if (!tec_file.good()) return;
-		//#ifdef SUPERCOMPUTER
-		//      tec_file.rdbuf()->pubsetbuf(sxbuf2,MY_IO_BUFSIZE*MY_IO_BUFSIZE);
-		//#endif
-		//      WriteTECHeader(tec_file,2,"QUADRILATERAL");
-		//      WriteTECNodeData(tec_file);
-		//      WriteTECElementData(tec_file,2);
-		//      tec_file.close(); // kg44 close file
-		//    }
-		//--------------------------------------------------------------------
-		// ***** 07/2010 TF commented out block since the global variable is
-		// always zero
-		// tet elements
-		//    if(msh_no_tets>0){
-		//      //string tec_file_name = pcs_type_name + "_" + "domain" + "_tet"
-		//      + TEC_FILE_EXTENSION;
-		//#ifdef SUPERCOMPUTER
-		//      char sxbuf3[MY_IO_BUFSIZE*MY_IO_BUFSIZE];
-		//#endif
-		//
-		//      string tec_file_name = file_base_name + "_" + "domain" + "_tet";
-		//
-		//#if defined(USE_MPI) || defined(USE_MPI_PARPROC) ||
-		// defined(USE_MPI_REGSOIL)
-		//      sprintf(tf_name, "%d", myrank);
-		//      tec_file_name += "_" + string(tf_name);
-		//#endif
-		//
-		//      tec_file_name += TEC_FILE_EXTENSION;
-		//
-		//      fstream tec_file (tec_file_name.data(),ios::app|ios::out);
-		//
-		//      tec_file.setf(ios::scientific,ios::floatfield);
-		//      tec_file.precision(12);
-		//      if (!tec_file.good()) return;
-		//#ifdef SUPERCOMPUTER
-		//      tec_file.rdbuf()->pubsetbuf(sxbuf3,MY_IO_BUFSIZE*MY_IO_BUFSIZE);
-		//#endif
-		//
-		//      WriteTECHeader(tec_file,5,"TETRAHEDRON");
-		//      WriteTECNodeData(tec_file);
-		//      WriteTECElementData(tec_file,5);
-		//      tec_file.close(); // kg44 close file
-		//    }
-		//--------------------------------------------------------------------
-		// ***** 07/2010 TF commented out block since the global variable is
-		// always zero
-		// pris elements
-		//    if(msh_no_pris>0){
-		//      //string tec_file_name = pcs_type_name + "_" + "domain" +
-		//      "_pris" + TEC_FILE_EXTENSION;
-		//#ifdef SUPERCOMPUTER
-		//        char sxbuf4[MY_IO_BUFSIZE*MY_IO_BUFSIZE];
-		//#endif
-		//      string tec_file_name = file_base_name + "_" + "domain" + "_pris"
-		//      + TEC_FILE_EXTENSION;
-		//      fstream tec_file (tec_file_name.data(),ios::app|ios::out);
-		//
-		//      tec_file.setf(ios::scientific,ios::floatfield);
-		//      tec_file.precision(12);
-		//      if (!tec_file.good()) return;
-		//#ifdef SUPERCOMPUTER
-		//      tec_file.rdbuf()->pubsetbuf(sxbuf4,MY_IO_BUFSIZE*MY_IO_BUFSIZE);
-		//#endif
-		//
-		//      WriteTECHeader(tec_file,6,"BRICK");
-		//      WriteTECNodeData(tec_file);
-		//      WriteTECElementData(tec_file,6);
-		//      tec_file.close(); // kg44 close file
-		//    }
-		//--------------------------------------------------------------------
-		// ***** 07/2010 TF commented out block since the global variable is
-		// always zero
-		// hex elements
-		//    if(msh_no_hexs>0){
-		//      //string tec_file_name = pcs_type_name + "_" + "domain" + "_hex"
-		//      + TEC_FILE_EXTENSION;
-		//#ifdef SUPERCOMPUTER
-		//        char sxbuf5[MY_IO_BUFSIZE*MY_IO_BUFSIZE];
-		//#endif
-		//
-		//      string tec_file_name = file_base_name + "_" + "domain" + "_hex"
-		//      + TEC_FILE_EXTENSION;
-		//      fstream tec_file (tec_file_name.data(),ios::app|ios::out);
-		//
-		//
-		//      tec_file.setf(ios::scientific,ios::floatfield);
-		//      tec_file.precision(12);
-		//      if (!tec_file.good()) return;
-		//#ifdef SUPERCOMPUTER
-		//      tec_file.rdbuf()->pubsetbuf(sxbuf5,MY_IO_BUFSIZE*MY_IO_BUFSIZE);
-		//#endif
-		//      WriteTECHeader(tec_file,3,"BRICK");
-		//      WriteTECNodeData(tec_file);
-		//      WriteTECElementData(tec_file,3);
-		//      tec_file.close(); // kg44 close file
-		//    }
+		tec_file.close();
 	}
 }
 

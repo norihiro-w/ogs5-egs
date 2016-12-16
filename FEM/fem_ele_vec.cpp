@@ -22,10 +22,6 @@
 #include "mathlib.h"
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
 #include "PETSC/PETScLinearSolver.h"
-#else
-#ifndef NEW_EQS  // WW. 06.11.2008
-#include "matrix_routines.h"
-#endif
 #endif
 #include "pcs_dm.h"
 #include "rf_mfp_new.h"
@@ -1992,45 +1988,8 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 			*De = *(smat->getD_tran());  // UJG/WW
 	}
 
-	if (PModel == 5) smat->CalculateCoefficent_HOEKBROWN();  // WX:02.2011
-	                                                         /*
-	                                                            string fname=FileName+"_D.txt";
-	                                                            ofstream out_f(fname.c_str());
-	                                                            De->Write(out_f);
-	                                                          */
+	if (PModel == 5) smat->CalculateCoefficent_HOEKBROWN();
 
-	/*
-	   //TEST
-	   fstream oss;
-	   if(update)
-	   {
-	   char tf_name[10];
-	   #ifdef USE_MPI
-	   sprintf(tf_name,"%d",myrank);
-	    string fname = FileName+tf_name+".stress";
-	   #else
-	    string fname = FileName+".stress";
-	   #endif
-	   oss.open(fname.c_str(), ios::app|ios::out);
-	   //    oss.open(fname.c_str(), ios::trunc|ios::out);
-	   oss<<"\nElement  "<<Index<<endl;
-	   oss<<endl;
-
-	   oss<<"Diaplacement "<<endl;
-	   for(i=0;i<nnodesHQ;i++)
-	   {
-	   oss<<nodes[i]<<"  ";
-	   for(int ii=0; ii<dim; ii++)
-	   oss<<Disp[ii*nnodesHQ+i]<<"  ";
-	   oss<<endl;
-	   }
-	   oss<<"Temperature "<<endl;
-	   for(i=0; i<nnodes;i++)
-	   oss<<Temp[i]<<"  ";
-	   oss<<endl;
-	   oss.close();
-	   }
-	 */
 	//
 	if (PoroModel == 4 || T_Flag || smat->Creep_mode > 0) Strain_TCS = true;
 	//

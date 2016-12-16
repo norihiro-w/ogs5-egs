@@ -32,11 +32,6 @@
 #include "rf_pcs.h"  //OK_MOD"
 #include "tools.h"
 //
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-//#ifndef NEW_EQS                                   //WW. 06.11.2008
-#include "matrix_routines.h"
-#endif
 #include "fem_ele_vec.h"
 #include "rf_msp_new.h"
 #include "rf_tim_new.h"

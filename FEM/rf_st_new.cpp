@@ -43,12 +43,6 @@
 #include "fem_ele.h"
 
 #include "tools.h"  //GetLineFromFile
-/* Tools */
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-//#ifndef NEW_EQS                                   //WW. 06.11.2008
-#include "matrix_routines.h"
-#endif
 
 // GeoSys-FEMLib
 // OK_IC #include "rfsousin.h"

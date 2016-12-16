@@ -19,10 +19,6 @@
    ========================================================================*/
 #include "problem.h"
 
-#if defined(USE_MPI)
-#include <mpi.h>
-#endif
-
 #include <cfloat>
 #include <iostream>
 #include <sstream>
@@ -951,18 +947,10 @@ bool Problem::Euler_TimeDiscretize()
 	aktueller_zeitschritt = 0;
 	ScreenMessage("\n\n---------------------------------------------\n");
 	ScreenMessage("Start time steps\n");
-//
-// Output zero time initial values
-#if defined(USE_MPI) || defined(USE_MPI_KRC)
-	if (myrank == 0)
-	{
-#endif
-		ScreenMessage("-> outputting initial values... \n");
-		OUTData(current_time, aktueller_zeitschritt, true);
-//	ScreenMessage("done \n");
-#if defined(USE_MPI) || defined(USE_MPI_KRC)
-	}
-#endif
+
+	// Output zero time initial values
+	ScreenMessage("-> outputting initial values... \n");
+	OUTData(current_time, aktueller_zeitschritt, true);
 
 	// check if this is a steady state simulation
 	bool isSteadySimulation = true;
@@ -1027,13 +1015,6 @@ bool Problem::Euler_TimeDiscretize()
 
 		SetTimeActiveProcesses();  // JT2012: Activate or deactivate processes
                                    // with independent time stepping
-//
-#if defined(USE_MPI)
-		MPI_Bcast(&dt, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);  // all processes use
-                                                           // the same time
-                                                           // stepping (JT->WW.
-                                                           // Must they always?)
-#endif
 		//
 		// Update time settings
 		aktueller_zeitschritt++;
@@ -1078,15 +1059,8 @@ bool Problem::Euler_TimeDiscretize()
 					force_output = false;
 				else  // JT: Make sure we printout on last time step
 					force_output = true;
-#if defined(USE_MPI) || defined(USE_MPI_KRC)
-				if (myrank == 0)
-				{
-#endif
-					//
-					OUTData(current_time, aktueller_zeitschritt, force_output);
-#if defined(USE_MPI)
-				}
-#endif
+				//
+				OUTData(current_time, aktueller_zeitschritt, force_output);
 			}
 			accepted_times++;
 			for (i = 0; i < (int)active_process_index.size(); i++)
@@ -1555,27 +1529,19 @@ void Problem::PostCouplingLoop()
 		m_pcs = pcs_vector[i];
 		if (hasAnyProcessDeactivatedSubdomains)  // NW
 			m_pcs->CheckMarkedElement();
-#if defined(USE_MPI)  // 18.10.2007 WW
-		if (myrank == 0)
-		{
-#endif
-			m_pcs->WriteSolution();  // WW
+		m_pcs->WriteSolution();  // WW
 #ifdef GEM_REACT
-			if (i == 0)  // for GEM_REACT we also need information on porosity
-				         // (node porosity internally stored in Gems
-				         // process)!....do it only once and it does not matter
-				         // for which process ! ....we assume that the first pcs
-				         // process is the flow process...if reload not defined
-				         // for every process, restarting with gems will not
-				         // work in any case
+		if (i == 0)  // for GEM_REACT we also need information on porosity
+					 // (node porosity internally stored in Gems
+					 // process)!....do it only once and it does not matter
+					 // for which process ! ....we assume that the first pcs
+					 // process is the flow process...if reload not defined
+					 // for every process, restarting with gems will not
+					 // work in any case
 
-				if ((m_pcs->reload == 1 || m_pcs->reload == 3) &&
-				    !((aktueller_zeitschritt % m_pcs->nwrite_restart) > 0))
-					m_vec_GEM->WriteReloadGem();
-
-#endif
-#if defined(USE_MPI)  // 18.10.2007 WW
-		}
+			if ((m_pcs->reload == 1 || m_pcs->reload == 3) &&
+				!((aktueller_zeitschritt % m_pcs->nwrite_restart) > 0))
+				m_vec_GEM->WriteReloadGem();
 #endif
 
 		m_pcs->Extropolation_MatValue();         // WW
@@ -2909,12 +2875,6 @@ inline void Problem::LOPExecuteRegionalRichardsFlow(CRFProcess* m_pcs_global,
 	CRFProcess* m_pcs_local = NULL;
 	Math_Group::vec<MeshLib::CNode*> ele_nodes(20);
 	double value;
-#if defined(USE_MPI_REGSOIL)
-	double* values;
-	int rp;
-	int num_parallel_blocks;
-	int l;
-#endif
 	int timelevel = 1;
 	int idxp = m_pcs_global->GetNodeValueIndex("PRESSURE1") + timelevel;
 	// WW int idxcp = m_pcs_global->GetNodeValueIndex("PRESSURE_CAP") +
@@ -2922,10 +2882,6 @@ inline void Problem::LOPExecuteRegionalRichardsFlow(CRFProcess* m_pcs_global,
 	int idxS = m_pcs_global->GetNodeValueIndex("SATURATION1") + timelevel;
 	MeshLib::CElem* m_ele_local = NULL;
 	MeshLib::CNode* m_nod_local = NULL;
-
-#if defined(USE_MPI_REGSOIL)
-	values = new double[no_local_nodes];  // Should be more sophisticated
-#endif
 
 	//======================================================================
 	if (aktueller_zeitschritt == 1)

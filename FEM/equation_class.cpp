@@ -203,9 +203,6 @@ void Linear_EQS::ConfigNumerics(CNumerics* m_num, const long n)
 	{
 		case 1:
 			precond_name = "Jacobi";
-#if defined(USE_MPI)
-			prec_M = new double[size_A];
-#endif
 			break;
 		case 100:
 			// precond_name = "ILU"; break;
@@ -213,9 +210,6 @@ void Linear_EQS::ConfigNumerics(CNumerics* m_num, const long n)
 			// ----------------------------------------------
 			precond_name = "ILU not available. Use Jacobi";
 			precond_type = 1;
-#if defined(USE_MPI)
-			prec_M = new double[size_A];
-#endif
 			// ----------------------------------------------
 			break;
 		default:
@@ -247,9 +241,6 @@ void Linear_EQS::Initialize()
 **************************************************************************/
 void Linear_EQS::Clean()
 {
-#if defined(USE_MPI)
-	double cpu_time_local = -MPI_Wtime();
-#endif
 	for (int i = 0; i < (int)f_buffer.size(); i++)
 	{
 		if (f_buffer[i]) delete[] f_buffer[i];
@@ -258,16 +249,6 @@ void Linear_EQS::Clean()
 	f_buffer.clear();
 	if (prec_M) delete[] prec_M;
 	prec_M = NULL;
-#if defined(USE_MPI)
-	//
-	if (border_buffer0) delete[] border_buffer0;
-	border_buffer0 = NULL;
-	if (border_buffer1) delete[] border_buffer1;
-	border_buffer1 = NULL;
-	//
-	cpu_time_local += MPI_Wtime();
-	cpu_time += cpu_time_local;
-#endif
 }
 /**************************************************************************
    Task: Linear equation::Write
@@ -389,33 +370,6 @@ void Linear_EQS::WriteX(ostream& os)
    03/2009 PCH Solver type and precondition options added for .num file
 **************************************************************************/
 #if defined(USE_MPI)
-int Linear_EQS::Solver(double* xg, const long n)
-{
-	//
-	double cpu_time_local = -MPI_Wtime();
-	iter = 0;
-	ComputePreconditioner();
-	size_global = n;
-	switch (solver_type)
-	{
-		case 2:
-			iter = BiCGStab(xg, n);
-			break;
-		case 3:
-			iter = BiCG(xg, n);
-			break;
-		case 5:
-			iter = CG(xg, n);
-			break;
-		case 7:
-			iter = CGS(xg, n);
-			break;
-	}
-	cpu_time_local += MPI_Wtime();
-	cpu_time += cpu_time_local;
-	return iter;
-}
-
 #else  // if defined(USE_MPI)
 
 #if defined(LIS) || defined(MKL)
@@ -1076,9 +1030,6 @@ void Linear_EQS::ComputePreconditioner()
 	switch (precond_type)
 	{
 		case 1:
-#if defined(USE_MPI)
-			ComputePreconditioner_Jacobi();
-#endif
 			return;
 		case 100:
 			ComputePreconditioner_ILU();
@@ -1109,11 +1060,7 @@ void Linear_EQS::Precond(double* vec_s, double* vec_r)
 	switch (precond_type)
 	{
 		case 1:
-#if defined(USE_MPI)
-			Precond_Jacobi(vec_s, vec_r);
-#else
-				A->Precond_Jacobi(vec_s, vec_r);
-#endif
+			A->Precond_Jacobi(vec_s, vec_r);
 			break;
 		case 100:
 			pre = false;  // A->Precond_ILU(vec_s, vec_r);
@@ -1159,11 +1106,7 @@ double Linear_EQS::dot(const double* xx, const double* yy)
  ********************************************************************/
 double Linear_EQS::NormX()
 {
-#if defined(USE_MPI)
-	return sqrt(dot(x, x, size_global));
-#else
 	return sqrt(dot(x, x));
-#endif
 }
 //
 
@@ -1175,9 +1118,6 @@ double Linear_EQS::NormX()
  ********************************************************************/
 void Linear_EQS::Message()
 {
-#ifdef USE_MPI
-	if (myrank > 0) return;
-#endif
 	if (!message) return;
 	cout.width(10);
 	cout.precision(3);
@@ -1224,7 +1164,7 @@ inline bool Linear_EQS::CheckNormRHS(const double normb_new)
 	}
 	return false;
 }
-#ifndef USE_MPI
+
 /**************************************************************************
    Task: Linear equation::CG
    Programing:
@@ -1675,7 +1615,6 @@ inline void Linear_EQS::Update(double* x, int k, Matrix& h, double* s)
 	}
 }
 
-//#ifndef USE_MPI
 /// GMRES solver. WW
 int Linear_EQS::GMRES()
 {
@@ -1784,10 +1723,8 @@ int Linear_EQS::GMRES()
 	return iter <= max_iter;
 }
 //-----------------------------------------------------------------
-//#endif // USE_MPI
 #endif  // GMRES
 
-#endif  // If not defined USE_MPI
 //------------------------------------------------------------------------
 }  // namespace
 #endif  // if defined(NEW_EQS)
