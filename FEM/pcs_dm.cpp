@@ -2190,7 +2190,6 @@ void CRFProcessDeformation::GlobalAssembly()
 
 		// Assemble global system
 		// DDCAssembleGlobalMatrix();
-		// MXDumpGLS("rf_pcs.txt",1,eqs->b,eqs->x);
 	}
 #else  // ifdef USE_MPI
 	//----------------------------------------------------------------------
@@ -2215,8 +2214,6 @@ void CRFProcessDeformation::GlobalAssembly()
 		//      ofstream Dum("rf_pcs.txt", ios::out); // WW
 		//  eqs_new->Write(Dum);
 		//  Dum.close();
-
-		// MXDumpGLS("rf_pcs1.txt",1,eqs->b,eqs->x); abort();
 	}
 #endif
 	//----------------------------------------------------------------------
@@ -2258,11 +2255,6 @@ void CRFProcessDeformation::GlobalAssembly()
 // if(!fem_dm->dynamic)
 //   RecoverSolution(2);  // p_i-->p_0
 
-//----------------------------------------------------------------------
-//
-// {			 MXDumpGLS("rf_pcs1.txt",1,eqs->b,eqs->x); // abort();}
-
-// DumpEqs("rf_pcs1.txt");
 
 #if 0
             {
@@ -2282,13 +2274,6 @@ void CRFProcessDeformation::GlobalAssembly()
 		eqs_new->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY);
 //		eqs_new->EQSV_Viewer("eqs_after_assembl");
 #endif
-
-		// {			MXDumpGLS("rf_pcs1.txt",1,eqs->b,eqs->x); // abort();}
-		//#if defined(USE_PETSC)  // || defined(other parallel
-		// libs)//03~04.3012.
-		////		eqs_new->EQSV_Viewer("eqs_after_ST");
-		//		eqs_new->AssembleRHS_PETSc();
-		//#endif
 
 		// Apply Dirchlete bounday condition
 		if (!fem_dm->dynamic)
@@ -2722,8 +2707,6 @@ void CRFProcessDeformation::ReleaseLoadingByExcavation()
 		if (!elem->GetMark()) elem->SetMark(true);
 	}
 	PreLoad = 1;
-	// TEST OUTPUT
-	//   {MXDumpGLS("rf_pcs.txt",1,eqs->b,eqs->x);  abort();}
 }
 
 /*************************************************************************

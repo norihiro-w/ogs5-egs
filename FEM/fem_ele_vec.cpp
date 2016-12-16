@@ -1328,17 +1328,9 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 				// Local assembly of stiffness matrix
 				for (size_t k = 0; k < ele_dim; k++)
 				{
-#if defined(USE_PETSC)  // || defined(other parallel libs)//10.3012. WW
-// TODO
-#else
 #ifdef NEW_EQS
 					(*A)(eqs_number[i] + NodeShift[k],
 					     eqs_number[j] + NodeShift[k]) += (*Mass)(i, j);
-#else
-					MXInc(eqs_number[i] + NodeShift[k],
-					      eqs_number[j] + NodeShift[k],
-					      (*Mass)(i, j));
-#endif
 #endif
 				}
 			}  // loop j
@@ -1368,11 +1360,9 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 #else
 #ifdef NEW_EQS
 					double& a = (*A)(globalRowId, globalColId);
-#pragma omp atomic
+					#pragma omp atomic
 					a += val;
 //(*A)(globalRowId,globalColId) += val;
-#else
-					MXInc(globalRowId, globalColId, val);
 #endif
 #endif
 				}
@@ -1399,70 +1389,6 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 	if (PressureC_S_dp)
 		GlobalAssembly_PressureCoupling(PressureC_S_dp, -f2 * biot, 0);
 
-	/*
-	   // Assemble coupling matrix
-	   if(Flow_Type>=0&&pcs->type/40 == 1)              // Monolithic scheme
-	   {
-
-	   f2 *= biot;
-
-	   double fact_NR = 0.;
-	   if(pcs->m_num->nls_method == 1) // If Newton-Raphson method
-	   {
-	      if(Flow_Type == 2)     // Multi-phase-flow: p_g-Sw*p_c
-	   {
-
-	   // P_g related:
-	   for (i=0;i<nnodesHQ;i++)
-	   {
-	   for (j=0;j<nnodes;j++)
-	   {
-	   for(k=0; k<ele_dim; k++)
-	   #ifdef NEW_EQS
-	   (*A)(NodeShift[k]+eqs_number[i], NodeShift[dim+1]+eqs_number[j])
-	   += f2*(*PressureC)(nnodesHQ*k+i,j);
-	   #else
-	   MXInc(NodeShift[k]+eqs_number[i], NodeShift[dim+1]+eqs_number[j],\
-	   f2*(*PressureC)(nnodesHQ*k+i,j));
-	   #endif
-	   }
-	   }
-
-	   fact_NR = 0.0;
-	   for (i=0;i<nnodes;i++)
-	   {
-	   fact_NR += AuxNodal_S[i];  /// Sw
-
-	   /// dS_dPcPc
-	   fact_NR +=
-	   m_mmp->SaturationPressureDependency(AuxNodal_S[i])*h_pcs->GetNodeValue(nodes[i],idx_P1);
-	   }
-
-	   fact_NR /= static_cast<double>(nnodes);
-
-	   f2 *= -1.0*fact_NR;
-
-	   }
-	   }
-
-	   // Add pressure coupling matrix to the stifness matrix
-	   for (i=0;i<nnodesHQ;i++)
-	   {
-	   for (j=0;j<nnodes;j++)
-	   {
-	   for(k=0; k<ele_dim; k++)
-	   #ifdef NEW_EQS
-	   (*A)(NodeShift[k]+eqs_number[i], NodeShift[dim]+eqs_number[j])
-	   += f2*(*PressureC)(nnodesHQ*k+i,j);
-	   #else
-	   MXInc(NodeShift[k]+eqs_number[i], NodeShift[dim]+eqs_number[j],\
-	   f2*(*PressureC)(nnodesHQ*k+i,j));
-	   #endif
-	   }
-	   }
-
-	   }
-	 */
 	// TEST OUT
 	// PressureC->Write();
 }
@@ -1509,10 +1435,6 @@ void CFiniteElementVec::GlobalAssembly_PressureCoupling(Matrix* pCMatrix,
 				(*A)(NodeShift[k] + eqs_number[i],
 				     NodeShift[dim_shift] + eqs_number[j]) +=
 				    fct * (*pCMatrix)(nnodesHQ* k + i, j);
-#else
-				MXInc(NodeShift[k] + eqs_number[i],
-				      NodeShift[dim_shift] + eqs_number[j],
-				      fct * (*pCMatrix)(nnodesHQ* k + i, j));
 #endif
 			}
 		}

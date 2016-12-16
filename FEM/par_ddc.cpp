@@ -851,29 +851,6 @@ void CPARDomain::CalcElementMatrices(CRFProcess* m_pcs)
    Programing:
    07/2004 OK Implementation
 **************************************************************************/
-/* //WW
-   void CPARDomain::AssembleMatrix(CRFProcess* m_pcs)
-   {
-   long i;
-   //----------------------------------------------------------------------
-   SetZeroLinearSolver(eqs);
-   //MXDumpGLS("AssembleMatrix1.txt",1,eqs->b,eqs->x);
-   //----------------------------------------------------------------------
-   long no_elements = (long)elements.size();
-   for(i=0;i<no_elements;i++){
-    // virtual function PCSAssembleMatrix(i)
-   //MakeElementEntryEQS_ASM(elements[i]->global_number,eqs->b,NULL,this);
-   //WW    MakeElementEntryEQS_ASM(i,eqs->b,NULL,this,m_pcs);
-   //MXDumpGLS("AssembleMatrix1.txt",1,eqs->b,eqs->x);
-   }
-   }
- */
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   07/2004 OK Implementation
-**************************************************************************/
 bool NodeExists(long node, vector<long> node_vector)
 {
 	long i;

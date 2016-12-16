@@ -256,7 +256,6 @@
 
 /**********************************************************************/
 /* Parallelization */
-#define noPARALLEL
 #define noCHEMAPP  // MX
 #define noREACTION_ELEMENT
 #define noSX

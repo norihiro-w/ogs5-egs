@@ -4838,20 +4838,11 @@ void CFiniteElementStd::Assemble_DualTransfer()
 		{
 			for (int j = 0; j < nnodes; j++)
 			{
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-// TODO_PETSC
-#else
 #ifdef NEW_EQS
 				(*A)(eqs_number[i], eqs_number[j] + cshift) +=
 				    -fm * (*Advection)(i, j);
 				(*A)(eqs_number[i] + cshift, eqs_number[j]) +=
 				    -ff * (*Advection)(i, j);
-#else
-				MXInc(eqs_number[i], eqs_number[j] + cshift,
-				      -fm * (*Advection)(i, j));
-				MXInc(eqs_number[i] + cshift, eqs_number[j],
-				      -ff * (*Advection)(i, j));
-#endif
 #endif
 			}
 		}
@@ -7201,9 +7192,6 @@ void CFiniteElementStd::add2GlobalMatrixII(const int block_cols)
 #ifdef NEW_EQS
 						(*A)(kk, j_sh + eqs_number[j]) +=
 						    (*StiffMatrix)(i + ii_sh, j + jj_sh);
-#else
-						MXInc(kk, j_sh + eqs_number[j],
-						      (*StiffMatrix)(i + ii_sh, j + jj_sh));
 #endif
 					}
 				}
@@ -7220,8 +7208,6 @@ void CFiniteElementStd::add2GlobalMatrixII(const int block_cols)
 			{
 #ifdef NEW_EQS
 				(*A)(kk, cshift_dm + eqs_number[j]) += (*StiffMatrix)(i, j);
-#else
-				MXInc(kk, cshift_dm + eqs_number[j], (*StiffMatrix)(i, j));
 #endif
 			}
 		}
@@ -7321,10 +7307,6 @@ void CFiniteElementStd::CalcFEM_FCT()
 			(*A)(NodeShift[problem_dimension_dm] + eqs_number[i],
 			     NodeShift[problem_dimension_dm] + eqs_number[j]) +=
 			    (*AuxMatrix)(i, j);
-#else
-			MXInc(NodeShift[problem_dimension_dm] + eqs_number[i],
-			      NodeShift[problem_dimension_dm] + eqs_number[j],
-			      (*AuxMatrix)(i, j));
 #endif
 		}
 	}
@@ -7533,7 +7515,7 @@ void CFiniteElementStd::AssembleMixedHyperbolicParabolicEquation()
 			(*pcs->matrix_file) << endl;
 		}
 
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
+#ifdef NEW_EQS
 		//----------------------------------------------------------------------
 		// Add local matrix to global matrix
 		if (add2global)
@@ -7541,16 +7523,9 @@ void CFiniteElementStd::AssembleMixedHyperbolicParabolicEquation()
 			{
 				for (j = 0; j < nnodes; j++)
 				{
-#ifdef NEW_EQS
-					// WW
 					(*A)(NodeShift[problem_dimension_dm] + eqs_number[i],
 					     NodeShift[problem_dimension_dm] + eqs_number[j]) +=
 					    (*StiffMatrix)(i, j);
-#else
-					MXInc(NodeShift[problem_dimension_dm] + eqs_number[i],
-					      NodeShift[problem_dimension_dm] + eqs_number[j],
-					      (*StiffMatrix)(i, j));
-#endif
 				}
 			}
 #endif
@@ -7716,10 +7691,6 @@ void CFiniteElementStd::AssembleParabolicEquationNewton()
 			(*pcs->eqs_new->A)(NodeShift[problem_dimension_dm] + eqs_number[i],
 			                   NodeShift[problem_dimension_dm] +
 			                       eqs_number[j]) += jacobian[i][j];  // WW
-#else
-			MXInc(NodeShift[problem_dimension_dm] + eqs_number[i],
-			      NodeShift[problem_dimension_dm] + eqs_number[j],
-			      jacobian[i][j]);
 #endif
 	}
 
@@ -8050,16 +8021,6 @@ void CFiniteElementStd::Assemble_strainCPL_Matrix(const double fac,
 				(*A)(NodeShift[shift_index] + eqs_number[i],
 				     eqs_number[j] + NodeShift[2]) +=
 				    (*StrainCoupling)(i, j + 2 * nnodesHQ) * fac;
-#else
-			MXInc(NodeShift[shift_index] + eqs_number[i],
-			      eqs_number[j] + NodeShift[0], (*StrainCoupling)(i, j) * fac);
-			MXInc(NodeShift[shift_index] + eqs_number[i],
-			      eqs_number[j] + NodeShift[1],
-			      (*StrainCoupling)(i, j + nnodesHQ) * fac);
-			if (problem_dimension_dm == 3)
-				MXInc(NodeShift[shift_index] + eqs_number[i],
-				      eqs_number[j] + NodeShift[2],
-				      (*StrainCoupling)(i, j + 2 * nnodesHQ) * fac);
 #endif
 		}
 	}
@@ -8139,14 +8100,9 @@ void CFiniteElementStd::AssembleMassMatrix(int option)
 				{
 					for (int j = 0; j < nnodes; j++)
 					{
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-// TODO
-#elif NEW_EQS
+#ifdef NEW_EQS
 						(*A)(i_sh + eqs_number[i], j_sh + eqs_number[j]) +=
 						    (*Mass)(i + ii_sh, j + jj_sh);
-#else
-						MXInc(i_sh + eqs_number[i], j_sh + eqs_number[j],
-						      (*Mass)(i + ii_sh, j + jj_sh));
 #endif
 					}
 				}
@@ -8162,14 +8118,9 @@ void CFiniteElementStd::AssembleMassMatrix(int option)
 		{
 			for (int j = 0; j < nnodes; j++)
 			{
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-// TODO
-#elif defined(NEW_EQS)
+#if defined(NEW_EQS)
 				(*A)(cshift + eqs_number[i], cshift + eqs_number[j]) +=
 				    (*Mass)(i, j);
-#else
-				MXInc(cshift + eqs_number[i], cshift + eqs_number[j],
-				      (*Mass)(i, j));
 #endif
 			}
 		}
@@ -8573,34 +8524,18 @@ void CFiniteElementStd::Assembly(bool updateA, bool updateRHS,
 void CFiniteElementStd::Assembly(int option, int dimension)
 {
 	int i, nn;
-//----------------------------------------------------------------------
-#ifdef PARALLEL
-	index = m_dom->elements[e]->global_number;
-#else
-	index = Index;
-#endif
-	//----------------------------------------------------------------------
 
 	nn = nnodes;
 	// PCH should check the following line carefully.
-	if (pcs->type / 10 == 4 || pcs->type == 4) nn = nnodesHQ;
+	if (pcs->type / 10 == 4 || pcs->type == 4)
+		nn = nnodesHQ;
 
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-// TODO
-#elif defined(NEW_EQS)  // PCH
+#if defined(NEW_EQS)
 	eqs_rhs = pcs->eqs_new->b;
-#else
-	eqs_rhs = pcs->eqs->b;
 #endif
 
 	for (i = 0; i < nn; i++)
-	{
-#ifdef PARALLEL
-		eqs_number[i] = MeshElement->domain_nodes[i];
-#else
 		eqs_number[i] = MeshElement->nodes[i]->GetEquationIndex();
-#endif
-	}
 
 	// Get room in the memory for local matrices
 	SetMemory();

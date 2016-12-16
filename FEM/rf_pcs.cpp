@@ -4412,7 +4412,6 @@ double CRFProcess::Execute()
 #ifdef CHECK_EQS
 	std::string eqs_name =
 	    convertProcessTypeToString(this->getProcessType()) + "_EQS.txt";
-	MXDumpGLS((char*)eqs_name.c_str(), 1, eqs->b, eqs->x);
 #endif
 //----------------------------------------------------------------------
 // Execute linear solver
@@ -4549,11 +4548,6 @@ double CRFProcess::Execute()
 #endif
 
 // Solve the algebra
-#ifdef CHECK_EQS
-		string eqs_name = convertProcessTypeToString(this->getProcessType()) +
-		                  "_EQS" + number2str(aktueller_zeitschritt) + ".txt";
-		MXDumpGLS((char*)eqs_name.c_str(), 1, eqs->b, eqs->x);
-#endif
 
 #if defined(USE_PETSC)
 		//		std::string eqs_output_file = FileName +
@@ -4996,13 +4990,6 @@ void CRFProcess::AddFCT_CorrectionVector()
 			(*A)(i, j) += d1;
 			(*A)(j, i) += d1;
 			(*A)(j, j) += -d1;
-#else
-			// add off-diagonal term
-			MXInc(i, j, d1);
-			MXInc(j, i, d1);
-			// add diagonal term
-			MXInc(i, i, -d1);
-			MXInc(j, j, -d1);
 #endif
 #endif
 		}
@@ -5101,8 +5088,6 @@ void CRFProcess::AddFCT_CorrectionVector()
 		double v = 1.0 / dt * (*ML)(i);
 #ifdef NEW_EQS
 		(*A)(i, i) += v;
-#else
-		MXInc(i, i, v);
 #endif
 	}
 #endif
@@ -5314,7 +5299,6 @@ void CRFProcess::GlobalAssembly()
 			}
 		}
 		// m_dom->WriteMatrix();
-		// MXDumpGLS("rf_pcs.txt",1,m_dom->eqs->b,m_dom->eqs->x);
 		// ofstream Dum("rf_pcs.txt", ios::out); // WW
 		// m_dom->eqs->Write(Dum);
 		// Dum.close();
@@ -5418,13 +5402,10 @@ else
 		eqs_new->Write(Dum);
 		Dum.close();
 #elif defined(USE_PETSC)
-			eqs_new->EQSV_Viewer(fname);
-#else
-			MXDumpGLS(fname.c_str(), 1, eqs->b, eqs->x);
+		eqs_new->EQSV_Viewer(fname);
 #endif
 	}
 
-	//	          MXDumpGLS("rf_pcs1.txt",1,eqs->b,eqs->x); //abort();
 	// eqs_new->Write();
 	ScreenMessage("-> impose Neumann BC and source/sink terms\n");
 	IncorporateSourceTerms();
@@ -5440,12 +5421,8 @@ else
 		Dum.close();
 #elif defined(USE_PETSC)
 			eqs_new->EQSV_Viewer(fname);
-#else
-			MXDumpGLS(fname.c_str(), 1, eqs->b, eqs->x);
 #endif
 	}
-
-// MXDumpGLS("rf_pcs1.txt",1,eqs->b,eqs->x); //abort();
 
 #ifdef GEM_REACT
 	if (getProcessType() == FiniteElement::MASS_TRANSPORT &&
@@ -5494,8 +5471,6 @@ else
 		Dum.close();
 #elif defined(USE_PETSC)
 			eqs_new->EQSV_Viewer(fname);
-#else
-			MXDumpGLS(fname.c_str(), 1, eqs->b, eqs->x);
 #endif
 	}
 
@@ -5513,7 +5488,6 @@ else
 //
 //
 
-//		  MXDumpGLS("rf_pcs1.txt",1,eqs->b,eqs->x); //abort();
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012.
 	MPI_Barrier(MPI_COMM_WORLD);
 //	eqs_new->AssembleRHS_PETSc();
@@ -5809,13 +5783,6 @@ void CRFProcess::DDCAssembleGlobalMatrix()
 							a_ij = (*m_dom->eqs->A)(i + no_dom_nodes * ii,
 							                        j + no_dom_nodes * jj);
 						(*eqs_new->A)(ig + Shift[ii], jg + Shift[jj]) += a_ij;
-#else  // ifdef  NEW_EQS
-						SetLinearSolver(m_dom->eqs);
-						a_ij =
-						    MXGet(i + no_dom_nodes * ii, j + no_dom_nodes * jj);
-						// set global system matrix
-						SetLinearSolver(eqs);
-						MXInc(ig + Shift[ii], jg + Shift[jj], a_ij);
 #endif
 					}
 				}
@@ -5857,19 +5824,6 @@ void CRFProcess::DDCAssembleGlobalMatrix()
 					              jg + Shift[problem_dimension_dm]) += a_ij;
 					(*eqs_new->A)(jg + Shift[problem_dimension_dm],
 					              ig + Shift[ii]) += a_ji;
-#else  // if defined(NEW_EQS)
-					// get domain system matrix
-					SetLinearSolver(m_dom->eqs);
-					a_ij = MXGet(i + no_dom_nodesHQ * dof,
-					             j + no_dom_nodesHQ * ii);
-					a_ji = MXGet(j + no_dom_nodesHQ * ii,
-					             i + no_dom_nodesHQ * dof);
-					// set global system matrix
-					SetLinearSolver(eqs);
-					MXInc(ig + Shift[ii], jg + Shift[problem_dimension_dm],
-					      a_ij);
-					MXInc(jg + Shift[problem_dimension_dm], ig + Shift[ii],
-					      a_ji);
 #endif
 				}
 			}
@@ -5891,14 +5845,6 @@ void CRFProcess::DDCAssembleGlobalMatrix()
 				                         j + no_dom_nodesHQ * dof);
 				(*eqs_new->A)(ig + Shift[problem_dimension_dm],
 				              jg + Shift[problem_dimension_dm]) += a_ij;
-#else
-				SetLinearSolver(m_dom->eqs);
-				a_ij =
-				    MXGet(i + no_dom_nodesHQ * dof, j + no_dom_nodesHQ * dof);
-				// set global system matrix
-				SetLinearSolver(eqs);
-				MXInc(ig + Shift[problem_dimension_dm],
-				      jg + Shift[problem_dimension_dm], a_ij);
 #endif
 			}
 			//
@@ -5950,14 +5896,8 @@ void CRFProcess::AssembleSystemMatrixNew(void)
 			    "specified");
 			abort();
 	}
-#ifdef PARALLEL
-	DDCAssembleGlobalMatrix();
-#else
 	IncorporateSourceTerms();
 	IncorporateBoundaryConditions();
-#endif
-	// SetLinearSolver(eqs);
-	// MXDumpGLS("global_matrix_dd.txt",1,eqs->b,eqs->x);
 }
 
 /**************************************************************************
@@ -7414,8 +7354,6 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 				                        m_st->transfer_h_values[0]);
 #elif defined(NEW_EQS)
 				(*eqs_new->A)(k_eqs_id, k_eqs_id) += m_st->transfer_h_values[0];
-#else
-				MXInc(k_eqs_id, k_eqs_id, m_st->transfer_h_values[0]);
 #endif
 			}
 			else if (m_st->getGeoType() == GEOLIB::SURFACE ||
@@ -7449,8 +7387,6 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 #elif defined(NEW_EQS)
 							(*eqs_new->A)(k_eqs_id, l_eqs_id) +=
 							    mass[k * nen + l] * h;
-#else
-							MXInc(k_eqs_id, l_eqs_id, mass[k * nen + l] * h);
 #endif
 						}
 					}

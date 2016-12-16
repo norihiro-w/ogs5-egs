@@ -234,8 +234,6 @@ void CFluidMomentum::SolveDarcyVelocityOnNode()
 				}
 			}
 
-			//		MXDumpGLS("rf_pcs.txt",1,m_pcs->eqs->b,m_pcs->eqs->x);
-			////abort();
 			m_pcs->IncorporateBoundaryConditions(-1, d);
 // Solve for velocity
 #if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
