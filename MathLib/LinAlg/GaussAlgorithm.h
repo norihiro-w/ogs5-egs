@@ -15,7 +15,6 @@
 #include "swap.h"
 
 #include "Matrix.h"
-#include "DenseDirectLinearSolver.h"
 #include "TriangularSolve.h"
 
 namespace MathLib
@@ -29,7 +28,7 @@ namespace MathLib
  * right hand side is computed by the method execute().
  */
 template <typename FLOAT_TYPE>
-class GaussAlgorithm : public MathLib::DenseDirectLinearSolver
+class GaussAlgorithm
 {
 public:
 	/**
