@@ -21,6 +21,7 @@
 #ifndef makros_INC
 #define makros_INC
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <string>
