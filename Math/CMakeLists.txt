@@ -8,7 +8,7 @@ IF(OGS_FEM_PETSC)
 ENDIF()
 
 # Create the library
-add_library( Math STATIC ${SOURCES} )
+add_library( Math ${SOURCES} )
 
 set_target_properties(Math PROPERTIES LINKER_LANGUAGE CXX)
 

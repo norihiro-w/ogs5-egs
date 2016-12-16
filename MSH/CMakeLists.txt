@@ -17,7 +17,7 @@ include_directories(
 )
 
 # Create the library
-add_library(MSH STATIC ${SOURCES})
+add_library(MSH ${SOURCES})
 
 target_link_libraries(
 	MSH
