@@ -208,11 +208,8 @@ CFiniteElementStd::CFiniteElementStd(CRFProcess* Pcs, const int C_Sys_Flad,
 			weight_func = new double[8];
 			break;
 	}
-//
-// 27.2.2007. GravityMatrix = NULL;
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	m_dom = NULL;
-#endif
+	//
+	// 27.2.2007. GravityMatrix = NULL;
 	eqs_rhs = NULL;  // 08.2006 WW
 	//
 	// 12.12.2007 WW
@@ -4785,10 +4782,7 @@ void CFiniteElementStd::Assemble_DualTransfer()
 	double W, fkt, mat_fac = 0.;
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;  // WW
-	if (m_dom)
-		A = m_dom->eqs->A;
-	else
-		A = pcs->eqs_new->A;
+	A = pcs->eqs_new->A;
 #endif
 
 	// Inintialize
@@ -7167,10 +7161,7 @@ void CFiniteElementStd::add2GlobalMatrixII(const int block_cols)
 
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;  // WW
-	if (m_dom)
-		A = m_dom->eqs->A;
-	else
-		A = pcs->eqs_new->A;
+	A = pcs->eqs_new->A;
 #endif
 	// For DOF>1:
 	if (PcsType == V || PcsType == P || PcsType == TH)
@@ -7233,10 +7224,7 @@ void CFiniteElementStd::CalcFEM_FCT()
 	const double dt_inverse = 1.0 / dt;
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;  // WW
-	if (m_dom)
-		A = m_dom->eqs->A;
-	else
-		A = pcs->eqs_new->A;
+	A = pcs->eqs_new->A;
 #endif
 
 	//----------------------------------------------------------------------
@@ -7379,10 +7367,7 @@ void CFiniteElementStd::AssembleMixedHyperbolicParabolicEquation()
 	double theta = pcs->m_num->ls_theta;  // OK
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;  // WW
-	if (m_dom)
-		A = m_dom->eqs->A;
-	else
-		A = pcs->eqs_new->A;
+	A = pcs->eqs_new->A;
 #endif
 
 	// JT2012: Get the time step of this process! Now dt can be independently
@@ -8000,10 +7985,7 @@ void CFiniteElementStd::Assemble_strainCPL_Matrix(const double fac,
 	int shift_index;
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;
-	if (m_dom)
-		A = m_dom->eqsH->A;
-	else
-		A = pcs->eqs_new->A;
+	A = pcs->eqs_new->A;
 #endif
 	// if Richard, StrainCoupling should be multiplied with -1.
 	shift_index = problem_dimension_dm + phase;
@@ -8046,10 +8028,7 @@ void CFiniteElementStd::AssembleMassMatrix(int option)
 
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;  // PCH
-	if (m_dom)
-		A = m_dom->eqs->A;
-	else
-		A = pcs->eqs_new->A;
+	A = pcs->eqs_new->A;
 #endif
 	//----------------------------------------------------------------------
 	//======================================================================
@@ -8138,7 +8117,6 @@ void CFiniteElementStd::Config()
 {
 	int i, nn;
 	//----------------------------------------------------------------------
-	// OK index = m_dom->elements[e]->global_number;
 	index = Index;
 	//----------------------------------------------------------------------
 	nn = nnodes;
@@ -8147,13 +8125,8 @@ void CFiniteElementStd::Config()
 	if (pcs->type / 10 == 4 || pcs->type == 4) nn = nnodesHQ;
 //----------------------------------------------------------------------
 // For DDC WW
-#if !defined(USE_PETSC)  // && defined(other parallel libs)//03~04.3012. WW
-// TODO
 #ifdef NEW_EQS
 	eqs_rhs = pcs->eqs_new->b;
-#else
-	eqs_rhs = pcs->eqs->b;
-#endif
 #endif
 
 #if defined(USE_PETSC)
@@ -8184,19 +8157,8 @@ void CFiniteElementStd::Config()
 
 #else
 	// EQS indices
-	if (m_dom)  // WW
-	{
-		eqs_rhs = m_dom->eqs->b;
-		for (i = 0; i < nn; i++)
-			eqs_number[i] = element_nodes_dom[i];  // WW
-		if (pcs->dof > 1)                          // 12.12.2007 WW
-
-			for (i = 0; i < pcs->dof; i++)
-				NodeShift[i] = i * m_dom->nnodes_dom;
-	}
-	else  // OK4111
-		for (i = 0; i < nn; i++)
-			eqs_number[i] = MeshElement->nodes[i]->GetEquationIndex();
+	for (i = 0; i < nn; i++)
+		eqs_number[i] = MeshElement->nodes[i]->GetEquationIndex();
 #endif
 	//----------------------------------------------------------------------
 	// Get room in the memory for local matrices
@@ -9145,9 +9107,6 @@ void CFiniteElementStd::AssembleParabolicEquationRHSVector()
 #else
 #ifdef NEW_EQS
 	eqs_rhs = pcs->eqs_new->b;  // WW
-	if (m_dom) eqs_rhs = m_dom->eqs->b;  // WW
-#else
-	eqs_rhs = pcs->eqs->b;  // WW
 #endif
 	for (i = 0; i < nnodes; i++)
 	{

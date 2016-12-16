@@ -97,19 +97,8 @@ double CRFProcessTH::Execute(int loop_process_number)
 
 	eqs_x = eqs_new->GetGlobalSolution();
 #endif
-#if defined(NEW_EQS)  // WW
-//
-#if defined(USE_MPI)
-	CPARDomain* dom = dom_vector[myrank];
-	long global_eqs_dim =
-	    pcs_number_of_primary_nvals * m_msh->GetNodesNumber(true);
-	dom->ConfigEQS(m_num, global_eqs_dim, true);
-#else
+#if defined(NEW_EQS)
 	eqs_new->ConfigNumerics(m_num);  // 27.11.2007 WW
-#endif
-//
-#elif !defined(USE_PETSC)
-	SetZeroLinearSolver(eqs);
 #endif
 
 	// Begin Newton-Raphson steps
@@ -148,32 +137,22 @@ double CRFProcessTH::Execute(int loop_process_number)
 		              n_max_iterations);
 		ScreenMessage("------------------------------------------------\n");
 
-//----------------------------------------------------------------------
-// Solve
-//----------------------------------------------------------------------
-// Refresh solver
+		//----------------------------------------------------------------------
+		// Solve
+		//----------------------------------------------------------------------
+		// Refresh solver
 #if defined(NEW_EQS)
-#ifndef USE_MPI
-		eqs_new->Initialize();  // 27.11.2007 WW
-#endif
-#elif defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
 		eqs_new->Initialize();
-#else
-		SetZeroLinearSolver(eqs);
 #endif
 
 		ScreenMessage("-> Assembling equation system...\n");
 		GlobalAssembly();
 
 //
-#ifdef USE_MPI
-		const double NormR = dom->eqsH->NormRHS();
-#elif defined(NEW_EQS)
+#if defined(NEW_EQS)
 		const double NormR = eqs_new->NormRHS();
 #elif defined(USE_PETSC)
 		const double NormR = eqs_new->GetVecNormRHS();
-#else
-		const double NormR = NormOfUnkonwn_orRHS(false);
 #endif
 		double rp_max = std::numeric_limits<double>::max(),
 		       rT_max = std::numeric_limits<double>::max();
@@ -239,9 +218,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 
 		ScreenMessage("-> Calling linear solver...\n");
 // Linear solver
-#if defined(USE_MPI)
-		dom->eqsH->Solver(eqs_new->x, global_eqs_dim);
-#elif defined(NEW_EQS)
+#if defined(NEW_EQS)
 #ifdef LIS
 		bool compress_eqs =
 			(type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
@@ -425,12 +402,8 @@ double CRFProcessTH::Execute(int loop_process_number)
 //	RecoverSolution();
 //
 #ifdef NEW_EQS  // WW
-#if defined(USE_MPI)
-	dom->eqsH->Clean();
-#else
 	// Also allocate temporary memory for linear solver. WW
 	eqs_new->Clean();
-#endif
 #endif
 
 	// For coupling control

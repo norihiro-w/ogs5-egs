@@ -26,12 +26,10 @@
 #include "mathlib.h"
 #include "matrix_class.h"
 
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
 #ifdef NEW_EQS
 #include "msh_mesh.h"
-#include "par_ddc.h"
 #endif
-#endif
+
 
 namespace Math_Group
 {
@@ -805,7 +803,7 @@ void vec<T*>::operator=(const vec<T*>& v)
    03/2010 WW: CRS storage for matrix algbraic
  ********************************************************************
  */
-SparseTable::SparseTable(CFEMesh* a_mesh,
+SparseTable::SparseTable(MeshLib::CFEMesh* a_mesh,
                          bool quadratic,
                          bool symm,
                          StorageType stype)
@@ -996,172 +994,7 @@ SparseTable::SparseTable(CFEMesh* a_mesh,
 		larraybuffer = 0;
 	}
 }
-/*\!
- ********************************************************************
-   Create sparse matrix table for each domain
-   12/2007 WW
- ********************************************************************
- */
-SparseTable::SparseTable(CPARDomain& m_dom, bool quadratic, bool symm)
-    : symmetry(symm)
-{
-	long i = 0, j = 0, ii = 0, jj = 0;
-	long lbuff0 = 0, lbuff1 = 0;
-	storage_type = JDS;
-	//
-	rows = m_dom.GetDomainNodes(quadratic);
-	size_entry_column = 0;
-	//
-	row_index_mapping_n2o = new long[rows];
-	row_index_mapping_o2n = new long[rows];
-	diag_entry = new long[rows];
 
-	if (symmetry)
-	{
-		std::vector<long> conc;
-
-		for (i = 0; i < rows; i++)
-		{
-			row_index_mapping_n2o[i] = i;
-			// 'diag_entry' used as a temporary array
-			// to store the number of nodes connected to this node
-			lbuff1 = m_dom.num_nodes2_node[i];
-			//
-			for (j = 0; j < lbuff1; j++)
-			{
-				jj = m_dom.node_conneted_nodes[i][j];
-				if (i <= jj) conc.push_back(jj);
-				m_dom.node_conneted_nodes[i][j] = 0;
-			}
-			// Number of nodes connected to this node.
-			m_dom.num_nodes2_node[i] = (long)conc.size();
-			// New
-			for (j = 0; j < m_dom.num_nodes2_node[i]; j++)
-				m_dom.node_conneted_nodes[i][j] = conc[j];
-		}
-	}
-	//
-	//--- Sort, from that has maximum connect nodes to that has minimum connect
-	// nodes
-	//
-	for (i = 0; i < rows; i++)
-	{
-		row_index_mapping_n2o[i] = i;
-		// 'diag_entry' used as a temporary array
-		// to store the number of nodes connected to this node
-		diag_entry[i] = m_dom.num_nodes2_node[i];
-		if (!quadratic)
-		{
-			lbuff0 = 0;
-			for (j = 0; j < diag_entry[i]; j++)
-				if (m_dom.node_conneted_nodes[i][j] < rows) lbuff0++;
-			diag_entry[i] = lbuff0;
-		}
-		size_entry_column += diag_entry[i];
-	}
-//
-#if 0
-	std::cout << "-> step 2" << "\n";
-	for(i = 0; i < rows; i++)
-	{
-		// 'diag_entry' used as a temporary array
-		// to store the number of nodes connected to this node
-		lbuff0 = diag_entry[i];   // Nodes to this row
-		lbuff1 = row_index_mapping_n2o[i];
-		j = i;
-		while((j > 0) && (diag_entry[j - 1] < lbuff0))
-		{
-			diag_entry[j] = diag_entry[j - 1];
-			row_index_mapping_n2o[j] = row_index_mapping_n2o[j - 1];
-			j = j - 1;
-		}
-		diag_entry[j] = lbuff0;
-		row_index_mapping_n2o[j] = lbuff1;
-	}
-	// Old index to new one
-	for(i = 0; i < rows; i++)
-		row_index_mapping_o2n[row_index_mapping_n2o[i]] = i;
-
-#else
-	//	struct MyReverse {
-	//		bool myfunction (long i, long j) { return (i>j); }
-	//	};
-	//	MyReverse myreverse;
-	std::vector<long> sorted_nr_nodes(diag_entry, diag_entry + rows);
-	std::cout << "-> sort " << rows << " items"
-	          << "\n";
-	std::sort(
-	    sorted_nr_nodes.begin(), sorted_nr_nodes.end(), std::greater<long>());
-	//	std::cout << "-> reverse" << "\n";
-	//	std::reverse(sorted_nr_nodes.begin(), sorted_nr_nodes.end());
-	const long max_nr_nodes = sorted_nr_nodes[0];
-	std::cout << "-> update map (max. column nr.=" << max_nr_nodes << ")"
-	          << "\n";
-	// std::map<long,long> tmp;
-	std::vector<long> tmp(max_nr_nodes + 1, 0);
-	for (i = 0; i < rows; i++)
-	{
-		long org_val = diag_entry[i];
-		// std::vector<long>::iterator itr = std::find(sorted_nr_nodes.begin(),
-		// sorted_nr_nodes.end(), org_val);
-		std::vector<long>::iterator itr =
-		    std::lower_bound(sorted_nr_nodes.begin(),
-		                     sorted_nr_nodes.end(),
-		                     org_val,
-		                     std::greater<long>());
-		long new_pos = itr - sorted_nr_nodes.begin() + tmp[org_val];
-		// if (new_pos<0) std::cout << "***Error: new_pos is negative " <<
-		// new_pos << "\n";
-		tmp[org_val]++;
-		row_index_mapping_o2n[i] = new_pos;
-		diag_entry[i] = sorted_nr_nodes[i];
-	}
-	// New index to old one
-	for (i = 0; i < rows; i++)
-		row_index_mapping_n2o[row_index_mapping_o2n[i]] = i;
-#endif
-	// std::cout << myrank << ": dia="; for (i=0; i<10;i++) std::cout <<
-	// diag_entry[i] << " "; std::cout << "\n";
-	// std::cout << myrank << ": n2o="; for (i=0; i<10;i++) std::cout <<
-	// row_index_mapping_n2o[i] << " "; std::cout << "\n";
-	// std::cout << myrank << ": o2n="; for (i=0; i<10;i++) std::cout <<
-	// row_index_mapping_o2n[i] << " "; std::cout << "\n";
-
-	// Maximum number of columns in the sparse table
-	max_columns = diag_entry[0];
-	//--- End of sorting
-	//
-	//--- Create sparse table
-	//
-	num_column_entries = new long[max_columns];
-	entry_column = new long[size_entry_column];
-	// 1. Count entries in each column in sparse table
-	for (i = 0; i < max_columns; i++)
-		num_column_entries[i] = 0;
-	for (i = 0; i < rows; i++)
-		// 'diag_entry' still is used as a temporary array
-		// it stores that numbers of nodes connect to this nodes
-		for (j = 0; j < diag_entry[i]; j++)
-			num_column_entries[j]++;
-	// 2. Fill the sparse table, i.e. store all its entries to
-	//    entry_column
-	lbuff0 = 0;
-	for (i = 0; i < max_columns; i++)
-		for (j = 0; j < num_column_entries[i]; j++)
-		{
-			// ii is the real row index of this entry in matrix
-			ii = row_index_mapping_n2o[j];
-			// jj is the real column index of this entry in matrix
-			jj = m_dom.node_conneted_nodes[ii][i];
-			entry_column[lbuff0] = jj;
-			// Till to this stage, 'diag_entry' is really used to store indices
-			// of the diagonal entries.
-			// Hereby, 'index' refers to the index in entry_column array.
-			if (ii == jj) diag_entry[ii] = lbuff0;
-			//
-			lbuff0++;
-		}
-}
 /*\!
  ********************************************************************
    Create sparse matrix table

@@ -1611,19 +1611,6 @@ void PCSDestroyAllProcesses(void)
 	fem_msh_vector.clear();
 //----------------------------------------------------------------------
 
-// DOM WW
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-#if defined(USE_MPI)
-	// if(myrank==0)
-	dom_vector[myrank]->PrintEQS_CPUtime();  // WW
-#endif
-	for (i = 0; i < (long)dom_vector.size(); i++)
-	{
-		if (dom_vector[i]) delete dom_vector[i];
-		dom_vector[i] = NULL;
-	}
-	dom_vector.clear();
-#endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
 	// WW
 	//----------------------------------------------------------------------
 	// ELE
@@ -4322,24 +4309,11 @@ double CRFProcess::Execute()
 #endif
 #endif
 
-#ifdef USE_MPI  // WW
-	long global_eqs_dim =
-	    pcs_number_of_primary_nvals * m_msh->GetNodesNumber(false);
-	CPARDomain* dom = dom_vector[myrank];
-#endif
 
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
 	eqs_new->Initialize();
-#elif NEW_EQS  // WW
+#elif defined(NEW_EQS)
 	if (!configured_in_nonlinearloop)
-#if defined(USE_MPI)
-	{
-		// 02.2010.  WW
-		dom->eqs->SetDOF(pcs_number_of_primary_nvals);
-		dom->ConfigEQS(m_num, global_eqs_dim);
-	}
-// TEST eqs_new->Initialize();
-#else
 	// Also allocate temporary memory for linear solver. WW
 	{
 		//_new 02/2010. WW
@@ -4348,10 +4322,6 @@ double CRFProcess::Execute()
 	}
 	eqs_new->Initialize();
 #endif
-#else
-	SetLinearSolverType(eqs, m_num);  // WW
-	SetZeroLinearSolver(eqs);
-#endif
 	/*
 	   //TEST_MPI
 	   string test = "rank";
@@ -4359,7 +4329,6 @@ double CRFProcess::Execute()
 	   sprintf(stro, "%d",myrank);
 	   string test1 = test+(string)stro+"Assemble.txt";
 	   ofstream Dum(test1.c_str(), ios::out); // WW
-	   dom->eqs->Write(Dum);   Dum.close();
 	   MPI_Finalize();
 	   exit(1);
 	 */
@@ -4432,10 +4401,6 @@ double CRFProcess::Execute()
 	// TEST 	double x_norm = eqs_new->GetVecNormX();
 	eqs_new->MappingSolution();
 #elif defined(NEW_EQS)  // WW
-#if defined(USE_MPI)
-	// 21.12.2007
-	iter_lin = dom->eqs->Solver(eqs_new->x, global_eqs_dim);
-#else
 #ifdef LIS
 	bool compress_eqs = (type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
 	iter_lin = eqs_new->Solver(this->m_num, compress_eqs);  // NW
@@ -4443,21 +4408,14 @@ double CRFProcess::Execute()
 	iter_lin = eqs_new->Solver();
 #endif
 #endif
-#else
-	iter_lin = ExecuteLinearSolver();
-#endif
 	if (iter_lin == -1)
 	{
 		ScreenMessage("*** Linear solve failed\n");
 // abort
 #ifdef NEW_EQS  // WW
 		if (!configured_in_nonlinearloop)
-#if defined(USE_MPI)
-			dom->eqs->Clean();
-#else
 			// Also allocate temporary memory for linear solver. WW
 			eqs_new->Clean();
-#endif
 #endif
 		return -1;
 	}
@@ -4509,16 +4467,8 @@ double CRFProcess::Execute()
 #if defined(USE_PETSC)
 		eqs_new->Initialize();
 #else
-#ifdef NEW_EQS  // WW
 		if (!configured_in_nonlinearloop)
-#if defined(USE_MPI)
-			dom->ConfigEQS(m_num, global_eqs_dim);
-#else
 			eqs_new->Initialize();
-#endif
-#else
-		SetZeroLinearSolver(eqs);
-#endif
 #endif
 
 // Set initial guess
@@ -4558,8 +4508,6 @@ double CRFProcess::Execute()
 #else
 #ifdef NEW_EQS  // WW
 #if defined(USE_MPI)
-		// 21.12.2007
-		dom->eqs->Solver(eqs_new->x, global_eqs_dim);
 #else
 #ifdef LIS
 		eqs_new->Solver(this->m_num);  // NW
@@ -4572,8 +4520,6 @@ double CRFProcess::Execute()
 //		exit(1);
 #endif
 #endif
-#else  // ifdef NEW_EQS
-		ExecuteLinearSolver();
 #endif
 #endif  // USE_PETSC
 	}
@@ -4737,12 +4683,8 @@ double CRFProcess::Execute()
 
 #ifdef NEW_EQS  // WW
 	if (!configured_in_nonlinearloop)
-#if defined(USE_MPI)
-		dom->eqs->Clean();
-#else
 		// Also allocate temporary memory for linear solver. WW
 		eqs_new->Clean();
-#endif
 #endif
 
 	if (this->getProcessType() == FiniteElement::LIQUID_FLOW &&
@@ -4853,9 +4795,6 @@ void CRFProcess::AddFCT_CorrectionVector()
 	Math_Group::Vec* ML = this->Gl_ML;
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;  // WW
-	// if(m_dom)
-	//  A = m_dom->eqs->A;
-	// else
 	A = this->eqs_new->A;
 #endif
 
@@ -5265,66 +5204,7 @@ void CRFProcess::GlobalAssembly()
 #endif
 	}
 
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	// DDC
-	if (dom_vector.size() > 0)
-	{
-		cout << "      Domain Decomposition" << '\n';
-		CPARDomain* m_dom = NULL;
-		size_t j = 0;
-#if defined(USE_MPI)  // WW
-		j = myrank;
-#else
-		for (j = 0; j < dom_vector.size(); j++)
-		{
-#endif
-		m_dom = dom_vector[j];
-#ifdef NEW_EQS
-		m_dom->InitialEQS(this);
-#else
-			SetLinearSolver(m_dom->eqs);
-			SetZeroLinearSolver(m_dom->eqs);
-#endif
-		for (size_t i = 0; i < m_dom->elements.size(); i++)
-		{
-			elem = m_msh->ele_vector[m_dom->elements[i]];
-			if (elem->GetMark())
-			{
-				elem->SetOrder(false);
-				// WW
-				fem->SetElementNodesDomain(m_dom->element_nodes_dom[i]);
-				fem->ConfigElement(elem, Check2D3D);
-				fem->m_dom = m_dom;  // OK
-				fem->Assembly();
-			}
-		}
-		// m_dom->WriteMatrix();
-		// ofstream Dum("rf_pcs.txt", ios::out); // WW
-		// m_dom->eqs->Write(Dum);
-		// Dum.close();
-		IncorporateSourceTerms(j);
-		IncorporateBoundaryConditions(j);
-/*
-   //TEST
-   string test = "rank";
-   char stro[64];
-   sprintf(stro, "%d",j);
-   string test1 = test+(string)stro+"Assemble.txt";
-   ofstream Dum(test1.c_str(), ios::out);
-   m_dom->eqs->Write(Dum);
-   Dum.close();
-   exit(1);
- */
-#ifndef USE_MPI
-	}
-	// Assemble global system
-	DDCAssembleGlobalMatrix();
-#endif
-}
-else
-#endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
-// WW
-{  // STD
+	{  // STD
 	const size_t dn = m_msh->ele_vector.size() / 10;
 	const bool print_progress = (dn >= 100);
 	if (print_progress)
@@ -5572,16 +5452,6 @@ void CRFProcess::CalIntegrationPointValue()
 	CElem* elem = NULL;
 	cal_integration_point_value = false;
 	continuum = 0;  // 15.02.2007/
-	//  cal_integration_point_value = true;
-	// Currently, extropolation only valid for liquid and Richards flow.
-	//	if (_pcs_type_name.find("LIQUID") != string::npos ||
-	//_pcs_type_name.find(
-	//			"RICHARD") != string::npos || _pcs_type_name.find(
-	//			"MULTI_PHASE_FLOW") != string::npos || _pcs_type_name.find(
-	//			"GROUNDWATER_FLOW") != string::npos || _pcs_type_name.find(
-	//			"TWO_PHASE_FLOW") != string::npos
-	//			|| _pcs_type_name.find("AIR_FLOW") != string::npos
-	//			|| _pcs_type_name.find("PS_GLOBAL") != string::npos) //WW/CB
 	if (getProcessType() == FiniteElement::LIQUID_FLOW ||
 	    getProcessType() == FiniteElement::RICHARDS_FLOW ||
 	    getProcessType() == FiniteElement::MULTI_PHASE_FLOW ||
@@ -5604,11 +5474,9 @@ void CRFProcess::CalIntegrationPointValue()
 		{
 			fem->ConfigElement(elem);
 			fem->Config();  // OK4709
-			// fem->m_dom = NULL; // To be used for parallization
 			fem->Cal_Velocity();
 		}
 	}
-	//	if (_pcs_type_name.find("TWO_PHASE_FLOW") != string::npos) //WW/CB
 	if (getProcessType() == FiniteElement::TWO_PHASE_FLOW)  // WW/CB
 		cal_integration_point_value = false;
 }
@@ -5708,158 +5576,6 @@ void CRFProcess::AllocateLocalMatrixMemory()
 }
 
 /*************************************************************************
-   FEMLib function
-   Task: Assemble global system matrix
-   Programming:
-   05/2003 OK Implementation
-   ??/???? WW Moved from AssembleSystemMatrixNew
-   05/2006 WW Modified to enable dealing with the case of DOF>1
-   06/2006 WW Take the advantege of sparse matrix to enhance simulation
-   10/2007 WW Change for the new classes of sparse matrix and linear solver
- **************************************************************************/
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-void CRFProcess::DDCAssembleGlobalMatrix()
-{
-	int ii, jj, dof;
-	long i, j, j0, ig, jg, ncol;
-	CPARDomain* m_dom = NULL;
-	long* nodes2node = NULL;  // WW
-	double* rhs = NULL, * rhs_dom = NULL;
-	double a_ij;
-	double b_i = 0.0;
-	b_i = b_i;  // OK411
-	int no_domains = (int)dom_vector.size();
-	long no_dom_nodes;
-	dof = pcs_number_of_primary_nvals;  // WW
-	ncol = 0;                           // WW
-#ifndef USE_MPI
-	int k;
-	for (k = 0; k < no_domains; k++)
-	{
-		m_dom = dom_vector[k];
-#else
-		m_dom = dom_vector[myrank];
-#endif
-// RHS
-#if defined(NEW_EQS)
-		rhs = eqs_new->b;
-		if (type == 4)
-			rhs_dom = m_dom->eqsH->b;
-		else
-			rhs_dom = m_dom->eqs->b;
-#else
-		rhs = eqs->b;
-		rhs_dom = m_dom->eqs->b;
-#endif
-
-		no_dom_nodes = m_dom->nnodes_dom;                                 // WW
-		if (type == 4 || type == 41) no_dom_nodes = m_dom->nnodesHQ_dom;  // WW
-		if (type == 41) dof--;
-		for (i = 0; i < no_dom_nodes; i++)
-		{
-			//------------------------------------------
-			// Use the feature of sparse matrix of FEM
-			// WW
-			ig = m_dom->nodes[i];
-			ncol = m_dom->num_nodes2_node[i];
-			nodes2node = m_dom->node_conneted_nodes[i];
-			for (j0 = 0; j0 < ncol; j0++)
-			{
-				j = nodes2node[j0];
-				if (j >= no_dom_nodes) continue;
-				jg = m_dom->nodes[j];
-				//------------------------------------------
-				// DOF loop ---------------------------WW
-				for (ii = 0; ii < dof; ii++)
-				{
-					for (jj = 0; jj < dof; jj++)
-					{
-// get domain system matrix
-#ifdef NEW_EQS  // WW
-						if (type == 4)
-							a_ij = (*m_dom->eqsH->A)(i + no_dom_nodes * ii,
-							                         j + no_dom_nodes * jj);
-						else
-							a_ij = (*m_dom->eqs->A)(i + no_dom_nodes * ii,
-							                        j + no_dom_nodes * jj);
-						(*eqs_new->A)(ig + Shift[ii], jg + Shift[jj]) += a_ij;
-#endif
-					}
-				}
-				// DOF loop ---------------------------WW
-			}
-			// set global RHS vector //OK
-			for (ii = 0; ii < dof; ii++)  // WW
-				rhs[ig + Shift[ii]] += rhs_dom[i + no_dom_nodes * ii];
-		}
-
-		// Mono HM------------------------------------WW
-		if (type != 41)
-#ifndef USE_MPI
-			continue;
-#else
-			return;
-#endif
-		no_dom_nodes = m_dom->nnodes_dom;
-		long no_dom_nodesHQ = m_dom->nnodesHQ_dom;
-		double a_ji = 0.0;
-		for (i = 0; i < no_dom_nodes; i++)
-		{
-			ig = m_dom->nodes[i];  // WW
-			ncol = m_dom->num_nodes2_node[i];
-			nodes2node = m_dom->node_conneted_nodes[i];
-			for (j0 = 0; j0 < ncol; j0++)
-			{
-				j = nodes2node[j0];
-				jg = m_dom->nodes[j];
-				for (ii = 0; ii < dof; ii++)  // ww
-				{
-#if defined(NEW_EQS)
-					// dom to global. WW
-					a_ij = (*m_dom->eqsH->A)(i + no_dom_nodesHQ * dof,
-					                         j + no_dom_nodesHQ * ii);
-					a_ji = (*m_dom->eqsH->A)(j + no_dom_nodesHQ * ii,
-					                         i + no_dom_nodesHQ * dof);
-					(*eqs_new->A)(ig + Shift[ii],
-					              jg + Shift[problem_dimension_dm]) += a_ij;
-					(*eqs_new->A)(jg + Shift[problem_dimension_dm],
-					              ig + Shift[ii]) += a_ji;
-#endif
-				}
-			}
-		}
-		for (i = 0; i < no_dom_nodes; i++)
-		{
-			ig = m_dom->nodes[i];
-			ncol = m_dom->num_nodes2_node[i];
-			nodes2node = m_dom->node_conneted_nodes[i];
-			for (j0 = 0; j0 < ncol; j0++)
-			{
-				j = nodes2node[j0];
-				jg = m_dom->nodes[j];
-				if (jg >= no_dom_nodes) continue;
-// get domain system matrix
-#if defined(NEW_EQS)
-				// dom to global. WW
-				a_ij = (*m_dom->eqsH->A)(i + no_dom_nodesHQ * dof,
-				                         j + no_dom_nodesHQ * dof);
-				(*eqs_new->A)(ig + Shift[problem_dimension_dm],
-				              jg + Shift[problem_dimension_dm]) += a_ij;
-#endif
-			}
-			//
-			rhs[ig + Shift[problem_dimension_dm]] +=
-			    rhs_dom[i + no_dom_nodesHQ * dof];
-		}
-// Mono HM------------------------------------WW
-#ifndef USE_MPI
-	}
-#endif
-}
-#endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
-// WW
-
-/*************************************************************************
    ROCKFLOW - Function:
    Task: Assemble system matrix
    Programming: 05/2003 OK Implementation
@@ -5900,221 +5616,6 @@ void CRFProcess::AssembleSystemMatrixNew(void)
 	IncorporateBoundaryConditions();
 }
 
-/**************************************************************************
-   FEMLib-Method: CRFProcess::IncorporateBoundaryConditions
-   Task: set PCS boundary conditions
-   Programing:
-   05/2006 WW Implementation
-**************************************************************************/
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-void CRFProcess::SetBoundaryConditionSubDomain()
-{
-	int k;
-	long i, j;
-	CPARDomain* m_dom = NULL;
-	CBoundaryConditionNode* m_bc_nv = NULL;
-	CNodeValue* m_st_nv = NULL;
-#if 0  // ndef USE_MPI
-		//
-		for(k = 0; k < (int)dom_vector.size(); k++)
-		{
-			m_dom = dom_vector[k];
-			// BC
-			for(i = 0; i < (long)bc_node_value.size(); i++)
-			{
-				m_bc_nv = bc_node_value[i];
-				for(j = 0; j < (long)m_dom->nodes.size(); j++)
-					if(m_bc_nv->geo_node_number == m_dom->nodes[j])
-					{
-						bc_node_value_in_dom.push_back(i);
-						bc_local_index_in_dom.push_back(j);
-						break;
-					}
-			}
-			rank_bc_node_value_in_dom.push_back((long)bc_node_value_in_dom.size());
-			// ST
-			for(i = 0; i < (long)st_node_value.size(); i++)
-			{
-				for(size_t ii = 0; ii < st_node_value[i].size(); ii++)
-				{
-					m_st_nv = st_node_value[i][ii];
-					for(j = 0; j < (long)m_dom->nodes.size(); j++)
-						if(m_st_nv->geo_node_number == m_dom->nodes[j])
-						{
-							st_node_value_in_dom.push_back(ii);
-							st_local_index_in_dom.push_back(j);
-							break;
-						}
-				}
-			}
-			rank_st_node_value_in_dom.push_back((long)st_node_value_in_dom.size());
-		}
-		long Size = (long)st_node_value.size();
-		long l_index;
-		for(i = 0; i < Size; i++)
-		{
-			for(size_t ii = 0; ii < st_node_value[i].size(); ii++)
-			{
-				l_index = st_node_value[i][ii]->geo_node_number;
-				st_node_value[i][ii]->node_value /= (double)node_connected_doms[l_index];
-			}
-		}
-#else
-		//
-		// m_dom = dom_vector[myrank];
-		const long n_bc_node_value = (long)bc_node_value.size();
-		std::cout << "-> n_bc_node_value = " << n_bc_node_value << "\n";
-		const long n_st_node_value = (long)st_node_value.size();
-		std::cout << "-> n_st_node_value = " << n_st_node_value << "\n";
-#ifndef USE_MPI
-		for (k = 0; k < (int)dom_vector.size(); k++)
-		{
-			m_dom = dom_vector[k];
-#else
-		m_dom = dom_vector[myrank];
-#endif
-			const long n_dom_nodes = (long)m_dom->nodes.size();
-			std::cout << "-> " << k
-			          << " th domain: n_dom_nodes = " << n_dom_nodes << "\n";
-			std::vector<long> list_sorted_dom_nodes(m_dom->nodes);
-			std::sort(list_sorted_dom_nodes.begin(),
-			          list_sorted_dom_nodes.end());
-			std::vector<long> map_sorted2original(m_dom->nodes.size());
-			for (i = 0; i < n_dom_nodes; i++)
-			{
-				std::vector<long>::iterator itr = std::lower_bound(
-				    list_sorted_dom_nodes.begin(), list_sorted_dom_nodes.end(),
-				    m_dom->nodes[i]);
-				size_t new_pos = itr - list_sorted_dom_nodes.begin();
-				map_sorted2original[new_pos] = i;
-			}
-// BC
-#ifdef USE_MPI
-			rank_bc_node_value_in_dom.resize(mysize);
-#endif
-			std::cout << "-> looking for domain BC nodes"
-			          << "\n";
-			for (i = 0; i < n_bc_node_value; i++)
-			{
-				m_bc_nv = bc_node_value[i];
-
-				std::vector<long>::iterator itr = std::lower_bound(
-				    list_sorted_dom_nodes.begin(), list_sorted_dom_nodes.end(),
-				    m_bc_nv->geo_node_number);
-				if (itr == list_sorted_dom_nodes.end() ||
-				    *itr != m_bc_nv->geo_node_number)
-					continue;
-				size_t pos_in_sorted = itr - list_sorted_dom_nodes.begin();
-				long pos_in_org = map_sorted2original[pos_in_sorted];
-				bc_node_value_in_dom.push_back(i);
-				bc_local_index_in_dom.push_back(pos_in_org);
-			}
-#ifdef USE_MPI
-			rank_bc_node_value_in_dom[myrank] =
-			    (long)bc_node_value_in_dom.size();
-#else
-		rank_bc_node_value_in_dom.push_back((long)bc_node_value_in_dom.size());
-#endif
-// ST
-#ifdef USE_MPI
-			rank_st_node_value_in_dom.resize(mysize);
-#endif
-			std::cout << "-> looking for domain ST nodes"
-			          << "\n";
-			for (i = 0; i < (long)st_node_value.size(); i++)
-			{
-				for (size_t ii = 0; ii < st_node_value[i].size(); ii++)
-				{
-					m_st_nv = st_node_value[i][ii];
-					std::vector<long>::iterator itr = std::lower_bound(
-					    list_sorted_dom_nodes.begin(),
-					    list_sorted_dom_nodes.end(), m_st_nv->geo_node_number);
-					if (itr == list_sorted_dom_nodes.end() ||
-					    *itr != m_st_nv->geo_node_number)
-						continue;
-					size_t pos_in_sorted = itr - list_sorted_dom_nodes.begin();
-					long pos_in_org = map_sorted2original[pos_in_sorted];
-					st_node_value_in_dom.push_back(i);
-					st_local_index_in_dom.push_back(pos_in_org);
-				}
-			}
-#ifdef USE_MPI
-			rank_st_node_value_in_dom[myrank] =
-			    (long)st_node_value_in_dom.size();
-#else
-		rank_st_node_value_in_dom.push_back((long)st_node_value_in_dom.size());
-#endif
-#ifndef USE_MPI
-		}
-#endif
-
-		for (i = 0; i < (long)st_node_value.size(); i++)
-		{
-			for (size_t ii = 0; ii < st_node_value[i].size(); ii++)
-			{
-				m_st_nv = st_node_value[i][ii];
-				long l_index = m_st_nv->geo_node_number;
-				m_st_nv->node_value /= (double)node_connected_doms[l_index];
-			}
-		}
-#endif
-}
-
-/**************************************************************************
-   FEMLib-Method: CRFProcess::SetSTWaterGemSubDomain
-   Task: set source/sink terms for GEMS-flow coupling
-   Programing:
-   05/2006 WW Implementation
-   03/2010 KG44 modified to GEM
-**************************************************************************/
-void CRFProcess::SetSTWaterGemSubDomain(int myrank)
-{
-	int k;
-	long i, j;  // WW, dsize=0;
-	CPARDomain* m_dom = NULL;
-	long int m_stgem_nv = -1;
-	//
-	long Size = (long)Water_ST_vec.size();
-	long l_index = -1;
-
-	//	cout << "dom_vec_size: " << dom_vector.size() << endl;
-	//	for ( k=0;k< ( int ) dom_vector.size();k++ )
-	//	{
-	k = myrank;  // do it for each domain only once!
-	m_dom = dom_vector[k];
-	// WW dsize=(long) m_dom->nodes.size();
-	// ST
-	for (i = 0; i < Size; i++)
-	{
-		m_stgem_nv = Water_ST_vec[i].index_node;
-		for (j = 0; j < (long)m_dom->nodes.size(); j++)
-			if (m_stgem_nv == m_dom->nodes[j])
-			{
-				// index for Water_ST_vec
-				stgem_node_value_in_dom.push_back(i);
-				// index for RHS
-				stgem_local_index_in_dom.push_back(j);
-				//	cout << "dom " << k <<  " i, j " << i << " " << j   << endl;
-			}
-	}
-	// only one element per domain!
-	rank_stgem_node_value_in_dom.push_back(
-	    (long)stgem_node_value_in_dom.size());
-	//	cout << "dom " << k <<  " rank_stgem_node_value_in_dom " << (long)
-	// rank_stgem_node_value_in_dom[0]  << endl;
-
-	//	}
-
-	for (i = 0; i < Size; i++)
-	{
-		l_index = Water_ST_vec[i].index_node;
-		// cout << i << " " << node_connected_doms[l_index] << " " << endl;
-		// values for shared nodes are scaled
-		Water_ST_vec[i].water_st_value /= (double)node_connected_doms[l_index];
-	}
-}
-
-#endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
 // WW
 /**************************************************************************
    FEMLib-Method: CRFProcess::IncorporateBoundaryConditions
@@ -6157,7 +5658,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 	vector<vector<double> > dof_node_value(this->GetPrimaryVNumber());
 #else
 	double* eqs_rhs = NULL;
-	CPARDomain* m_dom = NULL;
 #endif
 //
 #ifdef NEW_EQS
@@ -6194,29 +5694,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 #endif
 #endif
 	}
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
-	else
-	{
-		m_dom = dom_vector[rank];
-#ifdef NEW_EQS
-		eqs_p = m_dom->eqs;
-		if (type == 4)  // WW
-		{
-			eqs_p = m_dom->eqsH;
-			eqs_rhs = m_dom->eqsH->b;
-		}
-		else
-			eqs_rhs = m_dom->eqs->b;
-#else
-			eqs_rhs = m_dom->eqs->b;
-#endif
-		if (rank == 0)
-			begin = 0;
-		else
-			begin = rank_bc_node_value_in_dom[rank - 1];
-		end = rank_bc_node_value_in_dom[rank];
-	}
-#endif  // END: #if !defined(USE_PETSC) // && !defined(other parallel libs)
 	size_t count_constrained_excluded = 0;
 
 	for (i = begin; i < end; i++)
@@ -6338,26 +5815,7 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 
 #else
 		shift = m_bc_node->msh_node_number - m_bc_node->geo_node_number;
-		if (rank > -1)
-		{
-			bc_msh_node = bc_local_index_in_dom[i];
-			int dim_space = 0;
-			if (shift == 0)
-				// 15.4.2008 WW
-				// if(m_msh->NodesNumber_Linear==m_msh->NodesNumber_Quadratic)
-				dim_space = 0;
-			else
-			{
-				// 02.2010. WW
-				if (type == 4 || type / 10 == 4)
-					dim_space = shift / m_msh->NodesNumber_Quadratic;
-				else
-					dim_space = shift / m_msh->NodesNumber_Linear;
-			}
-			shift = m_dom->shift[dim_space];
-		}
-		else
-			bc_msh_node = m_bc_node->geo_node_number;
+		bc_msh_node = m_bc_node->geo_node_number;
 #endif  // END: if defined(USE_PETSC) // || defined(other parallel libs
 		//------------------------------------------------------------WW
 		if (m_msh)  // OK
@@ -6681,9 +6139,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, const int axis)
 	int idx0, idx1;
 	CBoundaryConditionNode* m_bc_node;  // WW
 	CBoundaryCondition* m_bc;           // WW
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	CPARDomain* m_dom = NULL;
-#endif
 
 	CFunction* m_fct = NULL;  // OK
 	bool is_valid = false;    // OK
@@ -6725,29 +6180,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, const int axis)
 #endif
 #endif
 	}
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
-	else
-	{
-		m_dom = dom_vector[rank];
-#ifdef NEW_EQS
-		eqs_p = m_dom->eqs;
-		if (type == 4)  // WW
-		{
-			eqs_p = m_dom->eqsH;
-			eqs_rhs = m_dom->eqsH->b;
-		}
-		else
-			eqs_rhs = m_dom->eqs->b;
-#else
-			eqs_rhs = m_dom->eqs->b;
-#endif
-		if (rank == 0)
-			begin = 0;
-		else
-			begin = rank_bc_node_value_in_dom[rank - 1];
-		end = rank_bc_node_value_in_dom[rank];
-	}
-#endif  // END: !defined(USE_PETSC) // && !defined(other parallel libs)/
 	for (i = begin; i < end; i++)
 	{
 		gindex = i;
@@ -6768,23 +6200,7 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, const int axis)
 #else
 			shift = m_bc_node->msh_node_number - m_bc_node->geo_node_number;
 			//
-			if (rank > -1)
-			{
-				bc_msh_node = bc_local_index_in_dom[i];
-				int dim_space = 0;
-				if (m_msh->NodesNumber_Linear == m_msh->NodesNumber_Quadratic)
-					dim_space = 0;
-				else
-				{
-					if (shift % m_msh->NodesNumber_Quadratic == 0)
-						dim_space = shift / m_msh->NodesNumber_Quadratic;
-					else
-						dim_space = m_msh->msh_max_dim;
-				}
-				shift = m_dom->shift[dim_space];
-			}
-			else
-				bc_msh_node = m_bc_node->geo_node_number;
+			bc_msh_node = m_bc_node->geo_node_number;
 #endif
 			//------------------------------------------------------------WW
 			if (m_msh)  // OK
@@ -6890,26 +6306,7 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, const int axis)
 		{
 			m_bc = bc_node[gindex];
 			shift = m_bc_node->msh_node_number - m_bc_node->geo_node_number;
-//
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-			if (rank > -1)
-			{
-				bc_msh_node = bc_local_index_in_dom[i];
-				int dim_space = 0;
-				if (m_msh->NodesNumber_Linear == m_msh->NodesNumber_Quadratic)
-					dim_space = 0;
-				else
-				{
-					if (shift % m_msh->NodesNumber_Quadratic == 0)
-						dim_space = shift / m_msh->NodesNumber_Quadratic;
-					else
-						dim_space = m_msh->msh_max_dim;
-				}
-				shift = m_dom->shift[dim_space];
-			}
-			else
-#endif
-				bc_msh_node = m_bc_node->geo_node_number;
+			bc_msh_node = m_bc_node->geo_node_number;
 			//------------------------------------------------------------WW
 			if (m_msh)  // OK
 				//			if(!m_msh->nod_vector[bc_msh_node]->GetMark()) //WW
@@ -7010,26 +6407,7 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, const int axis)
 		{
 			m_bc = bc_node[gindex];
 			shift = m_bc_node->msh_node_number - m_bc_node->geo_node_number;
-//
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-			if (rank > -1)
-			{
-				bc_msh_node = bc_local_index_in_dom[i];
-				int dim_space = 0;
-				if (m_msh->NodesNumber_Linear == m_msh->NodesNumber_Quadratic)
-					dim_space = 0;
-				else
-				{
-					if (shift % m_msh->NodesNumber_Quadratic == 0)
-						dim_space = shift / m_msh->NodesNumber_Quadratic;
-					else
-						dim_space = m_msh->msh_max_dim;
-				}
-				shift = m_dom->shift[dim_space];
-			}
-			else
-#endif
-				bc_msh_node = m_bc_node->geo_node_number;
+			bc_msh_node = m_bc_node->geo_node_number;
 			//------------------------------------------------------------WW
 			if (m_msh)  // OK
 				//			if(!m_msh->nod_vector[bc_msh_node]->GetMark()) //WW
@@ -7174,7 +6552,6 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 	vector<vector<int> > dof_node_id(this->GetPrimaryVNumber());
 	vector<vector<double> > dof_node_value(this->GetPrimaryVNumber());
 #else
-	CPARDomain* m_dom = NULL;
 	double* eqs_rhs = NULL;
 	long bc_eqs_index = -1;
 	int dim_space = 0;  // kg44 better define here and not in a loop!
@@ -7236,25 +6613,6 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 #endif
 #endif
 		}
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
-		else
-		{
-			m_dom = dom_vector[rank];
-#ifdef NEW_EQS
-			if (type == 4)
-				eqs_rhs = m_dom->eqsH->b;
-			else
-				eqs_rhs = m_dom->eqs->b;
-#else
-				eqs_rhs = m_dom->eqs->b;
-#endif
-			if (rank == 0)
-				begin = 0;
-			else
-				begin = rank_st_node_value_in_dom[rank - 1];
-			end = rank_st_node_value_in_dom[rank];
-		}
-#endif  // END: #if !defined(USE_PETSC) // && !defined(other parallel libs)
 		std::vector<bool> active_elements;
 
 		// constrain
@@ -7434,26 +6792,8 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 
 #else
 			shift = cnodev->msh_node_number - cnodev->geo_node_number;
-			if (rank > -1)
-			{
-				msh_node = st_local_index_in_dom[i];
-				dim_space = 0;
-				if (m_msh->NodesNumber_Linear == m_msh->NodesNumber_Quadratic)
-					dim_space = 0;
-				else
-				{
-					if (shift % m_msh->NodesNumber_Quadratic == 0)
-						dim_space = shift / m_msh->NodesNumber_Quadratic;
-					else
-						dim_space = m_msh->msh_max_dim;
-				}
-				shift = m_dom->shift[dim_space];
-			}
-			else
-			{
-				msh_node = cnodev->msh_node_number;
-				msh_node -= shift;
-			}
+			msh_node = cnodev->msh_node_number;
+			msh_node -= shift;
 #endif
 			value = cnodev->node_value;
 			//--------------------------------------------------------------------
@@ -9349,15 +8689,8 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 	configured_in_nonlinearloop = true;
 // Also allocate temporary memory for linear solver. WW
 //
-#if defined(USE_MPI)
-	CPARDomain* dom = dom_vector[myrank];
-	dom->eqs->SetDOF(pcs_number_of_primary_nvals);  //_new 02/2010 WW
-	dom->ConfigEQS(m_num,
-	               pcs_number_of_primary_nvals * m_msh->GetNodesNumber(false));
-#else
 	eqs_new->SetDOF(pcs_number_of_primary_nvals);  //_new 02/2010. WW
 	eqs_new->ConfigNumerics(m_num);
-#endif
 //
 #else  // ifdef NEW_EQS
 		eqs_x = eqs->x;
@@ -9706,11 +9039,7 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 #if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
                          // Release temporary memory of linear solver. WW
 #ifdef NEW_EQS           // WW
-#if defined(USE_MPI)
-	dom->eqs->Clean();
-#else
 	eqs_new->Clean();  // Release buffer momery WW
-#endif
 	configured_in_nonlinearloop = false;
 #endif
 #endif
@@ -13957,89 +13286,7 @@ void CRFProcess::PI_TimeStepSize()
 	double factorGus;
 	double hacc = Tim->GetHacc();
 	double erracc = Tim->GetErracc();
-//
-#define aE_NORM
-#ifdef E_NORM
-	//
-	long i;
-	CElem* elem = NULL;
-	bool Check2D3D;
-	double norm_e, norm_en;
-	double norm_e_rank, norm_en_rank;
-	norm_e = norm_en = norm_e_rank = norm_en_rank = 0.;
 
-	Check2D3D = false;
-	if (type == 66)  // Overland flow
-		Check2D3D = true;
-	//----------------------------------------------------------------------
-	// DDC
-	if (dom_vector.size() > 0)
-	{
-		cout << "      Domain Decomposition" << '\n';
-		CPARDomain* m_dom = NULL;
-		int j = 0;
-//
-#if defined(USE_MPI)
-		j = myrank;
-#else
-			for (j = 0; j < (int)dom_vector.size(); j++)
-			{
-#endif
-		m_dom = dom_vector[j];
-		for (int ii = 0; ii < (int)continuum_vector.size(); ii++)
-		{
-			continuum = ii;
-			//
-			for (i = 0; i < (long)m_dom->elements.size(); i++)
-			{
-				elem = m_msh->ele_vector[m_dom->elements[i]];
-				if (elem->GetMark())
-				{
-					elem->SetOrder(false);
-					fem->SetElementNodesDomain(m_dom->element_nodes_dom[i]);
-					fem->ConfigElement(elem, Check2D3D);
-					fem->m_dom = m_dom;
-					fem->CalcEnergyNorm(norm_e_rank, norm_en_rank);
-					// _new
-					if (ii == 1)
-						fem->CalcEnergyNorm_Dual(norm_e_rank, norm_en_rank);
-				}
-			}
-		}
-#if defined(USE_MPI)
-		MPI_Allreduce(&norm_e_rank, &norm_e, 1, MPI_DOUBLE, MPI_SUM,
-		              MPI_COMM_WORLD);
-		MPI_Allreduce(&norm_en_rank, &norm_en, 1, MPI_DOUBLE, MPI_SUM,
-		              MPI_COMM_WORLD);
-#else  // USE_MPI
-				norm_e += norm_e_rank;
-				norm_en += norm_en_rank;
-			}
-//....................................................................
-#endif
-	}
-	//----------------------------------------------------------------------
-	// STD
-	else
-		for (int ii = 0; ii < (int)continuum_vector.size(); ii++)
-		{
-			continuum = ii;
-			for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
-			{
-				elem = m_msh->ele_vector[i];
-				if (elem->GetMark())  // Marked for use
-				{
-					elem->SetOrder(false);
-					fem->ConfigElement(elem, Check2D3D);
-					fem->CalcEnergyNorm(u_n, norm_e, norm_en);
-					// _new
-					if (ii == 1) fem->CalcEnergyNorm_Dual(u_n, norm_e, norm_en);
-				}
-			}
-		}
-	// compute energy norm as the error
-	err = sqrt(fabs(norm_e / norm_en));
-#else                   // ifdef E_NORM
 	err = 0.0;
 	//
 	int ii, nidx1;
@@ -14103,7 +13350,6 @@ void CRFProcess::PI_TimeStepSize()
 	MPI_Allreduce(&size_xloc, &size_x, 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
 #endif
 	err = sqrt(err / (double)size_x);
-#endif
 
 	//----------------------------------------------------------------------
 	//

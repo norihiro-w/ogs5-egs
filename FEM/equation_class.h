@@ -46,9 +46,6 @@ using process::CRFProcessDeformation;
 using FiniteElement::CFiniteElementStd;
 using FiniteElement::CFiniteElementVec;
 //
-#if defined(USE_MPI)
-class CPARDomain;
-#endif
 //
 namespace Math_Group
 {
@@ -66,32 +63,19 @@ class Linear_EQS
 public:
 	Linear_EQS(const SparseTable& sparse_table, const long dof,
 	           bool messg = true);
-#if defined(USE_MPI)
-	Linear_EQS(const long size);
-#endif
 	~Linear_EQS();
 	// Configure numerics
 	void ConfigNumerics(CNumerics* m_num, const long n = 0);
 	// Preconditioner;
 	void Precond(double* vec_s, double* vec_r);
 	void TransPrecond(double* vec_s, double* vec_r);
-	//#if defined(USE_MPI)
 	void Precond_Jacobi(const double* vec_s, double* vec_r);
-//#endif
 //
 	void ComputePreconditioner();
 	void ComputePreconditioner_Jacobi();
 	void ComputePreconditioner_ILU() {}
 //
 // Solver
-#if defined(USE_MPI)
-	int Solver(double* xg, const long n);
-	int CG(double* xg, const long n);
-	int BiCG(double* xg, const long n);  // 02.2010. WW
-	int BiCGStab(double* xg, const long n);
-	int CGS(double* xg, const long n);
-	double GetCPUtime() const { return cpu_time; }
-#else
 #ifdef LIS  // NW
 	int Solver(CNumerics* num = NULL, bool compress = false);
 #else
@@ -110,7 +94,6 @@ public:
 	int AMG1R5() { return -1; }
 	int UMF() { return -1; }
 	int GMRES();
-#endif
 	//
 	void Initialize();
 	void Clean();
@@ -128,11 +111,6 @@ public:
 	double NormX();
 	double ComputeNormRHS() { return Norm(b); }
 	double NormRHS() { return bNorm; }
-#if defined(USE_MPI)
-	int DOF() { return A->Dof(); }
-	long Size() { return A->Size(); }
-	void SetDomain(CPARDomain* a_dom) { dom = a_dom; }
-#endif
 	// Write
 	void Write(std::ostream& os = std::cout);
 	void WriteRHS(std::ostream& os = std::cout);
@@ -151,18 +129,7 @@ private:  // Dot not remove this!
 	LIS_VECTOR bb, xx;
 	LIS_SOLVER solver;
 #endif
-#if defined(USE_MPI)
-	CPARDomain* dom;
-	// WW
-	double* border_buffer0;
-	double* border_buffer1;
-	double cpu_time;
-	friend class ::CPARDomain;
-	//
-	double dot(const double* xx, const double* yy, const long n);
-	inline void MatrixMulitVec(double* xx, double* yy);
-	inline void TransMatrixMulitVec(double* xx, double* yy);
-#endif
+
 	//
 	std::string solver_name;
 	std::string precond_name;

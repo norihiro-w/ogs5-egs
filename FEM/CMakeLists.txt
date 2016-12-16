@@ -95,7 +95,6 @@ set( SOURCES
 IF(OGS_FEM_PETSC)
 	SET( SOURCES ${SOURCES} rf_pcs1.cpp fct_mpi.h fct_mpi.cpp)
 ELSE(OGS_FEM_PETSC)
-	SET( SOURCES ${SOURCES} par_ddc.h par_ddc.cpp)
 	SET( SOURCES ${SOURCES} equation_class.h equation_class.cpp )
 ENDIF()
 

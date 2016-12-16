@@ -219,9 +219,6 @@ void CFluidMomentum::SolveDarcyVelocityOnNode()
 // TODO
 #elif NEW_EQS  // WW
 			m_pcs->EQSInitialize();
-#else
-			SetLinearSolverType(m_pcs->getEQSPointer(), m_num);  // NW
-			SetZeroLinearSolver(m_pcs->getEQSPointer());
 #endif
 
 			for (i = 0; i < (long)m_msh->ele_vector.size(); i++)

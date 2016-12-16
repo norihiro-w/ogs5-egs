@@ -74,9 +74,6 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 	Tem = 273.15 + 23.0;
 	h_pcs = NULL;
 	t_pcs = NULL;
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	m_dom = NULL;
-#endif
 
 	AuxNodal2 = NULL;
 	Idx_Vel = NULL;
@@ -995,51 +992,17 @@ void CFiniteElementVec::LocalAssembly(const int update)
 	}
 #endif
 
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	if (m_dom)
-	{                   // Moved here from GlobalAssemly. 08.2010. WW
-#if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
-// TODO
-#elif defined(NEW_EQS)
-		b_rhs = m_dom->eqsH->b;
-#else
-		b_rhs = m_dom->eqs->b;
+#if defined(NEW_EQS)
+	b_rhs = pcs->eqs_new->b;
 #endif
-	}
-	else
-#endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
-	// WW
-	{
-#if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
-                        // TODO
-#elif defined(NEW_EQS)
-		b_rhs = pcs->eqs_new->b;
-#else
-		b_rhs = pcs->eqs->b;
-#endif
-	}
 	(*RHS) = 0.0;
 	(*Stiffness) = 0.0;
 	// 07.2011. WW
 	if (PressureC) (*PressureC) = 0.0;
 	if (PressureC_S) (*PressureC_S) = 0.0;
 	if (PressureC_S_dp) (*PressureC_S_dp) = 0.0;
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	if (m_dom)
-	{
-		// 06.2011. WW
-		for (size_t i = 0; i < pcs->GetPrimaryVNumber(); i++)
-			NodeShift[i] = m_dom->shift[i];
-		for (int i = 0; i < nnodesHQ; i++)
-			eqs_number[i] = element_nodes_dom[i];
-	}
-	else
-#endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
-	// WW
-	{
-		for (int i = 0; i < nnodesHQ; i++)
-			eqs_number[i] = MeshElement->nodes[i]->GetEquationIndex();
-	}
+	for (int i = 0; i < nnodesHQ; i++)
+		eqs_number[i] = MeshElement->nodes[i]->GetEquationIndex();
 
 	// For strain and stress extropolation all element types
 	// Number of elements associated to nodes
@@ -1310,10 +1273,7 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 	biot = smat->biot_const;
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;
-	if (m_dom)
-		A = m_dom->eqsH->A;
-	else
-		A = pcs->eqs_new->A;
+	A = pcs->eqs_new->A;
 #endif
 
 	if (dynamic)
@@ -1417,10 +1377,7 @@ void CFiniteElementVec::GlobalAssembly_PressureCoupling(Matrix* pCMatrix,
 {
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;
-	if (m_dom)
-		A = m_dom->eqsH->A;
-	else
-		A = pcs->eqs_new->A;
+	A = pcs->eqs_new->A;
 #endif
 
 	int dim_shift = dim + phase;
