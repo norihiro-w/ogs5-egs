@@ -9584,7 +9584,7 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 		// ---------------------------------------------------
 		// LINEAR SOLUTION
 		// ---------------------------------------------------
-		if (m_num->nls_method == FiniteElement::INVALID_NL_TYPE)
+        if (m_num->nls_method == FiniteElement::NL_LINEAR)
 		{
 			PrintStandardIterationInformation(true, nl_itr_err);
 			converged = true;
@@ -9889,7 +9889,7 @@ void CRFProcess::PrintStandardIterationInformation(bool write_std_errors,
 	int ii;
 	//
 	// LINEAR SOLUTION
-	if (m_num->nls_method == FiniteElement::INVALID_NL_TYPE)
+    if (m_num->nls_method == FiniteElement::NL_LINEAR)
 	{
 		ScreenMessage("      -->LINEAR solution complete. \n");
 		if (write_std_errors)
