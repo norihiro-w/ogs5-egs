@@ -8,20 +8,19 @@ IF(OGS_FEM_PETSC)
 ENDIF()
 
 # Create the library
-add_library( MathLib STATIC ${SOURCES} )
+add_library( Math STATIC ${SOURCES} )
 
-set_target_properties(MathLib PROPERTIES LINKER_LANGUAGE CXX)
+set_target_properties(Math PROPERTIES LINKER_LANGUAGE CXX)
 
 include_directories(
-	${CMAKE_SOURCE_DIR}/MathLib
-	${CMAKE_SOURCE_DIR}/MathLib/LinAlg
-	${CMAKE_SOURCE_DIR}/MathLib/PETSC
+	${CMAKE_SOURCE_DIR}/Math
+	${CMAKE_SOURCE_DIR}/Math/LinAlg
+	${CMAKE_SOURCE_DIR}/Math/PETSC
 	${CMAKE_SOURCE_DIR}/Base
 	${CMAKE_SOURCE_DIR}/GEO
 )
 
-target_link_libraries (
-	MathLib
+target_link_libraries (Math
 	Base
 )
 

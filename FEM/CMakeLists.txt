@@ -19,7 +19,7 @@ include_directories(
 	${CMAKE_SOURCE_DIR}/FileIO
 	${CMAKE_SOURCE_DIR}/FileIO/FEMIO
 	${CMAKE_SOURCE_DIR}/FileIO/MeshIO
-	${CMAKE_SOURCE_DIR}/MathLib
+	${CMAKE_SOURCE_DIR}/Math
 	${CMAKE_SOURCE_DIR}/MSH
 	${CMAKE_SOURCE_DIR}/ThirdParty
 )
