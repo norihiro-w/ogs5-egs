@@ -17,3 +17,12 @@ std::string FilePath;
 int mysize;
 int myrank;
 #endif
+
+void ogsAbort(int i)
+{
+#ifdef USE_PETSC
+    MPI_Abort(MPI_COMM_WORLD, i);
+#else
+    exit(i);
+#endif
+}
