@@ -23,6 +23,7 @@
 #include <algorithm>
 
 #include "display.h"
+#include "FileToolsRF.h"
 
 // FEMLib
 #include "tools.h"

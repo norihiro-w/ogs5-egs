@@ -19,6 +19,7 @@
 
 #include "Configure.h"
 #include "display.h"
+#include "FileToolsRF.h"
 
 #include "GeoIO.h"
 #include "GEOObjects.h"

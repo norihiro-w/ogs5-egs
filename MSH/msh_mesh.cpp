@@ -1434,7 +1434,7 @@ long CFEMesh::GetNODOnPNT(const GEOLIB::Point* const pnt) const
 	for (size_t i = 0; i < nodes_in_usage; i++)
 	{
 		if (!isNodeLocal(i)) continue;  // NW
-		sqr_dist = sqrDist(nod_vector[i]->getData(), pnt->getData());
+		sqr_dist = MathLib::sqrDist(nod_vector[i]->getData(), pnt->getData());
 		if (sqr_dist < distmin)
 		{
 			node_id = i;

@@ -30,6 +30,7 @@
 #include <vector>
 
 #include "display.h"
+#include "FileToolsRF.h"
 #include "StringTools.h"
 #include "files0.h"
 #include "makros.h"

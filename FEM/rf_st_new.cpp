@@ -28,6 +28,7 @@
 #endif
 
 #include "display.h"
+#include "FileToolsRF.h"
 
 #include "MemWatch.h"
 #include "files0.h"

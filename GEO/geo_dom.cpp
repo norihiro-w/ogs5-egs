@@ -14,14 +14,14 @@
    09/2003 OK Implementation
    09/2005 CC GeoLib2
 **************************************************************************/
-#include <stdio.h>
-#include <string.h>
-// C++ STL
-// GeoLib
-#include "files0.h"
 #include "geo_dom.h"
-// Vector
-std::vector<CGLDomain*> domain_vector;  // CC
+
+#include <cstdio>
+#include <cstring>
+
+#include "FileToolsRF.h"
+
+std::vector<CGLDomain*> domain_vector;
 
 /**************************************************************************
    GeoLib-Method: CGLDomain::Insert

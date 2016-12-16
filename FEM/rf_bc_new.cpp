@@ -24,6 +24,7 @@
 
 #include "makros.h"
 #include "display.h"
+#include "FileToolsRF.h"
 #include "memory.h"
 
 // FileIO
