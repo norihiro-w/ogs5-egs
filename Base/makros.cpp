@@ -9,6 +9,10 @@
 
 #include "makros.h"
 
+#ifdef USE_PETSC
+#include <mpi.h>
+#endif
+
 std::string FileName;
 std::string FilePath;
 #if defined(USE_MPI) || defined(USE_MPI_PARPROC) ||      \
@@ -17,3 +21,12 @@ std::string FilePath;
 int mysize;
 int myrank;
 #endif
+
+void ogsAbort(int i)
+{
+#ifdef USE_PETSC
+    MPI_Abort(MPI_COMM_WORLD, i);
+#else
+    exit(i);
+#endif
+}

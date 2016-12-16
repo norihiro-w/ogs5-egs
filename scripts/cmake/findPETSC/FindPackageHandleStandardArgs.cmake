@@ -1,6 +1,6 @@
 # FIND_PACKAGE_HANDLE_STANDARD_ARGS(NAME (DEFAULT_MSG|"Custom failure message") VAR1 ... )
 #    This macro is intended to be used in FindXXX.cmake modules files.
-#    It handles the REQUIRED and QUIET argument to FIND_PACKAGE() and
+#    It handles the REQUIRED and QUIET argument to find_package() and
 #    it also sets the <UPPERCASED_NAME>_FOUND variable.
 #    The package is found if all variables listed are TRUE.
 #    Example:
@@ -17,47 +17,47 @@
 #    be "Could NOT find LibXml2", if you don't like this message you can specify
 #    your own custom failure message there.
 
-MACRO(FIND_PACKAGE_HANDLE_STANDARD_ARGS _NAME _FAIL_MSG _VAR1 )
+macro(FIND_PACKAGE_HANDLE_STANDARD_ARGS _NAME _FAIL_MSG _VAR1 )
 
-  IF("${_FAIL_MSG}" STREQUAL "DEFAULT_MSG")
-    IF (${_NAME}_FIND_REQUIRED)
-      SET(_FAIL_MESSAGE "Could not find REQUIRED package ${_NAME}")
-    ELSE (${_NAME}_FIND_REQUIRED)
-      SET(_FAIL_MESSAGE "Could not find OPTIONAL package ${_NAME}")
-    ENDIF (${_NAME}_FIND_REQUIRED)
-  ELSE("${_FAIL_MSG}" STREQUAL "DEFAULT_MSG")
-    SET(_FAIL_MESSAGE "${_FAIL_MSG}")
-  ENDIF("${_FAIL_MSG}" STREQUAL "DEFAULT_MSG")
-
-
-
-#MESSAGE (STATUS  "PETSc dir...." ${DEFAULT_MSG})
+  if("${_FAIL_MSG}" STREQUAL "DEFAULT_MSG")
+    if (${_NAME}_FIND_REQUIRED)
+      set(_FAIL_MESSAGE "Could not find REQUIRED package ${_NAME}")
+    else ()
+      set(_FAIL_MESSAGE "Could not find OPTIONAL package ${_NAME}")
+    endif ()
+  else()
+    set(_FAIL_MESSAGE "${_FAIL_MSG}")
+  endif()
 
 
-  STRING(TOUPPER ${_NAME} _NAME_UPPER)
 
-  SET(${_NAME_UPPER}_FOUND TRUE)
-  IF(NOT ${_VAR1})
-    SET(${_NAME_UPPER}_FOUND FALSE)
-  ENDIF(NOT ${_VAR1})
+#message (STATUS  "PETSc dir...." ${DEFAULT_MSG})
 
-  FOREACH(_CURRENT_VAR ${ARGN})
-    IF(NOT ${_CURRENT_VAR})
-      SET(${_NAME_UPPER}_FOUND FALSE)
-    ENDIF(NOT ${_CURRENT_VAR})
-  ENDFOREACH(_CURRENT_VAR)
 
-  IF (${_NAME_UPPER}_FOUND)
-    IF (NOT ${_NAME}_FIND_QUIETLY)
-        MESSAGE(STATUS "Found ${_NAME}: ${${_VAR1}}")
-    ENDIF (NOT ${_NAME}_FIND_QUIETLY)
-  ELSE (${_NAME_UPPER}_FOUND)
-    IF (${_NAME}_FIND_REQUIRED)
-        MESSAGE(FATAL_ERROR "${_FAIL_MESSAGE}")
-    ELSE (${_NAME}_FIND_REQUIRED)
-      IF (NOT ${_NAME}_FIND_QUIETLY)
-        MESSAGE(STATUS "${_FAIL_MESSAGE}")
-      ENDIF (NOT ${_NAME}_FIND_QUIETLY)
-    ENDIF (${_NAME}_FIND_REQUIRED)
-  ENDIF (${_NAME_UPPER}_FOUND)
-ENDMACRO(FIND_PACKAGE_HANDLE_STANDARD_ARGS)
+  string(TOUPPER ${_NAME} _NAME_UPPER)
+
+  set(${_NAME_UPPER}_FOUND TRUE)
+  if(NOT ${_VAR1})
+    set(${_NAME_UPPER}_FOUND FALSE)
+  endif()
+
+  foreach(_CURRENT_VAR ${ARGN})
+    if(NOT ${_CURRENT_VAR})
+      set(${_NAME_UPPER}_FOUND FALSE)
+    endif()
+  endforeach()
+
+  if (${_NAME_UPPER}_FOUND)
+    if (NOT ${_NAME}_FIND_QUIETLY)
+        message(STATUS "Found ${_NAME}: ${${_VAR1}}")
+    endif ()
+  else ()
+    if (${_NAME}_FIND_REQUIRED)
+        message(FATAL_ERROR "${_FAIL_MESSAGE}")
+    else ()
+      if (NOT ${_NAME}_FIND_QUIETLY)
+        message(STATUS "${_FAIL_MESSAGE}")
+      endif ()
+    endif ()
+  endif ()
+endmacro()

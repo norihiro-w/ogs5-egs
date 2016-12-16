@@ -58,12 +58,7 @@ public:
 	void Write_BIN(std::fstream& os);
 	void Read_BIN(std::fstream& is);
 	void ReadElementStressASCI(std::fstream& is);
-	double MeanStress(const int gp)
-	{
-		return (*Stress)(0, gp) + (*Stress)(1, gp) + (*Stress)(2, gp);
-	}
 
-private:
 	// Friend class
 	friend class SolidProp::CSolidProperties;
 	friend class process::CRFProcessDeformation;
@@ -73,6 +68,7 @@ private:
 	Matrix* Stress;
     Matrix* Stress_last_ts;
     Matrix* Stress_current_ts;
+    Matrix* dTotalStress = nullptr;
 
 	Matrix* Strain;
 	Matrix* Strain_last_ts = nullptr;

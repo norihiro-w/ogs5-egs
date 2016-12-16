@@ -19,6 +19,7 @@
 #include "makros.h"
 #include "display.h"
 #include "StringTools.h"
+#include "MemWatch.h"
 
 #include "FEMEnums.h"
 #include "mathlib.h"
@@ -334,6 +335,147 @@ double CRFProcessDeformation::getNormOfDisplacements()
 	return norm_u_k1;
 }
 
+void CRFProcessDeformation::solveLinear()
+{
+    eqs_new->Initialize();
+
+#ifndef WIN32
+    BaseLib::MemWatch mem_watch;
+    ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
+#endif
+
+    // Assemble and solve system equation
+    ScreenMessage("Assembling equation system...\n");
+    GlobalAssembly();
+
+#ifndef WIN32
+    ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
+#endif
+
+    // init solution vector
+    if (getProcessType() != FiniteElement::DEFORMATION_FLOW)
+    {
+#if defined(USE_PETSC)
+        InitializeRHS_with_u0();
+#endif
+    }
+
+    ScreenMessage("Calling linear solver...\n");
+    // solve du, p
+#if defined(USE_PETSC)
+    //			eqs_new->EQSV_Viewer("eqs" +
+    // number2str(aktueller_zeitschritt) + "b");
+    eqs_new->Solver();
+    eqs_new->MappingSolution();
+#elif defined(NEW_EQS)
+    bool compress_eqs = (this->Deactivated_SubDomain.size() > 0);
+    eqs_new->Solver(m_num, compress_eqs);
+#endif
+
+    // update nodal values from solution
+    setDUFromSolution();
+
+    if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+        setPressureFromSolution();
+}
+
+void CRFProcessDeformation::solveNewton()
+{
+    const int MaxIteration = m_num->nls_max_iterations;
+    const double Tolerance_global_Newton = m_num->nls_error_tolerance[0];
+    bool isConverged = false;
+    double absNormR0 = 0;
+    double absNormDX0 = 0;
+
+    for (iter_nlin = 0; iter_nlin < MaxIteration; iter_nlin++)
+    {
+        ScreenMessage("-->Starting Newton-Raphson iteration: %d/%d\n", iter_nlin+1, MaxIteration);
+        ScreenMessage("------------------------------------------------\n");
+
+        // Refresh solver
+        eqs_new->Initialize();
+#ifndef WIN32
+        if (iter_nlin == 0)
+        {
+            BaseLib::MemWatch mem_watch;
+            ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
+        }
+#endif
+        // -----------------------------------------------------------------
+        // Evaluate residuals and Jacobian
+        // -----------------------------------------------------------------
+        ScreenMessage("Assembling a residual vector and Jacobian...\n");
+        GlobalAssembly();
+
+#if defined(USE_PETSC)
+        double absNormR = eqs_new->GetVecNormRHS();
+#elif defined(NEW_EQS)
+        double absNormR = eqs_new->ComputeNormRHS();
+#endif
+
+        if (iter_nlin == 0)
+            absNormR0 = absNormR;
+
+        double relNormR = absNormR / (absNormR0 == 0 ? 1 : absNormR0);
+
+        //
+        ScreenMessage("-->Newton-Raphson %d: Abs.Res.=%g, Rel.Res.=%g\n", iter_nlin+1, absNormR, relNormR);
+
+        if (relNormR <= Tolerance_global_Newton)
+        {
+            ScreenMessage("-->Newton-Raphson converged\n");
+            isConverged = true;
+            break;
+        }
+        else if (iter_nlin > 0 && relNormR > 100.0)
+        {
+            ScreenMessage("***Attention: Newton-Raphson step is diverged.\n");
+            break;
+        }
+
+        ScreenMessage("Calling linear solver...\n");
+#if defined(USE_PETSC)
+        eqs_new->Solver();
+        eqs_new->MappingSolution();
+#elif defined(NEW_EQS)
+        bool compress_eqs = (this->Deactivated_SubDomain.size() > 0);
+        eqs_new->Solver(m_num, compress_eqs);
+#endif
+
+#if defined(USE_PETSC)
+        double absNormDX = eqs_new->GetVecNormX();
+#elif defined(NEW_EQS)
+        double absNormDX = eqs_new->NormX();
+#endif
+        if (iter_nlin == 0)
+        {
+            if (this->first_coupling_iteration)
+                norm_du0_pre_cpl_itr = .0;
+            absNormDX0 = absNormDX;
+        }
+        double relNormDX = absNormDX / (absNormDX0 == 0 ? 1 : absNormDX0);
+
+        ScreenMessage("-->Newton-Raphson %d: Abs.DU=%g, Rel.DU=%g\n", iter_nlin+1, absNormDX, relNormDX);
+
+        // -----------------------------------------------------------------
+        // Update solution
+        // -----------------------------------------------------------------
+        incrementNodalDUFromSolution();
+        if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+            incrementNodalPressureFromSolution();
+
+    } // Newton-Raphson iteration
+
+    if (MaxIteration == 1)
+        isConverged = true;
+
+    if (!isConverged)
+    {
+        accepted = false;
+        Tim->last_dt_accepted = false;
+    }
+}
+
 /*************************************************************************
    ROCKFLOW - Function: CRFProcess::
    Task:  Solve plastic deformation by generalized Newton-Raphson method
@@ -352,33 +494,29 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 	clock_t dm_time;
 	dm_time = -clock();
 
-	counter++;  // Times of this method  to be called
-	// For pure elesticity
-	const bool isLinearProblem = (pcs_deformation <= 100 && !fem_dm->dynamic);
-
 	// setup mesh
 	m_msh->SwitchOnQuadraticNodes(true);
 	if (hasAnyProcessDeactivatedSubdomains || Deactivated_SubDomain.size() > 0 ||
 	    num_type_name.find("EXCAVATION") != string::npos)
 		CheckMarkedElement();
 
-// system matrix
-#if defined(USE_PETSC)
-#elif defined(NEW_EQS)  // WW
-	eqs_new->ConfigNumerics(m_num);  // 27.11.2007 WW
-#else
-	SetZeroLinearSolver(eqs);
+#if defined(NEW_EQS)
+    eqs_new->ConfigNumerics(m_num);
 #endif
 
+    //-------------------------------------------------------------------
+    // Preparation of this step
+    //-------------------------------------------------------------------
+    // store solution at last coupling iteration
     if (!this->first_coupling_iteration)
         StoreLastCouplingIterationSolution();
 
-    if (this->first_coupling_iteration &&
-	    m_num->nls_method != FiniteElement::NL_JFNK)
-        StoreLastTimeStepSolution();  // u_n-->temp
+    // setup nodal values of detal u
+    if (this->first_coupling_iteration)
+        StoreLastTimeStepDisplacements();  // to use u_n array as du_n1
     zeroNodalDU();
 
-	//  Reset stress for each coupling step when partitioned scheme is applied
+    //  setup for partitioned coupling
     if (pcs_vector.size()>1 && getProcessType() == FiniteElement::DEFORMATION)
         ResetStress();
 
@@ -386,193 +524,58 @@ double CRFProcessDeformation::Execute(int loop_process_number)
     if (!this->first_coupling_iteration)
         CopyLastTimeStepDisplacementToCurrent();
 
-	//
-	// Compute the maximum ratio of load increment and
-	//   predict the number of load steps
-	// ---------------------------------------------------------------
-	// Compute the ratio of the current load to initial yield load
-	// ---------------------------------------------------------------
-	number_of_load_steps = 1;
-	if (type / 10 == 4)  // For monolithic scheme
-		number_of_load_steps = 1;
-	LoadFactor = 1.0;
-	double damping = 1.0;
-	for (int l = 1; l <= number_of_load_steps; l++)
-	{
-		// Initialize incremental displacement: w=0
-		InitializeNewtonSteps();
-		double NormDU = 0.0, NormR = 0.0;
-		double ErrorR = 0.0, ErrorU = 0.0;
-		const int MaxIteration =
-		    isLinearProblem ? 1 : m_num->nls_max_iterations;
-		if (!isLinearProblem)
-		{
-			ErrorR = ErrorU = NormR = NormDU = 1.0e+8;
-			ScreenMessage("Starting loading step %d/%d. Load factor: %g\n", l,
-			              number_of_load_steps, LoadFactor);
-			ScreenMessage("------------------------------------------------\n");
-		}
+    //-------------------------------------------------------------------
+    // Solution
+    //-------------------------------------------------------------------
+    // solve du, p
+    if (m_num->nls_method == FiniteElement::NL_LINEAR)
+        solveLinear();
+    else if (FiniteElement::isNewtonKind(m_num->nls_method))
+        solveNewton();
 
-		// Begin Newton-Raphson steps
-		ite_steps = 0;
-		while (ite_steps < MaxIteration)
-		{
-			ite_steps++;
-			ScreenMessage("-->Starting Newton-Raphson iteration: %d/%d\n",
-			              ite_steps, MaxIteration);
-			ScreenMessage("------------------------------------------------\n");
-// Refresh solver
-#if defined(USE_PETSC)
-			eqs_new->Initialize();
-#elif defined(NEW_EQS)
-			eqs_new->Initialize();
-#else
-			SetZeroLinearSolver(eqs);
+    //-------------------------------------------------------------------
+    // Post-process
+    //-------------------------------------------------------------------
+    // Update stresses
+    incrementNodalDisplacement(); // u_n1
+    UpdateStress();
+
+    // Determine the discontinuity surface if enhanced strain methods is on.
+    if (enhanced_strain_dm > 0) Trace_Discontinuity();
+
+    // Recovery the old solution.  Temp --> u_n	for flow proccess
+    RecoverLastTimeStepDisplacements();
+
+    // get coupling error
+    if (!this->first_coupling_iteration)
+    {
+        const double u_cpl_abs_error = getNormOfCouplingError(0, problem_dimension_dm);
+        const double p_cpl_abs_error = (getProcessType() == FiniteElement::DEFORMATION) ? 0: getNormOfCouplingError(problem_dimension_dm, 1);
+        const double cpl_abs_error = std::max(u_cpl_abs_error, p_cpl_abs_error);
+        cpl_max_relative_error = cpl_abs_error / m_num->cpl_error_tolerance[0];
+
+        if (getProcessType() == FiniteElement::DEFORMATION)
+            ScreenMessage("   ||u^k1-u^k||=%g\n", u_cpl_abs_error);
+        else
+            ScreenMessage("   ||u^k1-u^k||=%g, ||p^k1-p^k||=%g\n", u_cpl_abs_error, p_cpl_abs_error);
+    } else {
+        cpl_max_relative_error = std::numeric_limits<double>::max();
+    }
+
+    cpl_num_dof_errors = 1;
+
+#ifdef NEW_EQS
+    eqs_new->Clean();
 #endif
 
-			// Assemble and solve system equation
-			ScreenMessage("Assembling equation system...\n");
-			if (m_num->nls_method !=
-			    FiniteElement::NL_JFNK)  // Not JFNK method. 05.08.2010. WW
-				GlobalAssembly();
+    //
+    dm_time += clock();
+    ScreenMessage("PCS error: %g\n", cpl_max_relative_error);
+    ScreenMessage("CPU time elapsed in deformation: %g s\n",
+                  (double)dm_time / CLOCKS_PER_SEC);
+    ScreenMessage("------------------------------------------------\n");
 
-			// init solution vector
-			if (isLinearProblem && type != 41)
-#if defined(USE_PETSC)
-				InitializeRHS_with_u0();
-#else
-				SetInitialGuess_EQS_VEC();
-#endif
-
-			ScreenMessage("Calling linear solver...\n");
-// Linear solver
-#if defined(USE_PETSC)
-			//			eqs_new->EQSV_Viewer("eqs" +
-			// number2str(aktueller_zeitschritt) + "b");
-			eqs_new->Solver();
-			eqs_new->MappingSolution();
-#elif defined(LIS)
-			bool compress_eqs =
-				(type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
-			eqs_new->Solver(this->m_num, compress_eqs);
-#elif defined(NEW_EQS)
-			eqs_new->Solver();
-#else
-			ExecuteLinearSolver();
-#endif
-
-			if (!isLinearProblem)
-			{
-// Get norm of residual vector, solution increment
-#if defined(USE_PETSC)
-				NormR = eqs_new->GetVecNormRHS();
-				NormDU = eqs_new->GetVecNormX();
-#elif defined(NEW_EQS)
-				NormR = eqs_new->NormRHS();
-				NormDU = eqs_new->NormX();
-#else
-				NormR = NormOfUnkonwn_orRHS(false);
-				NormDU = NormOfUnkonwn_orRHS();
-#endif
-
-				if (ite_steps == 1)
-				{
-					if (this->first_coupling_iteration)
-					{
-						InitialNormDU_coupling = NormDU;
-						norm_du0_pre_cpl_itr = .0;
-					}
-					InitialNormR0 = NormR;
-					InitialNormDU0 = NormDU;
-				}
-
-				// calculate errors
-				ErrorR = NormR / (InitialNormR0 == 0 ? 1 : InitialNormR0);
-				ErrorU = NormDU / (InitialNormDU0 == 0 ? 1 : InitialNormDU0);
-
-				// Compute damping for Newton-Raphson step
-				damping = 1.0;
-
-#if 0
-				if(ErrorR / Error1 > 1.0e-1 || ErrorU / ErrorU1 > 1.0e-1)
-					damping = 0.5;
-#endif
-
-				//
-				ScreenMessage("-->End of Newton-Raphson iteration: %d/%d\n",
-				              ite_steps, MaxIteration);
-				ScreenMessage(
-				    "   NR-Error  RHS Norm 0  RHS Norm    Unknowns Norm  "
-				    "Damping\n");
-				ScreenMessage("   %8.2e  %8.2e    %8.2e    %8.2e       %8.2e\n",
-				              ErrorR, InitialNormR0, NormR, NormDU, damping);
-				ScreenMessage(
-				    "------------------------------------------------\n");
-
-				if (ErrorR > 100.0 && ite_steps > 1)
-				{
-					ScreenMessage(
-					    "***Attention: Newton-Raphson step is diverged. "
-					    "Programme halt!\n");
-					exit(1);
-				}
-				//				if(InitialNormR0 < 10 * Tolerance_global_Newton)
-				//					break;
-				//				if(NormR < 0.001 * InitialNormR0)
-				//					break;
-				if (ErrorR <= Tolerance_global_Newton)
-				{
-					if (ite_steps == 1) UpdateIterativeStep(damping, 0);
-					break;
-				}
-			}
-
-			UpdateIterativeStep(damping, 0);  // w = w+dw
-		}                                     // Newton-Raphson iteration
-
-		// Update stresses
-		UpdateStress();
-		if (fem_dm->dynamic) CalcBC_or_SecondaryVariable_Dynamics();
-
-		// Update displacements, u=u+w for the Newton-Raphson
-		// u1 = u0 for linear problems
-		UpdateIterativeStep(1.0, 1);
-	}  // Load step
-
-	// Determine the discontinuity surface if enhanced strain methods is on.
-	if (enhanced_strain_dm > 0) Trace_Discontinuity();
-
-	// Recovery the old solution.  Temp --> u_n	for flow proccess
-    if (m_num->nls_method != FiniteElement::NL_JFNK)
-        RecoverLastTimeStepSolution();
-
-	// get coupling error
-	const double norm_u_k1 =
-	    getNormOfDisplacements();  // InitialNormDU_coupling
-	const double cpl_abs_error =
-	    std::abs(InitialNormDU0 - norm_du0_pre_cpl_itr) /
-	    (norm_u_k1 == 0 ? 1 : norm_u_k1);
-	cpl_max_relative_error = cpl_abs_error / m_num->cpl_error_tolerance[0];
-	cpl_num_dof_errors = 1;
-	ScreenMessage("   ||u^k+1||=%g, ||du^k+1||-||du^k||=%g\n", norm_u_k1,
-	              std::abs(InitialNormDU0 - norm_du0_pre_cpl_itr));
-
-	// store current du0
-	norm_du0_pre_cpl_itr = InitialNormDU0;
-
-#ifdef NEW_EQS  // WW
-	// Also allocate temporary memory for linear solver. WW
-	eqs_new->Clean();
-#endif
-
-	//
-	dm_time += clock();
-	ScreenMessage("PCS error: %g\n", cpl_max_relative_error);
-	ScreenMessage("CPU time elapsed in deformation: %g s\n",
-	              (double)dm_time / CLOCKS_PER_SEC);
-	ScreenMessage("------------------------------------------------\n");
-
-	return cpl_max_relative_error;
+    return cpl_max_relative_error;
 }
 
 /**************************************************************************
@@ -667,6 +670,7 @@ void CRFProcessDeformation::InitGauss(void)
 			eleV_DM = ele_value_dm[i];
 			*(eleV_DM->Stress0) = 0.0;
 			*(eleV_DM->Stress) = 0.0;
+            *(eleV_DM->dTotalStress) = 0.0;
 			PModel = SMat->Plasticity_type;
 
 			for (j = 3; j < fem_dm->ns; j++)
@@ -971,6 +975,64 @@ void CRFProcessDeformation::SetInitialGuess_EQS_VEC()
 	}
 }
 
+void CRFProcessDeformation::setDUFromSolution()
+{
+#if defined(USE_PETSC)
+    double* eqs_x = eqs_new->GetGlobalSolution();
+#elif defined(NEW_EQS)
+    double const* eqs_x = eqs_new->getX();
+#endif
+
+    long shift = 0;
+    for (int i = 0; i < problem_dimension_dm; i++)
+    {
+        long const number_of_nodes = num_nodes_p_var[i];
+        // u_n array is temporally used for du
+        int const var_id_tn = p_var_index[i] - 1;
+
+        for (long j = 0; j < number_of_nodes; j++)
+        {
+#ifdef USE_PETSC
+            long k = m_msh->Eqs2Global_NodeIndex[j] * pcs_number_of_primary_nvals + i;
+            double du = eqs_x[k];
+#else
+            double du = eqs_x[j + shift];
+#endif
+            SetNodeValue(j, var_id_tn, du);
+        }
+        shift += number_of_nodes;
+    }
+}
+
+void CRFProcessDeformation::setPressureFromSolution()
+{
+#if defined(USE_PETSC)
+    double* eqs_x = eqs_new->GetGlobalSolution();
+#elif defined(NEW_EQS)
+    double const* eqs_x = eqs_new->getX();
+#endif
+
+    long shift = 0;
+    for (int i = problem_dimension_dm; i < pcs_number_of_primary_nvals; i++)
+    {
+        long const number_of_nodes = num_nodes_p_var[i];
+        int const var_id_tn1 = p_var_index[i];
+
+        for (long j = 0; j < number_of_nodes; j++)
+        {
+#ifdef USE_PETSC
+            long k = m_msh->Eqs2Global_NodeIndex[j] * pcs_number_of_primary_nvals + i;
+#else
+            long k = j + shift;
+#endif
+            double p = eqs_x[k];
+            SetNodeValue(j, var_id_tn1, p);
+        }
+
+        shift += number_of_nodes;
+    }
+}
+
 /**************************************************************************
    ROCKFLOW - Funktion: UpdateIterativeStep(LINEAR_SOLVER * ls, const int Type)
 
@@ -990,101 +1052,80 @@ void CRFProcessDeformation::SetInitialGuess_EQS_VEC()
    10/2002   WW   Erste Version
    11/2007   WW   Change to fit the new equation class
 **************************************************************************/
-void CRFProcessDeformation::UpdateIterativeStep(const double damp,
-                                                const int u_type)
+void CRFProcessDeformation::incrementNodalDUFromSolution()
 {
-	int i, j;
-	long shift = 0;
-	long number_of_nodes;
-	int ColIndex = 0;
-	double* eqs_x = NULL;
-
-#if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
-	eqs_x = eqs_new->GetGlobalSolution();
+#if defined(USE_PETSC)
+    double* eqs_x = eqs_new->GetGlobalSolution();
 #elif defined(NEW_EQS)
-	eqs_x = eqs_new->x;
-#else
-	eqs_x = eqs->x;
+    double const* eqs_x = eqs_new->getX();
 #endif
 
-	if (type == 41 && fem_dm->dynamic)
-	{
-		for (i = 0; i < pcs_number_of_primary_nvals; i++)
-		{
-			number_of_nodes = num_nodes_p_var[i];
-			//
-			if (u_type == 0)
-			{
-				ColIndex = p_var_index[i] - 1;
-				for (j = 0; j < number_of_nodes; j++)
-					SetNodeValue(j, ColIndex, GetNodeValue(j, ColIndex) +
-					                              eqs_x[j + shift] * damp);
-				shift += number_of_nodes;
-			}
-			else
-			{
-				ColIndex = p_var_index[i];
-				for (j = 0; j < number_of_nodes; j++)
-					SetNodeValue(j, ColIndex,
-					             GetNodeValue(j, ColIndex) +
-					                 GetNodeValue(j, ColIndex - 1));
-			}
-		}
-		return;
-	}
+    long shift = 0;
+    for (int i = 0; i < problem_dimension_dm; i++)
+    {
+        long const number_of_nodes = num_nodes_p_var[i];
+        int const var_id_tn = p_var_index[i] - 1;
 
-	//
-	for (i = 0; i < problem_dimension_dm; i++)
-	{
-		number_of_nodes = num_nodes_p_var[i];
-		//
-		ColIndex = p_var_index[i] - 1;
-		///  Update Newton step: w = w+dw
-		if (u_type == 0)
-		{
-			for (j = 0; j < number_of_nodes; j++)
-			{
+        for (long j = 0; j < number_of_nodes; j++)
+        {
 #ifdef USE_PETSC
-				long k = m_msh->Eqs2Global_NodeIndex[j] *
-				             pcs_number_of_primary_nvals +
-				         i;
-				SetNodeValue(j, ColIndex,
-				             GetNodeValue(j, ColIndex) + eqs_x[k] * damp);
+            long k = m_msh->Eqs2Global_NodeIndex[j] * pcs_number_of_primary_nvals + i;
+            double du = eqs_x[k];
 #else
-				SetNodeValue(j, ColIndex, GetNodeValue(j, ColIndex) +
-				                              eqs_x[j + shift] * damp);
+            double du = eqs_x[j + shift];
 #endif
-			}
-			shift += number_of_nodes;
-		}
-		else
-			for (j = 0; j < number_of_nodes; j++)
-			{
-				SetNodeValue(j, ColIndex + 1, GetNodeValue(j, ColIndex + 1) +
-				                                  GetNodeValue(j, ColIndex));
-			}
-	}
+            // du = du + d(du)
+            SetNodeValue(j, var_id_tn, GetNodeValue(j, var_id_tn) + du);
+        }
+        shift += number_of_nodes;
+    }
+}
 
-	// if(type == 42&&m_num->nls_method>0)         //H2M, Newton-Raphson.
-	// 06.09.2010. WW
-	if (type / 10 == 4)  // H2M, HM. 28.09.2011. WW
-	{
-		/// $p_{n+1}=p_{n+1}+\Delta p$ is already performed when type = 0
-		if (u_type == 1) return;
+// p_n1 += dp
+void CRFProcessDeformation::incrementNodalPressureFromSolution()
+{
+#if defined(USE_PETSC)
+    double* eqs_x = eqs_new->GetGlobalSolution();
+#elif defined(NEW_EQS)
+    double const* eqs_x = eqs_new->getX();
+#endif
 
-		for (i = problem_dimension_dm; i < pcs_number_of_primary_nvals; i++)
-		{
-			number_of_nodes = num_nodes_p_var[i];
-			//
-			ColIndex = p_var_index[i];
+    long shift = 0;
+    for (int i = problem_dimension_dm; i < pcs_number_of_primary_nvals; i++)
+    {
+        long const number_of_nodes = num_nodes_p_var[i];
+        int const ColIndex = p_var_index[i];
 
-			for (j = 0; j < number_of_nodes; j++)
-				SetNodeValue(j, ColIndex, GetNodeValue(j, ColIndex) +
-				                              eqs_x[j + shift] * damp);
+        for (long j = 0; j < number_of_nodes; j++)
+        {
+#ifdef USE_PETSC
+            long k = m_msh->Eqs2Global_NodeIndex[j] * pcs_number_of_primary_nvals + i;
+#else
+            long k = j + shift;
+#endif
+            double dp = eqs_x[k];
+            SetNodeValue(j, ColIndex, GetNodeValue(j, ColIndex) + dp);
+        }
 
-			shift += number_of_nodes;
-		}
-	}
+        shift += number_of_nodes;
+    }
+}
+
+void CRFProcessDeformation::incrementNodalDisplacement()
+{
+    // u = u + du
+    for (int i = 0; i < problem_dimension_dm; i++)
+    {
+        long const number_of_nodes = num_nodes_p_var[i];
+        int const var_id_tn = p_var_index[i] - 1;
+
+        for (long j = 0; j < number_of_nodes; j++)
+        {
+            double last_ts_u = GetNodeValue(j, var_id_tn + 1);
+            double du = GetNodeValue(j, var_id_tn);
+            SetNodeValue(j, var_id_tn + 1, last_ts_u + du);
+        }
+    }
 }
 
 /**************************************************************************
@@ -1237,36 +1278,33 @@ void CRFProcessDeformation::zeroNodalDU()
    11/2007   WW   Change to fit the new equation class
 **************************************************************************/
 
-void CRFProcessDeformation::StoreLastTimeStepSolution(const int ty)
+void CRFProcessDeformation::StoreLastTimeStepDisplacements()
 {
-	int i, j;
-	long number_of_nodes;
-	long shift = 0;
+    // u(n) is used to store du(n+1)
+    long shift = 0;
+    for (int i = 0; i < problem_dimension_dm; i++)
+    {
+        int var_id1 = p_var_index[i];
+        long number_of_nodes = num_nodes_p_var[i];
+        for (long j = 0; j < number_of_nodes; j++)
+            lastTimeStepSolution[shift + j] = GetNodeValue(j, var_id1);
 
-	// Displacement
-	for (i = 0; i < pcs_number_of_primary_nvals; i++)
-	{
-		number_of_nodes = num_nodes_p_var[i];
-		for (j = 0; j < number_of_nodes; j++)
-            lastTimeStepSolution[shift + j] = GetNodeValue(j, p_var_index[i] - ty);
-		shift += number_of_nodes;
-	}
+        shift += number_of_nodes;
+    }
 }
 
 void CRFProcessDeformation::StoreLastCouplingIterationSolution()
 {
-    assert(lastCouplingSolution!=nullptr);
-
-	long shift = 0;
-	for (int i = 0; i < pcs_number_of_primary_nvals; i++)
-	{
-		int var_id1 = p_var_index[i];
-		long number_of_nodes = num_nodes_p_var[i];
-		for (long j = 0; j < number_of_nodes; j++)
+    long shift = 0;
+    for (int i = 0; i < pcs_number_of_primary_nvals; i++)
+    {
+        int var_id1 = p_var_index[i];
+        long number_of_nodes = num_nodes_p_var[i];
+        for (long j = 0; j < number_of_nodes; j++)
             lastCouplingSolution[shift + j] = GetNodeValue(j, var_id1);
 
-		shift += number_of_nodes;
-	}
+        shift += number_of_nodes;
+    }
 }
 
 /**************************************************************************
@@ -1283,49 +1321,19 @@ void CRFProcessDeformation::StoreLastCouplingIterationSolution()
    10/2002   WW   Erste Version
    11/2007   WW   Change to fit the new equation class
 **************************************************************************/
-void CRFProcessDeformation::RecoverLastTimeStepSolution(const int ty)
+void CRFProcessDeformation::RecoverLastTimeStepDisplacements()
 {
-	int i, j, idx;
-	long number_of_nodes;
-	int Colshift = 1;
-	long shift = 0;
-	double tem = 0.0;
+    // u(n) was used to store du(n+1)
+    long shift = 0;
+    for (int i = 0; i < problem_dimension_dm; i++)
+    {
+        long number_of_nodes = num_nodes_p_var[i];
+        int idx = p_var_index[i] - 1;
+        for (long j = 0; j < number_of_nodes; j++)
+            SetNodeValue(j, idx, lastTimeStepSolution[shift + j]);
 
-	int start, end;
-
-	start = 0;
-	end = pcs_number_of_primary_nvals;
-
-	// If monolithic scheme for p-u coupling,  p_i-->p_0 only
-	if (pcs_deformation % 11 == 0 && ty > 0)
-	{
-		start = problem_dimension_dm;
-		for (i = 0; i < start; i++)
-			shift += num_nodes_p_var[i];
-
-		// TODO: end = problem_dimension_dm;
-	}
-	for (i = start; i < end; i++)
-	{
-		number_of_nodes = num_nodes_p_var[i];
-		idx = p_var_index[i] - Colshift;
-		for (j = 0; j < number_of_nodes; j++)
-		{
-			if (ty < 2)
-			{
-				if (ty == 1) tem = GetNodeValue(j, idx);
-                SetNodeValue(j, idx, lastTimeStepSolution[shift + j]);
-                if (ty == 1) lastTimeStepSolution[shift + j] = tem;
-			}
-			else if (ty == 2)
-			{
-                tem = lastTimeStepSolution[shift + j];
-                lastTimeStepSolution[shift + j] = GetNodeValue(j, idx);
-				SetNodeValue(j, idx, tem);
-			}
-		}
-		shift += number_of_nodes;
-	}
+        shift += number_of_nodes;
+    }
 }
 
 /**************************************************************************
@@ -1416,6 +1424,26 @@ double CRFProcessDeformation::NormOfUnkonwn_orRHS(bool isUnknowns)
 	return sqrt(NormW);
 }
 #endif
+
+
+double CRFProcessDeformation::getNormOfCouplingError(int pvar_id_start, int n)
+{
+    double lmax = 0.0;
+    long shift = 0;
+    for (int i = pvar_id_start; i < pvar_id_start + n; i++)
+    {
+        int var_id1 = p_var_index[i];
+        long number_of_nodes = num_nodes_p_var[i];
+        for (long j = 0; j < number_of_nodes; j++)
+        {
+            double diff = lastCouplingSolution[shift + j] - GetNodeValue(j, var_id1);
+            lmax = std::max(lmax, diff);
+        }
+        shift += number_of_nodes;
+    }
+    return lmax;
+}
+
 /**************************************************************************
    ROCKFLOW - Funktion: MaxiumLoadRatio
 
@@ -2093,7 +2121,6 @@ void CRFProcessDeformation::DomainAssembly(CPARDomain* m_dom)
 	}
 	if (type == 41)  // p-u monolithic scheme
 	{
-        if (!fem_dm->dynamic) RecoverLastTimeStepSolution(1);  // p_i-->p_0
 		// 2.
 		// Assemble pressure eqs
 		for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
@@ -2109,7 +2136,6 @@ void CRFProcessDeformation::DomainAssembly(CPARDomain* m_dom)
 				fem->Assembly();
 			}
 		}
-        if (!fem_dm->dynamic) RecoverLastTimeStepSolution(2);  // p_i-->p_0
 	}
 
 	/*

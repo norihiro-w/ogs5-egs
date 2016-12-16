@@ -2258,7 +2258,16 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 				              dummy);
 			continue;
 		}
-		if (line_string.find("$SCALE_DOF") == 0)
+        if (line_string.find("$TOTAL_STRESS_COUPLING") == 0)
+        {
+            int dummy = 0;
+            *pcs_file >> dummy;
+            use_total_stress_coupling = (dummy != 0);
+            if (use_total_stress_coupling)
+                ScreenMessage("-> coupling with deformation will be done via total stress instead of strain\n", dummy);
+            continue;
+        }
+        if (line_string.find("$SCALE_DOF") == 0)
 		{
 			int n = 0;
 			*pcs_file >> n;
@@ -9584,7 +9593,7 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 		// ---------------------------------------------------
 		// LINEAR SOLUTION
 		// ---------------------------------------------------
-		if (m_num->nls_method == FiniteElement::INVALID_NL_TYPE)
+        if (m_num->nls_method == FiniteElement::NL_LINEAR)
 		{
 			PrintStandardIterationInformation(true, nl_itr_err);
 			converged = true;
@@ -9889,7 +9898,7 @@ void CRFProcess::PrintStandardIterationInformation(bool write_std_errors,
 	int ii;
 	//
 	// LINEAR SOLUTION
-	if (m_num->nls_method == FiniteElement::INVALID_NL_TYPE)
+    if (m_num->nls_method == FiniteElement::NL_LINEAR)
 	{
 		ScreenMessage("      -->LINEAR solution complete. \n");
 		if (write_std_errors)
@@ -13901,7 +13910,7 @@ void CreateEQS_LinearSolver()
 	for (i = 0; i < num_vector.size(); i++)
 	{
 		num = num_vector[i];
-		if (num->nls_method == 2)
+        if (num->nls_method == FiniteElement::NL_JFNK)
 		{
 			// Stiffness matrix of lower order grid may be used by more than one
 			// processes.

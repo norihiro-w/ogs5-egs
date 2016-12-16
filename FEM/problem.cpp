@@ -102,17 +102,6 @@ class CRFProcessDeformation;
 }
 using process::CRFProcessDeformation;
 
-// NW: moved the following variables from rf.cpp to avoid linker errors
-std::string FileName;  // WW
-std::string FilePath;  // 23.02.2009. WW
-
-#if defined(USE_MPI) || defined(USE_MPI_PARPROC) ||      \
-    defined(USE_MPI_REGSOIL) || defined(USE_MPI_GEMS) || \
-    defined(USE_MPI_BRNS) || defined(USE_PETSC)
-int mysize;  // NW
-int myrank;
-#endif
-
 /**************************************************************************
    GeoSys - Function: Constructor
    Task:
@@ -1475,10 +1464,9 @@ bool Problem::CouplingLoop()
 				Call_Member_FN(this, active_processes[index])();
 				a_pcs->first_coupling_iteration = false;  // No longer true.
 				// Check for break criteria
-				max_outer_error =
-				    MMax(max_outer_error, a_pcs->cpl_max_relative_error);
-				ScreenMessage("coupling error (relative to tolerance): %e\n",
-				              a_pcs->cpl_max_relative_error);
+				max_outer_error = MMax(max_outer_error, a_pcs->cpl_max_relative_error);
+				if (outer_index>0)
+					ScreenMessage("coupling error (relative to tolerance): %e\n", a_pcs->cpl_max_relative_error);
 				if (!a_pcs->TimeStepAccept())
 				{
 					if (a_pcs->tim_type == FiniteElement::TIM_STEADY)
@@ -1506,13 +1494,12 @@ bool Problem::CouplingLoop()
 		//
 		if (cpl_overall_max_iterations > 1)
 		{
-			ScreenMessage(
-			    "\n======================================================\n");
-			ScreenMessage("Outer coupling loop %d/%d: err=%g\n",
-			              outer_index + 1, cpl_overall_max_iterations,
-			              max_outer_error);
-			ScreenMessage(
-			    "======================================================\n");
+			ScreenMessage("\n======================================================\n");
+			if (outer_index == 0)
+				ScreenMessage("Outer coupling loop %d/%d\n", outer_index + 1, cpl_overall_max_iterations);
+			else
+				ScreenMessage("Outer coupling loop %d/%d: err=%g\n", outer_index + 1, cpl_overall_max_iterations, max_outer_error);
+			ScreenMessage("======================================================\n");
 		}
 		else
 		{

@@ -316,7 +316,7 @@ std::string convertTimTypeToString(TimType st_type);
 
 enum NonlinearSolverType
 {
-	INVALID_NL_TYPE = -1,
+	NL_LINEAR,
 	NL_PICARD,
 	NL_NEWTON,
 	NL_JFNK
@@ -325,7 +325,7 @@ enum NonlinearSolverType
 inline bool isNewtonKind(NonlinearSolverType type)
 {
 	return (type == NL_NEWTON || type == NL_JFNK);
-};
+}
 
 }  // end namespace FiniteElement
 

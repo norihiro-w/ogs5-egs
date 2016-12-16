@@ -84,12 +84,14 @@ public:
 	void InitGauss();
 	//
 	void SetInitialGuess_EQS_VEC();
-	void UpdateIterativeStep(const double damp, const int u_type);
-	void InitializeNewtonSteps(const bool ini_excav = false);
-	double NormOfUpdatedNewton();
-    void StoreLastTimeStepSolution(const int ty = 0);
+    void incrementNodalDUFromSolution();
+    void incrementNodalPressureFromSolution();
+    void incrementNodalDisplacement();
+    void InitializeNewtonSteps(const bool ini_excav = false);
+    double NormOfUpdatedNewton();
+    void StoreLastTimeStepDisplacements();
     void StoreLastCouplingIterationSolution();
-    void RecoverLastTimeStepSolution(const int ty = 0);
+    void RecoverLastTimeStepDisplacements();
     void CopyLastTimeStepDisplacementToCurrent();
 
     void zeroNodalDU();
@@ -99,7 +101,8 @@ public:
 	                   //#ifndef NEW_EQS
 	double NormOfUnkonwn_orRHS(bool isUnknowns = true);
 #endif
-	// Stress
+    double getNormOfCouplingError(int pvar_id_start, int n);
+    // Stress
 	// For partitioned HM coupled scheme
     void ResetStress();
 	void ResetTimeStep();
@@ -125,6 +128,12 @@ public:
 
 	// Access members
 	CFiniteElementVec* GetFEM_Assembler() const { return fem_dm; }
+
+private:
+    void solveLinear();
+    void solveNewton();
+    void setDUFromSolution();
+    void setPressureFromSolution();
 
 private:
 	CFiniteElementVec* fem_dm;

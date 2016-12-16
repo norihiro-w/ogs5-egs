@@ -2200,6 +2200,17 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 	for (i = 0; i < ns; i++)
 		stress0[i] = .0;
 
+    auto &nodal_p1 = AuxNodal;
+    auto &nodal_p0 = AuxNodal1;
+    if (H_Process)
+    {
+        for (int i = 0; i < nnodes; i++)
+        {
+            nodal_p1[i] = h_pcs->GetNodeValue(nodes[i], idx_P1);
+            nodal_p0[i] = h_pcs->GetNodeValue(nodes[i], idx_P1 - 1);
+        }
+    }
+
 	// Loop over Gauss points
 	for (gp = 0; gp < nGaussPoints; gp++)
 	{
@@ -2461,12 +2472,22 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 			ComputeMatrix_RHS(fkt, p_D);
 		}
 		else  // Update stress
-
+        {
 			for (i = 0; i < ns; i++)
 			{
 				(*eleV_DM->Stress)(i, gp) = dstress[i];
+                (*eleV_DM->dTotalStress)(i, gp) = (*eleV_DM->Stress)(i, gp) - (*eleV_DM->Stress_last_ts)(i, gp);
                 (*eleV_DM->Strain)(i, gp) += dstrain[i];
 			}
+            if (H_Process)
+            {
+                const double gp_p1 = interpolate(nodal_p1);
+                const double gp_p0 = interpolate(nodal_p0);
+                const double d_bp = smat->biot_const * gp_p1 - smat->biot_const * gp_p0;
+                for (long i = 0; i < 3; i++)
+                    (*eleV_DM->dTotalStress)(i, gp) -= d_bp;
+            }
+        }
 	}
 	// The mapping of Gauss point strain to element nodes
 	if (update)
@@ -3732,7 +3753,8 @@ ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool has_coupling_lo
 		NGPoints = MathLib::fastpow(NGP, ele_dim);
 
 	Stress0 = new Matrix(LengthBS, NGPoints);
-	Stress_last_ts = new Matrix(LengthBS, NGPoints);
+    dTotalStress = new Matrix(LengthBS, NGPoints);
+    Stress_last_ts = new Matrix(LengthBS, NGPoints);
 	if (has_coupling_loop)
 		Stress_current_ts = new Matrix(LengthBS, NGPoints);
 	else
@@ -3851,7 +3873,8 @@ void ElementValue_DM::ResetStress(bool cpl_loop)
 ElementValue_DM::~ElementValue_DM()
 {
 	delete Stress0;
-	if (Stress_last_ts) delete Stress_last_ts;
+    delete dTotalStress;
+    if (Stress_last_ts) delete Stress_last_ts;
 	if (Stress_current_ts) delete Stress_current_ts;
     if (pStrain) delete pStrain;
 	if (y_surface) delete y_surface;

@@ -937,7 +937,8 @@ public:
 	int ExcavCurve;               // WX
 	double ExcavBeginCoordinate;  // WX
 	int PCS_ExcavState;           // WX
-	bool calcDiffFromStress0;
+    bool use_total_stress_coupling = false;
+    bool calcDiffFromStress0;
 	bool resetStrain;
 	bool scaleUnknowns;
 	std::vector<double> vec_scale_dofs;
