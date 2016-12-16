@@ -40,7 +40,6 @@ set( HEADERS
 	rf_st_new.h
 	rf_tim_new.h
 	rfmat_cp.h
-	solver.h
 	SourceTerm.h
 	SparseMatrixDOK.h
 	Stiff_Bulirsch-Stoer.h
@@ -97,12 +96,7 @@ IF(OGS_FEM_PETSC)
 	SET( SOURCES ${SOURCES} rf_pcs1.cpp fct_mpi.h fct_mpi.cpp)
 ELSE(OGS_FEM_PETSC)
 	SET( SOURCES ${SOURCES} par_ddc.h par_ddc.cpp)
-	## New sparse class. WW
-	IF(OGS_FEM_MKL OR OGS_FEM_LIS)
-		SET( SOURCES ${SOURCES} equation_class.h equation_class.cpp )
-	ELSE()
-		SET( SOURCES ${SOURCES} solver.h solver.cpp matrix_routines.h matrix_routines.cpp)
-	ENDIF()
+	SET( SOURCES ${SOURCES} equation_class.h equation_class.cpp )
 ENDIF()
 
 IF(NOT OGS_ONLY_TH)

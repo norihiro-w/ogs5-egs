@@ -48,9 +48,6 @@
 #include "makros.h"
 // GeoSys-GeoLib
 // GeoSys-FEMLib
-#ifndef NEW_EQS  // WW. 06.11.2008
-#include "matrix_routines.h"
-#endif
 #include "StringTools.h"
 #include "mathlib.h"
 #include "rf_pcs.h"
