@@ -21,30 +21,16 @@
 #ifndef makros_INC
 #define makros_INC
 
+#include <cmath>
+#include <cstdlib>
+#include <string>
+
 #include "BuildInfo.h"
 #include "Configure.h"
 
-/* Global benoetigte Header */
-//#include <stdlib.h>
-/* Speicherverwaltung */
-//#include <string.h>
-#include <string>
-
-/* Zeichenketten */
-//#include <float.h>
-/* Floating-Point */
-
-/* ROCKFLOW-Version */
-// LB: renamed ROCKFLOW_VERSION to OGS_VERSION and moved the #define to
-// Base/Configure.h.in. Please set the version in the top-level CMakeLists.txt!!
-// (see sources/CMakeLists.txt)
 
 /* Definitionen von Makros zur Steuerung der bedingten Compilierung */
 #define SWITCHES
-/* Ausgabe der Schalterstellungen zu Beginn des Programms */
-#ifdef MSVCPP6
-#pragma warning(disable : 4786)
-#endif
 
 /* Laufzeitausgaben */
 #define TESTTIME
