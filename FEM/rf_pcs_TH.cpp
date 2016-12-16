@@ -150,7 +150,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 
 //
 #if defined(NEW_EQS)
-		const double NormR = eqs_new->NormRHS();
+		const double NormR = eqs_new->ComputeNormRHS();
 #elif defined(USE_PETSC)
 		const double NormR = eqs_new->GetVecNormRHS();
 #endif

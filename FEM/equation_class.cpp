@@ -7,34 +7,17 @@
  *
  */
 
-/**************************************************************************
-   Task: Linear equation
-   Programing:
-   11/2007 WW/
-**************************************************************************/
-// There is a name conflict between stdio.h and the MPI C++ binding
-// with respect to the names SEEK_SET, SEEK_CUR, and SEEK_END.  MPI
-// wants these in the MPI namespace, but stdio.h will #define these
-// to integer values.  #undef'ing these can cause obscure problems
-// with other include files (such as iostream), so we instead use
-// #error to indicate a fatal error.  Users can either #undef
-// the names before including mpi.h or include mpi.h *before* stdio.h
-// or iostream.
-
 #include "equation_class.h"
 
+#include <algorithm>
 #include <cfloat>
 #include <iomanip>
-#include <algorithm>
+
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
-// NEW_EQS To be removed
-#ifdef NEW_EQS  // 1.11.2007 WW
-
-#ifdef LIS  // 07.02.2008 PCH
-#include "lis.h"
+#ifdef LIS
 #ifndef LIS_INT
 #define LIS_INT int
 #endif
@@ -68,8 +51,8 @@ extern int PARDISO(int*, int*, int*, int*, int*, int*, double*, int*, int*,
 #endif
 
 #include "Configure.h"
-#include "makros.h"
 #include "display.h"
+#include "makros.h"
 
 #include "matrix_class.h"
 #include "rf_num_new.h"
@@ -87,15 +70,11 @@ namespace Math_Group
    10/2007 WW/
 **************************************************************************/
 Linear_EQS::Linear_EQS(const SparseTable& sparse_table,
-                       const long dof, bool messg)
-    : message(messg)
+					   const long dof, bool /*messg*/)
 {
 	long i;
 	A = new CSparseMatrix(sparse_table, dof);
 	size_A = A->Dim();
-	size_global = 0;
-
-	prec_M = NULL;
 
 	x = new double[size_A];
 	b = new double[size_A];
@@ -105,9 +84,6 @@ Linear_EQS::Linear_EQS(const SparseTable& sparse_table,
 		x[i] = 0.;
 		b[i] = 0.;
 	}
-	iter = 0;
-	bNorm = 1.0;
-	error = 1.0e10;
 }
 
 /**************************************************************************
@@ -124,103 +100,14 @@ Linear_EQS::~Linear_EQS()
 	A = NULL;
 	x = NULL;
 	b = NULL;
-
-	/// GMRES. 30.06.2010. WW
-	if (solver_type == 13) H.ReleaseMemory();
 }
 /**************************************************************************
    Task: Linear equation::
    Programing:
    10/2007 WW/
 **************************************************************************/
-void Linear_EQS::ConfigNumerics(CNumerics* m_num, const long n)
+void Linear_EQS::ConfigNumerics(CNumerics* /*m_num*/, const long /*n*/)
 {
-	(void)n;
-	int i, nbuffer = 0;  // Number of temperary float arrays
-	precond_type = m_num->ls_precond;
-	solver_type = m_num->ls_method;
-	switch (solver_type)
-	{
-		case 1:
-			solver_name = "Gauss";
-			break;
-		case 2:
-			solver_name = "BiCGSTab";
-			nbuffer = 8;
-			break;
-		case 3:
-			solver_name = "BiCG";
-			nbuffer = 8;  // 20.10.2010. WW
-			break;
-		case 4:
-			solver_name = "QMRCGStab";
-			break;
-		case 5:
-			solver_name = "CG";
-			nbuffer = 3;
-			break;
-		case 6:
-			solver_name = "CGNR";
-			break;
-		case 7:
-			solver_name = "CGS";
-			nbuffer = 9;
-			break;
-		case 8:
-			solver_name = "Richardson";
-			break;
-		case 9:
-			solver_name = "JOR";
-			break;
-		case 10:
-			solver_name = "SOR";
-			break;
-		case 11:
-			solver_name = "AMG1R5";
-			break;
-		case 12:
-			solver_name = "UMF";
-			break;
-		case 13:  // 06.2010. WW
-			solver_name = "GMRES";
-			m_gmres = m_num->Get_m();
-			for (i = 0; i < 4; i++)
-			{
-				double* new_array = new double[m_gmres + 1];
-				f_buffer.push_back(new_array);
-			}
-			H.resize(m_gmres + 1, m_gmres + 1);
-			nbuffer = m_gmres + 4;
-			break;
-	}
-	for (i = 0; i < nbuffer; i++)
-	{
-		double* new_array = new double[size_A];
-		f_buffer.push_back(new_array);
-	}
-	//---------------------------------------------
-	switch (precond_type)
-	{
-		case 1:
-			precond_name = "Jacobi";
-			break;
-		case 100:
-			// precond_name = "ILU"; break;
-			// If ILU is ready, remove follows
-			// ----------------------------------------------
-			precond_name = "ILU not available. Use Jacobi";
-			precond_type = 1;
-			// ----------------------------------------------
-			break;
-		default:
-			precond_name = "No preconditioner";
-			break;
-	}
-	//
-	//
-	max_iter = m_num->ls_max_iterations;
-	tol = m_num->ls_error_tolerance;
-	//
 }
 /**************************************************************************
    Task: Linear equation::Alocate memory for solver
@@ -232,7 +119,6 @@ void Linear_EQS::Initialize()
 	if (A) (*A) = 0.;
 	for (long i = 0; i < size_A; i++)
 		b[i] = 0.;
-	error = 1.0e10;
 }
 /**************************************************************************
    Task: Linear equation::Alocate memory for solver
@@ -241,14 +127,6 @@ void Linear_EQS::Initialize()
 **************************************************************************/
 void Linear_EQS::Clean()
 {
-	for (int i = 0; i < (int)f_buffer.size(); i++)
-	{
-		if (f_buffer[i]) delete[] f_buffer[i];
-		f_buffer[i] = NULL;
-	}
-	f_buffer.clear();
-	if (prec_M) delete[] prec_M;
-	prec_M = NULL;
 }
 /**************************************************************************
    Task: Linear equation::Write
@@ -951,9 +829,6 @@ int Linear_EQS::Solver(CNumerics* num, bool compress)
 	compress = false;
 #endif
 
-	// get RHS norm
-	this->bNorm = Norm(b);
-
 	int iter = 0;
 #ifdef _OPENMP
 	// omp_set_num_threads (1);
@@ -978,66 +853,9 @@ int Linear_EQS::Solver(CNumerics* num, bool compress)
 
 	return iter;
 }
-#else  // ifdef LIS
-int Linear_EQS::Solver()
-{
-	//
-	iter = 0;
-	ComputePreconditioner();
-	switch (solver_type)
-	{
-		case 1:
-			return Gauss();
-		case 2:
-			iter = BiCGStab();
-			return iter;  // kg44 only to make sure here is iter returned
-		case 3:
-			return BiCG();
-		case 4:
-			return QMRCGStab();
-		case 5:
-			return CG();
-		case 6:
-			return CGNR();
-		case 7:
-			return CGS();
-		case 8:
-			return Richardson();
-		case 9:
-			return JOR();
-		case 10:
-			return SOR();
-		case 11:
-			return AMG1R5();
-		case 12:
-			return UMF();
-		case 13:
-			return GMRES();
-			break;
-	}
-	return -1;
-}
 #endif
 #endif
-// Preconditioners
-/**************************************************************************
-   Task: Preconditioners
-   Programing:
-   10/2007 WW
-**************************************************************************/
-void Linear_EQS::ComputePreconditioner()
-{
-	switch (precond_type)
-	{
-		case 1:
-			return;
-		case 100:
-			ComputePreconditioner_ILU();
-			return;
-		default:
-			return;
-	}
-}
+
 /**************************************************************************
    Task: Linear equation::SetKnownXi
       Configure equation system when one entry of the vector of
@@ -1049,40 +867,7 @@ void Linear_EQS::SetKnownX_i(const long i, const double x_i)
 {
 	A->Diagonize(i, x_i, b);
 }
-/**************************************************************************
-   Task: Linear equation::Preconditioner
-   Programing:
-   08/2007 WW/
-**************************************************************************/
-void Linear_EQS::Precond(double* vec_s, double* vec_r)
-{
-	bool pre = true;
-	switch (precond_type)
-	{
-		case 1:
-			A->Precond_Jacobi(vec_s, vec_r);
-			break;
-		case 100:
-			pre = false;  // A->Precond_ILU(vec_s, vec_r);
-			break;
-		default:
-			pre = false;  // A->Precond_ILU(vec_s, vec_r);
-			break;
-	}
-	if (!pre)
-		for (long i = 0; i < size_A; i++)
-			vec_r[i] = vec_s[i];
-}
-/**************************************************************************
-   Task: Linear equation:: M^T x
-   Transpose of preconditioner times a vector
-   Programing:
-   02/2010 WW/
-**************************************************************************/
-void Linear_EQS::TransPrecond(double* vec_s, double* vec_r)
-{
-	Precond(vec_s, vec_r);
-}
+
 /*\!
  ********************************************************************
    Dot production of two vectors
@@ -1108,623 +893,7 @@ double Linear_EQS::NormX()
 {
 	return sqrt(dot(x, x));
 }
-//
 
-/*!
- ********************************************************************
-   ConvergeTest
-   Programm:
-   09/2007 WW
- ********************************************************************/
-void Linear_EQS::Message()
-{
-	if (!message) return;
-	cout.width(10);
-	cout.precision(3);
-	cout.setf(ios::scientific);
-	//
-	// system("color 0B");
-	cout << "      ------------------------------------------------\n";
-	cout << "      Linear solver " << solver_name << " with " << precond_name
-	     << ":\n";
-	cout << "      Iterations |"
-	     << " Max Iters |"
-	     << " Norm of b |"
-	     << " Error\n";
-	cout << "      " << setw(11) << iter << "|" << setw(11) << max_iter << "|"
-	     << setw(11) << bNorm << "|" << setw(11) << error << "\n";
-	if (iter == max_iter)
-		cout << "      WARNING: Maximum iterations reached !!! \n";
-	cout << "      ------------------------------------------------\n";
-	cout.flush();
-}
-/*\!
- ********************************************************************
-   Check if the norm of b is samll enough for convengence.
-   normb_new is given to bNorm;
-   Programm:
-   09/2007 WW
- ********************************************************************/
-inline bool Linear_EQS::CheckNormRHS(const double normb_new)
-{
-	if (bNorm > 0.0)
-		if ((normb_new / bNorm) < tol)
-		{
-			error = normb_new / bNorm;
-			bNorm = normb_new;
-			Message();
-			return true;
-		}
-	bNorm = normb_new;
-	if (bNorm < DBL_MIN)
-	{
-		error = 0.;
-		Message();
-		return true;
-	}
-	return false;
-}
-
-/**************************************************************************
-   Task: Linear equation::CG
-   Programing:
-   11/2007 WW/
-**************************************************************************/
-int Linear_EQS::CG()
-{
-	long i, size;
-	double rrM1;
-	double* p, *r, *s;
-	//
-	size = A->Dim();
-	p = f_buffer[0];
-	r = f_buffer[1];
-	s = f_buffer[2];
-	//
-	double bNorm_new = Norm(b);
-	// Check if the norm of b is samll enough for convengence
-	if (CheckNormRHS(bNorm_new)) return 0;
-	//
-	// r0 = b-Ax
-	A->multiVec(x, s);
-	for (i = 0; i < size; i++)
-		r[i] = b[i] - s[i];
-	//
-	// Preconditioning: M^{-1}r
-	Precond(r, s);
-	for (i = 0; i < size; i++)
-		p[i] = s[i];
-	// Check the convergence
-	if ((error = Norm(r) / bNorm) < tol)
-	{
-		Message();
-		return 1;
-	}
-	//
-	double rr = dot(r, s);
-	//
-	for (iter = 1; iter <= max_iter; ++iter)
-	{
-		A->multiVec(p, s);
-		const double alpha = rr / dot(p, s);
-		// Update
-		for (i = 0; i < size; i++)
-		{
-			x[i] += alpha * p[i];
-			r[i] -= alpha * s[i];
-		}
-		if ((error = Norm(r) / bNorm) < tol)
-		{
-			Message();
-			return iter <= max_iter;
-		}
-		//
-		Precond(r, s);
-		//
-		rrM1 = rr;
-		rr = dot(s, r);
-		const double beta = rr / rrM1;
-		for (i = 0; i < size; i++)
-			p[i] = s[i] + beta * p[i];
-	}
-	//
-	Message();
-	return iter <= max_iter;
-}
-/**************************************************************************
-   Task: Linear equation::BiCG
-   Programing:
-   10/2010 WW/
-**************************************************************************/
-int Linear_EQS::BiCG()
-{
-	long i, size;
-	double rho1, rho2 = 0., alpha, beta;
-	double* z, *zt, *p, *pt, *q, *qt, *r, *rt;
-	//
-	size = A->Dim();
-	z = f_buffer[0];
-	zt = f_buffer[1];
-	p = f_buffer[2];
-	pt = f_buffer[3];
-	q = f_buffer[4];
-	qt = f_buffer[5];
-	r = f_buffer[6];
-	rt = f_buffer[7];
-	//
-	double bNorm_new = Norm(b);
-	// Check if the norm of b is samll enough for convengence
-	if (CheckNormRHS(bNorm_new)) return 0;
-	//
-	// r0 = b-Ax
-	A->multiVec(x, rt);
-	for (i = 0; i < size; i++)
-	{
-		r[i] = b[i] - rt[i];
-		rt[i] = r[i];
-	}
-	//
-	// Check the convergence
-	if ((error = Norm(r) / bNorm) < tol)
-	{
-		Message();
-		return 1;
-	}
-	//
-	//
-	for (iter = 1; iter <= max_iter; ++iter)
-	{
-		Precond(r, z);
-		TransPrecond(rt, zt);
-		rho1 = dot(z, rt);
-		//
-		if (fabs(rho1) < DBL_MIN)
-		{
-			Message();
-			return iter <= max_iter;
-		}
-		//
-		if (iter == 1)
-			for (i = 0; i < size; i++)
-			{
-				p[i] = z[i];
-				pt[i] = zt[i];
-			}
-		else
-		{
-			beta = rho1 / rho2;
-			for (i = 0; i < size; i++)
-			{
-				p[i] = z[i] + beta * p[i];
-				pt[i] = zt[i] + beta * pt[i];
-			}
-		}
-		//
-		A->multiVec(p, q);
-		A->Trans_MultiVec(pt, qt);
-		alpha = rho1 / dot(pt, q);
-		//
-		for (i = 0; i < size; i++)
-		{
-			x[i] += alpha * p[i];
-			r[i] -= alpha * q[i];
-			rt[i] -= alpha * qt[i];
-		}
-		//
-		rho2 = rho1;
-		if ((error = Norm(r) / bNorm) < tol)
-		{
-			Message();
-			return iter <= max_iter;
-		}
-		//
-	}
-	//
-	Message();
-	return iter <= max_iter;
-}
-
-/*************************************************************************
-   GeoSys-Function:
-   Task: BiCGStab solver
-   Programming:
-   10/2007 WW
- **************************************************************************/
-int Linear_EQS::BiCGStab()
-{
-	long i, size;
-	double rho_0, rho_1, alpha, beta, omega, tt = 0., norm_r = 0.;
-	double* r0, *r, *s, *s_h, *t, *v, *p, *p_h;
-	//
-	size = size_A;
-	r0 = f_buffer[0];
-	r = f_buffer[1];
-	s = f_buffer[2];
-	s_h = f_buffer[3];
-	t = f_buffer[4];
-	v = f_buffer[5];
-	p = f_buffer[6];
-	p_h = f_buffer[7];
-	//
-	rho_0 = alpha = omega = 1.0;
-	//
-	double bNorm_new = Norm(b);
-	// Check if the norm of b is small enough for convengence
-	if (CheckNormRHS(bNorm_new)) return 0;
-//
-// Norm of M r
-	A->multiVec(x, s);  // s as buffer
-	for (i = 0; i < size; i++)
-		r0[i] = b[i] - s[i];                    // r = b-Ax
-
-	for (i = 0; i < size; i++)
-	{
-		r[i] = r0[i];
-		v[i] = 0.;
-		p[i] = 0.;
-	}
-	if ((error = Norm(r) / bNorm) < tol)
-	{
-		Message();
-		return 0;
-	}
-	//
-	for (iter = 1; iter <= max_iter; iter++)
-	{
-		rho_1 = dot(r0, r);
-		if (fabs(rho_1) < DBL_MIN)  // DBL_EPSILON
-		{
-			Message();
-			return 0;
-		}
-		if (iter == 1)
-			for (i = 0; i < size; i++)
-				p[i] = r[i];
-		else
-		{
-			beta = (rho_1 / rho_0) * (alpha / omega);
-			for (i = 0; i < size; i++)
-				p[i] = r[i] + beta * (p[i] - omega * v[i]);
-		}
-		// Preconditioner
-		Precond(p, p_h);
-// A M^{-1}p-->v
-			A->multiVec(p_h, v);
-		//
-		alpha = rho_1 / dot(r0, v);
-		//
-		for (i = 0; i < size; i++)
-			s[i] = r[i] - alpha * v[i];
-		if ((error = Norm(s) / bNorm) < tol)
-		{
-			for (i = 0; i < size; i++)
-				x[i] += alpha * p_h[i];
-			Message();
-			return iter;
-		}
-		//  M^{-1}s,
-		Precond(s, s_h);
-// A* M^{-1}s
-			A->multiVec(s_h, t);
-		//
-		tt = dot(t, t);
-		if (tt > DBL_MIN)
-			omega = dot(t, s) / tt;
-		else
-			omega = 1.0;
-		// Update solution
-		for (i = 0; i < size; i++)
-		{
-			x[i] += alpha * p_h[i] + omega * s_h[i];
-			r[i] = s[i] - omega * t[i];
-		}
-		rho_0 = rho_1;
-		//
-		norm_r = Norm(r);
-		if ((error = norm_r / bNorm) < tol)
-		{
-			Message();
-			return iter;
-		}
-		if (fabs(omega) < DBL_MIN)
-		{
-			error = norm_r / bNorm;
-			Message();
-			return iter;
-		}
-	}
-	//
-	Message();
-	//
-	return iter;
-}
-
-/*************************************************************************
-   GeoSys-Function:
-   Task: CGS solver
-   Programming:
-   11/2007 WW
- **************************************************************************/
-int Linear_EQS::CGS()
-{
-	long i, size;
-	double rho_1, rho_2, alpha, beta;
-	double* r0, *r, *p, *p_h, *q, *q_h, *v, *u, *u_h;
-	//
-	size = A->Dim();
-	r0 = f_buffer[0];
-	r = f_buffer[1];
-	p = f_buffer[2];
-	p_h = f_buffer[3];
-	q = f_buffer[4];
-	q_h = f_buffer[5];
-	v = f_buffer[6];
-	u = f_buffer[7];
-	u_h = f_buffer[8];
-	//
-	rho_1 = rho_2 = 1.0;
-	//
-	double bNorm_new = Norm(b);
-	// Check if the norm of b is samll enough for convengence
-	if (CheckNormRHS(bNorm_new)) return 0;
-	//
-	A->multiVec(x, v);  // v as buffer
-	for (i = 0; i < size; i++)
-	{
-		r0[i] = b[i] - v[i];  // r = b-Ax
-		r[i] = r0[i];
-		v[i] = 0.;
-	}
-	if ((error = Norm(r) / bNorm) < tol)
-	{
-		Message();
-		return 0;
-	}
-	//
-	for (iter = 1; iter <= max_iter; iter++)
-	{
-		rho_1 = dot(r0, r);
-		if (fabs(rho_1) < DBL_MIN)  //  DBL_EPSILON
-		{
-			Message();
-			return 0;
-		}
-		if (iter == 1)
-			for (i = 0; i < size; i++)
-				p[i] = u[i] = r[i];
-		else
-		{
-			beta = rho_1 / rho_2;
-			for (i = 0; i < size; i++)
-			{
-				u[i] = r[i] + beta * q[i];
-				p[i] = u[i] + beta * (q[i] + beta * p[i]);
-			}
-		}
-		// Preconditioner
-		Precond(p, p_h);
-		// A M^{-1}p-->v
-		A->multiVec(p_h, v);
-		//
-		alpha = rho_1 / dot(r0, v);
-		//
-		for (i = 0; i < size; i++)
-		{
-			q[i] = u[i] - alpha * v[i];
-			q_h[i] = u[i] + q[i];
-		}
-		// Preconditioner
-		Precond(q_h, u_h);
-		for (i = 0; i < size; i++)
-			x[i] += alpha * u_h[i];
-		//
-		A->multiVec(u_h, q_h);
-		//
-		for (i = 0; i < size; i++)
-			r[i] -= alpha * q_h[i];
-		rho_2 = rho_1;
-		if ((error = Norm(r) / bNorm) < tol)
-		{
-			Message();
-			return iter <= max_iter;
-		}
-	}
-	//
-	Message();
-	//
-	return iter <= max_iter;
-}
-//
-//------------------------------------------------------------------------
-#define aGMRES
-#ifdef aGMRES
-
-//-----------------------------------------------------------------
-/*!
-     GMRES solver.
-
-     by WW. 06.2010
- */
-//-----------------------------------------------------------------
-/// For GMRES
-inline void Linear_EQS::Get_Plane_Rotation(double& dx, double& dy, double& cs,
-                                           double& sn)
-{
-	if (dy == 0.0)
-	{
-		cs = 1.0;
-		sn = 0.0;
-	}
-	else if (fabs(dy) > fabs(dx))
-	{
-		double temp = dx / dy;
-		sn = 1.0 / sqrt(1.0 + temp * temp);
-		cs = temp * sn;
-	}
-	else
-	{
-		double temp = dy / dx;
-		cs = 1.0 / sqrt(1.0 + temp * temp);
-		sn = temp * cs;
-	}
-}
-
-/// For GMRES.
-inline void Linear_EQS::Set_Plane_Rotation(double& dx, double& dy, double& cs,
-                                           double& sn)
-{
-	double temp = cs * dx + sn * dy;
-	dy = -sn * dx + cs * dy;
-	dx = temp;
-}
-
-/// Update solution in GMRES
-inline void Linear_EQS::Update(double* x, int k, Matrix& h, double* s)
-{
-	long i;
-	long m, j;
-	long size = 0;
-	int v_idx0 = 7;
-
-	if (A)
-		size = A->Dim();
-	else
-		size = size_global;
-
-	double* v_j;
-
-	m = m_gmres;
-
-	double* y = f_buffer[3];
-	for (j = 0; j < m + 1; j++)
-		y[j] = s[j];
-
-	// Back solve
-	for (i = k; i >= 0; i--)
-	{
-		y[i] /= h(i, i);
-		for (j = i - 1; j >= 0; j--)
-			y[j] -= h(j, i) * y[i];
-	}
-
-	for (j = 0; j <= k; j++)
-	{
-		v_j = f_buffer[v_idx0 + j];
-		for (i = 0; i < size; i++)
-			x[i] += v_j[i] * y[j];
-	}
-}
-
-/// GMRES solver. WW
-int Linear_EQS::GMRES()
-{
-	long i, k, l, m;
-	double normb, beta;
-	double* s, *cs, *sn, *v, *w, *r, *t, *v_k;
-
-	normb = Norm(b);
-	// Check if the norm of b is samll enough for convengence
-	if (CheckNormRHS(normb)) return 0;
-
-	//
-	m = m_gmres;
-
-	s = f_buffer[0];
-	cs = f_buffer[1];
-	sn = f_buffer[2];
-	w = f_buffer[4];
-	r = f_buffer[5];
-	t = f_buffer[6];  // Buffer array
-
-	int v_idx0 = 7;
-
-	// Norm of Mb
-	Precond(b, r);
-	// Here Mb-->r
-	normb = Norm(r);
-
-// Norm of M r
-	A->multiVec(x, w);  // Ax-->w
-	for (l = 0; l < size_A; l++)
-		r[l] = b[l] - w[l];  // r = b-Ax.
-
-	Precond(r, w);  // Mr-->w
-	beta = Norm(w);
-
-	if (normb < DBL_MIN) normb = 1;
-
-	// if ((error = Norm(r) / normb) <= tol)
-	if ((error = beta / normb) <= tol)
-	{
-		Message();
-		return 0;
-	}
-
-	iter = 1;
-	while (iter <= max_iter)
-	{
-		v = f_buffer[v_idx0];
-		for (l = 0; l < size_A; l++)
-			v[l] = r[l] / beta;  //  r/beta
-		for (l = 0; l < m + 1; l++)
-			s[l] = 0.0;
-		s[0] = beta;
-
-		for (i = 0; i < m && iter <= max_iter; i++, iter++)
-		{
-			v = f_buffer[v_idx0 + i];
-			A->multiVec(v, t);
-			Precond(t, w);
-
-			for (k = 0; k <= i; k++)
-			{
-				v_k = f_buffer[v_idx0 + k];
-				H(k, i) = dot(w, v_k);
-
-				for (l = 0; l < size_A; l++)
-					w[l] -= H(k, i) * v_k[l];
-			}
-			H(i + 1, i) = Norm(w);
-			v_k = f_buffer[v_idx0 + i + 1];
-			for (l = 0; l < size_A; l++)
-				v_k[l] = w[l] / H(i + 1, i);
-
-			for (k = 0; k < i; k++)
-				Set_Plane_Rotation(H(k, i), H(k + 1, i), cs[k], sn[k]);
-
-			Get_Plane_Rotation(H(i, i), H(i + 1, i), cs[i], sn[i]);
-			Set_Plane_Rotation(H(i, i), H(i + 1, i), cs[i], sn[i]);
-			Set_Plane_Rotation(s[i], s[i + 1], cs[i], sn[i]);
-
-			if ((error = fabs(s[i + 1]) / normb) < tol)
-			{
-				Update(x, i, H, s);
-				Message();
-				return iter <= max_iter;
-			}
-		}
-
-		Update(x, i - 1, H, s);
-		A->multiVec(x, t);
-
-		for (l = 0; l < size_A; l++)
-			w[l] = b[l] - t[l];  // r = b-Ax.
-		Precond(w, r);           // M*r
-
-		beta = Norm(r);
-		if ((error = beta / normb) < tol)
-		{
-			Message();
-			return iter <= max_iter;
-		}
-	}
-
-	Message();
-	return iter <= max_iter;
-}
-//-----------------------------------------------------------------
-#endif  // GMRES
 
 //------------------------------------------------------------------------
 }  // namespace
-#endif  // if defined(NEW_EQS)

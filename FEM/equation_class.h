@@ -7,24 +7,15 @@
  *
  */
 
-/**************************************************************************
-   Task: Sparse matrix and linear equation solver
-      Design and program by WW
-   Programing:
-   10/2007 WW/
-**************************************************************************/
 #ifndef eqs_class_INC
 #define eqs_class_INC
 
-// NEW_EQS To be removed
-#ifdef NEW_EQS  // 1.11.2007 WW
 #include <cmath>
 #include <iostream>
 #include <vector>
-//
 
 #ifdef LIS
-#include "lis.h"
+#include <lis.h>
 #endif
 
 #include "Configure.h"
@@ -64,43 +55,16 @@ public:
 	Linear_EQS(const SparseTable& sparse_table, const long dof,
 	           bool messg = true);
 	~Linear_EQS();
-	// Configure numerics
+
 	void ConfigNumerics(CNumerics* m_num, const long n = 0);
-	// Preconditioner;
-	void Precond(double* vec_s, double* vec_r);
-	void TransPrecond(double* vec_s, double* vec_r);
-	void Precond_Jacobi(const double* vec_s, double* vec_r);
-//
-	void ComputePreconditioner();
-	void ComputePreconditioner_Jacobi();
-	void ComputePreconditioner_ILU() {}
-//
-// Solver
-#ifdef LIS  // NW
+#ifdef LIS
 	int Solver(CNumerics* num = NULL, bool compress = false);
-#else
-	int Solver();
 #endif
-	int CG();
-	int BiCG();  // 02.2010. WW
-	int BiCGStab();
-	int Gauss() { return -1; }
-	int QMRCGStab() { return -1; }
-	int CGNR() { return -1; }
-	int CGS();
-	int Richardson() { return -1; }
-	int JOR() { return -1; }
-	int SOR() { return -1; }
-	int AMG1R5() { return -1; }
-	int UMF() { return -1; }
-	int GMRES();
 	//
 	void Initialize();
 	void Clean();
-	//
-	// Access to the members
-	void SetDOF(const int dof_n)  // For different processes with different DOF
-	                              // of OPDE. _new. 02/2010. WW
+
+	void SetDOF(const int dof_n)
 	{
 		A->SetDOF(dof_n);
 	}
@@ -110,18 +74,16 @@ public:
 	double RHS(const long i) const { return b[i]; }
 	double NormX();
 	double ComputeNormRHS() { return Norm(b); }
-	double NormRHS() { return bNorm; }
 	// Write
 	void Write(std::ostream& os = std::cout);
 	void WriteRHS(std::ostream& os = std::cout);
 	void WriteX(std::ostream& os = std::cout);
 	void Write_BIN(ostream& os);
 
-private:  // Dot not remove this!
+private:
 	CSparseMatrix* A;
 	double* b;
 	double* x;
-	double* prec_M;
 //
 #ifdef LIS
 	// lis solver interface starts here
@@ -130,32 +92,11 @@ private:  // Dot not remove this!
 	LIS_SOLVER solver;
 #endif
 
-	//
-	std::string solver_name;
-	std::string precond_name;
-	// Buffer
-	std::vector<double*> f_buffer;
 	// Controls
-	int precond_type;
-	int solver_type;
-	bool message;
-	int iter, max_iter;
-	double tol, bNorm, error;
-	long size_global;
 	long size_A;
 	// Operators
 	double dot(const double* xx, const double* yy);
 	inline double Norm(const double* xx) { return sqrt(dot(xx, xx)); }
-	inline bool CheckNormRHS(const double normb_new);
-	/// GMRES. 30.06.2010. WW
-	/// GMRES H matrix
-	mutable Matrix H;
-	int m_gmres;  /// number of columns of H matrix
-	void Update(double* x, int k, Matrix& h, double* s);
-	void Get_Plane_Rotation(double& dx, double& dy, double& cs, double& sn);
-	void Set_Plane_Rotation(double& dx, double& dy, double& cs, double& sn);
-	//
-	void Message();
 #ifdef MKL
 	void solveWithPARDISO(CNumerics* num, bool compress);
 #endif
@@ -186,5 +127,5 @@ private:  // Dot not remove this!
 
 using Math_Group::Linear_EQS;
 extern std::vector<Math_Group::Linear_EQS*> EQS_Vector;
-#endif  // NEW_EQS
+
 #endif
