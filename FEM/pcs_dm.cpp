@@ -274,12 +274,9 @@ void CRFProcessDeformation::InitialMBuffer()
 		             2 * m_msh->GetNodesNumber(false);
 
 	// Allocate memory for  temporal array
-	if (m_num->nls_method != FiniteElement::NL_JFNK)
-    {
-        lastTimeStepSolution = new double[bufferSize];
-        if (pcs_vector.size() > 1)
-            lastCouplingSolution = new double[bufferSize];
-    }
+	lastTimeStepSolution = new double[bufferSize];
+	if (pcs_vector.size() > 1)
+		lastCouplingSolution = new double[bufferSize];
 
 	// Allocate memory for element variables
 	const bool hasCouplingLoop = (pcs_vector.size() > 1);
@@ -2293,18 +2290,11 @@ void CRFProcessDeformation::GlobalAssembly()
 		//		eqs_new->AssembleRHS_PETSc();
 		//#endif
 
-		/// If not JFNK or if JFNK but the Newton step is greater than one.
-		/// 11.11.2010. WW
-		if (!(m_num->nls_method == FiniteElement::NL_JFNK && ite_steps == 1))
-		{
-			// Apply Dirchlete bounday condition
-			if (!fem_dm->dynamic)
-				IncorporateBoundaryConditions();
-			else
-				CalcBC_or_SecondaryVariable_Dynamics(true);
-		}
-//  {			 MXDumpGLS("rf_pcs_dm1.txt",1,eqs->b,eqs->x);  //abort();}
-//
+		// Apply Dirchlete bounday condition
+		if (!fem_dm->dynamic)
+			IncorporateBoundaryConditions();
+		else
+			CalcBC_or_SecondaryVariable_Dynamics(true);
 
 #if 0
             {
@@ -2344,9 +2334,6 @@ void CRFProcessDeformation::GlobalAssembly_DM()
 {
 	long i;
 	MeshLib::CElem* elem = NULL;
-	/// If JFNK method. 10.08.2010. WW
-	//   if(m_num->nls_method==2&&ite_steps==1)
-	//      IncorporateBoundaryConditions();
 
 	for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
 	{

@@ -240,12 +240,6 @@ CRFProcess::CRFProcess(void)
       Write_Matrix(false),
       matrix_file(NULL),
       WriteSourceNBC_RHS(0),
-#ifdef JFNK_H2M
-      JFNK_precond(false),
-      norm_u_JFNK(NULL),
-      array_u_JFNK(NULL),
-      array_Fu_JFNK(NULL),
-#endif
       ele_val_name_vector(std::vector<std::string>())
 {
 	iter_lin = 0;
@@ -537,11 +531,6 @@ CRFProcess::~CRFProcess(void)
 	DeleteArray(num_nodes_p_var);
 	// 20.08.2010. WW
 	DeleteArray(p_var_index);
-#ifdef JFNK_H2M
-	DeleteArray(array_u_JFNK);   // 13.08.2010. WW
-	DeleteArray(array_Fu_JFNK);  // 31.08.2010. WW
-	DeleteArray(norm_u_JFNK);    // 24.11.2010. WW
-#endif
 	//----------------------------------------------------------------------
 	if (this->m_num && this->m_num->fct_method > 0)  // NW
 	{
@@ -1099,16 +1088,6 @@ void CRFProcess::Create()
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
 	size_unknowns = m_msh->NodesNumber_Quadratic * pcs_number_of_primary_nvals;
 #elif defined(NEW_EQS)
-/// For JFNK. 01.10.2010. WW
-#ifdef JFNK_H2M
-	if (m_num->nls_method == 2)
-	{
-		size_unknowns = eqs_new->size_global;
-		array_u_JFNK = new double[eqs_new->size_global];
-		array_Fu_JFNK = new double[eqs_new->size_global];
-	}
-	else
-#endif
 	{
 #ifdef USE_MPI
 		size_unknowns = eqs_new->size_global;
@@ -3221,10 +3200,6 @@ void CRFProcess::ConfigDeformation()
 		    problem_dimension_dm * m_msh->GetNodesNumber(true);
 		Shift[problem_dimension_dm + 1] =
 		    Shift[problem_dimension_dm] + m_msh->GetNodesNumber(false);
-
-#ifdef JFNK_H2M
-		norm_u_JFNK = new double[2];
-#endif
 	}
 
 	if (type / 10 == 4)
@@ -5289,8 +5264,6 @@ void CRFProcess::GlobalAssembly()
 
 	CElem* elem = NULL;
 
-	if (m_num->nls_method == FiniteElement::NL_JFNK)  // 06.09.2010. WW
-		IncorporateBoundaryConditions();
 	bool Check2D3D;
 	Check2D3D = false;
 	if (type == 66)  // Overland flow
@@ -5346,8 +5319,7 @@ void CRFProcess::GlobalAssembly()
 		// m_dom->eqs->Write(Dum);
 		// Dum.close();
 		IncorporateSourceTerms(j);
-		if (m_num->nls_method != FiniteElement::NL_JFNK)  // 06.09.2010. WW
-			IncorporateBoundaryConditions(j);
+		IncorporateBoundaryConditions(j);
 /*
    //TEST
    string test = "rank";
@@ -6252,14 +6224,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 	Linear_EQS* eqs_p = NULL;
 #endif
 //------------------------------------------------------------WW
-#ifdef JFNK_H2M
-	if (m_num->nls_method == 2 && BC_JFNK.size() > 0)  // 29.10.2010. WW
-		return;
-
-	/// For JFNK
-	bool bc_inre_flag = false;
-	double bc_init_value = 0.;
-#endif
 
 	// WW
 	double Scaling = 1.0;
@@ -6556,12 +6520,8 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 				    m_msh->nod_vector[bc_msh_node]->GetEquationIndex();
 #endif
 			//..............................................................
-			// NEWTON WW   //Modified for JFNK. 09.2010. WW
-			if (FiniteElement::isNewtonKind(
-			        m_num->nls_method)  // 04.08.2010. WW
-			                            // _name.find("NEWTON")!=string::npos
-			    ||
-			    type == 4 || type / 10 == 4)
+			if (FiniteElement::isNewtonKind(m_num->nls_method)
+				|| type == 4 || type / 10 == 4)
 			{  // Solution is in the manner of increment !
 				idx0 = GetNodeValueIndex(convertPrimaryVariableToString(
 				    m_bc->getProcessPrimaryVariable()));
@@ -6571,27 +6531,9 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 					bc_value -=
 					    GetNodeValue(m_bc_node->geo_node_number, idx0) +
 					    GetNodeValue(m_bc_node->geo_node_number, idx0 + 1);
-					/// if JFNK and if the first Newton step
-					/// In the successive Newton steps, node BC value taken from
-					/// the previous Newton step.
-					if (m_num->nls_method == FiniteElement::NL_JFNK &&
-					    ite_steps == 1)
-						SetNodeValue(m_bc_node->geo_node_number, idx0,
-						             bc_value);
-
-#ifdef JFNK_H2M
-					bc_inre_flag = false;
-					bc_init_value = 0.;
-#endif
 				}
 				else
 				{
-#ifdef JFNK_H2M
-					bc_inre_flag = true;
-					bc_init_value = bc_value;
-#endif
-					/// if JFNK and if the first Newton step. 11.11.2010. WW
-					// if(m_num->nls_method==2&&ite_steps==1) /// JFNK
 					/// p_{n+1} = p_b,
 					//  SetNodeValue(m_bc_node->geo_node_number, idx0++,
 					//  bc_value);
@@ -6617,44 +6559,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 			bc_eqs_index += shift;
 #endif
 
-#ifdef JFNK_H2M
-			/// If JFNK method (09.2010. WW):
-			if (m_num->nls_method == 2)
-			{
-				bc_JFNK new_bc_entry;
-				new_bc_entry.var_idx = idx0 + 1;
-				new_bc_entry.bc_node = m_bc_node->geo_node_number;
-				new_bc_entry.bc_eqs_idx = bc_eqs_index;
-				new_bc_entry.bc_value = bc_value;
-
-				new_bc_entry.incremental = bc_inre_flag;
-				new_bc_entry.bc_value0 = bc_init_value;
-				BC_JFNK.push_back(new_bc_entry);
-			}
-			else
-			{
-#endif
-				//----------------------------------------------------------------
-				//----------------------------------------------------------------
-				/* // Make the follows as comment by WW. 04.03.2008
-				   //YD dual
-				   if(dof>1) //WW
-				   {
-				   for(ii=0;ii<dof;ii++)
-				   {
-				    if(m_bc->pcs_pv_name.find(pcs_primary_function_name[ii]) !=
-				   string::npos)
-				    {
-				       //YD/WW
-				       //WW   bc_eqs_index += ii*(long)eqs->dim/dof;   //YD dual
-				   //DOF>1 WW
-				       bc_eqs_index += fem->NodeShift[ii];   //DOF>1 WW
-
-				   break;
-				   }
-				   }
-				   }
-				 */
 				if (this->scaleUnknowns)
 				{
 					if (m_bc->getProcessPrimaryVariable() ==
@@ -6685,9 +6589,6 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 			eqs_p->SetKnownX_i(bc_eqs_index, bc_value);
 #else
 			MXRandbed(bc_eqs_index, bc_value, eqs_rhs);
-#endif
-#ifdef JFNK_H2M
-			}
 #endif
 		}
 	}
@@ -13896,22 +13797,6 @@ void CreateEQS_LinearSolver()
 				dof = 1;
 				need_eqs = true;
 			}  // WW 02.2023. Pardiso
-		}
-	}
-	// Check whether the JFNK method is employed for deformation problem
-	// 04.08.2010 WW
-	CNumerics* num = NULL;
-	for (i = 0; i < num_vector.size(); i++)
-	{
-		num = num_vector[i];
-        if (num->nls_method == FiniteElement::NL_JFNK)
-		{
-			// Stiffness matrix of lower order grid may be used by more than one
-			// processes.
-			// Therefore, memo allocation is performed for it.
-			// Indicator: Not allocate memo for stiffness matrix for deformation
-			dof_DM *= -1;
-			break;
 		}
 	}
 

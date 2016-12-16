@@ -416,9 +416,6 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 				nls_method = FiniteElement::NL_PICARD;
 			else if (nls_method_name.find("NEWTON") != string::npos)
 				nls_method = FiniteElement::NL_NEWTON;
-			else if (nls_method_name.find("JFNK") !=
-			         string::npos)  //  Jacobian free Newton-Krylov method
-				nls_method = FiniteElement::NL_JFNK;
 			//
 			line.clear();
 			continue;
@@ -447,9 +444,6 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 				nls_method = FiniteElement::NL_PICARD;
 			else if (nls_method_name.find("NEWTON") != string::npos)
 				nls_method = FiniteElement::NL_NEWTON;
-			else if (nls_method_name.find("JFNK") !=
-			         string::npos)  //  Jacobian free Newton-Krylov method
-				nls_method = FiniteElement::NL_JFNK;
 			//
 			if (FiniteElement::isNewtonKind(nls_method))
 			{
