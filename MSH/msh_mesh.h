@@ -43,7 +43,7 @@
 #include "MeshNodesAlongPolyline.h"
 
 // FileIO
-#include "MeshIO/OGSMeshIO.h"
+#include "OGSMeshIO.h"
 
 #include "msh_elem.h"
 

@@ -25,6 +25,7 @@
 //#include "files0.h"
 #include "makros.h"
 #include "display.h"
+#include "FileToolsRF.h"
 #include "files0.h"
 #include "mathlib.h"
 // Base

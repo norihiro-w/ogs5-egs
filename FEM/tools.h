@@ -7,16 +7,6 @@
  *
  */
 
-/**************************************************************************/
-/* ROCKFLOW - Modul: tools.h
- */
-/* Aufgabe:
-   verschiedene Funktionen, die von verschiedenen Modulen gebraucht
-   werden und keine Adaptivitaet voraussetzen (sie aber teilweise
-   unterstuetzen)
- */
-/**************************************************************************/
-
 #ifndef tools_INC
 #define tools_INC
 
@@ -134,7 +124,6 @@ extern long DampOscillations(int ndx1,
                              int oscil_damp_method,
                              double* oscil_damp_parameter,
                              double (*NodeCalcLumpedMass)(long));
-extern int GetLineFromFile(char*, std::ifstream*);
 
 typedef struct
 {

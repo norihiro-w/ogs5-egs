@@ -45,6 +45,7 @@ solver
 
 #include "makros.h"
 #include "display.h"
+#include "FileToolsRF.h"
 #include "memory.h"
 #include "MemWatch.h"
 #include "FEMEnums.h"

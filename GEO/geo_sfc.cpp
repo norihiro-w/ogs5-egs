@@ -22,17 +22,16 @@
 
 #include "geo_sfc.h"
 
-// MFC
 #include <cstdlib>
-// GEOLib
-#include "files0.h"
+
+#include "FileToolsRF.h"
+#include "makros.h"
+
 #include "geo_lib.h"
 #include "geo_mathlib.h"
 #include "geo_ply.h"
 #include "geo_pnt.h"
 
-// File path. 11.08.2011 WW
-#include "makros.h"
 
 using namespace std;
 
@@ -1370,7 +1369,7 @@ void Surface::WriteTINTecplot(const std::string& file_path)
 		//  CGSProject* m_gsp = GSPGetMember("gli");
 		// if(m_gsp)
 		tin_path = file_path;  // CC
-		string tin_file_name = TIN->name + TEC_FILE_EXTENSIONS;
+		string tin_file_name = TIN->name + TEC_FILE_EXTENSION;
 		string tin_path_base_type = tin_path + tin_file_name;
 		fstream tin_file(tin_path_base_type.data(), ios::trunc | ios::out);
 		tin_file.setf(ios::scientific, ios::floatfield);

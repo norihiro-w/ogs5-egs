@@ -14,9 +14,12 @@
    01/2005 OK Implementation
    09/2008 NB Function with multiple arguments
 **************************************************************************/
-#include "files0.h"
-#include "makros.h"
 #include "rf_fct.h"
+
+#include "makros.h"
+#include "FileToolsRF.h"
+
+#include "files0.h"
 
 #include <cstdlib>
 

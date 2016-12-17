@@ -9,8 +9,9 @@
  *              http://www.opengeosys.org/project/license
  */
 
+#include "OGSMeshIO.h"
+
 #include "GEOObjects.h"
-#include "MeshIO/OGSMeshIO.h"
 #include "msh_lib.h"
 #include "msh_mesh.h"
 #include "msh_elem.h"

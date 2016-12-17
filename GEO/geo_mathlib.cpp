@@ -15,9 +15,12 @@
 **************************************************************************/
 
 #include "geo_mathlib.h"
-#include "mathlib.h"  //WW
+
 #include <cstdio>
-#include <stdlib.h>
+#include <cstdlib>
+
+#include "makros.h"
+#include "MathTools.h"
 
 /**************************************************************************/
 /* GEO MathLib - Funktion: EuklVek3dDist
@@ -615,3 +618,22 @@ bool LineSegmentIntersection(vector<double> xline1, vector<double> yline1,
 	return crosses;
 }
 #endif
+
+
+double sqrNrm2(const GEOLIB::Point* p0)
+{
+	return MathLib::scpr(p0->getData(), p0->getData(), 3);
+}
+
+double sqrDist(const GEOLIB::Point* p0, const GEOLIB::Point* p1)
+{
+	const double v[3] = {(*p1)[0] - (*p0)[0], (*p1)[1] - (*p0)[1],
+						 (*p1)[2] - (*p0)[2]};
+	return MathLib::scpr(v, v, 3);
+}
+
+bool checkDistance(GEOLIB::Point const& p0, GEOLIB::Point const& p1,
+				   double squaredDistance)
+{
+	return sqrDist(&p0, &p1) < squaredDistance;
+}

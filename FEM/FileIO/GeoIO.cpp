@@ -5,7 +5,7 @@
  *      Author: TF
  */
 
-#include "FEMIO/GeoIO.h"
+#include "GeoIO.h"
 
 #include <sstream>
 #include <cstdlib>

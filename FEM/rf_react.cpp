@@ -13,6 +13,7 @@
  */
 
 #include "display.h"
+#include "FileToolsRF.h"
 #include "files0.h"
 #include "makros.h"
 #include "memory.h"

@@ -20,8 +20,8 @@
 #include "geo_pnt.h"
 
 #include <cstdlib>
-// GeoLib
-#include "mathlib.h"
+
+#include "geo_mathlib.h"
 
 using namespace std;
 
@@ -421,7 +421,7 @@ void GEOReadPointProperties(const std::string& file_name_base)
 	cout << "Read PNT properties from " << file_name_base << "_springs" << endl;
 	//========================================================================
 	// File handling
-	string csv_file_name = file_name_base + CSV_FILE_EXTENSIONS;  // OK4105
+	string csv_file_name = file_name_base + CSV_FILE_EXTENSION;  // OK4105
 	ifstream csv_file(csv_file_name.data(), ios::in);
 	if (!csv_file.good()) return;
 	csv_file.seekg(0L, ios::beg);

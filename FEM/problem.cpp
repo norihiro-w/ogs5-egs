@@ -35,6 +35,7 @@
 /* Pre-processor definitions */
 #include "makros.h"
 #include "display.h"
+#include "FileToolsRF.h"
 #include "MemWatch.h"
 /*------------------------------------------------------------------------*/
 // MSHLib
