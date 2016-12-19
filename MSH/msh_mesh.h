@@ -13,14 +13,14 @@
 #include <algorithm>
 #include <string>
 
+#include "GEOObjects.h"
 #include "geo_lib.h"
 #include "geo_sfc.h"
 #include "geo_vol.h"
-#include "GEOObjects.h"
+#include "Grid.h"
 #include "Point.h"
 #include "Polyline.h"
 #include "Surface.h"
-#include "Grid.h"
 
 #include "MeshNodesAlongPolyline.h"
 #include "MSHEnums.h"
@@ -28,7 +28,6 @@
 #include "OGSMeshIO.h"
 
 
-//------------------------------------------------------------------------
 namespace MeshLib
 {
 #ifndef NON_GEO

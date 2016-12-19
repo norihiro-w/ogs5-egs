@@ -40,8 +40,6 @@ public:
 	CGLLine* GEOGetLine(long);
 	CGLLine* CheckLineOutPut();
 	CGLLine* Exists();
-	// void SetRFIPointsClose();//MSH + geomathlib
-	// void CreateMSHLines(void);//MSH
 };
 
 extern std::vector<CGLLine*> GEOLIB_GetGLILines_Vector(void);

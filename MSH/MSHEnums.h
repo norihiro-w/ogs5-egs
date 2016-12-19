@@ -7,12 +7,6 @@
  *
  */
 
-/**
- * \file MSHEnums.h
- * 15/11/2010 KR initial implementation
- *
- */
-
 #ifndef MSHENUMS_H
 #define MSHENUMS_H
 

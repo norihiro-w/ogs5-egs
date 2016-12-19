@@ -29,6 +29,7 @@
 #include "makros.h"  // JT
 
 // PCSLib
+#include "fem_ele.h"
 #include "rf_pcs.h"
 
 namespace FiniteElement

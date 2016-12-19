@@ -51,10 +51,10 @@ public:
 	~GridAdapter();
 
 	/// Adds a node to the grid
-	void addNode(GEOLIB::Point* node) { _nodes->push_back(node); };
+	void addNode(GEOLIB::Point* node) { _nodes->push_back(node); }
 
 	/// Adds an element to the grid
-	void addElement(Element* element) { _elems->push_back(element); };
+	void addElement(Element* element) { _elems->push_back(element); }
 
 	/// Returns the total number of unique material IDs.
 	size_t getNumberOfMaterials() const;
@@ -78,13 +78,13 @@ public:
 	std::string getName() const { return _name; }
 
 	/// Sets the element vector of the grid
-	void setElements(std::vector<Element*>* elements) { _elems = elements; };
+	void setElements(std::vector<Element*>* elements) { _elems = elements; }
 
 	/// Sets the name for the mesh.
 	void setName(const std::string& name) { _name = name; }
 
 	/// Sets the node vector of the grid
-	void setNodeVector(std::vector<GEOLIB::Point*>* nodes) { _nodes = nodes; };
+	void setNodeVector(std::vector<GEOLIB::Point*>* nodes) { _nodes = nodes; }
 
 private:
 	/// Converts an FEM Mesh to a list of nodes and elements.

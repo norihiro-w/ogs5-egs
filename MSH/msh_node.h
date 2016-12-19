@@ -7,13 +7,6 @@
  *
  */
 
-/**************************************************************************
-   MSHLib - Object:
-   Task:
-   Programing:
-   08/2005 WW/OK Encapsulation from rf_ele_msh
-   last modified
-**************************************************************************/
 #ifndef msh_node_INC
 #define msh_node_INC
 
@@ -23,12 +16,11 @@
 
 #include "matrix_class.h"
 
-// MSHLib
 #include "msh_core.h"
 
 namespace MeshLib
 {
-// Class definition
+
 class CNode : public CCore
 {
 public:

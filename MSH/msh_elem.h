@@ -7,20 +7,12 @@
  *
  */
 
-/**************************************************************************
-   MSHLib - Object:
-   Task:
-   Programing:
-   08/2005 WW/OK Encapsulation from rf_ele_msh
-   last modified
-**************************************************************************/
 #ifndef msh_elem_INC
 #define msh_elem_INC
 
 #include <iostream>
 #include <string>
 
-// MSHLib
 #include "MSHEnums.h"
 #include "msh_edge.h"
 
@@ -29,24 +21,18 @@ namespace Math_Group
 class Matrix;
 }
 
-
 namespace MeshLib
 {
-//------------------------------------------------------------------------
-// Class definition
+
 class CElem : public CCore
 {
 public:
-	// Methods
 	CElem();
-	CElem(size_t Index);
+	explicit CElem(size_t Index);
 	// For Faces: Face, local face index
 	CElem(size_t Index, CElem* onwer, int Face);
-	CElem(size_t Index, CElem* m_ele_parent);  // WWOK
+	CElem(size_t Index, CElem* m_ele_parent);
 
-	/**
-	 * copy constructor
-	 */
 	CElem(CElem const& elem);
 
 	/**
@@ -99,7 +85,6 @@ public:
 
 	// Geometry
 	int GetDimension() const { return ele_dim; }
-	// 09/2011 TF made method const
 	double const* GetGravityCenter() const { return gravity_center; }
 	double* ComputeGravityCenter();
 	size_t GetPatchIndex() const { return patch_index; }  // MatGroup
@@ -108,11 +93,11 @@ public:
 	void SetFluxArea(double fluxarea)
 	{
 		area = fluxarea;
-	}  // CMCD for <3D elements with varying area
+	}
 	double GetFluxArea()
 	{
 		return area;
-	}  // CMCD for <3D elements with varying area
+	}
 
 	double calcVolume() const;
 
@@ -121,23 +106,23 @@ public:
 #ifndef OGS_ONLY_TH
 	// This will be activated after m_tim->CheckCourant() is ready to work
 	// kg44 21042010 activated
-	void SetCourant(double Cour)  // CMCD
+	void SetCourant(double Cour)
 	{
 		courant = Cour;
 	}
-	double GetCourant()  // CMCD
+	double GetCourant()
 	{
 		return courant;
 	}
-	void SetNeumann(double Neum)  // CMCD
+	void SetNeumann(double Neum)
 	{
 		neumann = Neum;
 	}
-	double GetNeumann()  // CMCD
+	double GetNeumann()
 	{
 		return neumann;
 	}
-	double GetRepLength()  // CMCD
+	double GetRepLength()
 	{
 		return representative_length;
 	}
@@ -203,8 +188,8 @@ public:
 			return (size_t)nnodes;
 	}
 	int GetVertexNumber() const { return nnodes; }
-	void SetNodesNumber(int ivalue) { nnodes = ivalue; }  // OK
-	CElem* GetOwner() { return owner; }                   // YD
+	void SetNodesNumber(int ivalue) { nnodes = ivalue; }
+	CElem* GetOwner() { return owner; }
 
 	// Initialize topological properties
 	void InitializeMembers();
@@ -221,14 +206,12 @@ public:
 		for (size_t i = 0; i < nedges; i++)
 			edges[i] = ele_edges[i];
 	}
-	// KR not used int FindFaceEdges(const int LocalFaceIndex, vec<CEdge*>&
-	// face_edges);
 	void SetEdgesOrientation(Math_Group::vec<int>& ori_edg)
 	{
 		for (size_t i = 0; i < nedges; i++)
 			edges_orientation[i] = ori_edg[i];
 	}
-	void FreeEdgeMemory()  // 09.2012. WW
+	void FreeEdgeMemory()
 	{
 		edges.resize(0);
 		edges_orientation.resize(0);
@@ -273,9 +256,9 @@ public:
 	void AllocateMeomoryforAngle()
 	{
 		if (!angle) angle = new double[3];
-	}                                                         // WW
-	double GetAngle(int i) const { return angle[i]; }         // PCH
-	void SetAngle(int i, double value) { angle[i] = value; }  // PCH
+	}
+	double GetAngle(int i) const { return angle[i]; }
+	void SetAngle(int i, double value) { angle[i] = value; }
 #endif
 	//------------------------------------------------------------------
 	// I/O
@@ -286,37 +269,25 @@ public:
 	void WriteAll(std::ostream& os = std::cout) const;
 	void WriteNeighbors(std::ostream& os = std::cout) const;
 
-	//------------------------------------------------------------------
-	// MAT
-	Math_Group::Vec mat_vector;  // OKWW
-#ifndef OGS_ONLY_TH
-	int matgroup_view;  // TK
-#endif
-	//------------------------------------------------------------------
-	// Operator
-	// virtual void operator = (const CElem& elem);
-	//-------------------------------------------------------------------
+	Math_Group::Vec mat_vector;
 
 	int selected;
-	// YD
+
 	void FaceNormal(const int index0, const int index1, double*);
-	double* normal_vector;   // WW normal_vector[3]; //OK
-	void SetNormalVector();  // OK
+	double* normal_vector;
+	void SetNormalVector();
 
 #ifndef OGS_ONLY_TH
-	// Since m_tim->CheckCourant() is deactivated, the following member are
-	// put in comment.
-	// kg44 21042010 reactivated
-	double representative_length;  // For stability calculations
+	// For stability calculations
+	double representative_length;
 	double courant;
-	double neumann;  // MSH topology
+	double neumann;
 
-	int GetExcavState() { return excavated; }  // WX:01.2011 get excavation
-	                                           // state
+	int GetExcavState() { return excavated; }
 	void SetExcavState(const int ExcavState)
 	{
 		excavated = ExcavState;
-	}  // WX:01.2011 set excavation state
+	}
 #endif
 #if defined(USE_PETSC)
 	bool isOverlapped() const { return g_index != NULL; }
@@ -324,19 +295,15 @@ public:
 #endif
 
 private:
-	// Members
-	// ID
-	MshElemType::type geo_type;  // KR: See MSHEnums.h -  1 Line, 2 Quad, 3 Hex,
-	                             // 4 Tri, 5 Tet, 6 Pris
+	MshElemType::type geo_type;
 	CElem* owner;
-	// Geometrical properties
-	int ele_dim;  // Dimension of element
+	int ele_dim;
 
 	int nnodes;
 	int nnodesHQ;
 	Math_Group::vec<CNode*> nodes;
 	Math_Group::vec<long> nodes_index;
-#if defined(USE_PETSC)  // || defined(using other parallel scheme). WW
+#if defined(USE_PETSC)
 	int* g_index;
 #endif
 
@@ -349,34 +316,15 @@ private:
 	int face_index;  // Local face index for the instance for face
 	double volume;
 	double gravity_center[3];
-#ifndef OGS_ONLY_TH
-	int grid_adaptation;  // Flag for grid adapting.
-#endif
 	size_t patch_index;
-	/*
-	   // Since m_tim->CheckCourant() is deactivated, the following member are
-	   // put in comment.
-	   double representative_length;//For stability calculations
-	   double courant;
-	   double neumann;	  // MSH topology
-	 */
-	double area;  // Flux area
-	//
-	// MSH topology
+	double area;
 	Math_Group::Matrix* transform_tensor;
 	Math_Group::vec<CElem*> neighbors;
-// vec<CElem*> sons;
-// double angle[3];	// PCH, angle[0] rotation along y axis
-//	    angle[1] rotation along x' axis
-//		angle[2] translation along z'' axis.
 #ifndef OGS_ONLY_TH
-	double* angle;  // Dymanic allocate memory.  WW
-	// WW double MatT[9];
-
-	int excavated;  // WX:01.2011 excavation state
+	double* angle;
+	int excavated;
 #endif
 
-	// -- Methods
 	int GetElementFaces1D(int* FaceNode);
 	int GetElementFacesTri(int Face, int* FaceNode);
 	int GetElementFacesQuad(int Face, int* FaceNode);
@@ -384,8 +332,11 @@ private:
 	int GetElementFacesTet(int Face, int* FaceNode);
 	int GetElementFacesPri(int Face, int* FaceNode);
 	int GetElementFacesPyramid(int Face, int* FaceNode);
+
 	//-- Friends
 	friend class CFEMesh;
 };
+
 }  // namespace MeshLib
+
 #endif

@@ -7,27 +7,17 @@
  *
  */
 
-//**************************************************************************
-/*!
-   \file msh_lib_ext.cpp
-
-   Define the member function of class CFEMesh for reading
-   subdomain mesh
-
-   02/2012 WW/
-   last modified
-*/
-//**************************************************************************
 #include "msh_lib.h"
 
-#include <stdio.h>
-#include <string.h>
-#include "petscksp.h"
-#include <mpi.h>
+#include <cstdio>
+#include <cstring>
 #include <sstream>
 
-#include "StringTools.h"
+#include <mpi.h>
+#include <petscksp.h>
+
 #include "display.h"
+#include "StringTools.h"
 
 using namespace std;
 using namespace MeshLib;
