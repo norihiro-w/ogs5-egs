@@ -7,106 +7,27 @@
  *
  */
 
-/**************************************************************************
-   MSHLib - Object:
-   Task:
-   Programing:
-   08/2005 WW/OK Encapsulation from rf_ele_msh
-   last modified
-**************************************************************************/
-
 #include "msh_mesh.h"
 
 #include <cfloat>
 #include <cmath>
 #include <fstream>
-#include <iomanip>  //WW
+#include <iomanip>
 #include <iostream>
+#include <set>
 #include <sstream>
 #include <vector>
 
 #include "display.h"
 #include "memory.h"
 
-// MathLib
+#include "mathlib.h"
 #include "MathTools.h"
 #include "Vector3.h"
-// WW #include "msh_lib.h"
-#include "rf_mmp_new.h"
 
-// MSHLib
-#ifdef BENCHMARKING
-#include "benchtimer.h"
-#endif
+#include "msh_lib.h"
 
-#include "rf_random_walk.h"
-// For surface integration. WW. 29.02.2009
-
-#include "mathlib.h"
-// FEM
-#include "fem_ele.h"
-#include "files0.h"
-
-using FiniteElement::CElement;
-
-// PCSLib
-extern std::string GetLineFromFile1(std::ifstream*);
-
-#define noMSH_CHECK
-
-size_t max_dim = 0;  // OK411
-
-// class ThreadParameter
-//{
-// public:
-//	ThreadParameter(GEOLIB::Point const* const pnt, size_t start, size_t end,
-//	                std::vector<MeshLib::CNode*> const& nod_vector, size_t id) :
-//		_pnt(pnt), _start(start), _end(end), _nod_vector(nod_vector), _number(
-//		        start), _sqr_dist(std::numeric_limits<double>::max()), _id(id)
-//	{
-//	}
-//
-//	GEOLIB::Point const* const _pnt;
-//	size_t _start;
-//	size_t _end;
-//	std::vector<MeshLib::CNode*> const& _nod_vector;
-//	size_t _number;
-//	double _sqr_dist;
-//	size_t _id;
-//};
-
-// extern "C" {
-// void* threadGetDist(void* ptr)
-//{
-//	ThreadParameter* thread_param((ThreadParameter*) (ptr));
-//	size_t start(thread_param->_start);
-//	size_t end(thread_param->_end);
-//	std::vector<MeshLib::CNode*> const& nod_vector(thread_param->_nod_vector);
-//	GEOLIB::Point const* const pnt(thread_param->_pnt);
-//
-//	double distmin(sqrDist(nod_vector[start]->getData(),
-//	                                pnt->getData()));
-//	size_t number(start);
-//	double sqr_dist(distmin);
-//
-//	for (size_t i = start + 1; i < end; i++)
-//	{
-//		sqr_dist = sqrDist(nod_vector[i]->getData(), pnt->getData());
-//		if (sqr_dist < distmin)
-//		{
-//			distmin = sqr_dist;
-//			number = i;
-//		}
-//	}
-//
-//	thread_param->_number = number;
-//	thread_param->_sqr_dist = distmin;
-//
-//	if (number == std::numeric_limits<size_t>::max())
-//		return (void*) (-1);
-//	return (void*) (number);
-//}
-//} // end extern "C"
+size_t max_dim = 0;
 
 //========================================================================
 namespace MeshLib
@@ -150,13 +71,6 @@ CFEMesh::CFEMesh(GEOLIB::GEOObjects* geo_obj, std::string* geo_name)
 
 	max_ele_dim = 0;            // NW
 	pcs_name = "NotSpecified";  // WW
-	PT = NULL;                  // WW+TK
-	fm_pcs = NULL;              // WW
-// 1.11.2007 WW
-#ifdef NEW_EQS
-	sparse_graph = NULL;
-	sparse_graph_H = NULL;
-#endif
 	map_counter = 0;              // 21.01.2009 WW
 	mapping_check = false;        // 23.01.2009 WW
 	has_multi_dim_ele = false;    // NW
@@ -166,7 +80,7 @@ CFEMesh::CFEMesh(GEOLIB::GEOObjects* geo_obj, std::string* geo_name)
 // Copy-Constructor for CFEMeshes.
 // Programming: 2010/11/10 KR
 CFEMesh::CFEMesh(CFEMesh const& old_mesh)
-    : PT(NULL), _search_length(old_mesh._search_length), _mesh_grid(NULL)
+	: _search_length(old_mesh._search_length), _mesh_grid(NULL)
 {
 	std::cout << "Copying mesh object ... ";
 
@@ -243,19 +157,6 @@ CFEMesh::~CFEMesh(void)
 	for (size_t i = 0; i < nNormals; i++)
 		delete face_normal[i];
 	face_normal.clear();
-
-#ifndef OGS_ONLY_TH
-#ifndef NON_GEO  // WW
-	delete PT;   // PCH
-#endif
-#endif
-// 1.11.2007 WW
-#ifdef NEW_EQS
-	delete sparse_graph;
-	delete sparse_graph_H;
-	sparse_graph = NULL;
-	sparse_graph_H = NULL;
-#endif
 
 	delete _mesh_grid;
 }
@@ -1246,22 +1147,13 @@ void CFEMesh::GenerateHighOrderNodes()
 void CFEMesh::FillTransformMatrix()
 {
 	CElem* elem = NULL;
-#ifndef NON_PROCESS  // 05.01.2011. WW
-	// PCH
-	CRFProcess* m_pcs = PCSGet("FLUID_MOMENTUM");
-#endif  //#ifndef NON_PROCESS
 	//
 	if ((_msh_n_hexs + _msh_n_tets + _msh_n_prisms + _msh_n_pyras) ==
 	    ele_vector.size())
 		return;
 	else if (coordinate_system != 32 && !this->has_multi_dim_ele)
 	{
-#ifndef NON_PROCESS  // 05.01.2011. WW
-		if (m_pcs)
-			;  // Need to do FillTransformMatrix	// PCH
-		else
-			return;
-#endif  //#ifndef NON_PROCESS
+		return;
 	}
 	bool tilted = false;
 	if (coordinate_system == 32 || coordinate_system == 21 ||
@@ -3279,48 +3171,6 @@ void CFEMesh::SetNetworkIntersectionNodes()
 	//      }
 }
 
-#ifndef NON_PROCESS  // 05.03.2010 WW
-#ifdef NEW_EQS       // 1.11.2007 WW
-/**************************************************************************
-   MSHLib-Method:
-   Programing:
-   11/2007 WW Implementation
-   04/2011 WW CRS storage
-**************************************************************************/
-void CFEMesh::CreateSparseTable()
-{
-	Math_Group::StorageType stype;
-	stype = Math_Group::JDS;
-	for (int i = 0; i < (int)num_vector.size(); i++)
-		if (num_vector[i]->ls_storage_method == 100)
-		{
-			stype = Math_Group::CRS;
-			break;
-		}
-
-	// Symmetry case is skipped.
-	// 1. Sparse_graph_H for high order interpolation. Up to now, deformation
-	if (NodesNumber_Linear != NodesNumber_Quadratic)
-		sparse_graph_H = new SparseTable(this, true, false, stype);
-	// 2. M coupled with other processes with linear element
-	if (sparse_graph_H)
-	{
-		if ((int)pcs_vector.size() > 1)
-			sparse_graph = new SparseTable(this, false, false, stype);
-	}
-	// 3. For process with linear elements
-	else
-		sparse_graph = new SparseTable(this, false, false, stype);
-
-	//  sparse_graph->Write();
-	//  sparse_graph_H->Write();
-	//
-	// ofstream Dum("sparse.txt", ios::out);
-	// sparse_graph_H->Write(Dum);
-}
-#endif  //#ifndef NON_PROCESS  // 05.03.2010 WW
-#endif
-
 //---------------------------------------------------------------------------
 /*!
    \brief Import the MODFlow grid into OGS
@@ -3818,370 +3668,6 @@ inline void CFEMesh::ReadShapeFile(std::string const& fname)
 	ins.close();
 }
 
-/*!
-   \brief Read GIS shapfile that stores the precipitation data
-
-   Assume the precipitation data is stored in a GIS shapfile. This funtion read
-   the data
-   and then performs the numerical integration in order to take the
-   precipitation
-   as the Neumman boundary conditions and transform them into the finite element
-   node values.
-
-   \param fname The input file name.
-   \param ofname The output file name.
-   \param ratio The ration of precipitation to the infiltration.
-
-   03/2010  WW
-
- */
-inline void CFEMesh::Precipitation2NeumannBC(std::string const& fname,
-                                             std::string const& ofname,
-                                             double ratio)
-{
-	int k;
-	long nx, ny;
-	double node_val[8];
-
-	CNode* node;
-	CElem* elem = NULL;
-	CElement* fem = NULL;
-	fem = new CElement(GetCoordinateFlag());
-
-	std::vector<double> val;
-	val.resize(NodesNumber_Linear);
-	const size_t nod_vector_size(nod_vector.size());
-	for (size_t i = 0; i < nod_vector_size; i++)
-	{
-		nod_vector[i]->SetMark(false);
-		val[i] = 0.0;
-	}
-
-	//
-	ReadShapeFile(fname);
-
-	//
-	std::ofstream ofile_bin(ofname.c_str(), std::ios::trunc | std::ios::binary);
-	ofile_bin.setf(std::ios::scientific, std::ios::floatfield);
-	ofile_bin.precision(14);
-	//		CElem *elem (face_vector[i]);
-	//		CElem *own_elem (elem->owner);
-	//
-
-	for (size_t i = 0; i < face_vector.size(); i++)
-	{
-		elem = face_vector[i];
-		if (!elem->GetMark()) continue;
-
-		for (k = 0; k < elem->nnodes; k++)
-			node_val[k] = 0.0;
-
-		for (k = 0; k < elem->nnodes; k++)
-		{
-			node = elem->nodes[k];
-			double const* const pnt_k(elem->nodes[k]->getData());
-
-			nx = (long)((pnt_k[0] - x0) / csize);
-			ny = (long)((pnt_k[1] - y0) / csize);
-			ny = nrows - ny;
-			if (ny < 0) ny = 0;
-			if (ny > static_cast<long>(nrows)) ny = nrows;
-
-			if (nx * csize + x0 >= pnt_k[0]) nx -= 1;
-			if (ny * csize + y0 >= pnt_k[1]) ny -= 1;
-			if (nx >= static_cast<long>(ncols) - 1) nx = ncols - 2;
-			if (ny >= static_cast<long>(nrows) - 1) ny = nrows - 2;
-			if (nx < 0) nx = 0;
-			if (ny < 0) ny = 0;
-
-			node_val[k] = zz[ncols * ny + nx];
-			if (fabs(node_val[k] - ndata_v) < DBL_MIN) node_val[k] = 0.;
-		}
-
-		elem->ComputeVolume();
-		fem->setOrder(getOrder() + 1);
-		fem->ConfigElement(elem);
-		fem->FaceIntegration(node_val);
-		for (k = 0; k < elem->nnodes; k++)
-		{
-			node = elem->nodes[k];
-			node->SetMark(true);
-			val[node->GetIndex()] += node_val[k];
-		}
-	}
-
-	long counter = 0;
-	for (size_t i = 0; i < nod_vector_size; i++)
-	{
-		if (!nod_vector[i]->GetMark()) continue;
-		counter++;
-		val[i] *= ratio * 1e-3;  // Assuming the unit of precipitation is mm/day
-	}
-	ofile_bin.write((char*)(&counter), sizeof(counter));
-
-	for (size_t i = 0; i < nod_vector_size; i++)
-	{
-		node = nod_vector[i];
-		if (!node->GetMark()) continue;
-		nx = node->GetIndex();
-		ofile_bin.write((char*)(&nx), sizeof(nx));
-		ofile_bin.write((char*)(&val[i]), sizeof(val[i]));
-	}
-
-	ofile_bin.close();
-	delete fem;
-	fem = NULL;
-	val.clear();
-}
-
-/*!
-   Find element nodes on the top surface of a mesh domain
-   07.06.2010
-   By WW
- */
-void CFEMesh::MarkInterface_mHM_Hydro_3D()
-{
-	size_t k;
-	long i;
-	CElem* elem;
-	CElem* own_elem;
-	double cent[3];
-	double fac;
-	double tol = sqrt(DBL_EPSILON);  // 1.e-5;
-
-#ifdef output_top_z
-	/// For output z coordinate of all nodes on the top surface
-	/// 13.08.2010. WW
-	vector<bool> node_mark(NodesNumber_Linear);
-	for (i = 0; i < NodesNumber_Linear; i++)
-		node_mark[i] = false;
-#endif
-
-	for (i = 0; i < (long)face_vector.size(); i++)
-	{
-		elem = face_vector[i];
-		own_elem = elem->owner;
-
-		//// In element
-		//		// compute center of mass
-		cent[0] = cent[1] = cent[2] = 0.;
-		//		const int nodes_number_of_element
-		//(own_elem->GetNodesNumber(false));
-		for (k = 0; k < own_elem->GetNodesNumber(false); k++)
-		{
-			//				node = own_elem->nodes[k];
-			double const* const pnt_k(own_elem->nodes[k]->getData());
-			cent[0] += pnt_k[0];
-			cent[1] += pnt_k[1];
-			cent[2] += pnt_k[2];
-		}
-		for (k = 0; k < 3; k++)
-			cent[k] /= (double)own_elem->GetNodesNumber(false);
-
-		//			node = elem->nodes[0];
-		double const* const pnt_0(elem->nodes[0]->getData());
-		cent[0] -= pnt_0[0];
-		cent[1] -= pnt_0[1];
-		cent[2] -= pnt_0[2];
-		NormalizeVector(cent, 3);
-		elem->ComputeVolume();
-		elem->FillTransformMatrix();
-		/// Compute the normal to this surface element
-		fac = cent[0] * (*elem->transform_tensor)(0, 2) +
-		      cent[1] * (*elem->transform_tensor)(1, 2) +
-		      cent[2] * (*elem->transform_tensor)(2, 2);
-		if (fac > 0.0)
-			fac = -1.0;
-		else
-			fac = 1.0;
-		//////
-
-		/// If n.z>0
-		if ((*elem->transform_tensor)(2, 2) * fac > tol)
-		{
-			elem->SetMark(true);
-			for (k = 0; k < 3; k++)
-				(*elem->transform_tensor)(k, 2) *= fac;
-
-#ifdef output_top_z
-			for (k = 0; k < elem->nnodes; k++)
-				node_mark[elem->nodes[k]->GetIndex()] = true;
-#endif
-		}
-		else if ((*elem->transform_tensor)(2, 2) * fac < -tol)
-		{
-			elem->SetMark(false);
-			for (k = 0; k < 3; k++)
-				(*elem->transform_tensor)(k, 2) *= fac;
-
-#ifdef output_top_z
-			for (k = 0; k < elem->GetNodesNumber(quad); k++)
-				node_mark[elem->nodes[k]->GetIndex()] = bottom;
-#endif
-		}
-		else
-			elem->SetMark(false);
-	}
-
-#ifdef output_top_z
-	string ccc = FileName + "_top_head.asc";
-	ofstream ofile_asci(ccc.c_str(), ios::trunc);
-
-	for (i = 0; i < (long)nod_vector.size(); i++)
-	{
-		node = nod_vector[i];
-		if (!node_mark[i]) continue;
-		ofile_asci << node->GetIndex() << " " << node->Z() << endl;
-	}
-	ofile_asci << "#STOP" << endl;
-#endif
-}
-
-/*!
-   \brief Transform GIS shapfile stored precitation data into finite element
-   node values
-
-   Assume the precipitation data is stored in GIS shapfiles. This funtion read
-   the data
-   and then performs the numerical integration for each  GIS shapfile.
-
-   06/2010  WW
-
- */
-void CFEMesh::mHM2NeumannBC()
-{
-	double ratio, step;
-
-	std::string aline;
-	std::stringstream ss;
-
-	std::string fname = FileName + ".pcp";
-
-	std::ifstream ins(fname.c_str());
-	if (!ins.good())
-	{
-		std::cout << "Can not open file " << fname << "\n";
-		return;
-	}
-
-	ConstructGrid();
-
-	MarkInterface_mHM_Hydro_3D();
-
-	std::string key, uname, ofname;
-	// char stro[1024];
-
-	getline(ins, aline);
-	ss.str(aline);
-	ss >> key >> uname;
-	ss.clear();
-
-	getline(ins, aline);
-	ss.str(aline);
-	ss >> key >> ratio;
-	ss.clear();
-
-	step = 0.;
-
-	std::string infiltration_files;
-	infiltration_files = FileName + ".ifl";
-	std::ofstream infil(infiltration_files.c_str(), std::ios::trunc);
-	while (!ins.eof())
-	{
-		getline(ins, aline);
-		ss.str(aline);
-		ss >> key;
-		ss.clear();
-
-		if (key.size() == 0)  // An empty line
-			continue;
-
-		if (key.find("#STOP") != std::string::npos) break;
-
-		// sprintf(stro, "%f",step);
-		// ofname = stro;
-		ofname = FilePath + key + ".bin";
-		infil << step << " " << key + ".bin"
-		      << "\n";
-
-		key = FilePath + key;
-		Precipitation2NeumannBC(key, ofname, ratio);
-
-		step += 1.0;
-	}
-	infil << "#STOP"
-	      << "\n";
-	infil.close();
-}
-
-/*!
-   Compute int {f} a dA on top surface.
-
-   WW. 29.11.2010
- */
-void CFEMesh::TopSurfaceIntegration()
-{
-	int k;
-	long i, nx;
-	double node_val[8];
-
-	CNode* node;
-	CElem* elem = NULL;
-	CElement* fem = NULL;
-
-	ConstructGrid();
-	MarkInterface_mHM_Hydro_3D();
-
-	fem = new CElement(GetCoordinateFlag());
-	std::vector<double> val;
-	val.resize(NodesNumber_Linear);
-	for (i = 0; i < (long)nod_vector.size(); i++)
-	{
-		nod_vector[i]->SetMark(false);
-		val[i] = 0.0;
-	}
-
-	std::string ofname = FileName + "_top_surface_Neumann_BC.txt";
-	std::ofstream ofile_asci(ofname.c_str(), std::ios::trunc);
-	ofile_asci.setf(std::ios::scientific, std::ios::floatfield);
-	ofile_asci.precision(14);
-
-	for (i = 0; i < (long)face_vector.size(); i++)
-	{
-		elem = face_vector[i];
-		if (!elem->GetMark()) continue;
-
-		for (k = 0; k < elem->nnodes; k++)
-			node_val[k] = 1.0;
-
-		elem->ComputeVolume();
-		fem->setOrder(getOrder() + 1);
-		fem->ConfigElement(elem);
-		fem->FaceIntegration(node_val);
-		for (k = 0; k < elem->nnodes; k++)
-		{
-			node = elem->nodes[k];
-			node->SetMark(true);
-			val[node->GetIndex()] += node_val[k];
-		}
-	}
-
-	for (i = 0; i < (long)nod_vector.size(); i++)
-	{
-		node = nod_vector[i];
-		if (!node->GetMark()) continue;
-		nx = node->GetIndex();
-
-		ofile_asci << nx << " " << val[i] << "\n";
-	}
-	ofile_asci << "#STOP "
-	           << "\n";
-
-	ofile_asci.close();
-	delete fem;
-	fem = NULL;
-	val.clear();
-}
 
 //#ifndef NDEBUG
 GEOLIB::Grid<MeshLib::CNode> const* CFEMesh::getGrid() const
@@ -4190,122 +3676,6 @@ GEOLIB::Grid<MeshLib::CNode> const* CFEMesh::getGrid() const
 }
 //#endif
 
-#ifdef USE_HydSysMshGen
-/**************************************************************************
-   MSHLib-Method:
-   Task:
-   05/2009 WW
-**************************************************************************/
-void CFEMesh::HydroSysMeshGenerator(string fname,
-                                    const int nlayers,
-                                    const double thickness,
-                                    int mapping)
-{
-	fstream gs_out;
-	int k, mat_num;
-	long i;
-	string name = fname + "_hrdosys.msh";
-	string deli = " ";
-	CNode* a_node = NULL;
-	CElem* an_ele = NULL;
-
-	gs_out.open(name.c_str(), ios::out);
-	gs_out.setf(ios::scientific, ios::floatfield);
-	setw(14);
-	gs_out.precision(14);
-
-	if (mapping)
-	{
-		// To do
-	}
-
-	gs_out << "#FEM_MSH\n$PCS_TYPE\nOVERLAND_FLOW\n$NODES" << endl;
-	gs_out << (long)nod_vector.size() << endl;
-	for (i = 0; i < (long)nod_vector.size(); i++)
-		nod_vector[i]->Write(gs_out);
-	gs_out << "$ELEMENTS" << endl;
-	gs_out << (long)ele_vector.size() << endl;
-	mat_num = 0;
-	for (i = 0; i < (long)ele_vector.size(); i++)
-	{
-		an_ele = ele_vector[i];
-		an_ele->WriteGSmsh(gs_out);
-		k = an_ele->GetPatchIndex();
-		if (k > mat_num) mat_num = k;
-	}
-	mat_num++;
-
-	gs_out << "#FEM_MSH\n$PCS_TYPE\n RICHARDS_FLOW\n$GEO_TYPE\nPOLYLINE "
-	          "REGIONAL\n$GEO_NAME\nREGIONAL" << endl;
-	gs_out << "$NODES\n" << (nlayers + 1) * (long)nod_vector.size() << endl;
-	double seg = thickness / (double)nlayers;
-	double depth;
-	long l, size_nodes_msh_t;
-	size_nodes_msh_t = (long)nod_vector.size();
-	for (i = 0; i < size_nodes_msh_t; i++)
-		for (k = 0; k <= nlayers; k++)
-		{
-			depth = seg * (double)k;
-			a_node = nod_vector[i];
-			gs_out << k + i*(nlayers + 1) << deli << a_node->X() << deli
-			       << a_node->Y() << deli << a_node->Z() - depth << deli
-			       << endl;
-		}
-	gs_out << "$ELEMENTS" << endl;
-	gs_out << size_nodes_msh_t* nlayers << endl;
-	l = 0;
-	int mat_index;
-	for (i = 0; i < size_nodes_msh_t; i++)
-	{
-		// mat_index =
-		// ele_vector[nod_vector[i]->connected_elements[0]]->GetPatchIndex();
-		mat_index = mat_num;
-		for (k = 0; k < nlayers; k++)
-		{
-			l = k + (nlayers + 1) * i;
-			gs_out << k + nlayers* i << deli << mat_index << deli << "line"
-			       << deli;
-			gs_out << l << deli << l + 1 << endl;
-			mat_index++;
-		}
-	}
-	gs_out << "$LAYER\n" << nlayers << endl;
-	//
-	gs_out << "$BORDERS" << endl;
-	gs_out << "SECTOR_GROUND\n" << size_nodes_msh_t << endl;
-	for (i = 0; i < size_nodes_msh_t; i++)
-	{
-		k = nlayers;
-		gs_out << k + i*(nlayers + 1) << deli << endl;
-	}
-
-	mat_num += nlayers;
-	gs_out << "#FEM_MSH\n$PCS_TYPE\nGROUNDWATER_FLOW\n$NODES" << endl;
-	gs_out << (long)nod_vector.size() << endl;
-	for (i = 0; i < (long)nod_vector.size(); i++)
-	{
-		a_node = nod_vector[i];
-		a_node->SetZ(a_node->Z() - thickness);
-		a_node->Write(gs_out);
-		a_node->SetZ(a_node->Z() + thickness);
-	}
-	gs_out << "$ELEMENTS" << endl;
-	gs_out << (long)ele_vector.size() << endl;
-	for (i = 0; i < (long)ele_vector.size(); i++)
-	{
-		an_ele = ele_vector[i];
-		an_ele->SetPatchIndex(an_ele->GetPatchIndex() + mat_num);
-		an_ele->WriteGSmsh(gs_out);
-	}
-	gs_out << "$BORDERS" << endl;
-	gs_out << "SECTOR_SOIL\n" << (long)nod_vector.size() << endl;
-	for (i = 0; i < (long)nod_vector.size(); i++)
-		gs_out << i << deli << endl;
-
-	gs_out << "#STOP" << endl;
-	gs_out.close();
-}
-#endif
 
 // 09. 2012 WW
 /// Free the memory occupied by edges

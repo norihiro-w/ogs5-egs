@@ -1,4 +1,4 @@
-/*
+/**
  * MeshNodesAlongPolyline.cpp
  *
  *  Created on: Aug 9, 2010
@@ -10,14 +10,15 @@
  *              http://www.opengeosys.org/project/license
  */
 
+#include "MeshNodesAlongPolyline.h"
+
+#include <algorithm>
+
 // Base
 #include "quicksort.h"
 
 // MSH
-#include "MeshNodesAlongPolyline.h"
 #include "msh_mesh.h"
-
-#include <algorithm>
 
 namespace MeshLib
 {

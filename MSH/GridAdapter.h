@@ -16,11 +16,7 @@
 #ifndef GRIDADAPTER_H
 #define GRIDADAPTER_H
 
-// ** INCLUDES **
 #include "msh_mesh.h"
-
-class vtkImageData;         // For conversion from Image to QuadMesh
-class vtkUnstructuredGrid;  // For conversion vom vtk to ogs mesh
 
 namespace MeshLib
 {

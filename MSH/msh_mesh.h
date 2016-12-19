@@ -7,58 +7,26 @@
  *
  */
 
-/**
- * \file msh_mesh.h
- */
-
-/**************************************************************************
-   MSHLib - Object:
-   Task:
-   Programing:
-   08/2005 WW/OK Encapsulation from rf_ele_msh
-   last modified
-**************************************************************************/
 #ifndef msh_mesh_INC
 #define msh_mesh_INC
 
-// C++
 #include <algorithm>
 #include <string>
 
-/** depreciated includes of GEOLib */
 #include "geo_lib.h"
-//#include "geo_pnt.h"
 #include "geo_sfc.h"
 #include "geo_vol.h"
-
-// GEOLIB
 #include "GEOObjects.h"
 #include "Point.h"
 #include "Polyline.h"
 #include "Surface.h"
 #include "Grid.h"
 
-// MSHLib
-#include "MSHEnums.h"  // KR 2010/11/15
 #include "MeshNodesAlongPolyline.h"
-
-// FileIO
+#include "MSHEnums.h"
+#include "msh_elem.h"
 #include "OGSMeshIO.h"
 
-#include "msh_elem.h"
-
-class RandomWalk;
-class CFluidMomentum;
-
-class Problem;
-
-#ifdef NEW_EQS  // 1.11.2007 WW
-namespace Math_Group
-{
-class SparseTable;
-}
-using Math_Group::SparseTable;
-#endif
 
 //------------------------------------------------------------------------
 namespace MeshLib
@@ -77,7 +45,6 @@ private:
 	std::string neighbor_name;
 	long bnodes;
 	friend class CFEMesh;
-	friend class ::CRFProcess;
 
 public:
 	GridsTopo(std::istream& in, std::string sec_name);
@@ -291,11 +258,6 @@ public:
 	/// Free the memory occupied by edges
 	void FreeEdgeMemory();  // 09.2012. WW
 
-#ifndef NON_GEO  // WW
-	             /**
-	              * @{
-	              * */
-
 	/**
 	 * \brief depreciated method - uses old surface class
 	 */
@@ -403,15 +365,6 @@ public:
 	void GetNODOnSFC(const GEOLIB::Surface* sfc,
 	                 std::vector<size_t>& msh_nod_vector) const;
 
-	/** @} */  // close doxygen group
-#endif         // WW #ifndef NON_GEO
-	           //#ifndef NON_GEO                             //  WW
-	           //         /**
-	           //          * Store border nodes among different grids.
-	           //          */
-	           //         std::vector<GridsTopo*> grid_neighbors;
-	           //         friend class ::Problem;
-	           //#endif
 
 	/**
 	 * \brief Find all nodes connecting the given elements
@@ -481,24 +434,9 @@ public:
 	void ConnectedElements2Node(bool quadratic = false);
 	// OK
 	std::vector<std::string> mat_names_vector;
-	void DefineMobileNodes(CRFProcess*);  // OK
 	void FaceNormal();                    // YD
 	void SetNODPatchAreas();              // OK4310
 	void SetNetworkIntersectionNodes();   // OK4319->PCH
-#ifndef NON_PROCESS                       // 05.03.2010 WW
-#ifdef NEW_EQS                            // 1.11.2007 WW
-	// Compute the graph of the sparse matrix related to this mesh. 1.11.2007 WW
-	void CreateSparseTable();
-	// Get the sparse graph   1.11.2007 WW
-	SparseTable* GetSparseTable(bool quad = false) const
-	{
-		if (!quad)
-			return sparse_graph;
-		else
-			return sparse_graph_H;
-	}
-#endif
-#endif
 
 	std::string pcs_name;
 	std::string geo_name;       // MB
@@ -507,28 +445,10 @@ public:
 	size_t max_mmp_groups;  // OKCC
 	int msh_max_dim;
 
-	RandomWalk* PT;  // PCH
-
-	CFluidMomentum* fm_pcs;  // by PCH
-
 	/// Import MODFlow grid. 10.2009 WW
 	void ImportMODFlowGrid(std::string const& fname);
 	/// Convert raster cells into grid. 12.2009 WW
 	void ConvertShapeCells(std::string const& fname);
-#ifdef USE_HydSysMshGen
-	// Be activated if it is still needed.
-	// WW
-	/// Generate Column-surface grid system for the modeling of
-	/// surafce-subsuface coupled processes
-	// 15.05.2009. WW // removed useless const TF
-	void HydroSysMeshGenerator(std::string fname, int nlayers, double thickness,
-	                           int mapping);
-
-#endif
-	void MarkInterface_mHM_Hydro_3D();  // 07.06.2010. WW
-	void mHM2NeumannBC();
-	/// Comptute int {f} a dA on top surface.
-	void TopSurfaceIntegration();
 
 	//#ifndef NDEBUG
 	/**
@@ -575,9 +495,6 @@ private:
 	 */
 	double _search_length;
 
-	// Process friends
-	friend class ::CRFProcess;
-
 	size_t NodesNumber_Linear;
 	size_t NodesNumber_Quadratic;
 /// For parallel computing. 03.2012. WW
@@ -591,8 +508,9 @@ private:
 #endif
 	bool useQuadratic;
 	bool _axisymmetry;
+public:
 	bool top_surface_checked;  // 07.06.2010.  WW
-
+private:
 	// Coordinate indicator
 	// 1:  X component only
 	// 12: Y component only
@@ -612,27 +530,13 @@ private:
 	double x0, y0, csize, ndata_v;
 	std::vector<double> zz;  // Elevation
 	inline void ReadShapeFile(std::string const& fname);
-	// 03.2010. WW
-	inline void Precipitation2NeumannBC(std::string const& fname,
-	                                    std::string const& ofname,
-	                                    double ratio = 0.8);
-#ifndef NON_GEO  //  WW
 	/// Store border nodes among different grids.
+public:
 	std::vector<GridsTopo*> grid_neighbors;
-	friend class ::Problem;
-#endif  // #ifndef NON_GEO
-        //
-        // Sparse graph of this mesh. 1.11.2007 WW
-#ifdef NEW_EQS
-	SparseTable* sparse_graph;
-	SparseTable* sparse_graph_H;  // For high order interpolation
-#endif
-
-#ifndef NON_GEO  // WW
+private:
 	void CreateLineElementsFromMarkedEdges(
 	    CFEMesh* m_msh_ply,
-	    std::vector<long>& ele_vector_at_ply);  // NW
-#endif                                          // #ifndef NON_GEO //WW
+	    std::vector<long>& ele_vector_at_ply);
 public:
 	void constructMeshGrid();
 

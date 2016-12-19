@@ -173,11 +173,11 @@ CFEMesh* RandomWalk::selectMeshForFluidMomentumProcess()
 		pcs_type = pcs_vector[i]->getProcessType();
 		// Select the mesh whose process name has the mesh for Fluid_Momentum
 		if (pcs_type == FiniteElement::RICHARDS_FLOW)
-			msh = FEMGet("RICHARDS_FLOW");
+			msh = MeshLib::FEMGet("RICHARDS_FLOW");
 		else if (pcs_type == FiniteElement::LIQUID_FLOW)
-			msh = FEMGet("LIQUID_FLOW");
+			msh = MeshLib::FEMGet("LIQUID_FLOW");
 		else if (pcs_type == FiniteElement::GROUNDWATER_FLOW)
-			msh = FEMGet("GROUNDWATER_FLOW");
+			msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	}
 
 	return msh;
@@ -204,11 +204,11 @@ void RandomWalk::InterpolateVelocity(Particle* A)
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos) TF
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->getProcessType () == LIQUID_FLOW)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if( m_pcs->getProcessType () == GROUNDWATER_FLOW)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
 
 	// Mount the element fromthe first particle from particles initially
@@ -407,12 +407,12 @@ void RandomWalk::TracePathlineInThisElement(Particle* A)
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if(
 	// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
 
 	// Mount the element fromthe first particle from particles initially
@@ -633,12 +633,12 @@ void RandomWalk::InterpolateVelocityOfTheParticleByInverseDistance(Particle* A)
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if(
 	// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
 
 	MeshLib::CElem* m_ele = m_msh->ele_vector[A->elementIndex];
@@ -686,17 +686,17 @@ void RandomWalk::InterpolateVelocityOfTheParticleByInverseDistance(Particle* A)
 	{
 		w[i] = 1.0 / (d[i] * SumOfdInverse);
 
-		m_pcs = PCSGet("FLUID_MOMENTUM");
+		CFluidMomentum* m_pcs = (CFluidMomentum*)PCSGet("FLUID_MOMENTUM");
 		double vx = 0.0, vy = 0.0, vz = 0.0;
 		// If this node is crossroad,
 		if (m_msh->nod_vector[m_ele->GetNodeIndex(i)]->crossroad)
 		{
 			// Get the velocity contributed in this element
 			CrossRoad* crossroad = NULL;
-			for (int j = 0; j < (int)(m_msh->fm_pcs->crossroads.size()); ++j)
-				if ((size_t)m_msh->fm_pcs->crossroads[j]->Index ==
+			for (int j = 0; j < (int)(m_pcs->crossroads.size()); ++j)
+				if ((size_t)m_pcs->crossroads[j]->Index ==
 				    m_msh->nod_vector[m_ele->GetNodeIndex(i)]->GetIndex())
-					crossroad = m_msh->fm_pcs->crossroads[j];
+					crossroad = m_pcs->crossroads[j];
 
 			if (crossroad)
 			{
@@ -795,12 +795,12 @@ void RandomWalk::InterpolateVelocityOfTheParticleByBilinear(int option,
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if(
 	// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
 
 	// Let's allocate some memory for miniFEM
@@ -1378,12 +1378,12 @@ double* RandomWalk::InterpolateLocationOfTheParticleByBilinear(Particle* A,
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if(
 	// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
 
 	int eleIndex = IndexOfTheElementThatThisParticleBelong(0, A);
@@ -2859,12 +2859,12 @@ void RandomWalk::ConcPTFile(const char* file_name)
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if(
 	// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
 
 	sprintf(pct_file_name, "%s.conc", file_name);
@@ -3087,12 +3087,12 @@ void RandomWalk::SolveDispersionCoefficient(Particle* A)
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if(
 	// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
 	MeshLib::CElem* m_ele = m_msh->ele_vector[A->elementIndex];
 	int group = m_ele->GetPatchIndex();
@@ -3196,12 +3196,12 @@ int RandomWalk::SolveForNextPosition(Particle* A, Particle* B)
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if(
 	// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
 	MeshLib::CElem* theElement = m_msh->ele_vector[B->elementIndex];
 
@@ -3554,12 +3554,12 @@ void RandomWalk::GetDisplacement(Particle* B, double* Z, double* V, double* dD,
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if(
 	// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
 	MeshLib::CElem* theElement = m_msh->ele_vector[B->elementIndex];
 	int ele_dim = theElement->GetDimension();
@@ -3740,11 +3740,11 @@ int RandomWalk::GetTheElementOfTheParticle(Particle* Pold, Particle* Pnew)
 //
 //		// Select the mesh whose process name has the mesh for Fluid_Momentum
 //		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-//			m_msh = FEMGet("RICHARDS_FLOW");
+//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 //		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-//			m_msh = FEMGet("LIQUID_FLOW");
+//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 //		else if( m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-//			m_msh = FEMGet("GROUNDWATER_FLOW");
+//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 //	}
 
 #ifdef ALLOW_PARTICLES_GO_OUTSIDE
@@ -3867,11 +3867,11 @@ int RandomWalk::GetTheElementOfTheParticleFromNeighbor(Particle* A)
 //
 //		// Select the mesh whose process name has the mesh for Fluid_Momentum
 //		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-//			m_msh = FEMGet("RICHARDS_FLOW");
+//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 //		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-//			m_msh = FEMGet("LIQUID_FLOW");
+//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 //		else if( m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-//			m_msh = FEMGet("GROUNDWATER_FLOW");
+//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 //	}
 
 #ifdef ALLOW_PARTICLES_GO_OUTSIDE
@@ -3989,12 +3989,12 @@ int RandomWalk::IsTheParticleInThisElement(Particle* A)
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if(
 	// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
 	MeshLib::CElem* theElement = m_msh->ele_vector[A->elementIndex];
 
@@ -4361,12 +4361,12 @@ void RandomWalk::IsoparametricMappingQuadfromPtoR(int index, double* R)
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if(
 	// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
 	// Mount the element fromthe first particle from particles initially
 	MeshLib::CElem* theEle = m_msh->ele_vector[index];
@@ -4562,12 +4562,12 @@ void RandomWalk::IsoparametricMappingQuadfromRtoP(int index, double* P)
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if(
 	// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
 	// Mount the element fromthe first particle from particles initially
 	MeshLib::CElem* theEle = m_msh->ele_vector[index];
@@ -4628,20 +4628,22 @@ void RandomWalk::DoJointEffectOfElementInitially(void)
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if(
 	// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
+
+	CFluidMomentum* fm_pcs = (CFluidMomentum*)PCSGet("FLUID_MOMENTUM");
 
 	// Looping all over the particles to have a choice which plane to go.
 	// Because all of the particles are on the joint initially.
-	for (int p = 0; p < m_msh->PT->numOfParticles; ++p)
+	for (int p = 0; p < this->numOfParticles; ++p)
 	{
 		// Mount the element fromthe first particle from particles initially
-		int eleIdx = m_msh->PT->X[p].Now.elementIndex;
+		int eleIdx = this->X[p].Now.elementIndex;
 		MeshLib::CElem* theEle = m_msh->ele_vector[eleIdx];
 		// Let's get the number of edges in the element and mount them
 		int numOfEdgeIntheElement = theEle->GetEdgesNumber();
@@ -4663,10 +4665,10 @@ void RandomWalk::DoJointEffectOfElementInitially(void)
 		MeshLib::CNode* crossnode = theNodes[0];
 		// Let's mount the crossroad class
 		CrossRoad* crossroad = NULL;
-		for (int i = 0; i < (int)(m_msh->fm_pcs->crossroads.size()); ++i)
-			if ((size_t)m_msh->fm_pcs->crossroads[i]->Index ==
+		for (int i = 0; i < (int)(fm_pcs->crossroads.size()); ++i)
+			if ((size_t)fm_pcs->crossroads[i]->Index ==
 			    crossnode->GetIndex())
-				crossroad = m_msh->fm_pcs->crossroads[i];
+				crossroad = fm_pcs->crossroads[i];
 		// Let's get the contribution of each connected plane.
 		double chances[100];  // I just set 100 as a maximum number of
 		// connected planes.
@@ -4676,7 +4678,7 @@ void RandomWalk::DoJointEffectOfElementInitially(void)
 		// 3. Roulette Wheel Selection
 		int whichWay =
 		    RouletteWheelSelection(chances, crossroad->numOfThePlanes);
-		m_msh->PT->X[p].Now.elementIndex = m_msh->PT->X[p].Past.elementIndex =
+		this->X[p].Now.elementIndex = this->X[p].Past.elementIndex =
 		    crossroad->plane[whichWay].eleIndex;
 	}
 }
@@ -4726,12 +4728,12 @@ void RandomWalk::ToTheXYPlane(int idx, double* X)
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if(
 	// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
 	MeshLib::CElem* E = m_msh->ele_vector[idx];
 
@@ -4806,12 +4808,12 @@ void RandomWalk::ToTheRealPlane(int idx, double* X)
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if(
 	// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
 	MeshLib::CElem* E = m_msh->ele_vector[idx];
 
@@ -4858,12 +4860,12 @@ void RandomWalk::SolveAnglesOfTheElment(MeshLib::CElem* E)
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if(
 	// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
 
 	double tolerance = 1e-20, Enorm[3];
@@ -5025,12 +5027,12 @@ int RandomWalk::ReadInVelocityFieldOnNodes(string file_base_name)
 	//		// Select the mesh whose process name has the mesh for
 	// Fluid_Momentum
 	//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-	//			m_msh = FEMGet("RICHARDS_FLOW");
+	//			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 	//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-	//			m_msh = FEMGet("LIQUID_FLOW");
+	//			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 	//		else if(
 	// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-	//			m_msh = FEMGet("GROUNDWATER_FLOW");
+	//			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	//	}
 	CRFProcess* m_pcs = PCSGet("FLUID_MOMENTUM");
 
@@ -5093,21 +5095,21 @@ void RandomWalk::buildFDMIndex(void)
 		//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos){
 		if (m_pcs->getProcessType() == FiniteElement::RICHARDS_FLOW)
 		{
-			m_msh = FEMGet("RICHARDS_FLOW");
+			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 			break;
 		}
 		//		else if(
 		// m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos){
 		else if (m_pcs->getProcessType() == FiniteElement::LIQUID_FLOW)
 		{
-			m_msh = FEMGet("LIQUID_FLOW");
+			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 			break;
 		}
 		//		else if(
 		// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos){
 		else if (m_pcs->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
 		{
-			m_msh = FEMGet("GROUNDWATER_FLOW");
+			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 			break;
 		}
 	}
@@ -5233,11 +5235,11 @@ void RandomWalk::buildFDMIndex(void)
 
    // Select the mesh whose process name has the mesh for Fluid_Momentum
    if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-   m_msh = FEMGet("RICHARDS_FLOW");
+   m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
    else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-   m_msh = FEMGet("LIQUID_FLOW");
+   m_msh = MeshLib::FEMGet("LIQUID_FLOW");
    else if( m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-   m_msh = FEMGet("GROUNDWATER_FLOW");
+   m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
    else;
    }
    // Solve for four corners from element #0.
@@ -5310,12 +5312,10 @@ void RandomWalk::buildFDMIndex(void)
 **************************************************************************/
 void PCTRead(string file_base_name)
 {
-	CFEMesh* m_msh = NULL;
-
 	if (fem_msh_vector.size() == 0) return;  // OK
 
 	// Mount the proper mesh
-	m_msh = fem_msh_vector[0];  // Something must be done later on here.
+	//auto m_msh = fem_msh_vector[0];  // Something must be done later on here.
 
 	// File handling
 	string pct_file_name;
@@ -5334,9 +5334,7 @@ void PCTRead(string file_base_name)
 
 	int End = 1;
 	string strbuffer;
-	RandomWalk* RW = NULL;
-	m_msh->PT = new RandomWalk(srand_seed);  // PCH
-	RW = m_msh->PT;
+	RandomWalk* RW = new RandomWalk(srand_seed);
 
 	// Create pathline
 	RandomWalk::Pathline path;
@@ -5392,37 +5390,8 @@ void PCTRead(string file_base_name)
 **************************************************************************/
 void DATWriteParticleFile(int current_time_step)
 {
-	CFEMesh* m_msh = NULL;
-	RandomWalk* RW = NULL;
+	RandomWalk* RW = (RandomWalk*)PCSGet(FiniteElement::RANDOM_WALK);
 
-	// Gather the momentum mesh
-	size_t pcs_vector_size(pcs_vector.size());
-	for (size_t i = 0; i < pcs_vector_size; ++i)
-	{
-		//		m_pcs = pcs_vector[i];
-		const FiniteElement::ProcessType pcs_type(
-		    pcs_vector[i]->getProcessType());
-		//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos){
-		if (pcs_type == FiniteElement::RICHARDS_FLOW)
-		{
-			m_msh = FEMGet("RICHARDS_FLOW");
-			break;
-		}
-		//		else if(
-		// m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos){
-		else if (pcs_type == FiniteElement::LIQUID_FLOW)
-		{
-			m_msh = FEMGet("LIQUID_FLOW");
-			break;
-		}
-		else if (pcs_type == FiniteElement::GROUNDWATER_FLOW)
-		{
-			m_msh = FEMGet("GROUNDWATER_FLOW");
-			break;
-		}
-	}
-
-	RW = m_msh->PT;
 	int np = RW->numOfParticles;
 
 	// file naming

@@ -35,6 +35,9 @@ using namespace MeshLib;
 extern int myrank;
 extern int mysize;
 
+namespace MeshLib
+{
+
 void BuildNodeStruc(MeshNodes* anode, MPI_Datatype* MPI_Node_ptr);
 
 void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
@@ -330,8 +333,6 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 	MPI_Barrier(MPI_COMM_WORLD);
 }
 
-namespace MeshLib
-{
 /*!
    Fill data for subdomain mesh
 
@@ -613,8 +614,6 @@ int CFEMesh::calMaximumConnectedNodes()
 	return max_connected_nodes;
 }
 
-}  // end namespace
-
 void BuildNodeStruc(MeshNodes* anode, MPI_Datatype* MPI_Node_ptr)
 {
 	MPI_Datatype my_comp_type[4];
@@ -667,3 +666,5 @@ for (j=0; j <3; j++)
 	MPI_Type_create_struct(4, nblocklen, disp, my_comp_type, MPI_Node_ptr);
 	MPI_Type_commit(MPI_Node_ptr);
 }
+
+} // MeshLib

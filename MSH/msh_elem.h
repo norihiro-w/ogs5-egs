@@ -24,17 +24,11 @@
 #include "MSHEnums.h"
 #include "msh_edge.h"
 
-// PCSLib
-namespace process
-{
-class CRFProcessDeformation;
-}
 namespace Math_Group
 {
 class Matrix;
 }
 
-class CRFProcess;
 
 namespace MeshLib
 {
@@ -274,6 +268,7 @@ public:
 	void FillTransformMatrix();
 	void FillTransformMatrix(int noneed);
 	double getTransformTensor(int idx);
+	Math_Group::Matrix const* getTransformTensor() const {return transform_tensor; }
 #ifndef OGS_ONLY_TH
 	void AllocateMeomoryforAngle()
 	{
@@ -325,7 +320,9 @@ public:
 #endif
 #if defined(USE_PETSC)
 	bool isOverlapped() const { return g_index != NULL; }
+	int* getGhostNodeIndices() { return g_index; }
 #endif
+
 private:
 	// Members
 	// ID
@@ -389,15 +386,6 @@ private:
 	int GetElementFacesPyramid(int Face, int* FaceNode);
 	//-- Friends
 	friend class CFEMesh;
-	// FEM
-	friend class FiniteElement::CElement;
-	friend class FiniteElement::CFiniteElementStd;
-	friend class FiniteElement::CFiniteElementVec;
-	friend class FiniteElement::ElementMatrix;
-	friend class FiniteElement::ElementMatrix_DM;
-	// PCS
-	friend class process::CRFProcessDeformation;
-	friend class ::CRFProcess;
 };
 }  // namespace MeshLib
 #endif

@@ -18,10 +18,10 @@
 #define msh_node_INC
 
 #include <cassert>
-
-#include "matrix_class.h"
 #include <string>
 #include <vector>
+
+#include "matrix_class.h"
 
 // MSHLib
 #include "msh_core.h"

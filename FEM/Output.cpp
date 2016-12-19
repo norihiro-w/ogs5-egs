@@ -157,7 +157,7 @@ void COutput::init()
 		}
 	}
 
-	m_msh = FEMGet(convertProcessTypeToString(getProcessType()));
+	m_msh = MeshLib::FEMGet(convertProcessTypeToString(getProcessType()));
 
 	setInternalVarialbeNames(m_msh);  // NW
 }
@@ -607,7 +607,7 @@ void COutput::NODWriteDOMDataTEC()
 		return;
 	//......................................................................
 	// MSH
-	// m_msh = FEMGet(pcs_type_name);
+	// m_msh = MeshLib::FEMGet(pcs_type_name);
 	//  m_msh = GetMSH();
 	if (!m_msh)
 	{
@@ -1623,7 +1623,10 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 	//......................................................................
 	// NOD values
 	if (getProcessType() == FiniteElement::RANDOM_WALK)
-		tec_file << m_msh->PT->leavingParticles << " ";
+	{
+		RandomWalk* PT = (RandomWalk*)PCSGet(FiniteElement::RANDOM_WALK);
+		tec_file << PT->leavingParticles << " ";
+	}
 	int timelevel;
 	CRFProcess* m_pcs_out = NULL;
 
@@ -1851,7 +1854,7 @@ void COutput::WriteRFOValues(fstream& rfo_file)
 
 void COutput::WriteRFO()
 {
-	m_msh = FEMGet(convertProcessTypeToString(getProcessType()));
+	m_msh = MeshLib::FEMGet(convertProcessTypeToString(getProcessType()));
 	if (!m_msh)
 	{
 		cout << "Warning in COutput::WriteRFONodes - no MSH data"
@@ -1889,7 +1892,7 @@ void COutput::NODWriteSFCDataTEC(int number)
 {
 	if (_nod_value_vector.size() == 0) return;
 
-	m_msh = FEMGet(convertProcessTypeToString(getProcessType()));
+	m_msh = MeshLib::FEMGet(convertProcessTypeToString(getProcessType()));
 	m_pcs = PCSGet(getProcessType());
 
 	// File handling
@@ -1991,7 +1994,7 @@ void COutput::NODWriteSFCAverageDataTEC(double time_current,
 		return;
 	}
 	//	CFEMesh* m_msh = NULL;
-	m_msh = FEMGet(convertProcessTypeToString(getProcessType()));
+	m_msh = MeshLib::FEMGet(convertProcessTypeToString(getProcessType()));
 	if (!m_msh)
 	{
 		cout << "Warning in COutput::NODWriteSFCAverageDataTEC - no MSH data"
@@ -2904,7 +2907,7 @@ void COutput::PCONWriteDOMDataTEC()
 	if (_pcon_value_vector.size() == 0) return;
 	//......................................................................
 	// MSH
-	// m_msh = FEMGet(pcs_type_name);
+	// m_msh = MeshLib::FEMGet(pcs_type_name);
 	//  m_msh = GetMSH();
 	if (!m_msh)
 	{
@@ -3655,7 +3658,7 @@ void COutput::NODWriteWaterBalance(double time_current)
 void COutput::NODWriteWaterBalancePNT(double time_current)
 {
 	CFEMesh* m_msh = NULL;
-	m_msh = FEMGet(convertProcessTypeToString(getProcessType()));
+	m_msh = MeshLib::FEMGet(convertProcessTypeToString(getProcessType()));
 	CRFProcess* m_pcs = NULL;
 	m_pcs = PCSGet(getProcessType());
 	long msh_node_number(
@@ -3703,7 +3706,7 @@ void COutput::NODWriteWaterBalancePNT(double time_current)
 void COutput::NODWriteWaterBalancePLY(double /*time_current*/)
 {
 	CFEMesh* m_msh = NULL;
-	m_msh = FEMGet(convertProcessTypeToString(getProcessType()));
+	m_msh = MeshLib::FEMGet(convertProcessTypeToString(getProcessType()));
 	CRFProcess* m_pcs = NULL;
 	m_pcs = PCSGet(getProcessType());
 	vector<long> nodes_vector;
@@ -3771,7 +3774,7 @@ void COutput::NODWriteWaterBalancePLY(double /*time_current*/)
 
 void COutput::NODWriteWaterBalanceSFC(double time_current)
 {
-	CFEMesh* m_msh(FEMGet(convertProcessTypeToString(getProcessType())));
+	CFEMesh* m_msh(MeshLib::FEMGet(convertProcessTypeToString(getProcessType())));
 	//	CRFProcess* m_pcs (PCSGet(getProcessType()));
 	Surface* m_sfc = NULL;
 	m_sfc = GEOGetSFCByName(geo_name);
@@ -3830,7 +3833,7 @@ void COutput::NODWriteWaterBalanceSFC(double time_current)
 void COutput::NODWritePointsCombined(double time_current)
 {
 	CFEMesh* m_msh = NULL;
-	m_msh = FEMGet(convertProcessTypeToString(getProcessType()));
+	m_msh = MeshLib::FEMGet(convertProcessTypeToString(getProcessType()));
 	CRFProcess* m_pcs_out = NULL;
 	m_pcs_out = PCSGet(getProcessType());
 

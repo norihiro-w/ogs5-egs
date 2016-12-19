@@ -68,4 +68,10 @@ double sqrNrm2(const GEOLIB::Point* const p0);
 /** squared dist between GEOLIB::Points p0 and p1 */
 double sqrDist(const GEOLIB::Point* p0, const GEOLIB::Point* p1);
 
+extern double MCalcDistancePointToLine(double* pt, double* l1, double* l2);
+extern double MCalcProjectionOfPointOnLine(double* pt1, double* pt2,
+										   double* pt3, double* pt4);
+extern double MCalcDistancePointToPlane(double const* const pt, double* e1,
+										double* e2, double* e3);
+
 #endif

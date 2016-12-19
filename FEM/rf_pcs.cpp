@@ -78,6 +78,7 @@ solver
 #include "eos.h"
 #include "rf_msp_new.h"
 #include "rf_node.h"
+#include "msh_tools.h"
 
 /*-----------------------------------------------------------------------*/
 /*-----------------------------------------------------------------------*/
@@ -652,7 +653,7 @@ void CRFProcess::Create()
 
 		//		if (_pcs_type_name.compare("GROUNDWATER_FLOW") == 0)
 		if (this->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
-			MSHDefineMobile(this);
+			MeshLib::MSHDefineMobile(this);
 	//----------------------------------------------------------------------------
 	int DOF = GetPrimaryVNumber();  // OK should be PCS member variable
 	//----------------------------------------------------------------------------
@@ -824,7 +825,7 @@ void CRFProcess::Create()
 		// new time
 		nod_val_name_vector.push_back(pcs_secondary_function_name[i]);
 	//
-	long m_msh_nod_vector_size = m_msh->NodesNumber_Quadratic;
+	long m_msh_nod_vector_size = m_msh->GetNodesNumber(true);
 	for (long j = 0; j < number_of_nvals;
 	     j++)  // Swap number_of_nvals and mesh size. WW 19.12.2012
 	{
@@ -1008,7 +1009,7 @@ void CRFProcess::Create()
 			    GetNodeValueIndex(pcs_primary_function_name[i]) + 1;
 
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
-	size_unknowns = m_msh->NodesNumber_Quadratic * pcs_number_of_primary_nvals;
+	size_unknowns = m_msh->GetNodesNumber(true) * pcs_number_of_primary_nvals;
 #elif defined(NEW_EQS)
 	{
 		size_unknowns = eqs_new->A->Dim();
@@ -2336,7 +2337,7 @@ void CRFProcess::Config(void)
 	std::string pcs_type_name(
 	    convertProcessTypeToString(this->getProcessType()));
 	// Set mesh pointer to corresponding mesh
-	m_msh = FEMGet(pcs_type_name);
+	m_msh = MeshLib::FEMGet(pcs_type_name);
 	if (!m_msh)
 	{
 		cout << "Error in CRFProcess::Config - no MSH data" << endl;
@@ -2533,7 +2534,7 @@ void CRFProcess::ConfigGroundwaterFlow()
 	// Output material parameters
 	configMaterialParameters();
 
-	if (m_msh) m_msh->DefineMobileNodes(this);
+	if (m_msh) DefineMobileNodes(m_msh, this);
 }
 
 /**************************************************************************
@@ -5673,18 +5674,18 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 		}
 
 		int dof_per_node = 0;
-		if (m_msh->NodesNumber_Linear == m_msh->NodesNumber_Quadratic)
+		if (m_msh->GetNodesNumber(false) == m_msh->GetNodesNumber(true))
 		{
 			dof_per_node = pcs_number_of_primary_nvals;
-			shift = m_bc_node->msh_node_number / m_msh->NodesNumber_Linear;
+			shift = m_bc_node->msh_node_number / m_msh->GetNodesNumber(false);
 		}
 		else
 		{
-			if (bc_msh_node < static_cast<long>(m_msh->NodesNumber_Linear))
+			if (bc_msh_node < static_cast<long>(m_msh->GetNodesNumber(false)))
 				dof_per_node = pcs_number_of_primary_nvals;
 			else
 				dof_per_node = m_msh->GetMaxElementDim();
-			shift = m_bc_node->msh_node_number / m_msh->NodesNumber_Quadratic;
+			shift = m_bc_node->msh_node_number / m_msh->GetNodesNumber(true);
 		}
 
 #else
@@ -6650,18 +6651,18 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 			}
 
 			int dof_per_node = 0;
-			if (m_msh->NodesNumber_Linear == m_msh->NodesNumber_Quadratic)
+			if (m_msh->GetNodesNumber(false) == m_msh->GetNodesNumber(true))
 			{
 				dof_per_node = pcs_number_of_primary_nvals;
-				shift = cnodev->msh_node_number / m_msh->NodesNumber_Linear;
+				shift = cnodev->msh_node_number / m_msh->GetNodesNumber(false);
 			}
 			else
 			{
-				if (msh_node < static_cast<long>(m_msh->NodesNumber_Linear))
+				if (msh_node < static_cast<long>(m_msh->GetNodesNumber(false)))
 					dof_per_node = pcs_number_of_primary_nvals;
 				else
 					dof_per_node = m_msh->GetMaxElementDim();
-				shift = cnodev->msh_node_number / m_msh->NodesNumber_Quadratic;
+				shift = cnodev->msh_node_number / m_msh->GetNodesNumber(true);
 			}
 
 #else
@@ -7033,7 +7034,7 @@ void CRFProcess::PCSMoveNOD(void)
 	switch (this->type)
 	{
 		case 1:
-			MSHMoveNODUcFlow(this);
+			MeshLib::MSHMoveNODUcFlow(this);
 			break;
 		default:
 			DisplayMsgLn("PCSMoveNOD: no valid process");
@@ -9686,10 +9687,10 @@ void CRFProcess::CalcSaturationRichards(int timelevel, bool update)
 				elem = m_msh->ele_vector[m_msh->nod_vector[i]
 				                             ->getConnectedElementIDs()[j]];
 				m_mmp = mmp_vector[elem->GetPatchIndex()];
-				volume_sum += elem->volume;
+				volume_sum += elem->GetVolume();
 				saturation +=
 				    m_mmp->SaturationCapillaryPressureFunction(p_cap) *
-				    elem->volume;
+					elem->GetVolume();
 			}
 			saturation /= volume_sum;
 			SetNodeValue(i, idxS, saturation);
@@ -12289,7 +12290,7 @@ bool CRFProcess::ELERelations()
 	// OK->MB please shift to Config()
 	//	if (_pcs_type_name.compare("GROUNDWATER_FLOW") == 0)
 	if (this->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
-		MSHDefineMobile(this);
+		MeshLib::MSHDefineMobile(this);
 	//
 	if (type == 4 || type == 41)
 		m_msh->SwitchOnQuadraticNodes(true);
@@ -12512,7 +12513,7 @@ void CRFProcess::CreateNew()
 bool CRFProcess::Check()
 {
 	// MMP
-	MSHTestMATGroups();
+	MeshLib::MSHTestMATGroups();
 	return true;
 }
 
@@ -12828,11 +12829,12 @@ void CreateEQS_LinearSolver()
 	for (i = 0; i < fem_msh_vector.size(); i++)
 	{
 		a_msh = fem_msh_vector[i];
-		a_msh->CreateSparseTable();
-		// sparse pattern with linear elements exists
-		sp = a_msh->GetSparseTable();
-		// sparse pattern with quadratic elements exists
-		spH = a_msh->GetSparseTable(true);
+		SparseTable* sp = nullptr, *spH = nullptr;
+		CreateSparseTable(a_msh, sp, spH);
+		if (sp)
+			SparseTable_Vector.push_back(sp);
+		if (spH)
+			SparseTable_Vector.push_back(spH);
 		//
 		eqs = NULL;
 		eqsH = NULL;
@@ -13233,265 +13235,7 @@ void CRFProcess::UpdateTransientBC()
 	for (i = 0; i < (long)st_vector.size(); i++)
 	{
 		a_st = st_vector[i];
-		if (a_st->getProcessDistributionType() ==
-		        FiniteElement::PRECIPITATION &&
-		    a_st->getProcessType() == getProcessType())
-		{
-			precip = a_st;
-			if (!m_msh->top_surface_checked)  // 07.06--19.08.2010. WW
-			{
-				if (m_msh->GetCoordinateFlag() / 10 == 3)
-					m_msh->MarkInterface_mHM_Hydro_3D();
-				m_msh->top_surface_checked = true;
-			}
-			break;
-		}
 	}
-	if (precip)  // 08-07.06.2010.  WW
-	{
-		string ofile_name;
-		ofile_name = precip->DirectAssign_Precipitation(aktuelle_zeit);
-
-		if (m_msh->GetCoordinateFlag() / 10 == 3)  // 19.08.2010. WW
-		{
-			/// Remove .bin from the file name
-			i = (int)ofile_name.find_last_of(".");
-			if (i > 0)
-				ofile_name.erase(ofile_name.begin() + i, ofile_name.end());
-			i = (int)ofile_name.find_last_of(".");
-			if (i > 0)
-				ofile_name.erase(ofile_name.begin() + i, ofile_name.end());
-			string of_name = ofile_name + ".flx.asc";
-			ofstream of_flux(of_name.c_str(), ios::trunc | ios::out);
-
-			of_name = ofile_name + ".pri.asc";
-			ofstream of_primary(of_name.c_str(), ios::trunc | ios::out);
-
-			/// GIS_shape_head[0]:  ncols
-			/// GIS_shape_head[1]:  nrows
-			/// GIS_shape_head[2]:  xllcorner
-			/// GIS_shape_head[3]:  yllcorner
-			/// GIS_shape_head[4]:  cellsize
-			/// GIS_shape_head[5]:  NONDATA_value
-			double* g_para = precip->GIS_shape_head;
-			long size = (long)(g_para[0] * g_para[1]);
-			vector<double> cell_data_p(size);
-			vector<double> cell_data_v(size);
-			for (i = 0; i < size; i++)
-			{
-				cell_data_p[i] = g_para[5];
-				cell_data_v[i] = g_para[5];
-			}
-
-			int j, k, nnodes;
-			int node_xmin, node_xmax, node_ymin, node_ymax;
-			long m, n, mm, nn, l;
-			CElem* elem;
-			double* cent;
-			double vel_av[3], x1[3], x2[3], x3[3], sub_area[3], area, tol_a;
-
-			double x_min, y_min, x_max, y_max;
-			long row_min, col_min, row_max, col_max;
-
-			int* vel_idx;
-			int idx = fem->idx0 + 1;
-			vel_idx = fem->idx_vel;
-
-			long n_idx, irow, icol, nrow, ncol;
-			nrow = (long)g_para[1];
-			ncol = (long)g_para[0];
-
-			node_xmin = node_xmax = node_ymin = node_ymax = 0;
-
-			tol_a = 1.e-8;
-
-			of_flux.setf(ios::fixed, ios::floatfield);
-			of_primary.setf(ios::fixed, ios::floatfield);
-			of_flux.precision(1);
-			of_primary.precision(1);
-
-			of_flux << "ncols" << setw(19) << ncol << endl;
-			of_flux << "nrows" << setw(19) << nrow << endl;
-			of_flux << "xllcorner" << setw(15) << g_para[2] << endl;
-			of_flux << "yllcorner" << setw(15) << g_para[3] << endl;
-			of_flux << "cellsize" << setw(16) << (long)g_para[4] << endl;
-			of_flux << "NODATA_value" << setw(11) << (long)g_para[5] << endl;
-
-			of_primary << "ncols" << setw(19) << ncol << endl;
-			of_primary << "nrows" << setw(19) << nrow << endl;
-			of_primary << "xllcorner" << setw(15) << g_para[2] << endl;
-			of_primary << "yllcorner" << setw(15) << g_para[3] << endl;
-			of_primary << "cellsize" << setw(16) << (long)g_para[4] << endl;
-			of_primary << "NODATA_value" << setw(11) << (long)g_para[5] << endl;
-
-			for (i = 0; i < (long)m_msh->face_vector.size(); i++)
-			{
-				elem = m_msh->face_vector[i];
-				if (!elem->GetMark()) continue;
-
-				if (elem->GetElementType() != 4)  /// If not triangle
-					continue;
-
-				//// In element
-				nnodes = elem->GetNodesNumber(false);
-				cent = elem->gravity_center;
-
-				/// Find the range of this element
-				x_min = y_min = 1.e+20;
-				x_max = y_max = -1.e+20;
-				for (k = 0; k < nnodes; k++)
-				{
-					double const* const pnt(elem->nodes[k]->getData());
-					if (pnt[0] < x_min)
-					{
-						x_min = pnt[0];
-						node_xmin = k;
-					}
-					if (pnt[0] > x_max)
-					{
-						x_max = pnt[0];
-						node_xmax = k;
-					}
-					if (pnt[1] < y_min)
-					{
-						y_min = pnt[1];
-						node_ymin = k;
-					}
-					if (pnt[1] > y_max)
-					{
-						y_max = pnt[1];
-						node_ymax = k;
-					}
-				}
-
-				/// Determine the cells that this element covers. 05.10. 2010
-				col_min = (long)((x_min - g_para[2]) / g_para[4]);
-				row_min = nrow - (long)((y_max - g_para[3]) / g_para[4]);
-				col_max = (long)((x_max - g_para[2]) / g_para[4]);
-				row_max = nrow - (long)((y_min - g_para[3]) / g_para[4]);
-
-				double const* const pnt1(elem->nodes[0]->getData());
-				x1[0] = pnt1[0];
-				x1[1] = pnt1[1];
-				double const* const pnt2(elem->nodes[1]->getData());
-				x2[0] = pnt2[0];
-				x2[1] = pnt2[1];
-				double const* const pnt3(elem->nodes[2]->getData());
-				x3[0] = pnt3[0];
-				x3[1] = pnt3[1];
-
-				x3[2] = x2[2] = x1[2] = 0.;
-				cent[2] = 0.;
-
-				for (m = col_min; m <= col_max; m++)
-				{
-					mm = m;
-					if (m > ncol - 1) mm = ncol - 1;
-					if (m < 0) mm = 0;
-					cent[0] = g_para[2] + g_para[4] * (mm + 0.5);
-
-					for (n = row_min; n <= row_max; n++)
-					{
-						nn = n;
-						if (n > nrow - 1) nn = nrow - 1;
-						if (nn < 0) nn = 0;
-						cent[1] = g_para[3] + g_para[4] * (nrow - nn + 0.5);
-
-						if (cent[0] < x_min)
-						{
-							double const* const pnt(
-							    elem->nodes[node_xmin]->getData());
-							cent[0] = pnt[0];
-							cent[1] = pnt[1];
-						}
-						if (cent[0] > x_max)
-						{
-							double const* const pnt(
-							    elem->nodes[node_xmax]->getData());
-							cent[0] = pnt[0];
-							cent[1] = pnt[1];
-						}
-						if (cent[1] < y_min)
-						{
-							double const* const pnt(
-							    elem->nodes[node_ymin]->getData());
-							cent[0] = pnt[0];
-							cent[1] = pnt[1];
-						}
-						if (cent[1] < y_max)
-						{
-							double const* const pnt(
-							    elem->nodes[node_ymax]->getData());
-							cent[0] = pnt[0];
-							cent[1] = pnt[1];
-						}
-
-						/// Check whether this point is in this element.
-						sub_area[0] = ComputeDetTri(cent, x2, x3);
-						sub_area[1] = ComputeDetTri(cent, x3, x1);
-						sub_area[2] = ComputeDetTri(cent, x1, x2);
-						area = ComputeDetTri(x1, x2, x3);
-
-						/// This point locates within the element
-						if (fabs(area - sub_area[0] - sub_area[1] -
-						         sub_area[2]) < tol_a)
-						{
-							/// Use sub_area[k] as shape function
-							for (k = 0; k < 3; k++)
-								sub_area[k] /= area;
-
-							l = nn * ncol + mm;
-							cell_data_p[l] = 0.0;
-
-							for (k = 0; k < 3; k++)
-								vel_av[k] = 0.;
-
-							for (j = 0; j < nnodes; j++)
-							{
-								n_idx = elem->GetNodeIndex(j);
-
-								cell_data_p[l] +=
-								    sub_area[j] * GetNodeValue(n_idx, idx);
-
-								for (k = 0; k < 3; k++)
-									vel_av[k] +=
-									    sub_area[j] *
-									    GetNodeValue(n_idx, vel_idx[k]);
-							}
-							cell_data_v[l] =
-							    1000.0 *
-							    (vel_av[0] * (*elem->transform_tensor)(0, 2) +
-							     vel_av[1] * (*elem->transform_tensor)(1, 2)
-							     // 1000*:  m-->mm
-							     +
-							     vel_av[2] * (*elem->transform_tensor)(2, 2));
-						}
-					}
-				}
-			}
-
-			of_flux.precision(4);
-			// of_flux.setf(ios::scientific, ios::floatfield);
-			of_primary.precision(2);
-			for (irow = 0; irow < nrow; irow++)
-			{
-				for (icol = 0; icol < ncol; icol++)
-				{
-					m = irow * ncol + icol;
-					of_flux << " " << setw(9) << cell_data_v[m];
-					of_primary << setw(11) << cell_data_p[m];
-				}
-				of_flux << endl;
-				of_primary << endl;
-			}
-
-			cell_data_p.clear();
-			cell_data_v.clear();
-			of_flux.close();
-			of_primary.close();
-		}
-	}
-
 	// transient boundary condition
 	if (bc_transient_index.size() == 0) return;
 

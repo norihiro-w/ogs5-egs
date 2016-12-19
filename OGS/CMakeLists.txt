@@ -39,11 +39,11 @@ ADD_EXECUTABLE( ogs
 )
 
 TARGET_LINK_LIBRARIES( ogs
-	FEM
-	MSH
-	GEO
-	Math
 	Base
+	Math
+	GEO
+	MSH
+	FEM
 	${CMAKE_THREAD_LIBS_INIT}
 )
 

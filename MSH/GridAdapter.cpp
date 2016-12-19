@@ -11,10 +11,11 @@
 
 #include "GridAdapter.h"
 
-#include "StringTools.h"
 #include <cstdlib>
 #include <iostream>
 #include <list>
+
+#include "StringTools.h"
 
 GridAdapter::GridAdapter(const MeshLib::CFEMesh* mesh)
     : _name(""),

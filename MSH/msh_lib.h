@@ -20,8 +20,11 @@
 #include "msh_mesh.h"
 
 extern std::vector<MeshLib::CFEMesh*> fem_msh_vector;
+
+namespace MeshLib
+{
+
 extern MeshLib::CFEMesh* FEMGet(const std::string& msh_name);
-// OK
 extern void MSHCreateNOD2ELERelations(MeshLib::CFEMesh*);
 
 // MeshLib::CFEMesh* FEMRead(const std::string& fname,
@@ -98,10 +101,7 @@ extern MeshLib::CFEMesh* MSHGet(const std::string& pcs_type_name,
                                 const std::string& mat_type_name);
 extern MeshLib::CFEMesh* MSHGetGEO(std::string);  // OK
 extern int MSHSetMaxMMPGroups();                  // OK
-extern bool MSHTestMATGroups();                   // OK
 
-extern void MSHDefineMobile(CRFProcess*);            // OK411
-extern void MSHMoveNODUcFlow(CRFProcess*);           // OK411
 extern long* MSHGetNodesClose(long*, CGLPolyline*);  // OK411
 
 // extern bool IsPointInSurface(Surface*,CGLPoint*); //OK411
@@ -115,5 +115,10 @@ extern void GEOGetNodesInMaterialDomain(MeshLib::CFEMesh const* const,
 extern void SetRFIPointsClose(CGLLine*);  // OK411
 // OK411
 extern void MSHGetNodesClose(std::vector<long>&, CGLPoint*);
+long MSHGetNextNode(long startnode, MeshLib::CFEMesh* m_msh);
+long* MSHGetNodesInColumn(long nextnode, int anz_zeilen,
+						  MeshLib::CFEMesh* m_msh);
+
+} // MeshLib
 
 #endif
