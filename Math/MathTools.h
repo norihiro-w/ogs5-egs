@@ -101,4 +101,5 @@ inline T fastpow(T base, size_t exp)
 }
 }  // namespace
 
+extern int Signum(double);
 #endif /* MATHTOOLS_H_ */

@@ -7,19 +7,6 @@
  *
  */
 
-/**************************************************************************
-   ROCKFLOW - Object: Process PCS
-   Programing:
-   02/2003 OK Implementation
-   /2003 WW CRFProcessDeformation
-   11/2003 OK re-organized
-   07/2004 OK PCS2
-   02/2005 WW/OK Element Assemblier and output
-   12/2007 WW Classes of sparse matrix (jagged diagonal storage) and linear
-solver
-           and parellelisation of them
-   02/2008 PCH OpenMP parallelization for Lis matrix solver
-**************************************************************************/
 #include "rf_pcs.h"
 
 // C
@@ -29,7 +16,7 @@ solver
 
 // C++
 #include <cfloat>
-#include <iomanip>  //WW
+#include <iomanip>
 #include <iostream>
 #include <algorithm>
 #include <set>
@@ -48,49 +35,37 @@ solver
 #include "FileToolsRF.h"
 #include "memory.h"
 #include "MemWatch.h"
-#include "FEMEnums.h"
-#include "Output.h"
+#include "StringTools.h"
 
-// GEOLib
+#include "rf_pcs_TH.h"
+
+#include "Curve.h"
+#include "mathlib.h"
+#include "InterpolationAlgorithms/InverseDistanceInterpolation.h"
+#include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
+
 #include "PointWithID.h"
 
-/*------------------------------------------------------------------------*/
-/* MshLib */
-//#include "msh_elem.h"
-//#include "msh_lib.h"
-/*-----------------------------------------------------------------------*/
-/* Objects */
-#include "pcs_dm.h"
-#include "rf_st_new.h"  // ST
-//#include "rf_bc_new.h" // ST
-//#include "rf_mmp_new.h" // MAT
-#include "fem_ele_std.h"  // ELE
-#include "rf_ic_new.h"    // IC
-//#include "msh_lib.h" // ELE
-//#include "rf_tim_new.h"
-//#include "rf_out_new.h"
-#include "rfmat_cp.h"
-//#include "rf_mfp_new.h" // MFP
-//#include "rf_num_new.h"
-//#include "gs_project.h"
-#include "rf_fct.h"
-//#include "femlib.h"
+#include "msh_faces.h"
+
+#include "DistributionTools.h"
 #include "eos.h"
+#include "fct_mpi.h"
+#include "FEMEnums.h"
+#include "fem_ele_std.h"
+#include "files0.h"
+#include "msh_tools.h"
+#include "Output.h"
+#include "pcs_dm.h"
+#include "problem.h"
+#include "rfmat_cp.h"
+#include "rf_ic_new.h"
+#include "rf_fct.h"
 #include "rf_msp_new.h"
 #include "rf_node.h"
-#include "msh_tools.h"
-
-/*-----------------------------------------------------------------------*/
-/*-----------------------------------------------------------------------*/
-/* Tools */
-#ifdef MFC  // WW
-#include "rf_fluid_momentum.h"
-#endif
-/* Tools */
-#include "mathlib.h"
+#include "rf_st_new.h"
 #include "tools.h"
-//#include "rf_pcs.h"
-#include "files0.h"
+
 #ifdef GEM_REACT
 // GEMS chemical solver
 #include "rf_REACT_GEM.h"
@@ -107,20 +82,9 @@ REACT_BRNS* m_vec_BRNS;
 #elif defined(NEW_EQS)
 #include "equation_class.h"
 #endif
-//#include "geochemcalc.h"
-#include "problem.h"
-#include "msh_faces.h"
-#include "rfmat_cp.h"
 
 // MathLib
-#include "InterpolationAlgorithms/InverseDistanceInterpolation.h"
-#include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
 
-#include "StringTools.h"
-#include "DistributionTools.h"
-#include "fct_mpi.h"
-
-#include "rf_pcs_TH.h"
 
 using namespace std;
 using namespace MeshLib;

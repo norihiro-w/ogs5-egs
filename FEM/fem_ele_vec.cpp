@@ -7,34 +7,23 @@
  *
  */
 
-/*
-   The members of class Element definitions.
-   Designed and programmed by WW, 06/2004
- */
-
 #include "fem_ele_vec.h"
 
 #include <cfloat>
-//#include "makros.h"
-//#include <iostream>
+
 #include "Configure.h"
-// Sytem matrix
+
+#include "Curve.h"
 #include "mathlib.h"
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+#if defined(USE_PETSC)
 #include "PETSC/PETScLinearSolver.h"
 #endif
+
 #include "pcs_dm.h"
 #include "rf_mfp_new.h"
 #include "rf_msp_new.h"
-// Time step
-//#include "rf_tim_new.h"
-// MSHLib
-//#include "msh_elem.h"
-// FEMLib
-//#include "fem_ele.h"
-//#include "rf_pcs.h"
-#include "tools.h"  //12.2009. WW
-// Equation
+#include "tools.h"
+
 #if defined(NEW_EQS)
 #include "equation_class.h"
 using Math_Group::CSparseMatrix;

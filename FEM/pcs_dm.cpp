@@ -18,34 +18,28 @@
 
 #include "makros.h"
 #include "display.h"
-#include "StringTools.h"
 #include "MemWatch.h"
+#include "StringTools.h"
+
+#include "Curve.h"
+#include "mathlib.h"
+
+#include "geo_sfc.h"
+
+#include "msh_elem.h"
 
 #include "FEMEnums.h"
-#include "mathlib.h"
-//#include "femlib.h"
-// Element
 #include "fem_ele_std.h"
 #include "fem_ele_vec.h"
-// BC_Dynamic
 #include "rf_bc_new.h"
-#include "rf_pcs.h"  //OK_MOD"
-#include "tools.h"
-//
-#include "fem_ele_vec.h"
-#include "rf_msp_new.h"
-#include "rf_tim_new.h"
-// Excavation
-#include "rf_out_new.h"
-#include "rf_st_new.h"
-// GEOLib
-#include "geo_sfc.h"
-// MSHLib
-#include "msh_elem.h"
-// IC
 #include "rf_ic_new.h"
-
+#include "rf_msp_new.h"
 #include "rf_node.h"
+#include "rf_out_new.h"
+#include "rf_pcs.h"
+#include "rf_st_new.h"
+#include "rf_tim_new.h"
+#include "tools.h"
 
 // Solver
 #if defined(NEW_EQS)

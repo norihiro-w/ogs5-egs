@@ -7,20 +7,11 @@
  *
  */
 
-/**************************************************************************
-   FEMLib - Object: MAT-SP
-   Task: class implementation
-   Programing:
-   08/2004 WW Implementation
-   last modified:
-**************************************************************************/
 #ifndef rf_msp_new_INC
 #define rf_msp_new_INC
 
-// C++ STL
-//#include <fstream>
-//#include <string>
-//#include <vector>
+#include "fem_ele_std.h"
+#include "rf_pcs.h"
 
 #define MSP_FILE_EXTENSION ".msp"
 
