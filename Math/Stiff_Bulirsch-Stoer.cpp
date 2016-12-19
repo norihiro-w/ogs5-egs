@@ -8,7 +8,8 @@
  */
 
 #include "Stiff_Bulirsch-Stoer.h"
-#include "stdlib.h"
+
+#include <cstdlib>
 #include <iostream>
 
 /* interne Deklarationen */
