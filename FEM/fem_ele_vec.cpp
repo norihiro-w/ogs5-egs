@@ -979,7 +979,7 @@ void CFiniteElementVec::LocalAssembly(const int update)
 #endif
 
 #if defined(NEW_EQS)
-	b_rhs = pcs->eqs_new->b;
+	b_rhs = pcs->eqs_new->getRHS();
 #endif
 	(*RHS) = 0.0;
 	(*Stiffness) = 0.0;
@@ -1259,7 +1259,7 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 	biot = smat->biot_const;
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;
-	A = pcs->eqs_new->A;
+	A = pcs->eqs_new->getA();
 #endif
 
 	if (dynamic)
@@ -1362,8 +1362,7 @@ void CFiniteElementVec::GlobalAssembly_PressureCoupling(Matrix* pCMatrix,
                                                         const int phase)
 {
 #if defined(NEW_EQS)
-	CSparseMatrix* A = NULL;
-	A = pcs->eqs_new->A;
+	CSparseMatrix* A = pcs->eqs_new->getA();
 #endif
 
 	int dim_shift = dim + phase;

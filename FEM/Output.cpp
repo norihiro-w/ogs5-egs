@@ -2801,7 +2801,7 @@ double COutput::NODFlux(long /*nod_number*/)
 	//	return 0;
 	//#elif NEW_EQS                                 //WW. 07.11.2008
 	//	return 0.;                            //To do:
-	// m_pcs->eqs_new->b[nod_number];
+	// m_pcs->eqs_new->getRHS()[nod_number];
 	//#else
 	//	// Element nodal RHS contributions
 	//	m_pcs->getEQSPointer()->b[nod_number] = 0.0;

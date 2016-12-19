@@ -18,31 +18,13 @@
 #include <lis.h>
 #endif
 
-#include "Configure.h"
 #include "sparse_matrix.h"
 
-class CNumerics;
-class CRFProcess;
-namespace process
-{
-class CRFProcessDeformation;
-}
-namespace FiniteElement
-{
-class CFiniteElementStd;
-class CFiniteElementVec;
-}
-using ::CRFProcess;
-using process::CRFProcessDeformation;
-using FiniteElement::CFiniteElementStd;
-using FiniteElement::CFiniteElementVec;
-//
-//
 namespace Math_Group
 {
 using namespace std;
 
-class SparseTable;
+struct SparseTable;
 //
 class Linear_EQS
 {
@@ -56,10 +38,8 @@ public:
 	           bool messg = true);
 	~Linear_EQS();
 
-	void ConfigNumerics(CNumerics* m_num, const long n = 0);
-#ifdef LIS
-	int Solver(CNumerics* num = NULL, bool compress = false);
-#endif
+	void ConfigNumerics(int ls_precond, int ls_method, int ls_max_iterations, double ls_error_tolerance, int storage_type, std::string const& extra_arg);
+	int Solver(bool compress = false);
 	//
 	void Initialize();
 	void Clean();
@@ -71,6 +51,11 @@ public:
 	void SetKnownX_i(const long i, const double x_i);
 	double X(const long i) const { return x[i]; }
 	const double* getX() const { return x; }
+	double* getX() { return x; }
+	const double* getRHS() const { return b; }
+	double* getRHS() { return b; }
+	const CSparseMatrix* getA() const { return A; }
+	CSparseMatrix* getA() { return A; }
 	double RHS(const long i) const { return b[i]; }
 	double NormX();
 	double ComputeNormRHS() { return Norm(b); }
@@ -93,17 +78,23 @@ private:
 #endif
 
 	// Controls
+	int precond_type;
+	int solver_type;
+	int max_iter;
+	double tol;
 	long size_A;
+	int storage_type;
+	std::string extra_arg;
+
 	// Operators
 	double dot(const double* xx, const double* yy);
 	inline double Norm(const double* xx) { return sqrt(dot(xx, xx)); }
 #ifdef MKL
-	void solveWithPARDISO(CNumerics* num, bool compress);
+	void solveWithPARDISO(bool compress);
 #endif
 #ifdef LIS
-	int solveWithLIS(CNumerics* num, bool compress);
+	int solveWithLIS(bool compress);
 #endif
-#if defined(LIS) || defined(MKL)
 	IndexType searcgNonZeroEntries(IndexType nrows, IndexType* ptr,
 	                               double* value,
 	                               std::vector<IndexType>& vec_nz_rows,
@@ -114,14 +105,7 @@ private:
 	                 const std::vector<IndexType>& vec_z_rows,
 	                 IndexType n_nz_entries, IndexType*& new_ptr,
 	                 IndexType*& new_col_index, double*& new_value);
-#endif
 
-	// Friends
-	friend class ::CRFProcess;
-	friend class process::CRFProcessDeformation;
-	friend class FiniteElement::CFiniteElementStd;
-	friend class FiniteElement::CFiniteElementVec;
-	//
 };
 }
 
