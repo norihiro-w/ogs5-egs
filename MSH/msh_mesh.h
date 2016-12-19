@@ -434,7 +434,6 @@ public:
 	// OK
 	std::vector<std::string> mat_names_vector;
 	void FaceNormal();                    // YD
-	void SetNODPatchAreas();              // OK4310
 	void SetNetworkIntersectionNodes();   // OK4319->PCH
 
 	std::string pcs_name;

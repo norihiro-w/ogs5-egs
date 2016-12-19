@@ -25,7 +25,6 @@ CNode::CNode(size_t Index)
     : CCore(Index),
 #ifndef OGS_ONLY_TH
       free_surface(-1),
-      patch_area(-1.0),
       crossroad(0),
 #endif
       eqs_index(-1)
@@ -45,7 +44,6 @@ CNode::CNode(size_t Index, double x, double y, double z)
     : CCore(Index),
 #ifndef OGS_ONLY_TH
       free_surface(-1),
-      patch_area(-1.0),
       crossroad(false),
 #endif
       eqs_index(-1)
@@ -59,7 +57,6 @@ CNode::CNode(size_t Index, double const* coordinates)
     : CCore(Index),
 #ifndef OGS_ONLY_TH
       free_surface(-1),
-      patch_area(-1.0),
       crossroad(false),
 #endif
       eqs_index(-1)
@@ -73,7 +70,6 @@ CNode::CNode(double x, double y, double z)
     : CCore(0),
 #ifndef OGS_ONLY_TH
       free_surface(-1),
-      patch_area(-1.0),
       crossroad(false),
 #endif
       eqs_index(-1)
@@ -87,7 +83,6 @@ CNode::CNode(double const* const coords)
     : CCore(0),
 #ifndef OGS_ONLY_TH
       free_surface(-1),
-      patch_area(-1.0),
       crossroad(false),
 #endif
       eqs_index(-1)
@@ -107,7 +102,6 @@ CNode::CNode(size_t Index, const CNode* parent)
     : CCore(Index),
 #ifndef OGS_ONLY_TH
       free_surface(-1),
-      patch_area(-1.0),
       crossroad(false),
 #endif
       eqs_index(-1)
@@ -160,9 +154,6 @@ void CNode::Write(std::ostream& osm) const
 	osm << index << deli << coordinate[0] << deli << coordinate[1] << deli
 	    << coordinate[2] << deli;
 
-#ifndef OGS_ONLY_TH
-	if (patch_area > 0.0) osm << "$AREA" << deli << patch_area;
-#endif
 	osm << "\n";
 }
 /**************************************************************************

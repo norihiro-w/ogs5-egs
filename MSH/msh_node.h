@@ -31,17 +31,8 @@ public:
 	// on.
 	// Establishing this vector is done in the Fluid Momentum
 	// since this is bounded by velocity.
-	std::vector<long> connected_planes;  // PCH
-
-	// GUI control variables
-	double patch_area;  // OK4310
-	bool crossroad;  // KR changed to bool // PCH: Make theses privates can be
-	                 // done later on.
-	std::vector<long> connected_faces;  // BG, 09/2010, necessary for coupling
-	                                    // to Eclipse, index of faces where the
-	                                    // node is part of it
-	std::vector<double> distance_to_connected_faces;  // BG, 09/2010,  necessary
-                                                      // for coupling to Eclipse
+	std::vector<long> connected_planes;
+	bool crossroad;
 #endif
 
 	/** constructor */

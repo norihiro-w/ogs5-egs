@@ -345,11 +345,7 @@ bool CFEMesh::Read(std::ifstream* fem_file)
 				position = fem_file->tellg();
 				*fem_file >> s;
 				if (s.find("$AREA") != std::string::npos)
-#ifndef OGS_ONLY_TH
-					*fem_file >> newNode->patch_area;
-#else
 					*fem_file >> idx;  // dummy
-#endif
 				else
 					fem_file->seekg(position, std::ios::beg);
 				*fem_file >> std::ws;
@@ -3032,89 +3028,6 @@ void CFEMesh::FaceNormal()
 		face_normal.push_back(normal);
 		elem_face->ComputeVolume();
 	}
-}
-
-/**************************************************************************
-   MSHLib-Method:
-   Programing:
-   03/2006 OK Implementation
-**************************************************************************/
-void CFEMesh::SetNODPatchAreas()
-{
-#ifndef OGS_ONLY_TH
-	long e;
-	int n1 = 0, n2 = 0;
-	double v1[3], v2[3], v3[3];
-	double patch_area;
-	double x0, y0, z0;
-	CNode* m_nod = NULL;
-	CElem* m_ele = NULL;
-	//----------------------------------------------------------------------
-	size_t nNodes(nod_vector.size());
-	for (size_t i = 0; i < nNodes; i++)
-	{
-		m_nod = nod_vector[i];  // this node
-		patch_area = 0.0;
-		//....................................................................
-		// triangle neighbor nodes
-		for (size_t j = 0; j < m_nod->getConnectedElementIDs().size(); j++)
-		{
-			e = m_nod->getConnectedElementIDs()[j];
-			m_ele = ele_vector[e];
-			for (size_t k = 0; k < 3; k++)
-				if (m_ele->GetNodeIndex(k) == static_cast<int>(i))
-				{
-					switch (k)
-					{
-						case 0:
-							n1 = 2;
-							n2 = 1;
-							break;
-						case 1:
-							n1 = 0;
-							n2 = 2;
-							break;
-						case 2:
-							n1 = 1;
-							n2 = 0;
-							break;
-					}
-				}
-			//..................................................................
-			double const* gravity_center(m_ele->GetGravityCenter());
-			double const* const pnt(m_nod->getData());
-			v2[0] = gravity_center[0] - pnt[0];
-			v2[1] = gravity_center[1] - pnt[1];
-			v2[2] = gravity_center[2] - pnt[2];
-			//..................................................................
-			//				m_nod1 = nod_vector[m_ele->GetNodeIndex(n1)];
-			double const* const pnt1(
-			    nod_vector[m_ele->GetNodeIndex(n1)]->getData());
-			x0 = 0.5 * (pnt1[0] - pnt[0]);
-			y0 = 0.5 * (pnt1[1] - pnt[1]);
-			z0 = 0.5 * (pnt1[2] - pnt[2]);
-			v1[0] = x0 - pnt[0];
-			v1[1] = y0 - pnt[1];
-			v1[2] = z0 - pnt[2];
-			CrossProduction(v1, v2, v3);
-			patch_area += 0.5 * MBtrgVec(v3, 3);
-			//..................................................................
-			//				m_nod2 = nod_vector[m_ele->GetNodeIndex(n2)];
-			double const* const pnt2(
-			    nod_vector[m_ele->GetNodeIndex(n2)]->getData());
-			x0 = 0.5 * (pnt2[0] - pnt[0]);
-			y0 = 0.5 * (pnt2[1] - pnt[1]);
-			z0 = 0.5 * (pnt2[2] - pnt[2]);
-			v1[0] = x0 - pnt[0];
-			v1[1] = y0 - pnt[1];
-			v1[2] = z0 - pnt[2];
-			CrossProduction(v1, v2, v3);
-			patch_area += 0.5 * MBtrgVec(v3, 3);
-			//..................................................................
-		}
-		m_nod->patch_area = patch_area;
-	}
-#endif
 }
 
 /**************************************************************************
