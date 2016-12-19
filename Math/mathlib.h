@@ -232,17 +232,6 @@ extern int MMultMatVec(double* mat, long m, long n, double* vec, long g,
 /*   MMultMatMat           - Multiplikation Matrix mit Matrix */
 extern int MMultMatMat(double* mat1, long m1, long n1, double* mat2, long m2,
                        long n2, double* mato, long mo, long no);
-/*##########################################################################
-   Geometrie-Funktionen
- ########################################################################*/
-// extern double MCalcDistancePointToPoint(double *pt1,double *pt2);
-extern double MCalcDistancePointToLine(double* pt, double* l1, double* l2);
-extern double MCalcProjectionOfPointOnLine(double* pt1, double* pt2,
-                                           double* pt3, double* pt4);
-extern double MCalcDistancePointToPlane(double const* const pt, double* e1,
-                                        double* e2, double* e3);
-// extern double MCalcProjectionOfPointOnPlane(double *pt, double *e1, double
-// *e2, double *e3, double *proj);
 #endif
 
 /*   MNulleVec             - Setze angegebenen Vektor = 0.0 */

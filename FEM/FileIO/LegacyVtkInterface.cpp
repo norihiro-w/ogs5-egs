@@ -52,7 +52,7 @@ LegacyVtkInterface::LegacyVtkInterface(
       _processInfo(processInfo)
 {
 	_processType = convertProcessTypeToString(processInfo->getProcessType());
-	_mesh = FEMGet(_processType);
+	_mesh = MeshLib::FEMGet(_processType);
 }
 
 LegacyVtkInterface::~LegacyVtkInterface()

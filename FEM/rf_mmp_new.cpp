@@ -5496,7 +5496,7 @@ void CMediumProperties::SetConstantELEarea(double area, int group)
 	if (area != 1.0)
 		for (i = 0; i < no_processes; i++)
 		{
-			_mesh = FEMGet(
+			_mesh = MeshLib::FEMGet(
 			    convertProcessTypeToString(pcs_vector[i]->getProcessType()));
 			if (!_mesh) return;  // WW
 			no_ele = (long)_mesh->ele_vector.size();
@@ -5575,7 +5575,7 @@ int CMediumProperties::SetDistributedELEProperties(const string& file_name,
 		{
 			line_string = GetLineFromFile1(&mmp_property_file);
 			mmp_property_mesh = line_string;
-			_mesh = FEMGet(line_string);
+			_mesh = MeshLib::FEMGet(line_string);
 			if (!_mesh)
 			{
 				cout << "CMediumProperties::SetDistributedELEProperties: no "

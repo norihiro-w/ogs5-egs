@@ -9,9 +9,11 @@
  */
 
 #include "MshEditor.h"
+
 #include "PointWithID.h"
-#include "msh_mesh.h"
+
 #include "GridAdapter.h"
+#include "msh_mesh.h"
 
 void MshEditor::getNodeAreas(const MeshLib::CFEMesh* mesh,
                              std::vector<double>& node_area_vec)

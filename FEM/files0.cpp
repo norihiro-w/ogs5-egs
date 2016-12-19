@@ -274,7 +274,7 @@ int ReadData(char* dateiname,
 #endif
 	NUMRead(dateiname);
 
-	FEMDeleteAll();  // KR moved from FEMRead()
+	MeshLib::FEMDeleteAll();  // KR moved from FEMRead()
 	std::vector<CFEMesh*> mesh_vec;
 	FEMRead(dateiname, mesh_vec, &geo_obj, &unique_name);
 #ifndef WIN32
@@ -289,7 +289,7 @@ int ReadData(char* dateiname,
 						  mesh_vec.begin(),
 						  mesh_vec.end());  // re-inserted by KR
 #ifndef USE_PETSC
-	CompleteMesh();  // WW
+	MeshLib::CompleteMesh();  // WW
 #else
 #if 0
 	ScreenMessage("Optimize geometric objects\n");

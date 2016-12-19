@@ -1095,7 +1095,7 @@ void CSourceTermGroup::Set(CRFProcess* m_pcs, const int ShiftInNodeVector,
 	const FiniteElement::PrimaryVariable pcs_pv_type =
 	    FiniteElement::convertPrimaryVariable(pcs_pv_name);
 
-	m_msh = FEMGet(pcs_type_name);
+	m_msh = MeshLib::FEMGet(pcs_type_name);
 	if (!m_msh)
 	{
 		std::cout << "Warning in CSourceTermGroup::Set - no MSH data"
@@ -1164,7 +1164,7 @@ void CSourceTermGroup::Set(CRFProcess* m_pcs, const int ShiftInNodeVector,
 		std::vector<long> nodes_vector;
 		std::vector<double> node_value;
 
-		if (st->isCoupled()) m_msh_cond = FEMGet(st->pcs_type_name_cond);
+		if (st->isCoupled()) m_msh_cond = MeshLib::FEMGet(st->pcs_type_name_cond);
 
 		DistributionData distData;
 		setDistributionData(st, distData);
@@ -1312,7 +1312,7 @@ void CSourceTermGroup::Set(CRFProcess* m_pcs, const int ShiftInNodeVector,
 //
 //	//CFEMesh* msh = m_pcs->m_msh;
 //	//CFEMesh* msh;  // JOD
-//	//msh = FEMGet(pcs_type_name);
+//	//msh = MeshLib::FEMGet(pcs_type_name);
 //	CElem* elem = NULL;
 //	CEdge* edge = NULL;
 //	CNode* node = NULL;
@@ -1493,7 +1493,7 @@ void CSourceTerm::EdgeIntegration(CFEMesh* msh,
 
 	// CFEMesh* msh = m_pcs->m_msh;
 	// CFEMesh* msh;  // JOD
-	// msh = FEMGet(pcs_type_name);
+	// msh = MeshLib::FEMGet(pcs_type_name);
 	CElem* elem = NULL;
 	CEdge* edge = NULL;
 	CNode* node = NULL;
@@ -3299,8 +3299,8 @@ void CSourceTerm::SetNodeValues(const std::vector<long>& nodes,
 //	CFEMesh* m_msh_cond = NULL;
 //	CFEMesh* m_msh_this = NULL;
 //
-//	m_msh_cond = FEMGet(pcs_type_name_cond);
-//	m_msh_this = FEMGet(convertProcessTypeToString(m_st->getProcessType()));
+//	m_msh_cond = MeshLib::FEMGet(pcs_type_name_cond);
+//	m_msh_this = MeshLib::FEMGet(convertProcessTypeToString(m_st->getProcessType()));
 //	m_pnt = new CGLPoint;
 //
 //	for (long i = 0; i < (long) nodes.size(); i++) {
@@ -3320,8 +3320,8 @@ void CSourceTerm::SetNodeValues(const std::vector<long>& nodes,
 void CSourceTerm::SetNOD2MSHNOD(std::vector<long>& nodes,
                                 std::vector<long>& conditional_nodes)
 {
-	CFEMesh* m_msh_cond(FEMGet(pcs_type_name_cond));
-	CFEMesh* m_msh_this(FEMGet(convertProcessTypeToString(getProcessType())));
+	CFEMesh* m_msh_cond(MeshLib::FEMGet(pcs_type_name_cond));
+	CFEMesh* m_msh_this(MeshLib::FEMGet(convertProcessTypeToString(getProcessType())));
 
 	for (size_t i = 0; i < nodes.size(); i++)
 	{
@@ -3337,8 +3337,8 @@ void CSourceTerm::SetNOD2MSHNOD(std::vector<long>& nodes,
 void CSourceTerm::SetNOD2MSHNOD(const std::vector<size_t>& nodes,
                                 std::vector<size_t>& conditional_nodes) const
 {
-	CFEMesh* m_msh_cond(FEMGet(pcs_type_name_cond));
-	CFEMesh* m_msh_this(FEMGet(convertProcessTypeToString(getProcessType())));
+	CFEMesh* m_msh_cond(MeshLib::FEMGet(pcs_type_name_cond));
+	CFEMesh* m_msh_this(MeshLib::FEMGet(convertProcessTypeToString(getProcessType())));
 
 	for (size_t i = 0; i < nodes.size(); i++)
 	{

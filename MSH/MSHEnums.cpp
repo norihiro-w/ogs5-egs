@@ -7,11 +7,6 @@
  *
  */
 
-/**
- * \file MSHEnums.cpp
- * 16/11/2010 KR inital implementation
- *
- */
 
 #include "MSHEnums.h"
 

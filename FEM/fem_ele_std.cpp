@@ -821,7 +821,7 @@ void CFiniteElementStd::SetMaterial(int /*phase*/)
 	MediaProp = mmp_vector[mmp_index];
 	MediaProp->m_pcs = pcs;
 	MediaProp->Fem_Ele_Std = this;
-	MeshElement->area = MediaProp->geo_area;  // NW
+	MeshElement->SetFluxArea(MediaProp->geo_area);  // NW
 
 	if (MediaProp->storage_model == 7)  // 29.11.2011. WW
 		SolidProp->Calculate_Lame_Constant();
@@ -1277,14 +1277,14 @@ void CFiniteElementStd::CalcOverlandCoefficients(double* head,
                                                  double* ayy,
                                                  double* ast)
 {
-	if (MeshElement->geo_type == 1)
+	if (MeshElement->GetElementType() == 1)
 	{
 		CalcOverlandCoefficientsLine(head, axx, ast);
 		ayy = 0;
 	}
-	else if (MeshElement->geo_type == 2)
+	else if (MeshElement->GetElementType() == 2)
 		CalcOverlandCoefficientsQuad(head, axx, ayy, ast);
-	else if (MeshElement->geo_type == 4)
+	else if (MeshElement->GetElementType() == 4)
 		CalcOverlandCoefficientsTri(head, axx, ayy, ast);
 	else
 		std::cout << "Error in CFiniteElementStd::CalcOverlandCoefficients !!!";
@@ -2149,15 +2149,16 @@ void CFiniteElementStd::CalCoefLaplace(bool Gravity, int ip)
 			{
 				Matrix local_tensor(dim, dim);
 				Matrix temp_tensor(dim, dim);
-				if (MeshElement->transform_tensor == NULL)
+				if (MeshElement->getTransformTensor() == NULL)
 				{
 					std::cout << "***Error: Geometric dimension in MMP is not "
 					             "consistent with element."
 					          << "\n";
 					exit(0);
 				}
-				Matrix t_transform_tensor(*MeshElement->transform_tensor);
-				MeshElement->transform_tensor->GetTranspose(t_transform_tensor);
+				Matrix const& transform_tensor(*MeshElement->getTransformTensor());
+				Matrix t_transform_tensor(*MeshElement->getTransformTensor());
+				transform_tensor.GetTranspose(t_transform_tensor);
 				Matrix global_tensor(dim, dim);
 				for (size_t i = 0; i < ele_dim; i++)
 					for (size_t j = 0; j < ele_dim; j++)
@@ -2168,7 +2169,7 @@ void CFiniteElementStd::CalCoefLaplace(bool Gravity, int ip)
 					for (size_t j = 0; j < dim; j++)
 						for (size_t k = 0; k < dim; k++)
 							global_tensor(i, j) +=
-							    (*MeshElement->transform_tensor)(i, k) *
+								transform_tensor(i, k) *
 							    temp_tensor(k, j);
 				// cout << "K:" << endl; global_tensor.Write();
 				for (size_t i = 0; i < dim; i++)
@@ -2227,15 +2228,15 @@ void CFiniteElementStd::CalCoefLaplace(bool Gravity, int ip)
 			{
 				Matrix local_tensor(dim, dim);
 				Matrix temp_tensor(dim, dim);
-				if (MeshElement->transform_tensor == NULL)
+				if (MeshElement->getTransformTensor() == NULL)
 				{
 					std::cout << "***Error: Geometric dimension in MMP is not "
 					             "consistent with element."
 					          << "\n";
 					exit(0);
 				}
-				Matrix t_transform_tensor(*MeshElement->transform_tensor);
-				MeshElement->transform_tensor->GetTranspose(t_transform_tensor);
+				Matrix t_transform_tensor(*MeshElement->getTransformTensor());
+				MeshElement->getTransformTensor()->GetTranspose(t_transform_tensor);
 				Matrix global_tensor(dim, dim);
 				for (size_t i = 0; i < ele_dim; i++)
 					for (size_t j = 0; j < ele_dim; j++)
@@ -2247,7 +2248,7 @@ void CFiniteElementStd::CalCoefLaplace(bool Gravity, int ip)
 					for (size_t j = 0; j < dim; j++)
 						for (size_t k = 0; k < dim; k++)
 							global_tensor(i, j) +=
-							    (*MeshElement->transform_tensor)(i, k) *
+								(*MeshElement->getTransformTensor())(i, k) *
 							    temp_tensor(k, j);
 				}
 				// cout << "K:" << endl; global_tensor.Write();
@@ -2447,8 +2448,8 @@ void CFiniteElementStd::CalCoefLaplace(bool Gravity, int ip)
 			Hav = 0.0;
 			for (int i = 0; i < nnodes; i++)
 			{
-				z[i] = MeshElement->nodes[i]->getData()[2];
-				Hn[i] = pcs->GetNodeValue(MeshElement->nodes_index[i], nidx1) -
+				z[i] = MeshElement->GetNode(i)->getData()[2];
+				Hn[i] = pcs->GetNodeValue(MeshElement->GetNodeIndex(i), nidx1) -
 				        z[i];
 				if (Hn[i] < 0.0) Hn[i] = 0.0;
 				Hav += Hn[i] / (double)nnodes;
@@ -4441,7 +4442,7 @@ void CFiniteElementStd::CalcLumpedMass2()
 			vol += GetGaussData(gp, gp_r, gp_s, gp_t);
 	}
 	else
-		vol = MeshElement->GetVolume() * MeshElement->area;  // WW. 24.05.2012
+		vol = MeshElement->GetVolume() * MeshElement->GetFluxArea();  // WW. 24.05.2012
 	//----------------------------------------------------------------------
 	// Initialize
 	(*Mass2) = 0.0;
@@ -4681,7 +4682,7 @@ void CFiniteElementStd::CalcLaplace()
 		double water_depth = 1.0;
 		// The following "if" is done by WW
 		if (PcsType == G && MediaProp->unconfined_flow_group == 1 &&
-		    MeshElement->ele_dim == 2 && !pcs->m_msh->hasCrossSection())
+			MeshElement->GetDimension() == 2 && !pcs->m_msh->hasCrossSection())
 		{
 			water_depth = 0.0;
 			for (i = 0; i < nnodes; i++)
@@ -5195,11 +5196,11 @@ void CFiniteElementStd::SetHighOrderNodes()
 			case 1:
 				for (i = 0; i < nNodes; i++)
 				{
-					//				X[i] = MeshElement->nodes[i]->Z();
-					//				Y[i] = MeshElement->nodes[i]->Y();
-					//				Z[i] = MeshElement->nodes[i]->X();
+					//				X[i] = MeshElement->GetNode(i)->Z();
+					//				Y[i] = MeshElement->GetNode(i)->Y();
+					//				Z[i] = MeshElement->GetNode(i)->X();
 					double const* const coords(
-					    MeshElement->nodes[i]->getData());
+					    MeshElement->GetNode(i)->getData());
 					X[i] = coords[2];
 					Y[i] = coords[1];
 					Z[i] = coords[0];
@@ -5208,11 +5209,11 @@ void CFiniteElementStd::SetHighOrderNodes()
 			case 2:
 				for (i = 0; i < nNodes; i++)
 				{
-					//				X[i] = MeshElement->nodes[i]->X();
-					//				Y[i] = MeshElement->nodes[i]->Z();
-					//				Z[i] = MeshElement->nodes[i]->Y();
+					//				X[i] = MeshElement->GetNode(i)->X();
+					//				Y[i] = MeshElement->GetNode(i)->Z();
+					//				Z[i] = MeshElement->GetNode(i)->Y();
 					double const* const coords(
-					    MeshElement->nodes[i]->getData());
+					    MeshElement->GetNode(i)->getData());
 					X[i] = coords[0];
 					Y[i] = coords[2];
 					Z[i] = coords[1];
@@ -5221,11 +5222,11 @@ void CFiniteElementStd::SetHighOrderNodes()
 			case 3:
 				for (i = nnodes; i < nnodesHQ; i++)
 				{
-					//				X[i] = MeshElement->nodes[i]->X();
-					//				Y[i] = MeshElement->nodes[i]->Y();
-					//				Z[i] = MeshElement->nodes[i]->Z();
+					//				X[i] = MeshElement->GetNode(i)->X();
+					//				Y[i] = MeshElement->GetNode(i)->Y();
+					//				Z[i] = MeshElement->GetNode(i)->Z();
 					double const* const coords(
-					    MeshElement->nodes[i]->getData());
+					    MeshElement->GetNode(i)->getData());
 					X[i] = coords[0];
 					Y[i] = coords[1];
 					Z[i] = coords[2];
@@ -5238,10 +5239,10 @@ void CFiniteElementStd::SetHighOrderNodes()
 		if (dim == 1 || dim == 2)
 			for (i = nnodes; i < nnodesHQ; i++)
 			{
-				//				X[i] = MeshElement->nodes[i]->X();
-				//				Y[i] = MeshElement->nodes[i]->Y();
-				//				Z[i] = MeshElement->nodes[i]->Z();
-				double const* const coords(MeshElement->nodes[i]->getData());
+				//				X[i] = MeshElement->GetNode(i)->X();
+				//				Y[i] = MeshElement->GetNode(i)->Y();
+				//				Z[i] = MeshElement->GetNode(i)->Z();
+				double const* const coords(MeshElement->GetNode(i)->getData());
 				X[i] = coords[0];
 				Y[i] = coords[1];
 				Z[i] = coords[2];
@@ -5823,14 +5824,14 @@ void CFiniteElementStd::Cal_Velocity()
 							if (PcsType == V)
 								vel_g[i] +=
 								    rho_g * gravity_constant *
-								    (*MeshElement->transform_tensor)(i, k) *
-								    (*MeshElement->transform_tensor)(2, k);
+									(*MeshElement->getTransformTensor())(i, k) *
+									(*MeshElement->getTransformTensor())(2, k);
 							if (PcsType == P)  // PCH 05.2009
 								vel_g[i] +=
 								    coef * GasProp->Density() /
 								    FluidProp->Density() *
-								    (*MeshElement->transform_tensor)(i, k) *
-								    (*MeshElement->transform_tensor)(2, k);
+									(*MeshElement->getTransformTensor())(i, k) *
+									(*MeshElement->getTransformTensor())(2, k);
 						}
 				}
 			}  // To be correctted
@@ -6264,12 +6265,12 @@ void CFiniteElementStd::Cal_Velocity_2()
 			for (size_t i = 0; i < dim; i++)
 				for (size_t j = 0; j < ele_dim; j++)
 				{
-					vel[i] += coef * (*MeshElement->transform_tensor)(i, k) *
-					          (*MeshElement->transform_tensor)(2, k);
+					vel[i] += coef * (*MeshElement->getTransformTensor())(i, k) *
+							  (*MeshElement->getTransformTensor())(2, k);
 					if (PcsType == V)
 						vel_g[i] += rho_g * gravity_constant *
-						            (*MeshElement->transform_tensor)(i, k) *
-						            (*MeshElement->transform_tensor)(2, k);
+									(*MeshElement->getTransformTensor())(i, k) *
+									(*MeshElement->getTransformTensor())(2, k);
 				}
 		}  // To be correctted
 		else
@@ -6521,7 +6522,7 @@ void CFiniteElementStd::AssembleRHS(int dimension)
 					                // dshapefct[k*nnodes+j]
 					                *
 					                mat[dim * dimension + k] * shapefct[i] *
-					                MeshElement->nodes[j]->getData()[2];
+									MeshElement->GetNode(j)->getData()[2];
 				}
 	}
 
@@ -6847,12 +6848,12 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 	if (myrank==1 && act_nodes != nnodes) {
 		bool found = false;
 		for (int i=0; i<nnodes; i++)
-			if (MeshElement->nodes[i]->GetEquationIndex()==292) found = true;
+			if (MeshElement->GetNode(i)->GetEquationIndex()==292) found = true;
 		if (found) {
 			std::cout << "-> Index: " << Index << "\n";
 			std::cout << "-> Nodes: \n";
 			for (int i=0; i<nnodes; i++)
-				std::cout << MeshElement->nodes[i]->GetEquationIndex() << " ";
+				std::cout << MeshElement->GetNode(i)->GetEquationIndex() << " ";
 			std::cout << "\n";
 			std::cout << "-> u0,u1: \n";
 			for (int i=0; i<nnodes; i++) {
@@ -6905,7 +6906,7 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 
 		for (int i = 0; i < nnodes; i++)
 		{
-			const int i_buff = MeshElement->nodes[i]->GetEquationIndex() * dof;
+			const int i_buff = MeshElement->GetNode(i)->GetEquationIndex() * dof;
 			for (int k = 0; k < dof; k++)
 			{
 				idxn[k * nnodes + i] = i_buff + k;
@@ -6924,7 +6925,7 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 			i_full *= dim_full;
 
 			idxm[i] =
-			    MeshElement->nodes[local_idx[in]]->GetEquationIndex() * dof +
+				MeshElement->GetNode(local_idx[in])->GetEquationIndex() * dof +
 			    i_dom;
 
 			for (int j = 0; j < dim_full; j++)
@@ -6953,7 +6954,7 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 
 		for (int i = 0; i < nnodes; i++)
 		{
-			const int i_buff = MeshElement->nodes[i]->GetEquationIndex() * dof;
+			const int i_buff = MeshElement->GetNode(i)->GetEquationIndex() * dof;
 			for (int k = 0; k < dof; k++)
 			{
 				const int ki = k * nnodes + i;
@@ -6975,7 +6976,7 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 		os_t << "Node ID: ";
 		for (int i = 0; i < nnodes; i++)
 		{
-			os_t << MeshElement->nodes[i]->GetEquationIndex() << " ";
+			os_t << MeshElement->GetNode(i)->GetEquationIndex() << " ";
 		}
 		os_t << "\n";
 		os_t << "Act. Local ID: ";
@@ -7012,9 +7013,9 @@ void CFiniteElementStd::add2GlobalMatrixII_Split(bool updateA, bool updateRHS)
 	const int m_dim = hasGhostNodes ? act_nodes : nnodes;
 	const int n_dim = nnodes;
 	for (int i = 0; i < n_dim; i++)
-		idxn[i] = MeshElement->nodes[i]->GetEquationIndex();
+		idxn[i] = MeshElement->GetNode(i)->GetEquationIndex();
 	for (int i = 0; i < m_dim; i++)
-		idxm[i] = MeshElement->nodes[local_idx[i]]->GetEquationIndex();
+		idxm[i] = MeshElement->GetNode(local_idx[i])->GetEquationIndex();
 	double const* const loc_cpl_mat = StiffMatrix->getEntryArray();
 	double const* const loc_cpl_rhs = RHS->getEntryArray();
 	const unsigned n_cpl_mat_columns = nnodes * dof;
@@ -7023,12 +7024,12 @@ void CFiniteElementStd::add2GlobalMatrixII_Split(bool updateA, bool updateRHS)
 	if (myrank==1 && hasGhostNodes) {
 		bool found = false;
 		for (int i=0; i<nnodes; i++)
-			if (MeshElement->nodes[i]->GetEquationIndex()==292) found = true;
+			if (MeshElement->GetNode(i)->GetEquationIndex()==292) found = true;
 		if (found) {
 			std::cout << "-> Index: " << Index << "\n";
 			std::cout << "-> Nodes: \n";
 			for (int i=0; i<nnodes; i++)
-				std::cout << MeshElement->nodes[i]->GetEquationIndex() << " ";
+				std::cout << MeshElement->GetNode(i)->GetEquationIndex() << " ";
 			std::cout << "\n";
 			std::cout << "-> u0,u1: \n";
 			for (int i=0; i<nnodes; i++) {
@@ -7233,7 +7234,7 @@ void CFiniteElementStd::CalcFEM_FCT()
 #ifdef USE_PETSC
 		long node_i_id = MeshElement->GetNode(i)->GetEquationIndex();
 #else
-		long node_i_id = this->MeshElement->nodes_index[i];
+		long node_i_id = this->MeshElement->GetNodeIndex(i);
 #endif
 		(*ML)(node_i_id) += (*FCT_MassL)(i);
 	}
@@ -7243,11 +7244,11 @@ void CFiniteElementStd::CalcFEM_FCT()
 	Math_Group::SparseMatrixDOK* FCT_Flux = this->pcs->FCT_AFlux;
 	for (int i = 0; i < nnodes; i++)
 	{
-		long node_i_id = this->MeshElement->nodes_index[i];
+		long node_i_id = this->MeshElement->GetNodeIndex(i);
 		//    for (j=i; j<nnodes; j++) {
 		for (int j = i + 1; j < nnodes; j++)  // symmetric
 		{
-			long node_j_id = this->MeshElement->nodes_index[j];
+			long node_j_id = this->MeshElement->GetNodeIndex(j);
 			double v = (*this->Mass)(i, j);
 #ifdef USE_PETSC
 			if (v == .0) v = (*this->Mass)(j, i);  // look for inner nodes
@@ -7877,7 +7878,7 @@ void CFiniteElementStd::Assemble_strainCPL(const int phase)
 
 	//
 	for (i = nnodes; i < nnodesHQ; i++)
-		nodes[i] = MeshElement->nodes_index[i];
+		nodes[i] = MeshElement->GetNodeIndex(i);
 	(*StrainCoupling) = 0.0;
 	CalcStrainCoupling(phase);
 	//	if(D_Flag != 41&&aktueller_zeitschritt>1)
@@ -8126,12 +8127,12 @@ void CFiniteElementStd::Config()
 	//		dof_p_node = 1;
 
 	//	int i_buff = 0;
-	if (MeshElement->g_index)  // ghost nodes pcs->pcs_number_of_primary_nvals
+	if (MeshElement->getGhostNodeIndices())  // ghost nodes pcs->pcs_number_of_primary_nvals
 	{
-		act_nodes = MeshElement->g_index[0];
-		act_nodes_h = MeshElement->g_index[1];
+		act_nodes = MeshElement->getGhostNodeIndices()[0];
+		act_nodes_h = MeshElement->getGhostNodeIndices()[1];
 		for (i = 0; i < act_nodes_h; i++)
-			local_idx[i] = MeshElement->g_index[i + 2];
+			local_idx[i] = MeshElement->getGhostNodeIndices()[i + 2];
 	}
 	else
 	{
@@ -8149,7 +8150,7 @@ void CFiniteElementStd::Config()
 #else
 	// EQS indices
 	for (i = 0; i < nn; i++)
-		eqs_number[i] = MeshElement->nodes[i]->GetEquationIndex();
+		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex();
 #endif
 	//----------------------------------------------------------------------
 	// Get room in the memory for local matrices
@@ -8488,7 +8489,7 @@ void CFiniteElementStd::Assembly(int option, int dimension)
 #endif
 
 	for (i = 0; i < nn; i++)
-		eqs_number[i] = MeshElement->nodes[i]->GetEquationIndex();
+		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex();
 
 	// Get room in the memory for local matrices
 	SetMemory();
@@ -8565,7 +8566,7 @@ void CFiniteElementStd::ExtropolateGauss(CRFProcess* m_pcs, const int idof)
 	// Number of elements associated to nodes
 	for (i = 0; i < nnodes; i++)
 		dbuff[i] =
-		    (double)MeshElement->nodes[i]->getConnectedElementIDs().size();
+		    (double)MeshElement->GetNode(i)->getConnectedElementIDs().size();
 	//
 	gp_r = gp_s = gp_t = gp = 0;
 	ElementValue* gp_ele = ele_gp_value[Index];
@@ -8715,7 +8716,7 @@ void CFiniteElementStd::CalcSatution()
 	{
 		// Number of elements associated to nodes
 		dbuff[i] =
-		    (double)MeshElement->nodes[i]->getConnectedElementIDs().size();
+		    (double)MeshElement->GetNode(i)->getConnectedElementIDs().size();
 		// pressure
 		NodalVal0[i] = sign * pcs->GetNodeValue(nodes[i], idx_cp);
 	}
@@ -8846,7 +8847,7 @@ void CFiniteElementStd::CalcNodeMatParatemer()
 	// Number of elements associated to nodes
 	for (i = 0; i < nnodes; i++)
 		dbuff[i] =
-		    (double)MeshElement->nodes[i]->getConnectedElementIDs().size();
+		    (double)MeshElement->GetNode(i)->getConnectedElementIDs().size();
 	//
 	gp_r = gp_s = gp_t = gp = 0;
 	//
@@ -8889,7 +8890,7 @@ void CFiniteElementStd::CalcNodeMatParatemer()
 		// Porosity
 		if (pcs->additioanl2ndvar_print > 1)
 			// MediaProp->Porosity(this);
-			NodalVal0[i] = MediaProp->Porosity(MeshElement->index, 1.0);
+			NodalVal0[i] = MediaProp->Porosity(MeshElement->GetIndex(), 1.0);
 	}
 	//
 	if (ElementType == MshElemType::QUAD ||
@@ -9101,7 +9102,7 @@ void CFiniteElementStd::AssembleParabolicEquationRHSVector()
 #endif
 	for (i = 0; i < nnodes; i++)
 	{
-		eqs_number[i] = MeshElement->nodes[i]->GetEquationIndex();
+		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex();
 		eqs_rhs[eqs_number[i]] += NodalVal[i];
 	}
 #endif
@@ -9732,7 +9733,7 @@ void CFiniteElementStd::Assemble_RHS_M()
 	for (i = 0; i < dof_n * nnodes; i++)
 		NodalVal[i] = 0.0;
 	for (i = nnodes; i < nnodesHQ; i++)
-		nodes[i] = MeshElement->nodes_index[i];
+		nodes[i] = MeshElement->GetNodeIndex(i);
 
 	if (dm_pcs->type == 42)  // Monolitihc scheme.
 
@@ -10832,7 +10833,7 @@ void CFiniteElementStd::AssembleTHEquation(bool updateA, bool updateRHS)
 	static Matrix t_transform_tensor(3, 3);
 	if (dim > MediaProp->geo_dimension)
 	{
-		if (MeshElement->transform_tensor == NULL)
+		if (MeshElement->getTransformTensor() == NULL)
 		{
 			std::cout << "***Error: Geometric dimension in MMP is not "
 			             "consistent with element."
@@ -10840,7 +10841,7 @@ void CFiniteElementStd::AssembleTHEquation(bool updateA, bool updateRHS)
 			exit(0);
 		}
 		t_transform_tensor.LimitSize(dim, dim);
-		MeshElement->transform_tensor->GetTranspose(t_transform_tensor);
+		MeshElement->getTransformTensor()->GetTranspose(t_transform_tensor);
 	}
 
 	for (int i = 0; i < nnodes; i++)
@@ -10887,7 +10888,7 @@ void CFiniteElementStd::AssembleTHEquation(bool updateA, bool updateRHS)
 			for (size_t j = 0; j < c_dim; j++)
 				for (size_t k = 0; k < c_dim; k++)
 					global_tensor(i, j) +=
-					    (*MeshElement->transform_tensor)(i, k) *
+						(*MeshElement->getTransformTensor())(i, k) *
 					    temp_tensor(k, j);
 		// cout << "K:" << endl; global_tensor.Write();
 		for (size_t i = 0; i < c_dim; i++)

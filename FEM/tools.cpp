@@ -742,7 +742,7 @@ int FctCurves(char* data, int found, FILE* f)
 //		in.str((string)zeile);
 //		in >> line_string;
 //		in.clear();
-//		m_msh = FEMGet(line_string);
+//		m_msh = MeshLib::FEMGet(line_string);
 //		if(!m_msh)
 //			cout << "FctReadHeterogeneousFields: no MSH data" << endl;
 //	}
@@ -1226,7 +1226,7 @@ double GetHetValue(int ele_no, char* inname)
 	int material_properties_index = 0;
 	CFEMesh* m_msh = NULL;
 	n = get_hetfields_number(hf);
-	m_msh = FEMGet("GROUNDWATER_FLOW");
+	m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	for (i = 0; i < n; i++)
 	{
 		name = get_hetfields_name(hf, i);
@@ -1779,3 +1779,38 @@ void convertElementDataToNodalData(
 		}
 	}
 }
+
+#ifdef NEW_EQS
+void CreateSparseTable(MeshLib::CFEMesh* msh, Math_Group::SparseTable* &sparse_graph, Math_Group::SparseTable* &sparse_graph_H)
+{
+	Math_Group::StorageType stype;
+	stype = Math_Group::JDS;
+	for (int i = 0; i < (int)num_vector.size(); i++)
+		if (num_vector[i]->ls_storage_method == 100)
+		{
+			stype = Math_Group::CRS;
+			break;
+		}
+
+	// Symmetry case is skipped.
+	// 1. Sparse_graph_H for high order interpolation. Up to now, deformation
+	if (msh->GetNodesNumber(false) != msh->GetNodesNumber(true))
+		sparse_graph_H = new Math_Group::SparseTable(msh, true, false, stype);
+	// 2. M coupled with other processes with linear element
+	if (sparse_graph_H)
+	{
+		if ((int)pcs_vector.size() > 1)
+			sparse_graph = new Math_Group::SparseTable(msh, false, false, stype);
+	}
+	// 3. For process with linear elements
+	else
+		sparse_graph = new Math_Group::SparseTable(msh, false, false, stype);
+
+	//  sparse_graph->Write();
+	//  sparse_graph_H->Write();
+	//
+	// ofstream Dum("sparse.txt", ios::out);
+	// sparse_graph_H->Write(Dum);
+}
+#endif  //#ifndef NON_PROCESS
+

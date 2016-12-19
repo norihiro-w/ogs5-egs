@@ -6,22 +6,18 @@ if(NOT OGS_FEM_PETSC)
 endif()
 
 include_directories(
-	${CMAKE_SOURCE_DIR}/MSH
-	${CMAKE_SOURCE_DIR}/MSH/FileIO
 	${CMAKE_SOURCE_DIR}/Base
 	${CMAKE_SOURCE_DIR}/GEO
 	${CMAKE_SOURCE_DIR}/Math
-	${CMAKE_SOURCE_DIR}/FEM
-	${CMAKE_SOURCE_DIR}/LIB
-	${CMAKE_SOURCE_DIR}/OGSProject
+	${CMAKE_SOURCE_DIR}/MSH
+	${CMAKE_SOURCE_DIR}/MSH/FileIO
 )
 
 # Create the library
 add_library(MSH ${SOURCES})
 
-target_link_libraries(
-	MSH
-	FEM
+target_link_libraries( MSH
 	GEO
-	${CMAKE_THREAD_LIBS_INIT}
 )
+
+set_target_properties(MSH PROPERTIES LINKER_LANGUAGE CXX)

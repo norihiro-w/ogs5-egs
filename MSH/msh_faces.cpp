@@ -7,9 +7,10 @@
  *
  */
 
-#include "math.h"
 #include "msh_faces.h"
-#include "stdlib.h"
+
+#include <cmath>
+#include <cstdlib>
 
 // MathLib
 #include "MathTools.h"

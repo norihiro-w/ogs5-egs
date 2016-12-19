@@ -140,7 +140,7 @@ Problem::Problem(char* filename)
 	GetHeterogeneousFields();  // OK/MB
 	//----------------------------------------------------------------------
 	// Test MSH-MMP //OK
-	int g_max_mmp_groups = MSHSetMaxMMPGroups();
+	int g_max_mmp_groups = MeshLib::MSHSetMaxMMPGroups();
 
 	if (g_max_mmp_groups > (int)mmp_vector.size())
 	{
@@ -1643,7 +1643,7 @@ inline double Problem::RichardsFlow()
 		if (pcs_vector.size() > 1 && lop_coupling_iterations > 1)
 			m_pcs->CopyCouplingNODValues();
 		// WW if(m_pcs->adaption) PCSStorage();
-		CFEMesh* m_msh = FEMGet("RICHARDS_FLOW");
+		CFEMesh* m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 		if (m_msh->geo_name.compare("REGIONAL") == 0)
 			LOPExecuteRegionalRichardsFlow(m_pcs, loop_process_number);
 		else
@@ -1661,7 +1661,7 @@ inline double Problem::RichardsFlow()
 	}
 	else  // WW
 	{
-		CFEMesh* m_msh = FEMGet("RICHARDS_FLOW");  // WW
+		CFEMesh* m_msh = MeshLib::FEMGet("RICHARDS_FLOW");  // WW
 		if (m_msh->geo_name.compare("REGIONAL") == 0)
 			LOPExecuteRegionalRichardsFlow(m_pcs, loop_process_number);
 		else
@@ -2617,12 +2617,8 @@ inline double Problem::FluidMomentum()
 	//
 	if (!m_pcs->selected) return error;  // 12.12.2008 WW
 
-	CFluidMomentum* fm_pcs = NULL;  // by PCH
-	//
-	CFEMesh* m_msh =
-	    fem_msh_vector[0];  // Something must be done later on here.
+	CFluidMomentum* fm_pcs = (CFluidMomentum*)m_pcs;
 
-	fm_pcs = m_msh->fm_pcs;
 	fm_pcs->Execute(loop_process_number);
 
 	// Switch off rechard flow if
@@ -2673,33 +2669,7 @@ inline double Problem::RandomWalker()
 	{
 		lop_coupling_iterations = 1;
 
-		// Mount the proper mesh
-		CFEMesh* m_msh = NULL;
-		for (int i = 0; i < (int)pcs_vector.size(); ++i)
-		{
-			m_pcs = pcs_vector[i];
-
-			// Select the mesh whose process name has the mesh for
-			// Fluid_Momentum
-			//			if(
-			// m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos)
-			// TF
-			if (m_pcs->getProcessType() == FiniteElement::RICHARDS_FLOW)
-				m_msh = FEMGet("RICHARDS_FLOW");
-			//			else if(
-			// m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
-			// TF
-			else if (m_pcs->getProcessType() == FiniteElement::LIQUID_FLOW)
-				m_msh = FEMGet("LIQUID_FLOW");
-			//			else if(
-			// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos)
-			// TF
-			else if (m_pcs->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
-				m_msh = FEMGet("GROUNDWATER_FLOW");
-		}
-
-		RandomWalk* rw_pcs = NULL;  // By PCH
-		rw_pcs = m_msh->PT;
+		RandomWalk* rw_pcs = (RandomWalk*)m_pcs;
 
 // Do I need velocity fileds solved by the FEM?
 #if 0
@@ -3137,7 +3107,7 @@ inline void Problem::LOPExecuteRegionalRichardsFlow(CRFProcess* m_pcs_global,
 			value = m_pcs_local->GetNodeValue(j, idx_v);
 			m_pcs_global->SetNodeValue(g_node_number, idx_v, value);
 		}
-		// m_pcs->m_msh = FEMGet("RICHARDS_FLOW");
+		// m_pcs->m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 		// pcs->m_msh->RenumberNodesForGlobalAssembly(); related to Comment 1
 		// // MB/WW
 	}

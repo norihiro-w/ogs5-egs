@@ -7,10 +7,11 @@
  *
  */
 
-#include "msh_core.h"
-#include "msh_node.h"
 #include <string>
 #include <vector>
+
+#include "msh_core.h"
+#include "msh_node.h"
 
 class CPlaneEquation
 {

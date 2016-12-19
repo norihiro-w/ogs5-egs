@@ -24,10 +24,10 @@ ADD_EXECUTABLE (testrunner ${SOURCES})
 TARGET_LINK_LIBRARIES(testrunner
 	GTest
 	Base
-	GEO
 	Math
-	FEM
+	GEO
 	MSH
+	FEM
 )
 
 IF (MSVC)

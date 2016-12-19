@@ -7,19 +7,11 @@
  *
  */
 
-// Some change
-
-/**************************************************************************
-   FEMLib-Object:
-   Task: MediumProperties
-   Programing:
-   05/2005 PCH Implementation
-**************************************************************************/
+#include "rf_fluid_momentum.h"
 
 #include <iostream>
 
 #include "matrix_class.h"
-#include "rf_fluid_momentum.h"
 #include "rf_random_walk.h"
 
 using namespace std;
@@ -129,15 +121,15 @@ double CFluidMomentum::Execute(int loop_process_number)
 		// Select the mesh whose process name has the mesh for Fluid_Momentum
 		//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos) TF
 		if (m_pcs->getProcessType() == FiniteElement::RICHARDS_FLOW)
-			m_msh = FEMGet("RICHARDS_FLOW");
+			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 		//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
 		// TF
 		else if (m_pcs->getProcessType() == FiniteElement::LIQUID_FLOW)
-			m_msh = FEMGet("LIQUID_FLOW");
+			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 		//		else if(
 		// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos) TF
 		else if (m_pcs->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
-			m_msh = FEMGet("GROUNDWATER_FLOW");
+			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 
 		//		if(m_pcs->pcs_type_name.find("FLUID_MOMENTUM")!=string::npos) TF
 		if (m_pcs->getProcessType() == FiniteElement::FLUID_MOMENTUM)
@@ -167,10 +159,7 @@ double CFluidMomentum::Execute(int loop_process_number)
 **************************************************************************/
 void CFluidMomentum::SolveDarcyVelocityOnNode()
 {
-	int nidx1 = 0;  // OK411
-	long i;
-	MeshLib::CElem* elem = NULL;
-
+#ifdef NEW_EQS
 	fem = new CFiniteElementStd(m_pcs, m_msh->GetCoordinateFlag());
 
 	// Checking the coordinateflag for proper solution.
@@ -215,15 +204,13 @@ void CFluidMomentum::SolveDarcyVelocityOnNode()
 		{
 /* Initializations */
 /* System matrix */
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-// TODO
-#elif NEW_EQS  // WW
+#ifdef NEW_EQS
 			m_pcs->EQSInitialize();
 #endif
 
-			for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
+			for (long i = 0; i < (long)m_msh->ele_vector.size(); i++)
 			{
-				elem = m_msh->ele_vector[i];
+				auto elem = m_msh->ele_vector[i];
 				if (elem->GetMark())  // Marked for use
 				{
 					fem->ConfigElement(elem);
@@ -233,23 +220,16 @@ void CFluidMomentum::SolveDarcyVelocityOnNode()
 
 			m_pcs->IncorporateBoundaryConditions(-1, d);
 // Solve for velocity
-#if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
-// TODO
-#elif NEW_EQS
-
+#ifdef NEW_EQS
 			double* x;
 			int size = (int)m_msh->nod_vector.size();  // OK411??? long
 			x = new double[size];
-#if defined(LIS)
 			m_pcs->EQSSolver(x);  // an option added to tell FLUID_MOMENTUM for
 			                      // sparse matrix system.
 			cout << "Solver passed in FLUID_MOMENTUM." << endl;
-#endif
-#else
-			ExecuteLinearSolver(m_pcs->getEQSPointer());
-#endif
 
 			/* Store solution vector in model node values table */
+			int nidx1 = 0;
 			if (dimension == 1)
 				nidx1 = m_pcs->GetNodeValueIndex(
 				            m_pcs->pcs_primary_function_name[axis]) +
@@ -278,19 +258,11 @@ void CFluidMomentum::SolveDarcyVelocityOnNode()
 			else
 				abort();  // Just stop something's wrong.
 
-#if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
-// TODO
-#elif NEW_EQS
 			for (int j = 0; j < size; j++)
 				m_pcs->SetNodeValue(m_msh->Eqs2Global_NodeIndex[j], nidx1,
 				                    x[j]);
 
 			delete[] x;
-#else
-			LINEAR_SOLVER* eqs = m_pcs->getEQSPointer();
-			for (int j = 0; j < eqs->dim; j++)
-				m_pcs->SetNodeValue(m_msh->Eqs2Global_NodeIndex[j], nidx1,
-				                    eqs->x[j]);
 #endif
 		}
 
@@ -342,9 +314,9 @@ void CFluidMomentum::SolveDarcyVelocityOnNode()
 #endif
 
 		// Obtain element-based velocity
-		for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
+		for (long i = 0; i < (long)m_msh->ele_vector.size(); i++)
 		{
-			elem = m_msh->ele_vector[i];
+			auto elem = m_msh->ele_vector[i];
 
 			double vx = 0.0, vy = 0.0, vz = 0.0;
 			int numOfNodeInElement = elem->GetVertexNumber();
@@ -398,6 +370,7 @@ void CFluidMomentum::SolveDarcyVelocityOnNode()
 
 	// Release memroy
 	delete fem;
+#endif
 }
 
 /**************************************************************************
@@ -446,17 +419,17 @@ void CFluidMomentum::ConstructFractureNetworkTopology()
 		// Select the mesh whose process name has the mesh for Fluid_Momentum
 		//		if( m_pcs->pcs_type_name.find("RICHARDS_FLOW")!=string::npos) TF
 		if (m_pcs->getProcessType() == FiniteElement::RICHARDS_FLOW)
-			m_msh = FEMGet("RICHARDS_FLOW");
+			m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
 		//		else if( m_pcs->pcs_type_name.find("LIQUID_FLOW")!=string::npos)
 		// TF
 		else if (m_pcs->getProcessType() == FiniteElement::LIQUID_FLOW)
-			m_msh = FEMGet("LIQUID_FLOW");
+			m_msh = MeshLib::FEMGet("LIQUID_FLOW");
 		//		else if(
 		// m_pcs->pcs_type_name.find("GROUNDWATER_FLOW")!=string::npos) TF
 		else if (m_pcs->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
-			m_msh = FEMGet("GROUNDWATER_FLOW");
+			m_msh = MeshLib::FEMGet("GROUNDWATER_FLOW");
 	}
-	m_pcs = PCSGet("FLUID_MOMENTUM");
+	m_pcs = this;
 	// Something must be done later on here.
 	double tolerance = 1e-12;
 
@@ -873,8 +846,11 @@ void CFluidMomentum::ConstructFractureNetworkTopology()
 
 	// Compute the angles of the element for rotation.
 	// This process can be embedded into CElem class when in need.
+	RandomWalk* PT = (RandomWalk*)PCSGet(FiniteElement::RANDOM_WALK);
 	for (int i = 0; i < (int)m_msh->ele_vector.size(); ++i)
-		m_msh->PT->SolveAnglesOfTheElment(m_msh->ele_vector[i]);
+	{
+		PT->SolveAnglesOfTheElment(m_msh->ele_vector[i]);
+	}
 }
 
 /**************************************************************************
@@ -1022,15 +998,15 @@ void CFluidMomentum::SolveForEdgeVelocity(void)
 void FMRead(string file_base_name)
 {
 	(void)file_base_name;
-	// Fluid_Momentum memory allocation is moved here. by PCH
-	CRFProcess* m_pcs = PCSGet("FLUID_MOMENTUM");
-	// WW  if(!m_pcs)
-	if (m_pcs)  // WW
-	{
-		CFEMesh* m_msh =
-		    fem_msh_vector[0];  // Something must be done later on here.
-		m_msh->fm_pcs = new CFluidMomentum();
-	}
+//	// Fluid_Momentum memory allocation is moved here. by PCH
+//	CRFProcess* m_pcs = PCSGet("FLUID_MOMENTUM");
+//	// WW  if(!m_pcs)
+//	if (m_pcs)  // WW
+//	{
+//		CFEMesh* m_msh =
+//		    fem_msh_vector[0];  // Something must be done later on here.
+//		m_msh->fm_pcs = new CFluidMomentum();
+//	}
 }
 
 /**************************************************************************

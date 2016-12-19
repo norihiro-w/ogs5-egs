@@ -7,14 +7,6 @@
  *
  */
 
-/**************************************************************************
-   MSHLib - Object:
-   Task:
-   Programing:
-   08/2005 WW/OK Encapsulation from rf_ele_msh
-   last modified
-**************************************************************************/
-
 #include "msh_elem.h"
 
 #include <cmath>
@@ -54,8 +46,6 @@ CElem::CElem(size_t Index)
 	area = 1.0;  // WW
 	transform_tensor = NULL;
 #ifndef OGS_ONLY_TH
-	matgroup_view = 0;
-	grid_adaptation = -1;
 	excavated = -1;  // WX
 	patch_index = 0;
 	angle = NULL;
@@ -94,11 +84,9 @@ CElem::CElem() : CCore(0), normal_vector(NULL)
 	area = 1.0;  // WW area = 1.0
 	normal_vector = NULL;
 #ifndef OGS_ONLY_TH
-	matgroup_view = 0;
 	neumann = 0;
 	courant = 0;
 	representative_length = .0;
-	grid_adaptation = -1;
 	angle = NULL;
 	excavated = -1;  // WX
 #endif
@@ -138,10 +126,8 @@ CElem::CElem(size_t Index, CElem* onwer, int Face)
 	neumann = 0;
 	courant = 0;
 	representative_length = .0;
-	matgroup_view = 0;
 	angle = NULL;
-	excavated = -1;  // WX
-	grid_adaptation = -1;
+	excavated = -1;
 #endif
 	//
 	switch (owner->geo_type)
@@ -262,18 +248,13 @@ CElem::CElem(size_t Index, CElem* m_ele_parent)
 
 #ifndef OGS_ONLY_TH
 	angle = NULL;
-	excavated = -1;  // 12.08.2011. WW
-	matgroup_view = 0;
-	grid_adaptation = -1;
+	excavated = -1;
 #endif
 }
 
 CElem::CElem(CElem const& elem)
     : CCore(elem.GetIndex()),
       mat_vector(elem.mat_vector),
-#ifndef OGS_ONLY_TH
-      matgroup_view(elem.matgroup_view),
-#endif
       selected(elem.selected),
       normal_vector(new double[3]),
 #ifndef OGS_ONLY_TH
@@ -294,9 +275,6 @@ CElem::CElem(CElem const& elem)
       no_faces_on_surface(elem.no_faces_on_surface),
       face_index(elem.face_index),
       volume(elem.volume),
-#ifndef OGS_ONLY_TH
-      grid_adaptation(elem.grid_adaptation),
-#endif
       patch_index(elem.patch_index),
       area(elem.area)
 #ifndef OGS_ONLY_TH
@@ -346,7 +324,6 @@ CElem::CElem(CElem const& elem)
 #endif
 #ifndef OGS_ONLY_TH
 	excavated = -1;  // 12.08.2011. WW
-	matgroup_view = 0;
 #endif
 }
 
@@ -383,7 +360,6 @@ CElem::CElem (MshElemType::type t, size_t node0, size_t node1, size_t node2, int
     no_faces_on_surface = 0;
 #ifndef OGS_ONLY_TH
     excavated = -1;   //12.08.2011. WW
-	matgroup_view = 0;
 #endif
 }
 #endif
@@ -437,9 +413,7 @@ CElem::CElem(MshElemType::type t, size_t node0, size_t node1, size_t node2,
 	neumann = .0;
 	courant = .0;
 	representative_length = .0;
-	excavated = -1;  // 12.08.2011. WW
-	matgroup_view = 0;
-	grid_adaptation = 0;
+	excavated = -1;
 #endif
 }
 
@@ -683,9 +657,6 @@ void CElem::Read(std::istream& is, int fileType)
 
 			if (buffer.find("-1") != std::string::npos)
 			{
-#ifndef OGS_ONLY_TH
-				grid_adaptation = strtol(buffer.data(), NULL, 0);
-#endif
 				is >> name;
 			}
 			else
