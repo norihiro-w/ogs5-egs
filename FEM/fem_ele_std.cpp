@@ -22,6 +22,7 @@
 #include "equation_class.h"
 #endif
 
+#include "ElementMatrix.h"
 #include "ElementValue.h"
 #include "eos.h"
 #include "fem_ele_vec.h"

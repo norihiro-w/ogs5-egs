@@ -51,6 +51,7 @@
 #include "msh_faces.h"
 
 #include "DistributionTools.h"
+#include "ElementMatrix.h"
 #include "eos.h"
 #include "fct_mpi.h"
 #include "FEMEnums.h"
