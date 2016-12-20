@@ -559,50 +559,51 @@ void CFEMesh::ConfigHighOrderElements()
 		}
 	}
 }
-//
-int CFEMesh::calMaximumConnectedNodes()
+
+int CFEMesh::calMaximumConnectedLocalNodes(bool quadratic, std::vector<int> &d_nnz)
 {
-	int max_connected_nodes = 0;
-	for (size_t i = 0; i < nod_vector.size(); i++)
+	d_nnz.resize(quadratic ? this->getNumNodesLocal_Q() : this->getNumNodesLocal());
+	size_t max_connected_nodes = 0;
+	const int node0_eqsId = nod_vector[0]->GetEquationIndex();
+	for (size_t i=0; i<this->GetNodesNumber(quadratic); i++)
 	{
-		const int k = static_cast<int>(nod_vector[i]->getNumConnectedNodes());
-		if (k > max_connected_nodes) max_connected_nodes = k;
+		CNode* node = nod_vector[i];
+		if (!this->isNodeLocal(node->GetIndex()))
+			continue;
+		size_t cnt_local = 0;
+		for (auto node_id : node->getConnectedNodes())
+			if (this->isNodeLocal(node_id))
+				cnt_local++;
+		max_connected_nodes = std::max(max_connected_nodes, cnt_local);
+		int eqs_id = node->GetEquationIndex() - node0_eqsId;
+		d_nnz[eqs_id] = cnt_local;
 	}
-	ScreenMessage2d("-> max. connected nodes = %d\n", max_connected_nodes);
-
-	int msize;
-	// int mrank;
-	int* i_cnt;
-	int* i_disp;
-	int* i_recv;
-
-	MPI_Comm_size(MPI_COMM_WORLD, &msize);
-	// MPI_Comm_rank(MPI_COMM_WORLD,&mrank);
-
-	i_cnt = (int*)malloc(msize * sizeof(int));
-	i_disp = (int*)malloc(msize * sizeof(int));
-	i_recv = (int*)malloc(msize * sizeof(int));
-
-	for (int i = 0; i < msize; i++)
-	{
-		i_cnt[i] = 1;
-		i_disp[i] = i;
-	}
-
-	MPI_Allgatherv(&max_connected_nodes, 1, MPI_INT, i_recv, i_cnt, i_disp,
-	               MPI_INT, MPI_COMM_WORLD);
-
-	max_connected_nodes = 0;
-	for (int i = 0; i < msize; i++)
-	{
-		if (i_recv[i] > max_connected_nodes) max_connected_nodes = i_recv[i];
-	}
-	free(i_cnt);
-	free(i_recv);
-	free(i_disp);
-
+	ScreenMessage2d("-> max. connected local nodes = %d\n", max_connected_nodes);
 	return max_connected_nodes;
 }
+
+int CFEMesh::calMaximumConnectedGhostNodes(bool quadratic, std::vector<int> &o_nnz)
+{
+	o_nnz.resize(quadratic ? this->getNumNodesLocal_Q() : this->getNumNodesLocal());
+	size_t max_connected_nodes = 0;
+	const int node0_eqsId = nod_vector[0]->GetEquationIndex();
+	for (size_t i=0; i<this->GetNodesNumber(quadratic); i++)
+	{
+		CNode* node = nod_vector[i];
+		if (!this->isNodeLocal(node->GetIndex()))
+			continue;
+		size_t cnt_ghost = 0;
+		for (auto node_id : node->getConnectedNodes())
+			if (!this->isNodeLocal(node_id))
+				cnt_ghost++;
+		max_connected_nodes = std::max(max_connected_nodes, cnt_ghost);
+		int eqs_id = node->GetEquationIndex() - node0_eqsId;
+		o_nnz[eqs_id] = cnt_ghost;
+	}
+	ScreenMessage2d("-> max. connected ghost nodes = %d\n", max_connected_nodes);
+	return max_connected_nodes;
+}
+
 
 void BuildNodeStruc(MeshNodes* anode, MPI_Datatype* MPI_Node_ptr)
 {

@@ -180,7 +180,9 @@ public:
 	 */
 	void setSubdomainElements(int* header, const int* elem_info,
 	                          const bool inside);
-	int calMaximumConnectedNodes();
+
+	int calMaximumConnectedLocalNodes(bool quadratic, std::vector<int> &d_nnz);
+	int calMaximumConnectedGhostNodes(bool quadratic, std::vector<int> &o_nnz);
 	/// Get number of nodes of the entire mesh
 	int getNumNodesGlobal() const { return glb_NodesNumber_Linear; }
 	/// Get number of nodes of the entire mesh of quadratic elements
@@ -386,7 +388,7 @@ public:
 	// To record eqs_index->global node index
 	std::vector<long> Eqs2Global_NodeIndex;
 
-	void ConnectedNodes(bool quadratic) const;
+	void ConnectedNodes(bool quadratic);
 	void ConnectedElements2Node(bool quadratic = false);
 	void FaceNormal();
 
