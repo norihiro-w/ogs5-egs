@@ -8,7 +8,6 @@ sudo: required
 dist: trusty
 
 language: cpp
-compiler: gcc
 
 git:
   depth: 3
@@ -23,13 +22,21 @@ matrix:
     - env: TRAVIS_EMPTY_JOB_WORKAROUND=true
 
   include:
-    - env: CASE=LIS CMAKE_ARGS="-DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=$TRAVIS_BUILD_DIR/lis-cmake-master/include -DLIS_LIBRARIES=$TRAVIS_BUILD_DIR/lis-cmake-master/build/lib/liblis.a"
+    - env: CASE=LIS BENCHMARK=ON CMAKE_ARGS="-DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=$TRAVIS_BUILD_DIR/lis-cmake-master/include -DLIS_LIBRARIES=$TRAVIS_BUILD_DIR/lis-cmake-master/build/lib/liblis.a"
+      compiler: gcc
       addons:
         apt:
           packages:
             - gfortran
             #- numdiff
-    - env: CASE=PETSC CMAKE_ARGS="-DOGS_FEM_PETSC=ON -DPETSC_DIR=/usr/lib/petscdir/3.4.2/"
+    - env: CASE=PETSC BENCHMARK=OFF CMAKE_ARGS="-DOGS_FEM_PETSC=ON -DPETSC_DIR=/usr/lib/petscdir/3.4.2/"
+      compiler: gcc
+    - env: CASE=LIS BENCHMARK=OFF CMAKE_ARGS="-DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=$TRAVIS_BUILD_DIR/lis-cmake-master/include -DLIS_LIBRARIES=$TRAVIS_BUILD_DIR/lis-cmake-master/build/lib/liblis.a"
+      compiler: clang
+      addons:
+        apt:
+          packages:
+            - gfortran
 
 before_install:
 
@@ -40,25 +47,25 @@ install:
   - if [[ "$CASE" == "LIS" ]]; then wget https://github.com/norihiro-w/lis-cmake/archive/master.zip; fi
   - if [[ "$CASE" == "LIS" ]]; then unzip master.zip && cd lis-cmake-master && rm -f ../master.zip; fi
   - if [[ "$CASE" == "LIS" ]]; then mkdir build && cd build && cmake .. && make && cd ../..; fi
-  - if [[ "$CASE" == "LIS" ]]; then wget https://github.com/norihiro-w/csvdiff/archive/master.zip; fi
-  - if [[ "$CASE" == "LIS" ]]; then unzip master.zip && cd csvdiff-master && rm -f ../master.zip; fi
-  - if [[ "$CASE" == "LIS" ]]; then mkdir build && cd build && cmake .. && make && cd ../..; fi
-  - if [[ "$CASE" == "LIS" ]]; then wget https://github.com/norihiro-w/ogs5-egs-benchmarks/archive/master.zip; fi
-  - if [[ "$CASE" == "LIS" ]]; then unzip master.zip && mv ogs5-egs-benchmarks-master benchmarks; fi
-  - if [[ "$CASE" == "LIS" ]]; then pwd && ls -l; fi
-  - export bench_input=`pwd`/benchmarks/input_files
-  - export bench_ref=`pwd`/benchmarks/ref_files
+  - if [[ "$BENCHMARK" == "ON" ]]; then wget https://github.com/norihiro-w/csvdiff/archive/master.zip; fi
+  - if [[ "$BENCHMARK" == "ON" ]]; then unzip master.zip && cd csvdiff-master && rm -f ../master.zip; fi
+  - if [[ "$BENCHMARK" == "ON" ]]; then mkdir build && cd build && cmake .. && make && cd ../..; fi
+  - if [[ "$BENCHMARK" == "ON" ]]; then wget https://github.com/norihiro-w/ogs5-egs-benchmarks/archive/master.zip; fi
+  - if [[ "$BENCHMARK" == "ON" ]]; then unzip master.zip && mv ogs5-egs-benchmarks-master benchmarks; fi
+  - if [[ "$BENCHMARK" == "ON" ]]; then pwd && ls -l; fi
+  - if [[ "$BENCHMARK" == "ON" ]]; then export bench_input=`pwd`/benchmarks/input_files; fi
+  - if [[ "$BENCHMARK" == "ON" ]]; then export bench_ref=`pwd`/benchmarks/ref_files; fi
 
 script:
   - mkdir build
   - cd build
-  - if [[ "$CASE" == "LIS" ]]; then export CMAKE_ARGS="${CMAKE_ARGS} -DCSVDIFF_TOOL_PATH=$TRAVIS_BUILD_DIR/csvdiff-master/build/csvdiff"; fi
-  - if [[ "$CASE" == "LIS" ]]; then export CMAKE_ARGS="${CMAKE_ARGS} -DBENCHMARK_DIR=${bench_input} -DBENCHMARK_REF_DIR=${bench_ref}"; fi
+  - if [[ "$BENCHMARK" == "ON" ]]; then export CMAKE_ARGS="${CMAKE_ARGS} -DCSVDIFF_TOOL_PATH=$TRAVIS_BUILD_DIR/csvdiff-master/build/csvdiff"; fi
+  - if [[ "$BENCHMARK" == "ON" ]]; then export CMAKE_ARGS="${CMAKE_ARGS} -DBENCHMARK_DIR=${bench_input} -DBENCHMARK_REF_DIR=${bench_ref}"; fi
   - cmake $CMAKE_ARGS ..
   - make -j4
-  - if [[ "$CASE" == "LIS" ]]; then ctest -E 'Tests|FILE|EXCEED'; fi
-  - if [[ "$CASE" == "LIS" ]]; then ctest -R 'FILECOMPARE' -E 'EXCEED'; fi
-  - if [[ "$CASE" == "LIS" ]]; then find ${bench_input}/results/ -iname '*.numdiff' -exec echo -e "\n\n=======================\n{}" \;  -exec head -n 5000 {} \; || true ; fi
+  - if [[ "$BENCHMARK" == "ON" ]]; then ctest -E 'Tests|FILE|EXCEED'; fi
+  - if [[ "$BENCHMARK" == "ON" ]]; then ctest -R 'FILECOMPARE' -E 'EXCEED'; fi
+  - if [[ "$BENCHMARK" == "ON" ]]; then find ${bench_input}/results/ -iname '*.numdiff' -exec echo -e "\n\n=======================\n{}" \;  -exec head -n 5000 {} \; || true ; fi
 
 notifications:
   email:
