@@ -757,11 +757,20 @@ void CFEMesh::ConstructGrid()
 	ScreenMessage2d("-> detect bbox ... \n");
 	double x_sum(0.0), y_sum(0.0), z_sum(0.0);
 	Eqs2Global_NodeIndex.clear();
+	Eqs2Global_NodeIndex_Q.clear();
 	double xyz_max[3] =  // NW
 	    {-DBL_MAX, -DBL_MAX, -DBL_MAX};
 	double xyz_min[3] =  // NW
 	    {DBL_MAX, DBL_MAX, DBL_MAX};
 
+#if defined(USE_PETSC)
+	if (this->hasHigherOrderNodes()) {
+		Eqs2Global_NodeIndex_Q.reserve(nod_vector.size());
+		for (size_t e = 0; e < nod_vector.size(); e++)
+			Eqs2Global_NodeIndex_Q.push_back(nod_vector[e]->GetEquationIndex(true));
+	}
+#endif
+	Eqs2Global_NodeIndex.reserve(nod_vector.size());
 	for (size_t e = 0; e < nod_vector.size(); e++)
 	{
 #if defined(USE_PETSC)
