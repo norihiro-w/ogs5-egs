@@ -18,6 +18,10 @@
 #include <sstream>
 #include <vector>
 
+#ifdef USE_PETSC
+#include <mpi.h>
+#endif
+
 #include "display.h"
 #include "memory.h"
 
@@ -817,6 +821,11 @@ void CFEMesh::ConstructGrid()
 		if (xyz_dim[0] > 0.0 && xyz_dim[2] > 0.0 && xyz_dim[1] < MKleinsteZahl)
 			coordinate_system = 32;
 	}
+#ifdef USE_PETSC
+	ScreenMessage2d("-> coordinate system = %d\n", coordinate_system);
+	MPI_Allreduce(&coordinate_system, &coordinate_system, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+	ScreenMessage("-> coordinate system = %d\n", coordinate_system);
+#endif
 
 	max_dim = coordinate_system / 10 - 1;
 	//----------------------------------------------------------------------
