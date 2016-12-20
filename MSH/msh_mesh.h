@@ -222,15 +222,14 @@ public:
 		return static_cast<size_t>(node_id) >= NodesNumber_Linear;
 	}
 
-	//
-	//         void RenumberNodesForGlobalAssembly();
-	// For number of nodes
+	bool hasHigherOrderNodes() const { return NodesNumber_Linear != NodesNumber_Quadratic; }
+
 	int GetMaxElementDim() const { return max_ele_dim; }
 	void SwitchOnQuadraticNodes(bool quad) { useQuadratic = quad; }
 	bool getOrder() const { return useQuadratic; }
 	bool isAxisymmetry() const { return _axisymmetry; }
-	// Get number of nodes
-	// CMCD int to long
+	void isAxisymmetry(bool f) { _axisymmetry = f; }
+
 	size_t GetNodesNumber(const bool quadr) const
 	{
 		if (quadr)
