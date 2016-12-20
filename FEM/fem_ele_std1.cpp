@@ -7,30 +7,18 @@
  *
  */
 
-/*! \file extend of file fem_ele_std1.cpp
-   The definitions of members of class CFiniteElementStd.
- */
-
-#include "Configure.h"
-
-// C++ STL
-#include <cfloat>
-// Method
 #include "fem_ele_std.h"
+
+#include <cfloat>
+
 #include "mathlib.h"
-// Problems
-#include "rf_mmp_new.h"
-
-#include "pcs_dm.h"
-#include "rfmat_cp.h"
-
-// Solver
 #ifdef NEW_EQS
 #include "equation_class.h"
-using Math_Group::CSparseMatrix;
 #endif
 
-#include "pcs_dm.h"  // displacement coupled
+#include "rfmat_cp.h"
+#include "rf_mmp_new.h"
+#include "rf_pcs_dm.h"
 
 using namespace std;
 namespace FiniteElement

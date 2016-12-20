@@ -11,18 +11,18 @@
 
 #include <cfloat>
 
-#if defined(USE_PETSC)
-#include "PETSC/PETScLinearSolver.h"
-#endif
-
 #if defined(NEW_EQS)
 #include "equation_class.h"
 #endif
 #include "mathlib.h"
+#if defined(USE_PETSC)
+#include "PETSC/PETScLinearSolver.h"
+#endif
+
 #include "rf_mfp_new.h"
 #include "rf_mmp_new.h"
 #include "rf_msp_new.h"
-#include "pcs_dm.h"
+#include "rf_pcs_dm.h"
 #include "tools.h"
 
 

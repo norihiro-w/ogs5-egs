@@ -60,13 +60,13 @@
 #include "files0.h"
 #include "msh_tools.h"
 #include "Output.h"
-#include "pcs_dm.h"
 #include "problem.h"
 #include "rfmat_cp.h"
 #include "rf_ic_new.h"
 #include "rf_fct.h"
 #include "rf_msp_new.h"
 #include "rf_node.h"
+#include "rf_pcs_dm.h"
 #include "rf_pcs_TH.h"
 #ifdef GEM_REACT
 // GEMS chemical solver
