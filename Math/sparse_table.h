@@ -15,8 +15,6 @@
 namespace Math_Group
 {
 
-#ifdef NEW_EQS
-
 /// Sparse matrix storage type
 enum StorageType
 {
@@ -43,8 +41,6 @@ struct SparseTable
 	long rows = 0;
 	StorageType storage_type = JDS;
 };
-
-#endif
 
 }
 
