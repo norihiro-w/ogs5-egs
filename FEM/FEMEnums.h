@@ -34,7 +34,6 @@ enum ProcessType
 	DEFORMATION_FLOW,  //!< DEFORMATION_FLOW
 	/// H2M monolithic
 	DEFORMATION_H2,  //!< DEFORMATION_H2
-	FLUID_FLOW,
 	FLUID_MOMENTUM,  // BC only
 	FLUX,
 	/// H process, incompressible flow
@@ -47,7 +46,6 @@ enum ProcessType
 	MULTI_PHASE_FLOW,  //!< MULTI_PHASE_FLOW
 	NO_PCS,            //!< NO_PCS
 	/// H process, incompressible flow
-	OVERLAND_FLOW,  //!< OVERLAND_FLOW
 	PS_GLOBAL,      //!< PS_GLOBAL
 	RANDOM_WALK,    //!< RANDOM_WALK
 	/// H process, incompressible flow

@@ -517,14 +517,12 @@ Problem::~Problem()
    -------------------------------------------------------------------------*/
 inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 {
-	//	if (m_pcs->pcs_type_name.compare("LIQUID_FLOW") == 0) {
 	if (m_pcs->getProcessType() == FiniteElement::LIQUID_FLOW)
 	{
 		if (!activefunc) return 0;
 		total_processes[0] = m_pcs;
 		active_processes[0] = &Problem::LiquidFlow;
 		return 0;
-		//	} else if (m_pcs->pcs_type_name.compare("GROUNDWATER_FLOW") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
 	{
@@ -532,7 +530,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[1] = m_pcs;
 		active_processes[1] = &Problem::GroundWaterFlow;
 		return 1;
-		//	} else if (m_pcs->pcs_type_name.compare("RICHARDS_FLOW") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::RICHARDS_FLOW)
 	{
@@ -540,7 +537,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[2] = m_pcs;
 		active_processes[2] = &Problem::RichardsFlow;
 		return 2;
-		//	} else if (m_pcs->pcs_type_name.compare("TWO_PHASE_FLOW") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::TWO_PHASE_FLOW)
 	{
@@ -548,7 +544,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[3] = m_pcs;
 		active_processes[3] = &Problem::TwoPhaseFlow;
 		return 3;
-		//	} else if (m_pcs->pcs_type_name.compare("MULTI_PHASE_FLOW") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)
 	{
@@ -556,22 +551,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[4] = m_pcs;
 		active_processes[4] = &Problem::MultiPhaseFlow;
 		return 4;
-		//	} else if (m_pcs->pcs_type_name.compare("COMPONENTAL_FLOW") == 0) {
-		//	} else if (m_pcs->getProcessType() == COMPONENTAL_FLOW) {
-		//		if (!activefunc)
-		//			return 5;
-		//		total_processes[5] = m_pcs;
-		//		active_processes[5] = &Problem::ComponentalFlow;
-		//		return 5;
-		//	} else if (m_pcs->pcs_type_name.compare("OVERLAND_FLOW") == 0) {
-	}
-	else if (m_pcs->getProcessType() == FiniteElement::OVERLAND_FLOW)
-	{
-		if (!activefunc) return 6;
-		total_processes[6] = m_pcs;
-		active_processes[6] = &Problem::OverlandFlow;
-		return 6;
-		//	} else if (m_pcs->pcs_type_name.compare("AIR_FLOW") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::AIR_FLOW)
 	{
@@ -579,7 +558,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[7] = m_pcs;
 		active_processes[7] = &Problem::AirFlow;
 		return 7;
-		//	} else if (m_pcs->pcs_type_name.compare("HEAT_TRANSPORT") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::HEAT_TRANSPORT)
 	{
@@ -587,7 +565,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[8] = m_pcs;
 		active_processes[8] = &Problem::HeatTransport;
 		return 8;
-		//	} else if (m_pcs->pcs_type_name.compare("FLUID_MOMENTUM") == 0) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::FLUID_MOMENTUM)
 	{
@@ -595,7 +572,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[9] = m_pcs;
 		active_processes[9] = &Problem::FluidMomentum;
 		return 9;
-		//	} else if (m_pcs->pcs_type_name.compare("RANDOM_WALK") == 0) {
 	}
 #ifndef OGS_ONLY_TH
 	else if (m_pcs->getProcessType() == FiniteElement::RANDOM_WALK)
@@ -604,7 +580,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[10] = m_pcs;
 		active_processes[10] = &Problem::RandomWalker;
 		return 10;
-		//	} else if (m_pcs->pcs_type_name.compare("MASS_TRANSPORT") == 0) {
 	}
 #endif
 	else if (m_pcs->getProcessType() == FiniteElement::MASS_TRANSPORT)
@@ -613,8 +588,6 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[11] = m_pcs;
 		active_processes[11] = &Problem::MassTrasport;
 		return 11;
-		//	} else if (m_pcs->pcs_type_name.find("DEFORMATION") != string::npos)
-		//{
 	}
 	else if (isDeformationProcess(m_pcs->getProcessType()))
 	{
@@ -622,11 +595,9 @@ inline int Problem::AssignProcessIndex(CRFProcess* m_pcs, bool activefunc)
 		total_processes[12] = m_pcs;
 		active_processes[12] = &Problem::Deformation;
 		return 12;
-		//	} else if (m_pcs->pcs_type_name.find("PS_GLOBAL") != string::npos) {
 	}
 	else if (m_pcs->getProcessType() == FiniteElement::PS_GLOBAL)
 	{
-		//    if(!activefunc) return 13;
 		if (!activefunc) return 3;
 		total_processes[3] = m_pcs;
 		active_processes[3] = &Problem::PS_Global;
@@ -1634,7 +1605,6 @@ inline double Problem::RichardsFlow()
 	CRFProcess* m_pcs = total_processes[2];
 	if (!m_pcs->selected) return error;
 	bool twoflowcpl = false;
-	// if(GROUNDWATER_FLOW|| OVERLAND_FLOW) WW
 	if (total_processes[1] || total_processes[6]) twoflowcpl = true;
 	if (twoflowcpl)
 	{  //-------  WW
@@ -1644,10 +1614,7 @@ inline double Problem::RichardsFlow()
 			m_pcs->CopyCouplingNODValues();
 		// WW if(m_pcs->adaption) PCSStorage();
 		CFEMesh* m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
-		if (m_msh->geo_name.compare("REGIONAL") == 0)
-			LOPExecuteRegionalRichardsFlow(m_pcs, loop_process_number);
-		else
-			error = m_pcs->ExecuteNonLinear(loop_process_number);
+		error = m_pcs->ExecuteNonLinear(loop_process_number);
 		if (m_pcs->saturation_switch == true)
 			m_pcs->CalcSaturationRichards(1, false);  // JOD
 		else
@@ -1662,10 +1629,7 @@ inline double Problem::RichardsFlow()
 	else  // WW
 	{
 		CFEMesh* m_msh = MeshLib::FEMGet("RICHARDS_FLOW");  // WW
-		if (m_msh->geo_name.compare("REGIONAL") == 0)
-			LOPExecuteRegionalRichardsFlow(m_pcs, loop_process_number);
-		else
-			error = m_pcs->ExecuteNonLinear(loop_process_number);
+		error = m_pcs->ExecuteNonLinear(loop_process_number);
 		if (m_pcs->TimeStepAccept())
 		{
 			// WW
@@ -2401,44 +2365,6 @@ inline double Problem::GroundWaterFlow()
 }
 
 /*-------------------------------------------------------------------------
-   GeoSys - Function: ComponentalFlow();
-   Task:
-   Return: error
-   Programming:
-   07/2008 WW Extract from LOPTimeLoop_PCS();
-   Modification:
-   -------------------------------------------------------------------------*/
-inline double Problem::ComponentalFlow()
-{
-	double error = 1.e8;
-	CRFProcess* m_pcs = total_processes[5];
-	if (!m_pcs->selected) return error;  // 12.12.2008 WW
-	//
-	error = m_pcs->ExecuteNonLinear(loop_process_number);
-	m_pcs->CalIntegrationPointValue();  // WW
-	return error;
-}
-
-/*-------------------------------------------------------------------------
-   GeoSys - Function: OverlandFlow()
-   Task:
-   Return: error
-   Programming:
-   07/2008 WW Extract from LOPTimeLoop_PCS();
-   Modification:
-   -------------------------------------------------------------------------*/
-inline double Problem::OverlandFlow()
-{
-	double error = 1.e8;
-	CRFProcess* m_pcs = total_processes[6];
-	if (!m_pcs->selected) return error;  // 12.12.2008 WW
-
-	error = m_pcs->ExecuteNonLinear(loop_process_number);
-	if (m_pcs->TimeStepAccept()) PCSCalcSecondaryVariables();
-	return error;
-}
-
-/*-------------------------------------------------------------------------
    GeoSys - Function: AirFlow()
    Task:
    Return: error
@@ -2823,456 +2749,6 @@ inline double Problem::TH_Monolithic()
 	return error;
 }
 
-/**************************************************************************
-   FEMLib-Method:
-   02/2005 OK Implementation
-   08/2005 WW Changes due to geometry objects applied
-   08/2005 MB Changes ... (OK to what ?)
-   04/2006 OK and once again ...
-   07/2008 WW Extract from LOPTimeLoop_PCS();
-   05.2009 WW For surface-soil-ground coupled model
-**************************************************************************/
-inline void Problem::LOPExecuteRegionalRichardsFlow(CRFProcess* m_pcs_global,
-                                                    int loop_process_number)
-{
-	int j, k;
-	long i;
-	MeshLib::CElem* m_ele = NULL;
-	// TF not used	MeshLib::CNode* m_nod = NULL;
-	int no_local_elements = m_pcs_global->m_msh->getNumberOfMeshLayers();
-	int no_local_nodes = no_local_elements + 1;
-	long g_element_number, g_node_number;
-	CFEMesh* m_msh_local = NULL;
-	CRFProcess* m_pcs_local = NULL;
-	Math_Group::vec<MeshLib::CNode*> ele_nodes(20);
-	double value;
-	int timelevel = 1;
-	int idxp = m_pcs_global->GetNodeValueIndex("PRESSURE1") + timelevel;
-	// WW int idxcp = m_pcs_global->GetNodeValueIndex("PRESSURE_CAP") +
-	// timelevel;
-	int idxS = m_pcs_global->GetNodeValueIndex("SATURATION1") + timelevel;
-	MeshLib::CElem* m_ele_local = NULL;
-	MeshLib::CNode* m_nod_local = NULL;
-
-	//======================================================================
-	if (aktueller_zeitschritt == 1)
-	{
-		//--------------------------------------------------------------------
-		// Create local RICHARDS process
-		std::cout << "    Create local RICHARDS process"
-		          << "\n";
-		m_pcs_local = new CRFProcess();
-		m_pcs_local->isRSM = true;  // WW
-
-		//    m_pcs_local->pcs_type_name = m_pcs_global->pcs_type_name;
-		// TF
-		m_pcs_local->setProcessType(m_pcs_global->getProcessType());
-		m_pcs_local->num_type_name = m_pcs_global->num_type_name;
-		m_pcs_local->cpl_type_name = m_pcs_global->cpl_type_name;
-		m_pcs_local->Write_Matrix = m_pcs_global->Write_Matrix;
-		m_pcs_local->pcs_type_number = (int)pcs_vector.size();
-		m_pcs_local->Config();
-		m_pcs_local->setProblemObjectPointer(
-		    m_pcs_global->getProblemObjectPointer());  // WW 18.08.2011. WW
-		//--------------------------------------------------------------------
-		// Create local MSH
-		m_msh_local = new CFEMesh(m_pcs_global->m_msh->getGEOObjects(),
-		                          m_pcs_global->m_msh->getProjectName());
-		m_msh_local->geo_name = "RICHARDS_FLOW_LOCAL";
-		m_msh_local->setElementType(MshElemType::LINE);
-		m_msh_local->setNumberOfMeshLayers(
-		    m_pcs_global->m_msh->getNumberOfMeshLayers());
-		//....................................................................
-		m_msh_local->ele_vector.resize(no_local_elements);
-		for (j = 0; j < no_local_elements; j++)
-		{
-			m_ele = m_pcs_global->m_msh->ele_vector[j];
-			m_ele_local = new MeshLib::CElem(j, m_ele);
-			for (k = 0; k < 2; k++)  // ele_type
-				m_ele_local->getNodeIndices()[k] = j + k;
-			m_msh_local->ele_vector[j] = m_ele_local;
-		}
-		m_msh_local->nod_vector.resize(no_local_nodes);
-		m_msh_local->Eqs2Global_NodeIndex.resize(no_local_nodes);
-		for (j = 0; j < no_local_nodes; j++)
-		{
-			// TF        m_nod = m_pcs_global->m_msh->nod_vector[j];
-			m_nod_local = new MeshLib::CNode(
-			    j, m_pcs_global->m_msh->nod_vector[j]->getData());
-			// m_nod_local = m_nod;
-			m_msh_local->nod_vector[j] = m_nod_local;
-			m_msh_local->nod_vector[j]->SetEquationIndex(j);
-			m_msh_local->Eqs2Global_NodeIndex[j] =
-			    m_msh_local->nod_vector[j]->GetIndex();
-		}
-		m_msh_local->ConstructGrid();
-		m_msh_local->FillTransformMatrix();
-		m_msh_local->FaceNormal();
-		//....................................................................
-		fem_msh_vector.push_back(m_msh_local);
-		//....................................................................
-		m_pcs_local->m_msh = m_msh_local;
-		m_pcs_local->Create();
-		//....................................................................
-		// BC
-		//....................................................................
-		// ST
-		/*
-		    for(s=0;s<(int)m_pcs_global->st_node_value.size();s++)
-		    {
-		      m_nod_value = new CNodeValue(); //OK
-		      //m_nod_value = m_pcs_global->st_node_value[s];
-		      m_nod_value->node_value =
-		   m_pcs_global->st_node_value[s]->node_value;
-		      m_nod_value->msh_node_number =
-		   m_pcs_global->st_node_value[s]->msh_node_number;
-		      m_nod_value->geo_node_number =  m_nod_value->msh_node_number; //WW
-		      m_pcs_local->st_node_value.push_back(m_nod_value);
-		    }
-		 */
-		m_pcs_local->st_node_value.clear();
-		for (j = 0; j < (int)m_pcs_global->st_node_value.size(); j++)
-			m_pcs_local->st_node_value.push_back(
-			    m_pcs_global->st_node_value[j]);
-		//....................................................................
-		pcs_vector.push_back(m_pcs_local);
-	}
-	//======================================================================
-	else
-		for (i = 0; i < (long)m_pcs_global->m_msh->nod_vector.size(); i++)
-		{
-			value = m_pcs_global->GetNodeValue(i, idxp);
-			m_pcs_global->SetNodeValue(i, idxp - 1, value);
-			// WW value = m_pcs_global->GetNodeValue(i,idxcp);
-			// WW m_pcs_global->SetNodeValue(i,idxcp-1,value);
-			value = m_pcs_global->GetNodeValue(i, idxS);
-			m_pcs_global->SetNodeValue(i, idxS - 1, value);
-		}
-	//======================================================================
-	std::cout << "\n      ================================================"
-	          << "\n";
-	std::cout << "    ->Process " << loop_process_number << ": "
-	          << "REGIONAL_"
-	          << convertProcessTypeToString(m_pcs_global->getProcessType())
-	          << "\n";
-	std::cout << "      ================================================"
-	          << "\n";
-	int no_richards_problems =
-	    (int)(m_pcs_global->m_msh->ele_vector.size() / no_local_elements);
-
-	//--- For couping with ground flow process. WW
-	int idx_v;
-	MeshLib::GridsTopo* neighb_grid = NULL;
-	CRFProcess* neighb_pcs = total_processes[1];
-
-	if (neighb_pcs)
-		for (i = 0; i < (int)neighb_pcs->m_msh->grid_neighbors.size(); i++)
-		{
-			neighb_grid = neighb_pcs->m_msh->grid_neighbors[i];
-			if (neighb_grid->getNeighbor_Name().find("SECTOR_SOIL") !=
-			    std::string::npos)
-				break;
-			neighb_grid = NULL;
-		}
-//------------
-#ifndef USE_MPI_REGSOIL
-	for (i = 0; i < no_richards_problems; i++)
-	// for(i=0;i<2;i++)
-	{
-		if (i > 0)
-			std::cout
-			    << "      ================================================"
-			    << "\n";
-		std::cout << "      ->Column number: " << i << "\n";
-		std::cout << "      ================================================"
-		          << "\n";
-		m_pcs_local = pcs_vector[(int)pcs_vector.size() - 1];
-		m_pcs_local->pcs_number = i;
-		m_msh_local = fem_msh_vector[(int)fem_msh_vector.size() - 1];
-		//....................................................................
-		// Set local NODs
-		for (j = 0; j < no_local_nodes; j++)
-		{
-			g_node_number = j + (i * no_local_nodes);
-			// TF not used			m_nod =
-			// m_pcs_global->m_msh->nod_vector[g_node_number];
-			m_nod_local = m_msh_local->nod_vector[j];
-			// m_nod_local = m_nod;
-			m_nod_local->getConnectedElementIDs().push_back(i);
-			// m_nod_local->ok_dummy = i;
-		}
-		//....................................................................
-		// Set local ELEs
-		for (j = 0; j < no_local_elements; j++)
-		{
-			g_element_number = j + (i * no_local_elements);
-			m_ele = m_pcs_global->m_msh->ele_vector[g_element_number];
-			m_ele_local = m_msh_local->ele_vector[j];
-			m_ele_local->SetPatchIndex(m_ele->GetPatchIndex());
-		}
-		//....................................................................
-		// Set ICs
-		if (aktueller_zeitschritt == 1)  // YD
-
-			for (j = 0; j < no_local_nodes; j++)
-			{
-				g_node_number = j + (i * no_local_nodes);
-				value = m_pcs_global->GetNodeValue(g_node_number, idxp);
-				m_pcs_local->SetNodeValue(j, idxp - 1, value);
-				m_pcs_local->SetNodeValue(j, idxp, value);
-				// WW value = m_pcs_global->GetNodeValue(g_node_number,idxcp);
-				// WW m_pcs_local->SetNodeValue(j,idxcp-1,value);
-				// WW  m_pcs_local->SetNodeValue(j,idxcp,value);
-				value = m_pcs_global->GetNodeValue(g_node_number, idxS);
-				m_pcs_local->SetNodeValue(j, idxS - 1, value);
-				m_pcs_local->SetNodeValue(j, idxS, value);
-			}
-		else
-			for (j = 0; j < no_local_nodes; j++)
-			{
-				g_node_number = j + (i * no_local_nodes);
-				value = m_pcs_global->GetNodeValue(g_node_number, idxp);
-				m_pcs_local->SetNodeValue(j, idxp - 1, value);
-				// value = m_pcs_global->GetNodeValue(g_node_number,idxcp);
-				// m_pcs_local->SetNodeValue(j,idxcp-1,value);
-				value = m_pcs_global->GetNodeValue(g_node_number, idxS);
-				m_pcs_local->SetNodeValue(j, idxS - 1, value);
-			}
-		//....................................................................
-		// Set local BCs
-		// WW m_pcs_local->CreateBCGroup();
-		//....................................................................
-		// Set local STs
-		// WW m_pcs_local->CreateSTGroup();
-		// look for corresponding OF-triangle
-		// m_ele_of = m_msh_of->GetElement(m_pnt_sf);
-		//....................................................................
-		//---- Source term from neighbor process. 25.05.2009. WW
-		idx_v = m_pcs_local->GetNodeValueIndex("VELOCITY_Z1");
-		if (neighb_grid)
-		{
-			CNodeValue* m_nod_val = NULL;
-#if 0  // TODO
-			CSourceTerm* m_st = NULL;
-			if(aktueller_zeitschritt == 1)
-			{
-				m_st = new CSourceTerm();
-				m_nod_val = new CNodeValue();
-				m_pcs_local->st_node_value.push_back(m_nod_val);
-			}
-			else
-			{
-				m_st = m_pcs_local->st_node[(int)m_pcs_local->st_node.size() - 1];
-				m_nod_val =
-				        m_pcs_local->st_node_value[(int)m_pcs_local->st_node_value.
-				                                   size() -
-				                                   1];
-			}
-#endif
-			// WW long *local_indxs = NULL;
-			// WW local_indxs = neighb_grid->getBorderNodeIndicies();
-			m_nod_val->msh_node_number = no_local_nodes - 1;
-			m_nod_val->geo_node_number = no_local_nodes - 1;
-			//       m_nod_val->node_value =
-			//       -neighb_pcs->GetNodeValue(local_indxs[i],
-			//       neighb_pcs->GetNodeValueIndex("VELOCITY_Z1"))
-			//                               /neighb_pcs->time_unit_factor;
-			m_nod_val->node_value =
-			    -m_pcs_global->GetNodeValue(
-			        i, m_pcs_global->GetNodeValueIndex("VELOCITY_Z1")) /
-			    neighb_pcs->time_unit_factor;
-
-			m_pcs_global->SetNodeValue(
-			    i, m_pcs_global->GetNodeValueIndex("VELOCITY_Z1"), 0.);
-		}
-		//-----------------------------------------------------
-
-		m_pcs_local->ExecuteNonLinear(loop_process_number, false);
-		// Velocity. 22.05.2009. WW
-		m_pcs_local->CalIntegrationPointValue();
-		m_pcs_local->Extropolation_GaussValue();
-		m_pcs_local->cal_integration_point_value = false;
-		//....................................................................
-		// Store results in global PCS tables
-		for (j = 0; j < no_local_nodes; j++)
-		{
-			g_node_number = j + (i * no_local_nodes);
-			value = m_pcs_local->GetNodeValue(j, idxp);
-			m_pcs_global->SetNodeValue(g_node_number, idxp, value);
-			// value = m_pcs_local->GetNodeValue(j,idxcp);
-			// m_pcs_global->SetNodeValue(g_node_number,idxcp,value);
-			value = m_pcs_local->GetNodeValue(j, idxS);
-			m_pcs_global->SetNodeValue(g_node_number, idxS, value);
-			// WW. 22.05.2009
-			value = m_pcs_local->GetNodeValue(j, idx_v);
-			m_pcs_global->SetNodeValue(g_node_number, idx_v, value);
-		}
-		// m_pcs->m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
-		// pcs->m_msh->RenumberNodesForGlobalAssembly(); related to Comment 1
-		// // MB/WW
-	}
-#else  // ifndef USE_MPI_REGSOIL
-	num_parallel_blocks = no_richards_problems / size;
-
-#ifdef TRACE
-	std::cout << "Num parallel blocks: " << num_parallel_blocks << "\n";
-#endif
-
-	for (i = 0; i < num_parallel_blocks + 1; i++)
-	// for(i=0;i<2;i++)
-	{
-		if (i * size + myrank < no_richards_problems)  // Do a parallel block
-		{
-			rp = i * size + myrank;
-			m_pcs_local = pcs_vector[(int)pcs_vector.size() - 1];
-			m_pcs_local->pcs_number = rp;
-			m_msh_local = fem_msh_vector[(int)fem_msh_vector.size() - 1];
-			//....................................................................
-			// Set local NODs
-			for (j = 0; j < no_local_nodes; j++)
-			{
-				g_node_number = j + (rp * no_local_nodes);
-				m_nod = m_pcs_global->m_msh->nod_vector[g_node_number];
-				m_nod_local = m_msh_local->nod_vector[j];
-				// m_nod_local = m_nod;
-				// ????
-				m_nod_local->connected_elements.push_back(rp);
-			}
-			//....................................................................
-			// Set local ELEs
-			for (j = 0; j < no_local_elements; j++)
-			{
-				g_element_number = j + (rp * no_local_elements);
-				m_ele = m_pcs_global->m_msh->ele_vector[g_element_number];
-				m_ele_local = m_msh_local->ele_vector[j];
-				m_ele_local->SetPatchIndex(m_ele->GetPatchIndex());
-			}
-			//....................................................................
-			// Set ICs
-			if (aktueller_zeitschritt == 1)  // YD
-
-				for (j = 0; j < no_local_nodes; j++)
-				{
-					g_node_number = j + (rp * no_local_nodes);
-					value = m_pcs_global->GetNodeValue(g_node_number, idxp);
-					m_pcs_local->SetNodeValue(j, idxp - 1, value);
-					m_pcs_local->SetNodeValue(j, idxp, value);
-					value = m_pcs_global->GetNodeValue(g_node_number, idxcp);
-					m_pcs_local->SetNodeValue(j, idxcp - 1, value);
-					m_pcs_local->SetNodeValue(j, idxcp, value);
-					value = m_pcs_global->GetNodeValue(g_node_number, idxS);
-					m_pcs_local->SetNodeValue(j, idxS - 1, value);
-					m_pcs_local->SetNodeValue(j, idxS, value);
-				}
-			else
-				for (j = 0; j < no_local_nodes; j++)
-				{
-					g_node_number = j + (rp * no_local_nodes);
-					value = m_pcs_global->GetNodeValue(g_node_number, idxp);
-					m_pcs_local->SetNodeValue(j, idxp - 1, value);
-					value = m_pcs_global->GetNodeValue(g_node_number, idxcp);
-					m_pcs_local->SetNodeValue(j, idxcp - 1, value);
-					value = m_pcs_global->GetNodeValue(g_node_number, idxS);
-					m_pcs_local->SetNodeValue(j, idxS - 1, value);
-				}
-			//....................................................................
-			// Set local BCs
-			m_pcs_local->CreateBCGroup();
-//....................................................................
-// Set local STs
-// m_pcs_local->CreateSTGroup();
-// look for corresponding OF-triangle
-// m_ele_of = m_msh_of->GetElement(m_pnt_sf);
-//....................................................................
-#ifdef TRACE
-			std::cout << "Executing local process."
-			          << "\n";
-#endif
-			m_pcs_local->ExecuteNonLinear(loop_process_number);
-		}  // End of parallel block
-		//....................................................................
-		// Store results in global PCS tables
-		for (int k = 0; k < size; k++)
-		{
-			rp = i * size + k;
-			if (rp < no_richards_problems)
-			{
-				if (myrank == k)
-				{
-					// idxp
-					for (l = 0; l < no_local_nodes; l++)
-						values[l] = m_pcs_local->GetNodeValue(l, idxp);
-					MPI_Bcast((void*)values,
-					          no_local_nodes,
-					          MPI_DOUBLE,
-					          k,
-					          MPI_COMM_WORLD);
-					for (l = 0; l < no_local_nodes; l++)
-						m_pcs_global->SetNodeValue(
-						    l + rp * no_local_nodes, idxp, values[l]);
-					// idxcp
-					for (l = 0; l < no_local_nodes; l++)
-						values[l] = m_pcs_local->GetNodeValue(l, idxcp);
-					MPI_Bcast((void*)values,
-					          no_local_nodes,
-					          MPI_DOUBLE,
-					          k,
-					          MPI_COMM_WORLD);
-					for (l = 0; l < no_local_nodes; l++)
-						m_pcs_global->SetNodeValue(
-						    l + rp * no_local_nodes, idxcp, values[l]);
-					// idxS
-					for (l = 0; l < no_local_nodes; l++)
-						values[l] = m_pcs_local->GetNodeValue(l, idxS);
-					MPI_Bcast((void*)values,
-					          no_local_nodes,
-					          MPI_DOUBLE,
-					          k,
-					          MPI_COMM_WORLD);
-					for (l = 0; l < no_local_nodes; l++)
-						m_pcs_global->SetNodeValue(
-						    l + rp * no_local_nodes, idxS, values[l]);
-				}
-				else
-				{
-					// idxp
-					MPI_Bcast((void*)values,
-					          no_local_nodes,
-					          MPI_DOUBLE,
-					          k,
-					          MPI_COMM_WORLD);
-					for (l = 0; l < no_local_nodes; l++)
-						m_pcs_global->SetNodeValue(
-						    l + rp * no_local_nodes, idxp, values[l]);
-					// idxcp
-					MPI_Bcast((void*)values,
-					          no_local_nodes,
-					          MPI_DOUBLE,
-					          k,
-					          MPI_COMM_WORLD);
-					for (l = 0; l < no_local_nodes; l++)
-						m_pcs_global->SetNodeValue(
-						    l + rp * no_local_nodes, idxcp, values[l]);
-					// idxS
-					MPI_Bcast((void*)values,
-					          no_local_nodes,
-					          MPI_DOUBLE,
-					          k,
-					          MPI_COMM_WORLD);
-					for (l = 0; l < no_local_nodes; l++)
-						m_pcs_global->SetNodeValue(
-						    l + rp * no_local_nodes, idxS, values[l]);
-				}
-			}
-		}
-	}
-#endif
-//----------------------------------------------------------------------
-
-#if defined(USE_MPI_REGSOIL)
-	delete[] values;
-#endif
-}
 
 /**************************************************************************
    FEMLib-Method:
@@ -3322,9 +2798,6 @@ void Problem::LOPCalcELEResultants()
 			case 'M':  // Mass transport
 				break;
 			case 'D':  // Deformation
-				break;
-			case 'O':  // Overland flow
-				m_pcs->CalcELEVelocities();
 				break;
 			case 'R':  // Richards flow
 				m_pcs->CalcELEVelocities();

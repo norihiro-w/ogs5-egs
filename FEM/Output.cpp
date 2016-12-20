@@ -1681,12 +1681,7 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 		for (size_t i = 0; i < _nod_value_vector.size(); i++)
 		{
 			// PCS
-			if (!(_nod_value_vector[i].compare("FLUX") == 0) ||
-			    getProcessType() ==
-			        FiniteElement::OVERLAND_FLOW)  // JOD separate infiltration
-				                                   // flux output in overland
-				                                   // flow
-
+			if (!(_nod_value_vector[i].compare("FLUX") == 0))
 				m_pcs = GetPCS(_nod_value_vector[i]);
 			else
 				m_pcs = GetPCS();
@@ -1701,11 +1696,7 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 			}
 			//..................................................................
 			// PCS
-			if (!(_nod_value_vector[i].compare("FLUX") == 0) ||
-			    getProcessType() ==
-			        FiniteElement::OVERLAND_FLOW)  // JOD separate infiltration
-			                                       // flux output in overland
-			                                       // flow
+			if (!(_nod_value_vector[i].compare("FLUX") == 0))
 			{
 				//-----------------------------------------WW
 				double val_n =
@@ -2411,11 +2402,7 @@ void COutput::CalcELEFluxes()
 	// cout << pcs->Tim->step_current << endl;
 	if (isDeformationProcess(pcs_type) ||
 	    (!isFlowProcess(pcs_type) &&
-	     (pcs_type != FiniteElement::MASS_TRANSPORT))
-	    // if (isDeformationProcess(pcs_type) || !isFlowProcess (pcs_type)
-	    // WW
-	    ||
-	    pcs->m_msh->geo_name.find("REGIONAL") != string::npos)
+	     (pcs_type != FiniteElement::MASS_TRANSPORT)))
 		return;
 
 	//----------------------------------------------------------------------
@@ -2442,8 +2429,7 @@ void COutput::CalcELEFluxes()
 				pcs->CalcELEFluxes(
 				    static_cast<const GEOLIB::Polyline*>(getGeoObj()),
 				    PhaseFlux);
-				if ((pcs_type == FiniteElement::GROUNDWATER_FLOW) ||
-				    (pcs_type == FiniteElement::FLUID_FLOW))
+				if (pcs_type == FiniteElement::GROUNDWATER_FLOW)
 				{
 					ELEWritePLY_TEC();
 					f_n_sum = PhaseFlux[0];
