@@ -60,3 +60,26 @@ double getAngle(const double p0[3], const double p1[3], const double p2[3])
 	            (sqrt(scpr(v0, v0, 3)) * sqrt(scpr(v1, v1, 3))));
 }
 }  // namespace
+
+/**************************************************************************/
+/* ROCKFLOW - Funktion: Signum
+ */
+/* Aufgabe:
+   Gibt abhaengig vom Vorzeichen -1,0,1 zurueck
+ */
+/* Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
+   E double zahl
+ */
+/* Ergebnis:
+   vorzeichen
+ */
+/* Programmaenderungen:
+   1/1998     C.Thorenz  Erste Version */
+/**************************************************************************/
+int Signum(double x)
+{
+	if (x > 0.) return 1;
+	if (fabs(x) < std::numeric_limits<double>::epsilon()) return 0;
+	if (x < 0.) return -1;
+	return 0;
+}

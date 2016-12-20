@@ -4773,8 +4773,7 @@ void CFiniteElementStd::Assemble_DualTransfer()
 	int gp_r = 0, gp_s = 0, gp_t = 0;
 	double W, fkt, mat_fac = 0.;
 #if defined(NEW_EQS)
-	CSparseMatrix* A = NULL;  // WW
-	A = pcs->eqs_new->A;
+	CSparseMatrix* A = pcs->eqs_new->getA();
 #endif
 
 	// Inintialize
@@ -6556,12 +6555,8 @@ void CFiniteElementStd::AssembleRHS(int dimension)
 	m_pcs = PCSGet("FLUID_MOMENTUM");
 	for (int i = 0; i < nnodes; i++)
 	{
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-// TODO
-#elif defined(NEW_EQS)  // WW
-		m_pcs->eqs_new->b[eqs_number[i]] += NodalVal[i];
-#else
-		m_pcs->eqs->b[eqs_number[i]] += NodalVal[i];
+#if defined(NEW_EQS)  // WW
+		m_pcs->eqs_new->getRHS()[eqs_number[i]] += NodalVal[i];
 #endif
 	}
 	// OK. Let's add gravity term that incorporates the density coupling term.
@@ -7153,7 +7148,7 @@ void CFiniteElementStd::add2GlobalMatrixII(const int block_cols)
 
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;  // WW
-	A = pcs->eqs_new->A;
+	A = pcs->eqs_new->getA();
 #endif
 	// For DOF>1:
 	if (PcsType == V || PcsType == P || PcsType == TH)
@@ -7216,7 +7211,7 @@ void CFiniteElementStd::CalcFEM_FCT()
 	const double dt_inverse = 1.0 / dt;
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;  // WW
-	A = pcs->eqs_new->A;
+	A = pcs->eqs_new->getA();
 #endif
 
 	//----------------------------------------------------------------------
@@ -7359,7 +7354,7 @@ void CFiniteElementStd::AssembleMixedHyperbolicParabolicEquation()
 	double theta = pcs->m_num->ls_theta;  // OK
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;  // WW
-	A = pcs->eqs_new->A;
+	A = pcs->eqs_new->getA();
 #endif
 
 	// JT2012: Get the time step of this process! Now dt can be independently
@@ -7657,7 +7652,7 @@ void CFiniteElementStd::AssembleParabolicEquationNewton()
 	for (int i = 0; i < nnodes; i++)
 	{
 #if defined(NEW_EQS)  // WW
-		pcs->eqs_new->b[NodeShift[problem_dimension_dm] + eqs_number[i]] -=
+		pcs->eqs_new->getRHS()[NodeShift[problem_dimension_dm] + eqs_number[i]] -=
 		    residual[i];
 #else
 		pcs->eqs->b[NodeShift[problem_dimension_dm] + eqs_number[i]] -=
@@ -7665,7 +7660,7 @@ void CFiniteElementStd::AssembleParabolicEquationNewton()
 #endif
 		for (int j = 0; j < nnodes; j++)
 #if defined(NEW_EQS)  // WW
-			(*pcs->eqs_new->A)(NodeShift[problem_dimension_dm] + eqs_number[i],
+			(*pcs->eqs_new->getA())(NodeShift[problem_dimension_dm] + eqs_number[i],
 			                   NodeShift[problem_dimension_dm] +
 			                       eqs_number[j]) += jacobian[i][j];  // WW
 #endif
@@ -7977,7 +7972,7 @@ void CFiniteElementStd::Assemble_strainCPL_Matrix(const double fac,
 	int shift_index;
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;
-	A = pcs->eqs_new->A;
+	A = pcs->eqs_new->getA();
 #endif
 	// if Richard, StrainCoupling should be multiplied with -1.
 	shift_index = problem_dimension_dm + phase;
@@ -8020,7 +8015,7 @@ void CFiniteElementStd::AssembleMassMatrix(int option)
 
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;  // PCH
-	A = pcs->eqs_new->A;
+	A = pcs->eqs_new->getA();
 #endif
 	//----------------------------------------------------------------------
 	//======================================================================
@@ -8118,7 +8113,7 @@ void CFiniteElementStd::Config()
 //----------------------------------------------------------------------
 // For DDC WW
 #ifdef NEW_EQS
-	eqs_rhs = pcs->eqs_new->b;
+	eqs_rhs = pcs->eqs_new->getRHS();
 #endif
 
 #if defined(USE_PETSC)
@@ -8485,7 +8480,7 @@ void CFiniteElementStd::Assembly(int option, int dimension)
 		nn = nnodesHQ;
 
 #if defined(NEW_EQS)
-	eqs_rhs = pcs->eqs_new->b;
+	eqs_rhs = pcs->eqs_new->getRHS();
 #endif
 
 	for (i = 0; i < nn; i++)
@@ -9098,7 +9093,7 @@ void CFiniteElementStd::AssembleParabolicEquationRHSVector()
 // TODO
 #else
 #ifdef NEW_EQS
-	eqs_rhs = pcs->eqs_new->b;  // WW
+	eqs_rhs = pcs->eqs_new->getRHS();  // WW
 #endif
 	for (i = 0; i < nnodes; i++)
 	{
@@ -10361,7 +10356,7 @@ void CFiniteElementStd::AssembleRHSVector()
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
                         // TODO
 #elif defined(NEW_EQS)
-		pcs->eqs_new->b[NodeShift[problem_dimension_dm] + eqs_number[i]] +=
+		pcs->eqs_new->getRHS()[NodeShift[problem_dimension_dm] + eqs_number[i]] +=
 		    NodalVal[i];
 #else
 		pcs->eqs->b[NodeShift[problem_dimension_dm] + eqs_number[i]] +=
@@ -10442,7 +10437,7 @@ void CFiniteElementStd::AssembleCapillaryEffect()
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
 // TODO
 #elif defined(NEW_EQS)
-		pcs->eqs_new->b[NodeShift[problem_dimension_dm] + eqs_number[i]] +=
+		pcs->eqs_new->getRHS()[NodeShift[problem_dimension_dm] + eqs_number[i]] +=
 		    NodalVal[i];
 #else
 		pcs->eqs->b[NodeShift[problem_dimension_dm] + eqs_number[i]] +=

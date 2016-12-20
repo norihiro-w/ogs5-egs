@@ -18,34 +18,28 @@
 
 #include "makros.h"
 #include "display.h"
-#include "StringTools.h"
 #include "MemWatch.h"
+#include "StringTools.h"
+
+#include "Curve.h"
+#include "mathlib.h"
+
+#include "geo_sfc.h"
+
+#include "msh_elem.h"
 
 #include "FEMEnums.h"
-#include "mathlib.h"
-//#include "femlib.h"
-// Element
 #include "fem_ele_std.h"
 #include "fem_ele_vec.h"
-// BC_Dynamic
 #include "rf_bc_new.h"
-#include "rf_pcs.h"  //OK_MOD"
-#include "tools.h"
-//
-#include "fem_ele_vec.h"
-#include "rf_msp_new.h"
-#include "rf_tim_new.h"
-// Excavation
-#include "rf_out_new.h"
-#include "rf_st_new.h"
-// GEOLib
-#include "geo_sfc.h"
-// MSHLib
-#include "msh_elem.h"
-// IC
 #include "rf_ic_new.h"
-
+#include "rf_msp_new.h"
 #include "rf_node.h"
+#include "rf_out_new.h"
+#include "rf_pcs.h"
+#include "rf_st_new.h"
+#include "rf_tim_new.h"
+#include "tools.h"
 
 // Solver
 #if defined(NEW_EQS)
@@ -361,7 +355,7 @@ void CRFProcessDeformation::solveLinear()
     eqs_new->MappingSolution();
 #elif defined(NEW_EQS)
     bool compress_eqs = (this->Deactivated_SubDomain.size() > 0);
-    eqs_new->Solver(m_num, compress_eqs);
+	eqs_new->Solver(compress_eqs);
 #endif
 
     // update nodal values from solution
@@ -431,7 +425,7 @@ void CRFProcessDeformation::solveNewton()
         eqs_new->MappingSolution();
 #elif defined(NEW_EQS)
         bool compress_eqs = (this->Deactivated_SubDomain.size() > 0);
-        eqs_new->Solver(m_num, compress_eqs);
+		eqs_new->Solver(compress_eqs);
 #endif
 
 #if defined(USE_PETSC)
@@ -493,7 +487,8 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 		CheckMarkedElement();
 
 #if defined(NEW_EQS)
-    eqs_new->ConfigNumerics(m_num);
+	eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method, m_num->ls_max_iterations,
+							m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
 #endif
 
     //-------------------------------------------------------------------
@@ -930,12 +925,8 @@ void CRFProcessDeformation::SetInitialGuess_EQS_VEC()
 	long number_of_nodes;
 	long shift = 0;
 	double* eqs_x = NULL;
-#if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
-// TODO
-#elif defined(NEW_EQS)
-	eqs_x = eqs_new->x;
-#else
-	eqs_x = eqs->x;
+#if defined(NEW_EQS)
+	eqs_x = eqs_new->getX();
 #endif
 	for (i = 0; i < pcs_number_of_primary_nvals; i++)
 	{
@@ -2099,7 +2090,7 @@ void CRFProcessDeformation::GlobalAssembly()
 	            std::cout << "-> Linear nodes = " << n_nodes_linear << ", Quadratic nodes = " << n_nodes_quard << "\n";
 	            std::cout << "-> Constrain equation index from " << offset_H +  n_nodes_linear << " to " << offset_H + n_nodes_quard << "\n";
 	            for (size_t i=n_nodes_linear; i<n_nodes_quard; i++) {
-	                (*this->eqs_new->A)(offset_H+i,offset_H+i)=1.0;
+					(*this->eqs_new->getA())(offset_H+i,offset_H+i)=1.0;
 	            }
 			}
 #if defined(USE_PETSC)  //|| defined(other parallel libs)//03~04.3012. WW
@@ -2362,12 +2353,8 @@ void CRFProcessDeformation::ReleaseLoadingByExcavation()
 	bool exist = false;
 	double* eqs_b = NULL;
 
-#if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
-// TODO
-#elif defined(NEW_EQS)
-	eqs_b = eqs_new->b;
-#else
-	eqs_b = eqs->b;
+#if defined(NEW_EQS)
+	eqs_b = eqs_new->getRHS();
 #endif
 
 	for (k = 0; k < SizeSt; k++)

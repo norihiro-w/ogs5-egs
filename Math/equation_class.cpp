@@ -50,13 +50,10 @@ extern int PARDISO(int*, int*, int*, int*, int*, int*, double*, int*, int*,
 #endif
 #endif
 
-#include "Configure.h"
 #include "display.h"
 #include "makros.h"
 
 #include "matrix_class.h"
-#include "rf_num_new.h"
-#include "rf_pcs.h"
 
 std::vector<Math_Group::Linear_EQS*> EQS_Vector;
 std::vector<Math_Group::SparseTable*> SparseTable_Vector;
@@ -102,14 +99,22 @@ Linear_EQS::~Linear_EQS()
 	x = NULL;
 	b = NULL;
 }
+
 /**************************************************************************
    Task: Linear equation::
    Programing:
    10/2007 WW/
 **************************************************************************/
-void Linear_EQS::ConfigNumerics(CNumerics* /*m_num*/, const long /*n*/)
+void Linear_EQS::ConfigNumerics(int ls_precond, int ls_method, int ls_max_iterations, double ls_error_tolerance, int ls_storage_method, std::string const& ls_extra_arg)
 {
+	precond_type = ls_precond;
+	solver_type = ls_method;
+	max_iter = ls_max_iterations;
+	tol = ls_error_tolerance;
+	storage_type = ls_storage_method;
+	extra_arg = ls_extra_arg;
 }
+
 /**************************************************************************
    Task: Linear equation::Alocate memory for solver
    Programing:
@@ -320,7 +325,7 @@ void Linear_EQS::compressCRS(const IndexType* org_ptr,
 #endif
 
 #ifdef MKL
-void Linear_EQS::solveWithPARDISO(CNumerics* num, bool compress_if_possible)
+void Linear_EQS::solveWithPARDISO(bool compress_if_possible)
 {
 	ScreenMessage2(
 	    "------------------------------------------------------------------\n");
@@ -418,7 +423,7 @@ void Linear_EQS::solveWithPARDISO(CNumerics* num, bool compress_if_possible)
 #endif
 
 	_INTEGER_t mtype = 11; /* Real unsymmetric matrix */
-	if (num->ls_storage_method == 102)
+	if (storage_type == 102)
 		mtype = 1;       // Real and structurally symmetric
 	_INTEGER_t nrhs = 1; /* Number of right hand sides. */
 	/* Internal solver memory pointer pt, */
@@ -643,7 +648,7 @@ void Linear_EQS::solveWithPARDISO(CNumerics* num, bool compress_if_possible)
 #endif
 
 #ifdef LIS
-int Linear_EQS::solveWithLIS(CNumerics* m_num, bool compress)
+int Linear_EQS::solveWithLIS(bool compress)
 {
 	ScreenMessage2(
 	    "------------------------------------------------------------------\n");
@@ -707,15 +712,15 @@ int Linear_EQS::solveWithLIS(CNumerics* m_num, bool compress)
 	char solver_options[MAX_ZEILE], tol_option[MAX_ZEILE];
 	sprintf(solver_options,
 	        "-i %d -p %d %s",
-	        m_num->ls_method,
-	        m_num->ls_precond,
-	        m_num->ls_extra_arg.c_str());
+	        solver_type,
+	        precond_type,
+	        extra_arg.c_str());
 	// tolerance and other setting parameters are same
 	// NW add max iteration counts
 	sprintf(tol_option,
 	        "-tol %e -maxiter %d",
-	        m_num->ls_error_tolerance,
-	        m_num->ls_max_iterations);
+	        tol,
+	        max_iter);
 
 #ifndef OGS_USE_LONG
 	ierr = lis_matrix_set_crs(nonzero, ptr, col_idx, value, AA);
@@ -764,7 +769,7 @@ int Linear_EQS::solveWithLIS(CNumerics* m_num, bool compress)
 
 	ierr = lis_solver_set_option(solver_options, solver);
 	ierr = lis_solver_set_option(tol_option, solver);
-	ierr = lis_solver_set_option("-print mem", solver);
+	ierr = lis_solver_set_option((char*)"-print mem", solver);
 	ierr = lis_solver_set_optionC(solver);
 	ScreenMessage2("-> Execute Lis\n");
 	ierr = lis_solve(AA, bb, xx, solver);
@@ -776,7 +781,7 @@ int Linear_EQS::solveWithLIS(CNumerics* m_num, bool compress)
 	int iter = 0;
 	ierr = lis_solver_get_iters(solver, &iter);
 	// NW
-	printf("iteration: %d/%d\n", iter, m_num->ls_max_iterations);
+	printf("iteration: %d/%d\n", iter, max_iter);
 	double resid = 0.0;
 	ierr = lis_solver_get_residualnorm(solver, &resid);
 	printf("residuals: %e\n", resid);
@@ -803,7 +808,7 @@ int Linear_EQS::solveWithLIS(CNumerics* m_num, bool compress)
 	if (is_compressed)
 	{
 #if 0
-	    lis_matrix_destroy(AA);
+		lis_matrix_destroy(AA);
 #endif
 	}
 	else
@@ -822,9 +827,9 @@ int Linear_EQS::solveWithLIS(CNumerics* m_num, bool compress)
 #endif
 
 #if defined(LIS) || defined(MKL)
-int Linear_EQS::Solver(CNumerics* num, bool compress)
+int Linear_EQS::Solver(bool compress)
 {
-	CNumerics* m_num = (num == NULL) ? num_vector[0] : num;
+	(void)compress;
 #define ENABLE_COMPRESS_EQS
 #ifndef ENABLE_COMPRESS_EQS
 	compress = false;
@@ -839,16 +844,16 @@ int Linear_EQS::Solver(CNumerics* num, bool compress)
 	ScreenMessage2("-> 64bit integer is used in PARDISO\n");
 #endif
 
-	if (m_num->ls_method == 805)  // Then, PARDISO parallel direct solver
+	if (solver_type == 805)  // Then, PARDISO parallel direct solver
 	{
 #ifdef MKL
-		solveWithPARDISO(num, compress);
+		solveWithPARDISO(compress);
 #endif
 	}
 	else  // LIS parallel solver
 	{
 #ifdef LIS
-		iter = solveWithLIS(num, compress);
+		iter = solveWithLIS(compress);
 #endif
 	}
 

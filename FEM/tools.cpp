@@ -7,516 +7,35 @@
  *
  */
 
-/**************************************************************************/
-/* ROCKFLOW - Modul: tools.c
- */
-/* Aufgabe:
-   verschiedene Funktionen, die von verschiedenen Modulen gebraucht
-   werden und keine Adaptivitaet voraussetzen (sie aber teilweise
-   unterstuetzen)
- */
-/* Programmaenderungen:
-   08/1996     MSR/cb        Erste Version
-   01.07.1997  R.Kaiser      Korrekturen und Aenderungen aus dem aTM
-                             uebertragen
-   10/1999     AH            Systemzeit
-   01/2000     AH            in GetCurveValue: Konstante Kurve beruecksichtigt
-   02/2000     CT            Funktion P0260 von Rainer, CalcIterationError
-   veraendert
-   10/2001     AH            Abfrage if (!kurven) in DestroyFunctionsData.
-   03/2003     RK            Quellcode bereinigt, Globalvariablen entfernt
-   02/2010     OK            Cleaning
- */
-/**************************************************************************/
-
 #include "tools.h"
 
 #include <cfloat>
-#define noTESTTOOLS
-/* Header / Andere intern benutzte Module */
+
 #include "makros.h"
 #include "display.h"
 #include "FileToolsRF.h"
 #include "memory.h"
-#include "femlib.h"
 
+#include "Curve.h"
 #include "mathlib.h"
-#include "rf_fct.h"  //NB
+
+#include "msh_elem.h"
+#include "msh_lib.h"
+
+#include "femlib.h"
+#include "files0.h"
+#include "rf_fct.h"
 #include "rf_mmp_new.h"
 #include "rf_num_new.h"
 #include "rf_tim_new.h"
-// GEOLib
-#include "files0.h"
-// MSHLib
-#include "msh_elem.h"
-#include "msh_lib.h"
+
 using namespace std;
 
-Kurven* kurven = NULL;
-int anz_kurven = 0;
 double* fracture_aperture_array = NULL;
 hetfields* hf = NULL;
 long fracture_aperture_anz = 0l;
 
 #define TIMER_CEN_LIST "CEN_LIST"
-
-/**************************************************************************/
-/* ROCKFLOW - Funktion: Signum
- */
-/* Aufgabe:
-   Gibt abhaengig vom Vorzeichen -1,0,1 zurueck
- */
-/* Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E double zahl
- */
-/* Ergebnis:
-   vorzeichen
- */
-/* Programmaenderungen:
-   1/1998     C.Thorenz  Erste Version */
-/**************************************************************************/
-int Signum(double x)
-{
-	if (x > 0.) return 1;
-	if (fabs(x) < MKleinsteZahl) return 0;
-	if (x < 0.) return -1;
-	return 0;
-}
-
-/**************************************************************************
-   ROCKFLOW - Funktion: GetCurveValue
-
-   Aufgabe:
-   Liefert Wert aus einer Kurve fuer angegebenen Punkt.
-   Liegt der Punkt ausserhalb des durch die Kurve beschriebenen
-   Bereichs, wird der letzte bzw. erste Wert zurueckgeliefert und
-   der Flag fuer die Gueltigkeit auf 0 gesetzt.
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E int kurve: Kurvennummer, >= 0
-   E int methode  : Interpolationsmethode
-   E double punkt: Punkt
-   R int gueltig: Flag fuer die Gueltigkeit des zurueckgelieferten Wertes
-
-   Ergebnis:
-   s.o.
-
-   Programmaenderungen:
-   Basiert auf "GetRBZValue"
-
-   04/1999     C.Thorenz     Gueltigkeit und Methode eingefuehrt
-   09/2000     C.Thorenz     Fehlermeldung bei falscher Kurvennummer
-
-**************************************************************************/
-double GetCurveValue(int kurve, int methode, double punkt, int* gueltig)
-{
-	static long anz;
-	register long i;
-	static StuetzStellen* s;
-
-	if (kurve == 0)
-	{
-		*gueltig = 1;
-		return 1.0;
-	}
-
-#ifdef ERROR_CONTROL
-	if ((kurve < 0) || (kurve >= anz_kurven))
-	{
-		DisplayMsgLn("");
-		DisplayMsg("PANIC! Curve ");
-		DisplayLong(kurve);
-		DisplayMsgLn(" is requested but not defined!");
-		abort();
-	}
-#endif
-
-	anz = kurven[kurve].anz_stuetzstellen;
-	s = kurven[kurve].stuetzstellen;
-	*gueltig = 1;
-
-	i = 1l;
-	while (punkt > s[i].punkt)
-		i++;
-	//
-	// Check curve bounds
-	if (punkt < s[0].punkt)
-	{
-		*gueltig = 0;
-		return s[0].wert;
-	}
-	if (punkt > s[anz - 1l].punkt)
-	{
-		*gueltig = 0;
-		return s[anz - 1l].wert;
-	}
-	//
-	// Otherwise, get interpolated value
-	switch (methode)
-	{
-		default:
-			ScreenMessage("ERROR: GetCurveValue() --> Invalid curve.\n");
-			return 0.0;
-		//
-		case 0:  // Linear Interpolation
-			return s[i - 1].wert +
-			       (s[i].wert - s[i - 1l].wert) /
-			           (s[i].punkt - s[i - 1l].punkt) *
-			           (punkt - s[i - 1l].punkt);
-		//
-		case 1:                    // Piece wise constant
-			return s[i - 1].wert;  // BG changed from i to i-1, 2011
-	}
-}
-
-/**************************************************************************
-   ROCKFLOW - Funktion: GetCurveValueInverse
-
-   Aufgabe:
-   Liefert zu einem Wert aus einer Kurve den zugehoerigen Punkt.
-   Liegt der Punkt ausserhalb des durch die Kurve beschriebenen
-   Bereichs, wird der letzte bzw. erste Wert zurueckgeliefert und
-   der Flag fuer die Gueltigkeit auf 0 gesetzt.
-
-   Kurven muessen streng monoton fallend oder steigend sein.
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E int kurve: Kurvennummer, >= 0
-   E int methode  : Interpolationsmethode
-   E double wert: Wert
-   R int gueltig: Flag fuer die Gueltigkeit des zurueckgelieferten Wertes
-
-   Ergebnis:
-   s.o.
-
-   Programmaenderungen:
-   Basiert auf "GetRBZValue"
-
-   12/1999     C. Thorenz Erste Version
-
-**************************************************************************/
-double GetCurveValueInverse(int kurve, int methode, double wert, int* gueltig)
-{
-	static long anz;
-	register long i;
-	static StuetzStellen* s;
-
-#ifdef ERROR_CONTROL
-	if ((kurve < 0) || (kurve >= anz_kurven))
-	{
-		DisplayMsgLn("");
-		DisplayMsg("PANIC! Curve ");
-		DisplayLong(kurve);
-		DisplayMsgLn(" is requested but not defined!");
-		abort();
-	}
-#endif
-
-	anz = kurven[kurve].anz_stuetzstellen;
-	s = kurven[kurve].stuetzstellen;
-	*gueltig = 1;
-	i = 1l;
-
-	if (s[0].wert < s[anz - 1l].wert)
-	{
-		/* Monoton steigend */
-		if (wert < s[0].wert)
-		{
-			*gueltig = 0;
-			return s[0].punkt;
-		}
-		if (wert > s[anz - 1].wert)
-		{
-			*gueltig = 0;
-			return s[anz - 1].punkt;
-		}
-		/* Suchen der Stuetzstelle. Vorraussetzung: Zeitpunkte aufsteigend
-		 * geordnet */
-		while (wert > s[i].wert)
-			i++;
-	}
-	else
-	{
-		/* Monoton fallend */
-		if (wert > s[0].wert)
-		{
-			*gueltig = 0;
-			return s[0].punkt;
-		}
-		if (wert < s[anz - 1].wert)
-		{
-			*gueltig = 0;
-			return s[anz - 1].punkt;
-		}
-		/* Suchen der Stuetzstelle. Vorraussetzung: Zeitpunkte aufsteigend
-		 * geordnet */
-		while (wert < s[i].wert)
-			i++;
-	}
-
-	switch (methode)
-	{
-		default:
-			ScreenMessage("ERROR: GetCurveValue() --> Invalid curve.\n");
-			return 0.0;
-		//
-		case 0:  // Lineare Interpolation
-			return s[i - 1].punkt +
-			       (s[i].punkt - s[i - 1l].punkt) /
-			           (s[i].wert - s[i - 1l].wert) * (wert - s[i - 1l].wert);
-		//
-		case 1:  // Piece wise constant
-			return s[i].punkt;
-	}
-}
-
-/**************************************************************************
-   ROCKFLOW - Funktion: GetCurveDerivative
-
-   Aufgabe:
-   Liefert die Ableitung zu einem Punkt auf einer Kurve.
-   Liegt der Punkt ausserhalb des durch die Kurve beschriebenen
-   Bereichs, wird die letzte bzw. erste moegliche Ableitung
-   zurueckgeliefert und der Flag fuer die Gueltigkeit auf 0 gesetzt.
-
-   Die Ableitung kann ueber mehrere Methoden bestimmt werden:
-     0: Stueckweise konstant
-   1: Gleitend
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E int kurve: Kurvennummer, >= 0
-   E int methode  : Ableitungsmethode
-   E double punkt: Punkt
-   R int gueltig: Flag fuer die Gueltigkeit des zurueckgelieferten Wertes
-
-   Ergebnis:
-   s.o.
-
-   Programmaenderungen:
-
-   3/2002   C. Thorenz Erste Version
-**************************************************************************/
-double GetCurveDerivative(int kurve, int methode, double punkt, int* gueltig)
-{
-	static long anz;
-	register long i;
-	static StuetzStellen* s;
-	static double w, s1, s2;
-
-	if (kurve == 0)
-	{
-		*gueltig = 1;
-		return 1.0;
-	}
-
-#ifdef ERROR_CONTROL
-	if ((kurve < 0) || (kurve >= anz_kurven))
-	{
-		DisplayMsgLn("");
-		DisplayMsg("PANIC! Curve ");
-		DisplayLong(kurve);
-		DisplayMsgLn(" is requested but not defined!");
-		abort();
-	}
-#endif
-
-	anz = kurven[kurve].anz_stuetzstellen;
-	s = kurven[kurve].stuetzstellen;
-	*gueltig = 1;
-	i = 1l;
-
-	if (punkt < s[0].punkt)
-	{
-		*gueltig = 0;
-		i = 1;
-		punkt = s[0].punkt;
-	}
-	else if (punkt > s[anz - 1l].punkt)
-	{
-		*gueltig = 0;
-		i = anz - 1;
-		punkt = s[anz - 1].punkt;
-	}
-	else
-		/* Suchen der Stuetzstelle. Vorraussetzung: Zeitpunkte aufsteigend
-		 * geordnet */
-		while (punkt > s[i].punkt)
-			i++;
-
-	switch (methode)
-	{
-		default:
-		case 0:
-			/* Stueckweise konstant */
-			if (fabs(s[i].punkt - s[i - 1].punkt) > DBL_MIN)
-				return (s[i].wert - s[i - 1].wert) /
-				       (s[i].punkt - s[i - 1].punkt);
-			else
-				return Signum(s[i + 1].wert - s[i].wert) / DBL_EPSILON;
-		case 1:
-			/* Gleitend */
-			if ((i > 1) && (i < anz - 2))
-			{
-				s1 = (0.5 * s[i].wert - 0.5 * s[i - 2].wert) /
-				     (0.5 * s[i].punkt - 0.5 * s[i - 2].punkt);
-
-				s2 = (0.5 * s[i + 1].wert - 0.5 * s[i - 1].wert) /
-				     (0.5 * s[i + 1].punkt - 0.5 * s[i - 1].punkt);
-
-				w = (punkt - s[i - 1].punkt) / (s[i].punkt - s[i - 1].punkt);
-
-				return (1. - w) * s1 + w * s2;
-			}
-			else
-			{
-				/* Stueckweise konstant */
-				if (fabs(s[i].punkt - s[i - 1].punkt) > DBL_MIN)
-					return (s[i].wert - s[i - 1].wert) /
-					       (s[i].punkt - s[i - 1].punkt);
-				else
-					return Signum(s[i + 1].wert - s[i].wert) / DBL_EPSILON;
-			}
-	}
-}
-
-/**************************************************************************
-   ROCKFLOW - Funktion: GetCurveValueInverse
-
-   Aufgabe:
-   Liefert zu einem Wert aus einer Kurve den zugehoerigen Punkt.
-   Liegt der Punkt ausserhalb des durch die Kurve beschriebenen
-   Bereichs, wird der letzte bzw. erste Wert zurueckgeliefert und
-   der Flag fuer die Gueltigkeit auf 0 gesetzt.
-
-   Kurven muessen streng monoton fallend oder steigend sein.
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E int kurve: Kurvennummer, >= 0
-   E int methode  : Interpolationsmethode
-   E double wert: Wert
-   R int gueltig: Flag fuer die Gueltigkeit des zurueckgelieferten Wertes
-
-   Ergebnis:
-   s.o.
-
-   Programmaenderungen:
-   Basiert auf "GetRBZValue"
-
-   03/2012 JT: Implementation. Based on other curve methods existing
-
-**************************************************************************/
-double GetCurveInverseDerivative(int kurve,
-                                 int methode,
-                                 double wert,
-                                 int* gueltig)
-{
-	static long anz;
-	register long i;
-	static StuetzStellen* s;
-	static double w, s1, s2;
-
-	if (kurve == 0)
-	{
-		*gueltig = 1;
-		return 1.0;
-	}
-
-#ifdef ERROR_CONTROL
-	if ((kurve < 0) || (kurve >= anz_kurven))
-	{
-		DisplayMsgLn("");
-		DisplayMsg("PANIC! Curve ");
-		DisplayLong(kurve);
-		DisplayMsgLn(" is requested but not defined!");
-		abort();
-	}
-#endif
-
-	anz = kurven[kurve].anz_stuetzstellen;
-	s = kurven[kurve].stuetzstellen;
-	*gueltig = 1;
-	i = 1l;
-
-	if (s[0].wert < s[anz - 1l].wert)
-	{
-		/* Monoton steigend */
-		if (wert < s[0].wert)
-		{
-			*gueltig = 0;
-			i = 1;
-			wert = s[0].wert;
-		}
-		else if (wert > s[anz - 1].wert)
-		{
-			*gueltig = 0;
-			i = anz - 1;
-			wert = s[anz - 1].wert;
-		}
-		else
-		{ /* Suchen der Stuetzstelle. Vorraussetzung: Zeitpunkte aufsteigend
-		     geordnet */
-			while (wert > s[i].wert)
-				i++;
-		}
-	}
-	else
-	{
-		/* Monoton fallend */
-		if (wert > s[0].wert)
-		{
-			*gueltig = 0;
-			i = 1;
-			wert = s[0].wert;
-		}
-		else if (wert < s[anz - 1].wert)
-		{
-			*gueltig = 0;
-			i = anz - 1;
-			wert = s[anz - 1].wert;
-		}
-		else
-		{ /* Suchen der Stuetzstelle. Vorraussetzung: Zeitpunkte aufsteigend
-		     geordnet */
-			while (wert < s[i].wert)
-				i++;
-		}
-	}
-
-	switch (methode)
-	{
-		default:
-		case 0:
-			/* Stueckweise konstant */
-			if (fabs(s[i].wert - s[i - 1].wert) > DBL_MIN)
-				return (s[i].punkt - s[i - 1].punkt) /
-				       (s[i].wert - s[i - 1].wert);
-			else
-				return Signum(s[i + 1].punkt - s[i].punkt) / DBL_EPSILON;
-		case 1:
-			/* Gleitend */
-			if ((i > 1) && (i < anz - 2))
-			{
-				s1 = (0.5 * s[i].punkt - 0.5 * s[i - 2].punkt) /
-				     (0.5 * s[i].wert - 0.5 * s[i - 2].wert);
-
-				s2 = (0.5 * s[i + 1].punkt - 0.5 * s[i - 1].punkt) /
-				     (0.5 * s[i + 1].wert - 0.5 * s[i - 1].wert);
-
-				w = (wert - s[i - 1].wert) / (s[i].wert - s[i - 1].wert);
-
-				return (1. - w) * s1 + w * s2;
-			}
-			else
-			{
-				/* Stueckweise konstant */
-				if (fabs(s[i].wert - s[i - 1].wert) > DBL_MIN)
-					return (s[i].punkt - s[i - 1].punkt) /
-					       (s[i].wert - s[i - 1].wert);
-				else
-					return Signum(s[i + 1].punkt - s[i].punkt) / DBL_EPSILON;
-			}
-	}
-}
 
 /**************************************************************************/
 /* ROCKFLOW - Funktion: FctCurves
@@ -1781,6 +1300,202 @@ void convertElementDataToNodalData(
 }
 
 #ifdef NEW_EQS
+Math_Group::SparseTable* createSparseTable(MeshLib::CFEMesh* a_mesh,
+						 bool quadratic,
+						 bool symmetry,
+						 Math_Group::StorageType storage_type)
+{
+	Math_Group::SparseTable* st = new Math_Group::SparseTable();
+	st->symmetry = symmetry;
+
+	long i = 0, j = 0, ii = 0, jj = 0;
+	long lbuff0 = 0, lbuff1 = 0;
+	long** larraybuffer;
+	larraybuffer = NULL;
+	//
+	// In sparse table, = number of nodes
+	st->rows = a_mesh->GetNodesNumber(quadratic);
+	st->size_entry_column = 0;
+	st->diag_entry = new long[st->rows];
+
+	if (storage_type == Math_Group::JDS)
+	{
+		st->row_index_mapping_n2o = new long[st->rows];
+		st->row_index_mapping_o2n = new long[st->rows];
+	}
+	else if (storage_type == Math_Group::CRS)
+	{
+		st->row_index_mapping_n2o = NULL;
+		st->row_index_mapping_o2n = NULL;
+	}
+
+	if (symmetry)
+	{
+		larraybuffer = new long* [st->rows];
+		for (i = 0; i < st->rows; i++)
+		{
+			if (storage_type == Math_Group::JDS) st->row_index_mapping_n2o[i] = i;
+			// 'diag_entry' used as a temporary array
+			// to store the number of nodes connected to this node
+			lbuff1 = (long)a_mesh->nod_vector[i]->getConnectedNodes().size();
+			larraybuffer[i] = new long[lbuff1 + 1];
+			//
+			larraybuffer[i][0] = lbuff1;
+			for (j = 0; j < lbuff1; j++)
+				larraybuffer[i][j + 1] =
+					a_mesh->nod_vector[i]->getConnectedNodes()[j];
+			a_mesh->nod_vector[i]->getConnectedNodes().clear();
+			for (j = 0; j < lbuff1; j++)
+			{
+				jj = larraybuffer[i][j + 1];
+				if (i <= jj)
+					a_mesh->nod_vector[i]->getConnectedNodes().push_back(jj);
+			}
+		}
+	}
+
+	/// CRS storage
+	if (storage_type == Math_Group::CRS)
+	{
+		/// num_column_entries saves vector ptr of CRS
+		st->num_column_entries = new long[st->rows + 1];
+
+		std::vector<long> A_index;
+		long col_index;
+
+		for (i = 0; i < st->rows; i++)
+		{
+			st->num_column_entries[i] = (long)A_index.size();
+
+			for (j = 0;
+				 j < (long)a_mesh->nod_vector[i]->getConnectedNodes().size();
+				 j++)
+			{
+				col_index = a_mesh->nod_vector[i]->getConnectedNodes()[j];
+
+				/// If linear element is used
+				if ((!quadratic) && (col_index >= st->rows)) continue;
+
+				if (i == col_index)st-> diag_entry[i] = (long)A_index.size();
+				A_index.push_back(col_index);
+			}
+		}
+
+		st->size_entry_column = (long)A_index.size();
+		st->num_column_entries[st->rows] = st->size_entry_column;
+
+		st->entry_column = new long[st->size_entry_column];
+		for (i = 0; i < st->size_entry_column; i++)
+			st->entry_column[i] = A_index[i];
+	}
+	else if (storage_type == Math_Group::JDS)
+	{
+		//
+		//--- Sort, from that has maximum connect nodes to that has minimum
+		// connect nodes
+		//
+		for (i = 0; i < st->rows; i++)
+		{
+			st->row_index_mapping_n2o[i] = i;
+			// 'diag_entry' used as a temporary array
+			// to store the number of nodes connected to this node
+			st->diag_entry[i] =
+				(long)a_mesh->nod_vector[i]->getConnectedNodes().size();
+			if (!quadratic)
+			{
+				lbuff0 = 0;
+				for (j = 0; j < st->diag_entry[i]; j++)
+					if (a_mesh->nod_vector[i]->getConnectedNodes()[j] <
+						static_cast<size_t>(st->rows))
+						lbuff0++;
+				st->diag_entry[i] = lbuff0;
+			}
+			st->size_entry_column += st->diag_entry[i];
+		}
+
+		//
+		for (i = 0; i < st->rows; i++)
+		{
+			// 'diag_entry' used as a temporary array
+			// to store the number of nodes connected to this node
+			lbuff0 = st->diag_entry[i];  // Nodes to this row
+			lbuff1 = st->row_index_mapping_n2o[i];
+			j = i;
+			while ((j > 0) && (st->diag_entry[j - 1] < lbuff0))
+			{
+				st->diag_entry[j] = st->diag_entry[j - 1];
+				st->row_index_mapping_n2o[j] = st->row_index_mapping_n2o[j - 1];
+				j = j - 1;
+			}
+			st->diag_entry[j] = lbuff0;
+			st->row_index_mapping_n2o[j] = lbuff1;
+		}
+		// Old index to new one
+		for (i = 0; i < st->rows; i++)
+			st->row_index_mapping_o2n[st->row_index_mapping_n2o[i]] = i;
+		// Maximum number of columns in the sparse table
+		st->max_columns = st->diag_entry[0];
+		//--- End of sorting
+		//
+		//--- Create sparse table
+		//
+		st->num_column_entries = new long[st->max_columns];
+		st->entry_column = new long[st->size_entry_column];
+		// 1. Count entries in each column in sparse table
+		for (i = 0; i < st->max_columns; i++)
+			st->num_column_entries[i] = 0;
+		for (i = 0; i < st->rows; i++)
+			// 'diag_entry' still is used as a temporary array
+			// it stores that numbers of nodes connect to this nodes
+			for (j = 0; j < st->diag_entry[i]; j++)
+				st->num_column_entries[j]++;
+
+		// 2. Fill the sparse table, i.e. store all its entries to
+		//    entry_column
+		lbuff0 = 0;
+
+		for (i = 0; i < st->max_columns; i++)
+			for (j = 0; j < st->num_column_entries[i]; j++)
+			{
+				// ii is the real row index of this entry in matrix
+				ii = st->row_index_mapping_n2o[j];
+				// jj is the real column index of this entry in matrix
+				jj = a_mesh->nod_vector[ii]->getConnectedNodes()[i];
+				st->entry_column[lbuff0] = jj;
+
+				// Till to this stage, 'diag_entry' is really used to store
+				// indices of the diagonal entries.
+				// Hereby, 'index' refers to the index in entry_column array.
+				if (ii == jj) st->diag_entry[ii] = lbuff0;
+				//
+				lbuff0++;
+			}
+	}
+
+	// For the case of symmetry matrix
+	if (symmetry)
+	{
+		for (i = 0; i < st->rows; i++)
+		{
+			lbuff0 = larraybuffer[i][0];
+			a_mesh->nod_vector[i]->getConnectedNodes().resize(lbuff0);
+			//
+			for (j = 0; j < lbuff0; j++)
+				a_mesh->nod_vector[i]->getConnectedNodes()[j] =
+					larraybuffer[i][j + 1];
+		}
+		for (i = 0; i < st->rows; i++)
+		{
+			delete[] larraybuffer[i];
+			larraybuffer[i] = 0;
+		}
+		delete[] larraybuffer;
+		larraybuffer = 0;
+	}
+
+	return st;
+}
+
 void CreateSparseTable(MeshLib::CFEMesh* msh, Math_Group::SparseTable* &sparse_graph, Math_Group::SparseTable* &sparse_graph_H)
 {
 	Math_Group::StorageType stype;
@@ -1795,16 +1510,16 @@ void CreateSparseTable(MeshLib::CFEMesh* msh, Math_Group::SparseTable* &sparse_g
 	// Symmetry case is skipped.
 	// 1. Sparse_graph_H for high order interpolation. Up to now, deformation
 	if (msh->GetNodesNumber(false) != msh->GetNodesNumber(true))
-		sparse_graph_H = new Math_Group::SparseTable(msh, true, false, stype);
+		sparse_graph_H = createSparseTable(msh, true, false, stype);
 	// 2. M coupled with other processes with linear element
 	if (sparse_graph_H)
 	{
 		if ((int)pcs_vector.size() > 1)
-			sparse_graph = new Math_Group::SparseTable(msh, false, false, stype);
+			sparse_graph = createSparseTable(msh, false, false, stype);
 	}
 	// 3. For process with linear elements
 	else
-		sparse_graph = new Math_Group::SparseTable(msh, false, false, stype);
+		sparse_graph = createSparseTable(msh, false, false, stype);
 
 	//  sparse_graph->Write();
 	//  sparse_graph_H->Write();

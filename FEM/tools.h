@@ -16,41 +16,13 @@
 #include "rf_pcs.h"
 #include "sparse_matrix.h"
 
-typedef struct /* fuer Kurven (Stuetzstellen) */
-{
-	double punkt;
-	double wert;
-} StuetzStellen;
-
-typedef struct /* fuer Kurven (Kurven) */
-{
-	long anz_stuetzstellen;
-	/* Anzahl der Stuetzstellen */
-	StuetzStellen* stuetzstellen;
-	/* Feld mit den eingelesenen Stuetzstellen */
-} Kurven;
-
 // NB
 // extern double GetMatrixValue (double, double, std::string, int*);
 double GetMatrixValue(double var1,
                       double var2,
                       std::string caption,
                       int* gueltig);
-extern double GetCurveValue(int kurve, int methode, double punkt, int* gueltig);
-extern double GetCurveValueInverse(int kurve,
-                                   int methode,
-                                   double wert,
-                                   int* gueltig);
-extern double GetCurveDerivative(int kurve,
-                                 int methode,
-                                 double punkt,
-                                 int* gueltig);
-extern double GetCurveInverseDerivative(int kurve,
-                                        int methode,
-                                        double wert,
-                                        int* gueltig);
-extern Kurven* kurven; /* Feld mit Kurven */
-extern int anz_kurven; /* Anzahl der Kurven */
+
 
 /******************************************************/
 /* C1.11 Miscellaneous                                 */
@@ -85,8 +57,6 @@ extern int TestElementDirtyness(long index,
                                 long ndx1,
                                 long ndx2,
                                 double acknowledge);
-/* Ermittelt das Vorzeichen */
-extern int Signum(double);
 /* Bildet den arithmetischen Mittel einer Elementgroesse durch Interpolation
    der zugehoerigen Knotenwerte */
 double InterpolateElementNodesValues(long index, long idx);

@@ -43,40 +43,32 @@
 #include "files0.h"
 
 #include "Configure.h"
-//#include <iostream>
-#include "MemWatch.h"
 #include "display.h"
-#include "memory.h"
 #include "FileTools.h"
 #include "FileToolsRF.h"
+#include "readNonBlankLineFromInputStream.h"
+#include "memory.h"
+#include "MemWatch.h"
+
+#include "Curve.h"
+
+#include "OGSIOVer4.h"
+
 #include "rf_bc_new.h"
 #include "rf_ic_new.h"
 #include "rf_st_new.h"
 #include "rfmat_cp.h"
 #include "tools.h"
-//#include "rf_pcs.h"
 #include "rf_out_new.h"
-//#include "rf_tim_new.h"
 #include "rf_mfp_new.h"
 #include "rf_msp_new.h"
-//#include "rf_num_new.h"
-#include "rf_fct.h"             //OK
-#include "rf_fluid_momentum.h"  // PCH
+#include "rf_fct.h"
+#include "rf_fluid_momentum.h"
 #include "rf_kinreact.h"
-#include "rf_random_walk.h"  // PCH
+#include "rf_random_walk.h"
 #include "rf_react.h"
-#ifdef CHEMAPP
-#include "eqlink.h"  //MX
-#endif
 #include "fct_mpi.h"
-/* Tools */
-//#include "mathlib.h"
-//#include "femlib.h"
-/* GeoLib */
-//#include "geo_lib.h"
-// MSHLib
-//#include "msh_lib.h"
-//#include "gs_project.h"
+
 /* Dateinamen */
 char* crdat = NULL;     /*MX*/
 char* file_name = NULL; /* dateiname */
@@ -91,14 +83,6 @@ void CURWrite();                                  // OK
 
 #define KEYWORD '#'
 #define SUBKEYWORD '$'
-
-// GEOLIB
-//#include "GEOObjects.h"
-
-// FileIO
-#include "OGSIOVer4.h"
-#include "readNonBlankLineFromInputStream.h"
-//#include "FEMIO.h"
 
 using namespace std;
 

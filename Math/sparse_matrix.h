@@ -7,18 +7,8 @@
  *
  */
 
-/*========================================================================
-   GeoSys - class Matrix, Sparse matrix (Declaration)
-   Task:       Matrix object for full matrices.  If the size of matrix is
-			 small, this class can do efficient matrix operation.
-   Function:   See the declaration below
-   Design and programm WW
-   03/2010 some improvements TF
-   ==========================================================================*/
-#ifndef sp_matrix_class_INC
-#define sp_matrix_class_INC
-
-#include "Configure.h"
+#ifndef sparse_matrix_INC
+#define sparse_matrix_INC
 
 #include <cstdlib>
 #include <fstream>
@@ -26,53 +16,15 @@
 #include <map>
 #include <vector>
 #include <cassert>
-#ifdef NEW_EQS
-namespace MeshLib
-{
-class CFEMesh;
-}
-#endif
-//#define OverLoadNEW_DELETE
+
+#include "sparse_table.h"
 
 namespace Math_Group
 {
 
 
 #ifdef NEW_EQS
-//
-/// Sparse matrix storage type //04.2011. WW
-enum StorageType
-{
-	CRS,
-	JDS
-};
-class SparseTable
-{
-public:
-	SparseTable(MeshLib::CFEMesh* a_mesh,
-				bool quadratic,
-				bool symm = false,
-				StorageType stype = JDS);
-	~SparseTable();
-	void Write(std::ostream& os = std::cout);
 
-private:
-	bool symmetry;
-	// Topology mapping from data array to matrix
-	long* entry_column;
-	long* num_column_entries;     // number of entries of each columns in sparse
-								  // table
-	long* row_index_mapping_n2o;  // Row index of sparse table to row index of
-								  // matrix
-	long* row_index_mapping_o2n;  // Inverse of last
-	long* diag_entry;             // Global index to the index of  entry_column
-	long size_entry_column;
-	long max_columns;
-	long rows;
-	StorageType storage_type;  // 04.2011. WW
-	friend class CSparseMatrix;
-};
-// 08.2007 WW
 // Jagged Diagonal Storage
 class CSparseMatrix
 {
@@ -151,12 +103,6 @@ private:
 // Since the pointer to member funtions gives lower performance
 #endif
 
-//
-// Cross production x^y. WW 12.01.2005
-// const Vec& operator ^ (Vec& x,  Vec& y);
-
-// End of class Matrix
 }
 
-//==========================================================================
 #endif

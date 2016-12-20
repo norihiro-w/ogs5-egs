@@ -16,39 +16,27 @@
 
 #include "rf_mmp_new.h"
 
-//#include "makros.h"
-// C++ STL
-//#include <iostream>
 #include <cfloat>
 #include <algorithm>
 
 #include "display.h"
 #include "FileToolsRF.h"
 
-// FEMLib
-#include "tools.h"
-//#include "rf_pcs.h"
-//#include "femlib.h"
-extern double* GEOGetELEJacobianMatrix(long number, double* detjac);
+#include "Curve.h"
 #include "mathlib.h"
-//#include "rf_mfp_new.h"
-#include "rf_msp_new.h"
-//#include "material.h"
-#include "rf_tim_new.h"
-#include "rfmat_cp.h"
-extern double gravity_constant;
-// using SolidProp::CSolidProperties;
-// LIB
-#include "files0.h"
-// this
-//#include "rf_react.h"
-// Gauss point veclocity
+
 #include "fem_ele_std.h"
 #include "fem_ele_vec.h"
-// MSHLib
-//#include "msh_lib.h"
-#include "pcs_dm.h"  //WX
+#include "files0.h"
 #include "mechanics_utils.h"
+#include "rf_msp_new.h"
+#include "rf_tim_new.h"
+#include "rfmat_cp.h"
+#include "pcs_dm.h"
+#include "tools.h"
+
+extern double* GEOGetELEJacobianMatrix(long number, double* detjac);
+extern double gravity_constant;
 
 using namespace std;
 

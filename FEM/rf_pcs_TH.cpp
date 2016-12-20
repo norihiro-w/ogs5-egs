@@ -98,7 +98,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 	eqs_x = eqs_new->GetGlobalSolution();
 #endif
 #if defined(NEW_EQS)
-	eqs_new->ConfigNumerics(m_num);  // 27.11.2007 WW
+	eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method, m_num->ls_max_iterations, m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
 #endif
 
 	// Begin Newton-Raphson steps
@@ -219,13 +219,9 @@ double CRFProcessTH::Execute(int loop_process_number)
 		ScreenMessage("-> Calling linear solver...\n");
 // Linear solver
 #if defined(NEW_EQS)
-#ifdef LIS
 		bool compress_eqs =
 			(type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
-		iter_lin = eqs_new->Solver(this->m_num, compress_eqs);  // NW
-#else
-		iter_lin = eqs_new->Solver();  // 27.11.2007
-#endif
+		iter_lin = eqs_new->Solver(compress_eqs);  // NW
 #elif defined(USE_PETSC)
 		//		if (write_leqs) {
 		//			std::string fname = FileName + "_" +
@@ -256,8 +252,6 @@ double CRFProcessTH::Execute(int loop_process_number)
 			VecAXPY(eqs_new->total_x, 1.0, eqs_new->x);
 			//			VecView(eqs_new->total_x, PETSC_VIEWER_STDOUT_SELF);
 		}
-#else
-		iter_lin = ExecuteLinearSolver();
 #endif
 		if (iter_lin < 0)
 		{
@@ -595,7 +589,7 @@ void CRFProcessTH::setSolver(petsc_group::PETScLinearSolver* petsc_solver)
 		ierr = VecDestroy(&eqs_new->x);
 		CHKERRCONTINUE(ierr);
 		ierr = MatCreateNest(PETSC_COMM_WORLD, dof, NULL, dof, NULL,
-		                     &eqs_new->vec_subA[0], &eqs_new->A);
+							 &eqs_new->vec_subA[0], &eqs_new->A);
 		CHKERRCONTINUE(ierr);
 		ierr = MatGetVecs(eqs_new->A, &eqs_new->b, &eqs_new->x);
 		CHKERRCONTINUE(ierr);

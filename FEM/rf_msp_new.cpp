@@ -15,31 +15,24 @@
    last modified:
 **************************************************************************/
 
-// C++ STL
-//#include <math.h>
-//#include <string>
-//#include <fstream>
-//#include <iostream>
-//#include <sstream>
+#include "rf_msp_new.h"
+
 #include <cfloat>
 
-// FEM-Makros
 #include "makros.h"
 #include "display.h"
 #include "FileToolsRF.h"
-#include "rf_pcs.h"
+#include "StringTools.h"
 
-// Time
+#include "Curve.h"
+
 #include "fem_ele_std.h"
 #include "fem_ele_vec.h"
-#include "rf_msp_new.h"
-#include "rf_tim_new.h"
-//#include "rf_mmp_new.h"
+#include "files0.h"
 #include "pcs_dm.h"
-
-#include "StringTools.h"
-#include "files0.h"  // GetLineFromFile1
-#include "tools.h"   // GetLineFromFile
+#include "rf_pcs.h"
+#include "rf_tim_new.h"
+#include "tools.h"
 
 using namespace std;
 

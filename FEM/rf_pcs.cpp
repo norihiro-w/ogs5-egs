@@ -7,19 +7,6 @@
  *
  */
 
-/**************************************************************************
-   ROCKFLOW - Object: Process PCS
-   Programing:
-   02/2003 OK Implementation
-   /2003 WW CRFProcessDeformation
-   11/2003 OK re-organized
-   07/2004 OK PCS2
-   02/2005 WW/OK Element Assemblier and output
-   12/2007 WW Classes of sparse matrix (jagged diagonal storage) and linear
-solver
-           and parellelisation of them
-   02/2008 PCH OpenMP parallelization for Lis matrix solver
-**************************************************************************/
 #include "rf_pcs.h"
 
 // C
@@ -29,7 +16,7 @@ solver
 
 // C++
 #include <cfloat>
-#include <iomanip>  //WW
+#include <iomanip>
 #include <iostream>
 #include <algorithm>
 #include <set>
@@ -48,49 +35,37 @@ solver
 #include "FileToolsRF.h"
 #include "memory.h"
 #include "MemWatch.h"
-#include "FEMEnums.h"
-#include "Output.h"
+#include "StringTools.h"
 
-// GEOLib
+#include "rf_pcs_TH.h"
+
+#include "Curve.h"
+#include "mathlib.h"
+#include "InterpolationAlgorithms/InverseDistanceInterpolation.h"
+#include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
+
 #include "PointWithID.h"
 
-/*------------------------------------------------------------------------*/
-/* MshLib */
-//#include "msh_elem.h"
-//#include "msh_lib.h"
-/*-----------------------------------------------------------------------*/
-/* Objects */
-#include "pcs_dm.h"
-#include "rf_st_new.h"  // ST
-//#include "rf_bc_new.h" // ST
-//#include "rf_mmp_new.h" // MAT
-#include "fem_ele_std.h"  // ELE
-#include "rf_ic_new.h"    // IC
-//#include "msh_lib.h" // ELE
-//#include "rf_tim_new.h"
-//#include "rf_out_new.h"
-#include "rfmat_cp.h"
-//#include "rf_mfp_new.h" // MFP
-//#include "rf_num_new.h"
-//#include "gs_project.h"
-#include "rf_fct.h"
-//#include "femlib.h"
+#include "msh_faces.h"
+
+#include "DistributionTools.h"
 #include "eos.h"
+#include "fct_mpi.h"
+#include "FEMEnums.h"
+#include "fem_ele_std.h"
+#include "files0.h"
+#include "msh_tools.h"
+#include "Output.h"
+#include "pcs_dm.h"
+#include "problem.h"
+#include "rfmat_cp.h"
+#include "rf_ic_new.h"
+#include "rf_fct.h"
 #include "rf_msp_new.h"
 #include "rf_node.h"
-#include "msh_tools.h"
-
-/*-----------------------------------------------------------------------*/
-/*-----------------------------------------------------------------------*/
-/* Tools */
-#ifdef MFC  // WW
-#include "rf_fluid_momentum.h"
-#endif
-/* Tools */
-#include "mathlib.h"
+#include "rf_st_new.h"
 #include "tools.h"
-//#include "rf_pcs.h"
-#include "files0.h"
+
 #ifdef GEM_REACT
 // GEMS chemical solver
 #include "rf_REACT_GEM.h"
@@ -107,20 +82,9 @@ REACT_BRNS* m_vec_BRNS;
 #elif defined(NEW_EQS)
 #include "equation_class.h"
 #endif
-//#include "geochemcalc.h"
-#include "problem.h"
-#include "msh_faces.h"
-#include "rfmat_cp.h"
 
 // MathLib
-#include "InterpolationAlgorithms/InverseDistanceInterpolation.h"
-#include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
 
-#include "StringTools.h"
-#include "DistributionTools.h"
-#include "fct_mpi.h"
-
-#include "rf_pcs_TH.h"
 
 using namespace std;
 using namespace MeshLib;
@@ -1012,7 +976,7 @@ void CRFProcess::Create()
 	size_unknowns = m_msh->GetNodesNumber(true) * pcs_number_of_primary_nvals;
 #elif defined(NEW_EQS)
 	{
-		size_unknowns = eqs_new->A->Dim();
+		size_unknowns = eqs_new->getA()->Dim();
 	}
 #endif
 
@@ -4187,13 +4151,9 @@ double CRFProcess::Execute()
 	pcs_error = DBL_MAX;
 	g_nnodes = m_msh->GetNodesNumber(false);
 
-#if !defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
-	double implicit_lim = 1.0 - DBL_EPSILON;
 #ifdef NEW_EQS
-	eqs_x = eqs_new->x;
-#else
-	eqs_x = eqs->x;
-#endif
+	double implicit_lim = 1.0 - DBL_EPSILON;
+	eqs_x = eqs_new->getX();
 #endif
 
 
@@ -4205,7 +4165,7 @@ double CRFProcess::Execute()
 	{
 		//_new 02/2010. WW
 		eqs_new->SetDOF(pcs_number_of_primary_nvals);
-		eqs_new->ConfigNumerics(m_num);
+		eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method, m_num->ls_max_iterations, m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
 	}
 	eqs_new->Initialize();
 #endif
@@ -4288,12 +4248,8 @@ double CRFProcess::Execute()
 	// TEST 	double x_norm = eqs_new->GetVecNormX();
 	eqs_new->MappingSolution();
 #elif defined(NEW_EQS)  // WW
-#ifdef LIS
 	bool compress_eqs = (type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
-	iter_lin = eqs_new->Solver(this->m_num, compress_eqs);  // NW
-#else
-	iter_lin = eqs_new->Solver();
-#endif
+	iter_lin = eqs_new->Solver(compress_eqs);
 #endif
 	if (iter_lin == -1)
 	{
@@ -4670,7 +4626,7 @@ void CRFProcess::AddFCT_CorrectionVector()
 	Math_Group::Vec* ML = this->Gl_ML;
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;  // WW
-	A = this->eqs_new->A;
+	A = this->eqs_new->getA();
 #endif
 
 #ifdef USE_PETSC
@@ -4819,7 +4775,7 @@ void CRFProcess::AddFCT_CorrectionVector()
 #if !defined(USE_PETSC)
 	double* eqs_rhs;
 #ifdef NEW_EQS
-	eqs_rhs = eqs_new->b;
+	eqs_rhs = eqs_new->getRHS();
 #else
 	eqs_rhs = eqs->b;
 #endif
@@ -5563,7 +5519,7 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 // TODO
 #ifdef NEW_EQS  // WW
 		eqs_p = eqs_new;
-		eqs_rhs = eqs_new->b;  // 27.11.2007 WW
+		eqs_rhs = eqs_new->getRHS();  // 27.11.2007 WW
 #else
 			eqs_rhs = eqs->b;
 #endif
@@ -6049,7 +6005,7 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, const int axis)
 #if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
 #ifdef NEW_EQS           // WW
 		eqs_p = eqs_new;
-		eqs_rhs = eqs_new->b;  // 27.11.2007 WW
+		eqs_rhs = eqs_new->getRHS();  // 27.11.2007 WW
 #else
 			eqs_rhs = eqs->b;
 #endif
@@ -6482,7 +6438,7 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 			end = (long)st_node_value[is].size();
 #if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
 #ifdef NEW_EQS           // WW
-			eqs_rhs = eqs_new->b;  // 27.11.2007 WW
+			eqs_rhs = eqs_new->getRHS();  // 27.11.2007 WW
 #else
 				eqs_rhs = eqs->b;
 #endif
@@ -6586,7 +6542,7 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 				eqs_new->addMatrixEntry(k_eqs_id, k_eqs_id,
 				                        m_st->transfer_h_values[0]);
 #elif defined(NEW_EQS)
-				(*eqs_new->A)(k_eqs_id, k_eqs_id) += m_st->transfer_h_values[0];
+				(*eqs_new->getA())(k_eqs_id, k_eqs_id) += m_st->transfer_h_values[0];
 #endif
 			}
 			else if (m_st->getGeoType() == GEOLIB::SURFACE ||
@@ -6618,7 +6574,7 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 							eqs_new->addMatrixEntry(k_eqs_id, l_eqs_id,
 							                        mass[k * nen + l] * h);
 #elif defined(NEW_EQS)
-							(*eqs_new->A)(k_eqs_id, l_eqs_id) +=
+							(*eqs_new->getA())(k_eqs_id, l_eqs_id) +=
 							    mass[k * nen + l] * h;
 #endif
 						}
@@ -8022,7 +7978,7 @@ double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
 #endif
 
 #if defined(NEW_EQS)
-	eqs_x = eqs_new->x;
+	eqs_x = eqs_new->getX();
 #elif !defined(USE_PETSC)
 	eqs_x = eqs->x;
 #endif
@@ -8443,21 +8399,15 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
 	eqs_x = eqs_new->GetGlobalSolution();
 #endif
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	int k;
 #ifdef NEW_EQS
-	eqs_x = eqs_new->x;
-	eqs_b = eqs_new->b;
+	int k;
+	eqs_x = eqs_new->getX();
+	eqs_b = eqs_new->getRHS();
 	configured_in_nonlinearloop = true;
 // Also allocate temporary memory for linear solver. WW
 //
 	eqs_new->SetDOF(pcs_number_of_primary_nvals);  //_new 02/2010. WW
-	eqs_new->ConfigNumerics(m_num);
-//
-#else  // ifdef NEW_EQS
-		eqs_x = eqs->x;
-		eqs_b = eqs->b;
-#endif
+	eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method, m_num->ls_max_iterations, m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
 #endif
 	//..................................................................
 	// PI time step size control. 29.08.2008. WW
@@ -12790,7 +12740,7 @@ void CRFProcess::PI_TimeStepSize()
 		eqs_x = eqs_new->GetGlobalSolution();
 #else
 #ifdef NEW_EQS
-		eqs_x = eqs_new->x;
+		eqs_x = eqs_new->getX();
 #else
 		eqs_x = eqs->x;
 #endif
@@ -13015,10 +12965,10 @@ void CRFProcess::IncorporateSourceTerms_GEMS(void)
 // Adding the rate of concentration change to the right hand side of the
 // equation.
 #ifdef NEW_EQS  // 15.12.2008. WW
-			eqs_new->b[it] -= m_vec_GEM->m_xDC_Chem_delta[it * nDC + i] /
+			eqs_new->getRHS()[it] -= m_vec_GEM->m_xDC_Chem_delta[it * nDC + i] /
 			                  Tim->time_step_length;
 #elif defined(USE_PETSC)
-// eqs_new->b[it] -= m_vec_GEM->m_xDC_Chem_delta[it * nDC + i] /
+// eqs_new->getRHS()[it] -= m_vec_GEM->m_xDC_Chem_delta[it * nDC + i] /
 // Tim->time_step_length;
 #else
 			eqs->b[it] -= m_vec_GEM->m_xDC_Chem_delta[it * nDC + i] /
