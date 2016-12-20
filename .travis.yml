@@ -8,7 +8,6 @@ sudo: required
 dist: trusty
 
 language: cpp
-compiler: gcc
 
 git:
   depth: 3
@@ -24,12 +23,20 @@ matrix:
 
   include:
     - env: CASE=LIS CMAKE_ARGS="-DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=$TRAVIS_BUILD_DIR/lis-cmake-master/include -DLIS_LIBRARIES=$TRAVIS_BUILD_DIR/lis-cmake-master/build/lib/liblis.a"
+      compiler: gcc
       addons:
         apt:
           packages:
             - gfortran
             #- numdiff
     - env: CASE=PETSC CMAKE_ARGS="-DOGS_FEM_PETSC=ON -DPETSC_DIR=/usr/lib/petscdir/3.4.2/"
+      compiler: gcc
+    - env: CASE=LIS CMAKE_ARGS="-DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=$TRAVIS_BUILD_DIR/lis-cmake-master/include -DLIS_LIBRARIES=$TRAVIS_BUILD_DIR/lis-cmake-master/build/lib/liblis.a"
+      compiler: clang
+      addons:
+        apt:
+          packages:
+            - gfortran
 
 before_install:
 
