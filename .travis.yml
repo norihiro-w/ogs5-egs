@@ -53,8 +53,8 @@ install:
   - if [[ "$BENCHMARK" == "ON" ]]; then wget https://github.com/norihiro-w/ogs5-egs-benchmarks/archive/master.zip; fi
   - if [[ "$BENCHMARK" == "ON" ]]; then unzip master.zip && mv ogs5-egs-benchmarks-master benchmarks; fi
   - if [[ "$BENCHMARK" == "ON" ]]; then pwd && ls -l; fi
-  - if [[ "$BENCHMARK" == "ON" ]]; export bench_input=`pwd`/benchmarks/input_files; fi
-  - if [[ "$BENCHMARK" == "ON" ]]; export bench_ref=`pwd`/benchmarks/ref_files; fi
+  - if [[ "$BENCHMARK" == "ON" ]]; then export bench_input=`pwd`/benchmarks/input_files; fi
+  - if [[ "$BENCHMARK" == "ON" ]]; then export bench_ref=`pwd`/benchmarks/ref_files; fi
 
 script:
   - mkdir build
