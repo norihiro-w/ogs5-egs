@@ -469,13 +469,7 @@ private:
 	int max_ele_dim;
 	int map_counter;
 
-	bool mapping_check;  // 23.01.2009 WW
-	/// Import shape file. 16.03.2026. WW
-	size_t ncols, nrows;
-	/// (x_0, y_0): coordinate of the left down corner
-	double x0, y0, csize, ndata_v;
-	std::vector<double> zz;  // Elevation
-	inline void ReadShapeFile(std::string const& fname);
+
 	/// Store border nodes among different grids.
 public:
 	std::vector<GridsTopo*> grid_neighbors;

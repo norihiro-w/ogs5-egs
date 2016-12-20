@@ -63,12 +63,6 @@ CFEMesh::CFEMesh(GEOLIB::GEOObjects* geo_obj, std::string* geo_name)
       NodesNumber_Quadratic(0),
       useQuadratic(false),
       _axisymmetry(false),
-      ncols(0),
-      nrows(0),
-      x0(0.0),
-      y0(0.0),
-      csize(0.0),
-      ndata_v(0.0),
       _mesh_grid(NULL)
 {
 	coordinate_system = 1;
@@ -76,7 +70,6 @@ CFEMesh::CFEMesh(GEOLIB::GEOObjects* geo_obj, std::string* geo_name)
 	max_ele_dim = 0;            // NW
 	pcs_name = "NotSpecified";  // WW
 	map_counter = 0;              // 21.01.2009 WW
-	mapping_check = false;        // 23.01.2009 WW
 	has_multi_dim_ele = false;    // NW
 	top_surface_checked = false;  // 07.06.2010.  WW
 }
