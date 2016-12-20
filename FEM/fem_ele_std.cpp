@@ -7,44 +7,32 @@
  *
  */
 
-/*
-   The members of class Element definitions.
- */
-
 #include "fem_ele_std.h"
 
-// C++ STL
 #include <cfloat>
-//#include <iostream>
-//#include <limits>	// PCH to better use system max and min
+
 #include "Configure.h"
 #include "memory.h"
-// Method
-#include "mathlib.h"
-// Problems
-//#include "rf_mfp_new.h"
-#include "rf_mmp_new.h"
-#include "rf_msp_new.h"
-#include "eos.h"
-#include "SparseMatrixDOK.h"
 
-#include "pcs_dm.h"  // displacement coupled
-#include "rfmat_cp.h"
-// Steps
-//#include "rf_pcs.h"
-//#include "rf_tim_new.h"
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+#include "mathlib.h"
+#if defined(USE_PETSC)
 #include "PETSC/PETScLinearSolver.h"
-#else
 #endif
 #ifdef NEW_EQS
 #include "equation_class.h"
-using Math_Group::CSparseMatrix;
 #endif
 
-#include "pcs_dm.h"                 // displacement coupled
+#include "ElementMatrix.h"
+#include "ElementValue.h"
+#include "eos.h"
 #include "fem_ele_vec.h"
 #include "mechanics_utils.h"
+#include "rfmat_cp.h"
+#include "rf_mmp_new.h"
+#include "rf_msp_new.h"
+#include "rf_pcs_dm.h"
+#include "SparseMatrixDOK.h"
+
 
 extern double gravity_constant;     // TEST, must be put in input file
 #define COMP_MOL_MASS_AIR 28.96     // kg/kmol WW  28.96
@@ -98,9 +86,6 @@ EnumProcessType getEnumProcessType(CRFProcess* pcs)
 			break;
 		case 'M':  // Mass transport
 			PcsType = M;
-			break;
-		case 'O':  // Overland flow
-			PcsType = O;
 			break;
 		case 'R':  // OK4104 Richards flow
 			PcsType = R;
@@ -278,10 +263,6 @@ CFiniteElementStd::CFiniteElementStd(CRFProcess* Pcs, const int C_Sys_Flad,
 			idx0 = pcs->GetNodeValueIndex(name2);
 			idx1 = idx0 + 1;
 			break;
-		case O:                        // Liquid flow
-			edlluse = new double[16];  // WW
-			edttuse = new double[16];
-			break;
 		case R:  // OK4104 Richards flow
 			// 02.2.2007 GravityMatrix = new  SymMatrix(size_m);
 			idx0 = pcs->GetNodeValueIndex("PRESSURE1");
@@ -398,7 +379,7 @@ CFiniteElementStd::CFiniteElementStd(CRFProcess* Pcs, const int C_Sys_Flad,
 			Advection = new Matrix(size_m, size_m);
 		}
 		if (D_Flag) StrainCoupling = new Matrix(size_m, 60);
-		RHS = new Vec(size_m);
+		RHS = new Vector(size_m);
 	}
 	//
 	StiffMatrix = new Matrix(size_m, size_m);
@@ -744,8 +725,6 @@ void CFiniteElementStd::ConfigureCoupling(CRFProcess* pcs, const int* Shift,
 				idx_c1 = idx_c0 + 1;
 			}
 			break;
-		case O:  // Liquid flow
-			break;
 		case R:          // Richards flow
 			if (T_Flag)  // if(PCSGet("HEAT_TRANSPORT"))
 			{
@@ -890,534 +869,6 @@ void CFiniteElementStd::SetMaterial(int /*phase*/)
 	//----------------------------------------------------------------------
 }
 
-/*************************************************************************
-   FEMLib-Function:
-   Task: Line element integration data for CVFEM overland flow
-      to move
-   Programming:
-     6/2007 : JOD
- **************************************************************************/
-void CFiniteElementStd::GetOverlandBasisFunctionMatrix_Line()
-{
-	edlluse[0] = 1.0;
-	edlluse[1] = -1.0;
-	edlluse[2] = -1.0;
-	edlluse[3] = 1.0;
-
-	edttuse[0] = 0.0;
-	edttuse[1] = 0.0;
-	edttuse[2] = 0.0;
-	edttuse[3] = 0.0;
-	////MB nur Zeitweise hier
-}
-/*************************************************************************
-   FEMLib-Function:
-   Task: Quad element integration data for CVFEM overland flow
-      to move
-   Programming:
-         ?    MB
- **************************************************************************/
-void CFiniteElementStd::GetOverlandBasisFunctionMatrix_Quad()
-{
-	edlluse[0] = 0.5;
-	edlluse[1] = -0.5;
-	edlluse[2] = 0.0;
-	edlluse[3] = 0.0;
-	edlluse[4] = -0.5;
-	edlluse[5] = 0.5;
-	edlluse[6] = 0.;
-	edlluse[7] = 0.;
-	edlluse[8] = 0.;
-	edlluse[9] = 0.;
-	edlluse[10] = 0.5;
-	edlluse[11] = -0.5;
-	edlluse[12] = 0.;
-	edlluse[13] = 0.;
-	edlluse[14] = -0.5;
-	edlluse[15] = 0.5;
-
-	edttuse[0] = 0.5;
-	edttuse[1] = 0.;
-	edttuse[2] = 0.;
-	edttuse[3] = -0.5;
-	edttuse[4] = 0.;
-	edttuse[5] = 0.5;
-	edttuse[6] = -0.5;
-	edttuse[7] = 0.;
-	edttuse[8] = 0.;
-	edttuse[9] = -0.5;
-	edttuse[10] = 0.5;
-	edttuse[11] = 0.;
-	edttuse[12] = -0.5;
-	edttuse[13] = 0.;
-	edttuse[14] = 0.;
-	edttuse[15] = 0.5;
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task: Calculates consitutive relationships for CVFEM Overland Flow -> swval,
-swold
-      for surface structure
-   Programing:
-   06/2005 MB Implementation
-   04/2007 JOD modifications
-**************************************************************************/
-void CFiniteElementStd::CalcOverlandNLTERMS(double* haa,
-                                            double* haaOld,
-                                            double* swval,
-                                            double* swold)
-{
-	if (MediaProp->channel == 1)
-		CalcOverlandNLTERMSChannel(haa, haaOld, swval, swold);
-	else
-		CalcOverlandNLTERMSRills(haa, haaOld, swval, swold);
-}
-/**************************************************************************
-   FEMLib-Method:
-   Task: Calculates consitutive relationships for CVFEM Overland Flow -> swval,
-swold
-      for surface structure
-   Programing:
-   06/2007 JOD implementation
-**************************************************************************/
-void CFiniteElementStd::CalcOverlandNLTERMSRills(double* haa,
-                                                 double* haaOld,
-                                                 double* swval,
-                                                 double* swold)
-{
-	double WDepth[4], WDepthOld[4];
-	double rill_height = MediaProp->rill_height;
-	double eps = MediaProp->rill_epsilon;
-
-	for (int i = 0; i < nnodes; i++)
-	{
-		WDepth[i] = haa[i] - Z[i];
-		WDepthOld[i] = haaOld[i] - Z[i];
-		if (MediaProp->rill_epsilon > 0)
-		{
-			if (WDepth[i] > 0)
-				swval[i] = (WDepth[i] + eps) * (WDepth[i] + eps) /
-				               (WDepth[i] + rill_height + eps) -
-				           pow(eps, 2.) / (rill_height + eps);
-			else
-				swval[i] = 0;
-
-			if (WDepthOld[i] > 0)
-				// JOD
-				swold[i] = (WDepthOld[i] + eps) * (WDepthOld[i] + eps) /
-				               (WDepthOld[i] + rill_height + eps) -
-				           pow(eps, 2.) / (rill_height + eps);
-			else
-				swold[i] = 0;
-		}  // end epsilon > 0
-		else
-		{
-			swval[i] = WDepth[i];
-			swold[i] = WDepthOld[i];
-		}
-	}
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task: Calculates consitutive relationships for CVFEM Overland Flow -> swval,
-swold
-      for channel
-   Programing:
-   06/2007 JOD Implementation
-**************************************************************************/
-void CFiniteElementStd::CalcOverlandNLTERMSChannel(double* haa,
-                                                   double* haaOld,
-                                                   double* swval,
-                                                   double* swold)
-{
-	double WDepth[4], WDepthOld[4];
-	double eps = MediaProp->rill_epsilon;
-	double ratio;
-	double xxx;
-
-	for (int i = 0; i < 2; i++)
-	{
-		WDepth[i] = haa[i] - Z[i];
-		WDepthOld[i] = haaOld[i] - Z[i];
-		if (eps > 0)
-		{
-			ratio = WDepth[i] / eps;
-			if (ratio > 1.0)
-				swval[i] = WDepth[i];
-			else if (ratio > 0.0)
-			{
-				xxx = 2.0 * (1.0 - ratio);
-				swval[i] = WDepth[i] * pow(ratio, xxx);
-			}
-			else
-				swval[i] = 0.0;
-			////////////////////////
-
-			ratio = WDepthOld[i] / eps;
-			if (ratio > 1.0)
-				swold[i] = WDepthOld[i];
-			else if (ratio > 0.0)
-			{
-				xxx = 2.0 * (1.0 - ratio);
-				swold[i] = WDepthOld[i] * pow(ratio, xxx);
-			}
-			else
-				swold[i] = 0.0;
-		}  // end epsilon > 0
-		else
-		{
-			swval[i] = WDepth[i];
-			swold[i] = WDepthOld[i];
-		}
-	}  // end for
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task: Calculates upstream weighting for CVFEM Overland Flow -> ckwr and iups
-   Programing:
-   06/2005 MB Implementation
-   04/2007 JOD modifications
-**************************************************************************/
-void CFiniteElementStd::CalcOverlandCKWR(double* head, double* ckwr, int* iups)
-{
-	double width = MediaProp->overland_width;
-	double depth_exp = MediaProp->friction_exp_depth;
-	double rill_depth = MediaProp->rill_height;
-	int i, j;
-	double maxZ;
-	double flow_depth;
-
-	for (i = 0; i < nnodes; i++)
-		for (j = 0; j < nnodes; j++)
-		{
-			maxZ = MMax(Z[i], Z[j]);
-			if (head[i] > head[j])
-			{
-				iups[i * nnodes + j] = i;
-				flow_depth = head[i] - maxZ - rill_depth;
-			}
-			else
-			{
-				iups[i * nnodes + j] = j;
-				flow_depth = head[j] - maxZ - rill_depth;
-			}
-			////////////////////////////////////////
-			if (flow_depth < 0.0)
-				ckwr[i * nnodes + j] = 0.0;
-			else
-			{
-				if (MediaProp->channel == 1)
-					ckwr[i * nnodes + j] =
-					    flow_depth *
-					    pow(flow_depth * width / (2 * flow_depth + width),
-					        depth_exp);
-				else
-					ckwr[i * nnodes + j] = pow(flow_depth, depth_exp + 1);
-			}
-		}  // end for j
-	       // end for i
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task: Calculates upstream weighting for CVFEM Overland Flow -> ckwr and iups
-      at node (i,j)
-     used in AssemleParabolicEquationNewtonJacobi()
-   Programing:
-   06/2005 MB Implementation
-   04/2007 JOD modifications
-**************************************************************************/
-void CFiniteElementStd::CalcOverlandCKWRatNodes(int i, int j, double* head,
-                                                double* ckwr, int* iups)
-{
-	double width = MediaProp->overland_width;
-	double depth_exp = MediaProp->friction_exp_depth;
-	double rill_depth = MediaProp->rill_height;
-	double flow_depth;
-	double maxZ;
-
-	maxZ = MMax(Z[i], Z[j]);
-	if (iups[i * nnodes + j] == i)
-		flow_depth = head[i] - maxZ - rill_depth;
-	else
-		flow_depth = head[j] - maxZ - rill_depth;
-	///////////////////////////////////////
-	if (flow_depth < 0.0)
-		*ckwr = 0;
-	else
-	{
-		if (MediaProp->channel == 1)
-			*ckwr = flow_depth* pow(
-			    flow_depth * width / (2 * flow_depth + width), depth_exp);
-		else
-			*ckwr = pow(flow_depth, depth_exp + 1);
-	}
-}
-/**************************************************************************
-   FEMLib-Method:
-   Task: calculate upwinded diffusion matric coefficient for CVFEM
-      used in AssemleParabolicEquationNewton()
-             AssemleParabolicEquationNewtonJacobi()
-   Programing:
-   06/2007 JOD Implementation
-**************************************************************************/
-void CFiniteElementStd::CalcOverlandUpwindedCoefficients(double** amat,
-                                                         double* ckwr,
-                                                         double axx,
-                                                         double ayy)
-{
-	// double** amat;
-	double gammaij;
-
-	// amat = (double**) Malloc(nnodes * sizeof(double));
-	// for (int i = 0; i < nnodes; i++)
-	//  amat[i] = (double*) Malloc(nnodes*sizeof(double));
-
-	// for (int i = 0; i < nnodes; i++)
-	//  for (int j = 0; j < nnodes; j++)
-	//    amat[i][j]= 0.0;
-
-	for (int i = 0; i < nnodes; i++)
-		for (int j = (i + 1); j < nnodes; j++)
-		{
-			gammaij = ckwr[i * nnodes + j] * ((edlluse[i * nnodes + j] * axx) +
-			                                  (edttuse[i * nnodes + j] * ayy));
-			amat[i][j] = gammaij;
-			amat[j][i] = gammaij;
-			amat[i][i] = amat[i][i] - gammaij;
-			amat[j][j] = amat[j][j] - gammaij;
-		}
-
-	// return amat;
-}
-/**************************************************************************
-   FEMLib-Method:
-   Task: residual vector for overland CVFEM
-      used in AssemleParabolicEquationNewton()
-   Programing:
-   06/2007 JOD Implementation
-**************************************************************************/
-void CFiniteElementStd::CalcOverlandResidual(double* head,
-                                             double* swval,
-                                             double* swold,
-                                             double ast,
-                                             double* residual,
-                                             double** amat)
-{
-	double sum;
-	double storinit[4], astor[4], rhs[4];
-
-	MNulleVec(astor, 4);
-	MNulleVec(rhs, nnodes);
-
-	for (int i = 0; i < nnodes; i++)  // storage term
-		rhs[i] = -ast * (swval[i] - swold[i]);
-
-	/* if(MediaProp->channel ==1){ // channel, JOD removed, don't know what it
-	   was for
-	    astor[0] = swval[0] * ast;
-	    astor[1] = swval[1] * ast;
-	   rhs[0] = swold[0] * ast * HaaOld[0]; // swval ?????
-	    rhs[1] = swold[1] * ast * HaaOld[1]; // swval ?????
-	   }
-	 */
-	// Form the residual excluding the right hand side vector
-
-	for (int i = 0; i < nnodes; i++)
-	{
-		sum = 0.0;
-		for (int j = 0; j < nnodes; j++)
-			sum = sum + (amat[i][j] * head[j]);
-		// astor = 0, rillDepth??
-		storinit[i] = -rhs[i] + astor[i] * (head[i] - Z[i]);
-		residual[i] = sum + storinit[i];
-	}
-}
-/**************************************************************************
-   FEMLib-Method:
-   Task: calcukate jacobi overland CVFEM
-      used in  AssemleParabolicEquationNewtonJacobi()
-   Programing:
-   06/2007 JOD Implementation
-**************************************************************************/
-double CFiniteElementStd::CalcOverlandJacobiNodes(int i,
-                                                  int j,
-                                                  double* head,
-                                                  double* headKeep,
-                                                  double akrw,
-                                                  double axx,
-                                                  double ayy,
-                                                  double** amat,
-                                                  double* sumjac)
-{
-	double jacobi, gammaij, amatEps, amatKeep;
-
-	gammaij =
-	    akrw * (axx * edlluse[i * nnodes + j] + ayy * edttuse[i * nnodes + j]);
-	amatEps = gammaij * (head[j] - head[i]);
-	amatKeep = amat[i][j] * (headKeep[j] - headKeep[i]);
-	jacobi = -(amatEps - amatKeep);
-
-	*sumjac = *sumjac + amatEps;
-
-	return jacobi;
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task: calculate topology coefficients for overland CVFEM
-   Programing:
-   08/2006 JOD Implementation
-**************************************************************************/
-void CFiniteElementStd::CalcOverlandCoefficients(double* head,
-                                                 double* axx,
-                                                 double* ayy,
-                                                 double* ast)
-{
-	if (MeshElement->GetElementType() == 1)
-	{
-		CalcOverlandCoefficientsLine(head, axx, ast);
-		ayy = 0;
-	}
-	else if (MeshElement->GetElementType() == 2)
-		CalcOverlandCoefficientsQuad(head, axx, ayy, ast);
-	else if (MeshElement->GetElementType() == 4)
-		CalcOverlandCoefficientsTri(head, axx, ayy, ast);
-	else
-		std::cout << "Error in CFiniteElementStd::CalcOverlandCoefficients !!!";
-}
-/**************************************************************************
-   FEMLib-Method:
-   Task:  calculate topology coefficientsfor overland CVFEM, line elements
-   Programing:
-   08/2006 JOD Implementation
-**************************************************************************/
-void CFiniteElementStd::CalcOverlandCoefficientsLine(double* head, double* axx,
-                                                     double* ast)
-{
-	double dx, dy;  // WW, dzx;
-	double delt, dhds;
-	double fric, width, eslope, slope_exp;
-
-	fric = MediaProp->friction_coefficient;
-	slope_exp = MediaProp->friction_exp_slope;
-	width = MediaProp->overland_width;
-
-	dx = X[1] - X[0];
-	dy = Y[1] - Y[0];
-	// WW dzx = Z[1] - Z[0];
-	delt = sqrt(dx * dx + dy * dy);
-	dhds = fabs((head[0] - head[1]) / delt);
-
-	GetOverlandBasisFunctionMatrix_Line();
-
-	dhds = MMax(1.0e-10, dhds);
-	eslope = 1.0 / dhds;
-	eslope = pow(eslope, 1 - slope_exp);
-
-	*axx = eslope* fric* width / delt;
-	*ast = delt* width / (double)(nnodes * dt);
-}
-/**************************************************************************
-   FEMLib-Method:
-   Task:  calculate topology coefficientsfor overland CVFEM, rectangles
-   Programing:
-   08/2006 JOD Implementation
-**************************************************************************/
-void CFiniteElementStd::CalcOverlandCoefficientsQuad(double* head,
-                                                     double* axx,
-                                                     double* ayy,
-                                                     double* ast)
-{
-	double dx, dy, dzx, dzy;
-	double delt;
-	double dhds, GradH[2];
-	double fric, eslope, slope_exp;
-
-	fric = MediaProp->friction_coefficient;
-	slope_exp = MediaProp->friction_exp_slope;
-
-	/////////////////////////////
-	dx = X[1] - X[0];  // ell
-	dy = Y[3] - Y[0];  // ett
-	dzx = Z[1] - Z[0];
-	dzy = Z[3] - Z[0];
-	dx = sqrt(dx * dx + dzx * dzx);
-	dy = sqrt(dy * dy + dzy * dzy);
-	delt = dx * dy;
-
-	GetOverlandBasisFunctionMatrix_Quad();
-
-	GradH[0] = (head[0] - head[1] - head[2] + head[3]) / (2.0 * dx);
-	GradH[1] = (head[0] + head[1] - head[2] - head[3]) / (2.0 * dy);
-	// dh/ds (dh in the direction of maximum slope)
-	dhds = sqrt((GradH[0] * GradH[0]) + (GradH[1] * GradH[1]));
-	dhds = MMax(1.0e-10, dhds);
-	eslope = 1.0 / dhds;
-	eslope = pow(eslope, 1 - slope_exp);
-
-	*axx = eslope* fric* dy / dx;  // ett/ell
-	*ayy = eslope* fric* dx / dy;
-	*ast = delt / (double)(nnodes * dt);
-}
-/**************************************************************************
-   FEMLib-Method:
-   Task:  calculate topology coefficientsfor overland CVFEM, triangles
-   Programing:
-   08/2006 JOD Implementation
-**************************************************************************/
-void CFiniteElementStd::CalcOverlandCoefficientsTri(double* head,
-                                                    double* axx,
-                                                    double* ayy,
-                                                    double* ast)
-{
-	double x2, x3, y2, y3;
-	double delt, delt2, delt2inv, b[3], g[3];
-	double dhds, GradH[2];
-	double fric, eslope, slope_exp;
-
-	fric = MediaProp->friction_coefficient;
-	slope_exp = MediaProp->friction_exp_slope;
-
-	x2 = X[1] - X[0];
-	x3 = X[2] - X[0];
-	y2 = Y[1] - Y[0];
-	y3 = Y[2] - Y[0];
-	delt = (x2 * y3 - x3 * y2) * 0.5;
-	delt2 = 2.0 * delt;
-	delt2inv = 1.0 / delt2;
-
-	/////////////////////  GetOverlandBasisFunctionMatrix_Tri()
-	b[0] = (y2 - y3) * delt2inv;
-	b[1] = y3 * delt2inv;
-	b[2] = -y2 * delt2inv;
-	g[0] = (x3 - x2) * delt2inv;
-	g[1] = -x3 * delt2inv;
-	g[2] = x2 * delt2inv;
-
-	for (int i = 0; i < nnodes; i++)
-		for (int j = 0; j < nnodes; j++)
-		{
-			edlluse[i * nnodes + j] = b[i] * b[j];
-			edttuse[i * nnodes + j] = g[i] * g[j];
-		}
-	//////////////////////////
-
-	GradH[0] = (b[0] * head[0] + b[1] * head[1] + b[2] * head[2]);
-	GradH[1] = (g[0] * head[0] + g[1] * head[1] + g[2] * head[2]);
-	// dh/ds (dh in the direction of maximum slope)
-	dhds = sqrt((GradH[0] * GradH[0]) + (GradH[1] * GradH[1]));
-	dhds = MMax(1.0e-10, dhds);
-	eslope = 1.0 / dhds;
-
-	eslope = pow(eslope, 1 - slope_exp);
-	*axx = eslope* fric* delt;
-	*ayy = eslope* fric* delt;
-	*ast = delt / (double)(nnodes * dt);
-}
 
 /**************************************************************************
    FEMLib-Method:
@@ -1671,9 +1122,6 @@ double CFiniteElementStd::CalCoefMass()
 			m_cp = cp_vec[pcs->pcs_component_number];
 			// Retardation Factor
 			val *= m_cp->CalcElementRetardationFactorNew(Index, unit, pcs);
-			break;
-		case O:  // Liquid flow
-			val = 1.0;
 			break;
 		case R:  // Richards
 			Sw = 1.0;
@@ -1988,8 +1436,6 @@ double CFiniteElementStd::CalCoefStorage()
 			// Retardation Factor
 			val *= m_cp->CalcElementRetardationFactorNew(Index, unit, pcs);
 			break;
-		case O:  // Liquid flow
-			break;
 		case R:  // Richards
 			break;
 		case F:  // Fluid Momentum
@@ -2077,8 +1523,6 @@ double CFiniteElementStd::CalCoefContent()
 			val = dS;
 			break;
 		}
-		case O:  // Liquid flow
-			break;
 		case R:  // Richards
 			break;
 		case F:  // Fluid Momentum
@@ -2439,53 +1883,6 @@ void CFiniteElementStd::CalCoefLaplace(bool Gravity, int ip)
 			//"RICHARDS_FLOW", "SATURATION1", 1);
 			for (size_t i = 0; i < dim * dim; i++)
 				mat[i] = tensor[i] * mat_fac * time_unit_factor;
-			break;
-		//------------------------------------------------------------------
-		case O:  // Overland flow
-			//................................................................
-			// H - water level
-			nidx1 = pcs->GetNodeValueIndex("HEAD") + 1;
-			Hav = 0.0;
-			for (int i = 0; i < nnodes; i++)
-			{
-				z[i] = MeshElement->GetNode(i)->getData()[2];
-				Hn[i] = pcs->GetNodeValue(MeshElement->GetNodeIndex(i), nidx1) -
-				        z[i];
-				if (Hn[i] < 0.0) Hn[i] = 0.0;
-				Hav += Hn[i] / (double)nnodes;
-			}
-			//................................................................
-			// Friction coefficient
-			tensor = MediaProp->PermeabilityTensor(Index);
-			// Manning-coefficient: n
-			manning = MediaProp->permeability_tensor[0];
-			// ToDo MB MMP function: m_mmp->FrictionCoefficientChezy(gp)
-			if (MediaProp->conductivity_model == 3)  // Chezy-coefficient C
-			{
-				expp = 1.0 / 6.0;
-				chezy = pow(Hav, expp) /
-				        manning;  // f? b >> h gilt: C = H**1/6 n**-1
-				// Grad H: grad_N H J^-1
-				MMultMatVec(dshapefct, dim, nnodes, Hn, nnodes, v1, dim);
-				MMultVecMat(v1, dim, invJacobian, dim, dim, GradH, dim);
-				// Grad z: ? s.Z.380ff
-				MMultMatVec(dshapefct, dim, nnodes, z, nnodes, v2, dim);
-				MMultVecMat(v2, dim, invJacobian, dim, dim, Gradz, dim);
-				w[0] = GradH[0] + Gradz[0];
-				w[1] = GradH[1] + Gradz[1];
-				chezy4 = MathLib::fastpow(chezy, 4);
-				Ss = ((w[0] * w[0]) / chezy4) + ((w[1] * w[1]) / chezy4);
-				Ss = pow(Ss, 0.25);
-				if (fabs(Ss) < 1.0e-7) Ss = 1.0e-7;
-				expp = 5.0 / 3.0;
-				arg = (pow(Hav, expp)) / (chezy * chezy);
-				mat_fac = arg / Ss;
-			}
-			//................................................................
-			// Tensor
-			for (size_t i = 0; i < dim * dim; i++)
-				// ToDo
-				mat[i] = tensor[i] / manning * mat_fac;
 			break;
 		//------------------------------------------------------------------
 		case R:  // Richards flow
@@ -3463,9 +2860,6 @@ double CFiniteElementStd::CalCoefAdvection()
 			    time_unit_factor;  //*MediaProp->Porosity(Index,pcs->m_num->ls_theta);
 			                       //// Porosity;
 			break;
-		case O:  // Liquid flow
-			val = 1.0;
-			break;
 		case R:  // Richards
 			break;
 		case F:  // Fluid Momentum
@@ -3504,14 +2898,9 @@ double CFiniteElementStd::CalCoefStrainCouping(const int phase)
 			val = 1.0;
 			break;
 		case U:  // Unconfined flow
-			break;
 		case G:  // Groundwater
-			break;
 		case T:  // Two-phase flow
-			break;
 		case C:  // Componental flow
-			break;
-		case O:  // Overland flow
 			break;
 		case R:                                // Richard flow
 			return interpolate(NodalVal_Sat);  // Water saturation
@@ -6032,118 +5421,6 @@ double CFiniteElementStd::InterpolatePropertyToGausspoint(int GPIndex,
 }
 
 /***************************************************************************
-   GeoSys - Funktion: Cal_GP_Velocity_DuMux
-   CFiniteElementStd:: Velocity calulation in gauss points from
-   node velocities obtained by DUMUX or ECLIPSE
-
-   Programming:  BG
-   08/2010	first version
- **************************************************************************/
-string CFiniteElementStd::Cal_GP_Velocity_DuMux(int* i_ind, CRFProcess* m_pcs,
-                                                int phase_index)
-{
-	int i;
-	static double temp_val_old[3] = {0.0, 0.0, 0.0},
-	              temp_val[3] = {0.0, 0.0, 0.0};
-	double value_old[3] = {0.0, 0.0, 0.0}, value[3] = {0.0, 0.0, 0.0};
-	// ---- Gauss integral
-	// WW int gp_r=0, gp_s=0, gp_t=0;
-	// WW double fkt=0.0;                             //OK411 coef = 0.0
-	int i_idx;
-	ostringstream temp;
-	string tempstring;
-
-	if (m_pcs->simulator == "DUMUX")
-	{
-		ElementValue* gp_ele = ele_gp_value[Index];
-
-		// Gauss point loop
-		for (gp = 0; gp < nGaussPoints; gp++)
-		{
-			for (size_t i_dim = 0; i_dim < dim; i_dim++)
-			{
-				temp_val[i_dim] = 0;
-				temp_val_old[i_dim] = 0;
-			}
-
-			// Get gauss point data
-			// GetGaussData(gp, gp_r, gp_s, gp_t);
-			// WW fkt = GetGaussData(gp, gp_r, gp_s, gp_t);
-			// Compute the shape function for interpolation within element
-			ComputeShapefct(1);
-
-			// Save former gp velocity
-			for (size_t i_dim = 0; i_dim < dim; i_dim++)
-			{
-				if (phase_index == 0)
-					temp_val_old[i_dim] = gp_ele->Velocity(i_dim, gp);
-				else
-					temp_val_old[i_dim] = gp_ele->Velocity_g(i_dim, gp);
-			}
-
-			// Interpolate velocity from nodes to gauss point for all three
-			// velocity components
-			for (size_t i_dim = 0; i_dim < dim; i_dim++)
-			{
-				// Get  velocities from FLUID_MOMENTUM process in element nodes:
-				i_idx = i_ind[i_dim];
-				for (i = 0; i < nnodes; i++)
-					NodalVal[i] = m_pcs->GetNodeValue(nodes[i], i_idx);
-				// NodalVal[i] = NodalVal[i] /gravity_constant/1000.0*0.001;
-				// //dirty fix for permebility to conductivity
-				temp_val[i_dim] = interpolate(NodalVal);
-			}  // end for dim
-
-			// Set gauss point velocity
-			for (size_t i_dim = 0; i_dim < dim; i_dim++)
-			{
-				if (phase_index == 0)
-					gp_ele->Velocity(i_dim, gp) = temp_val[i_dim];
-				else
-				{
-					if (phase_index == 1)
-						gp_ele->Velocity_g(i_dim, gp) = temp_val[i_dim];
-					else
-					{
-						cout << "The program is canceled because there is a "
-						        "phase used which is not considered yet!"
-						     << endl;
-						system("Pause");
-						exit(0);
-					}
-				}
-			}
-
-			// Data for Test Output
-			for (size_t i_dim = 0; i_dim < dim; i_dim++)
-				// average value of all Gauss points
-				value_old[i_dim] =
-				    value_old[i_dim] + temp_val_old[i_dim] / nGaussPoints;
-			for (size_t i_dim = 0; i_dim < dim; i_dim++)
-				// average value of all Gauss points
-				value[i_dim] = value[i_dim] + temp_val[i_dim] / nGaussPoints;
-		}  // end gauss point loop
-
-		// Data for Test Output
-		for (size_t i_dim = 0; i_dim < dim; i_dim++)
-		{
-			temp.str("");
-			temp.clear();
-			temp << value_old[i_dim];
-			tempstring += "; " + temp.str();
-		}
-		for (size_t i_dim = 0; i_dim < dim; i_dim++)
-		{
-			temp.str("");
-			temp.clear();
-			temp << value[i_dim];
-			tempstring += "; " + temp.str();
-		}
-	}
-	return tempstring;
-}
-
-/***************************************************************************
       GeoSys - Funktion:
               CFiniteElementStd:: Velocity calulation
 
@@ -7223,7 +6500,7 @@ void CFiniteElementStd::CalcFEM_FCT()
 		for (int j = 0; j < nnodes; j++)
 			(*FCT_MassL)(i) += (*Mass)(i, j);
 	// add into a global diagonal vector
-	Math_Group::Vec* ML = this->pcs->Gl_ML;
+	Math_Group::Vector* ML = this->pcs->Gl_ML;
 	for (int i = 0; i < nnodes; i++)
 	{
 #ifdef USE_PETSC
@@ -7584,167 +6861,6 @@ void CFiniteElementStd::AssembleMixedHyperbolicParabolicEquation()
 	      << " |" << endl;
 	      }
 	    */
-}
-/**************************************************************************
-   FEMLib-Method:
-   Task: Assemble local matrices of parabolic equation to the global system
-   Comment: Based on hydrosphere, CVFE Method, noch lange nicht allgemein,
-   Programing:
-   06/2005 MB Implementation
-   06/2007 JOD Separation of 1D channel and overland flow
-            Introduction of rill depth
-         Surface structure with parameter rill_epsilon in st-file
-**************************************************************************/
-void CFiniteElementStd::AssembleParabolicEquationNewton()
-{
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
-	double haaOld[4], haa[4];
-	int nidx;
-	double axx = 0, ayy = 0, ast = 0.0, ckwr[16];
-	double swval[4], swold[4];
-	double residual[4];
-	double** jacobian;
-	double** amat;
-	int iups[16];
-
-	jacobian = (double**)Malloc(nnodes * sizeof(double));
-	amat = (double**)Malloc(nnodes * sizeof(double));
-	for (int i = 0; i < nnodes; i++)
-	{
-		jacobian[i] = (double*)Malloc(nnodes * sizeof(double));
-		amat[i] = (double*)Malloc(nnodes * sizeof(double));
-	}
-
-	//////////////////////////// initialize with 0
-	MNulleMat(ckwr, nnodes, nnodes);
-	MNulleMat(edlluse, nnodes, nnodes);
-	MNulleMat(edttuse, nnodes, nnodes);
-	for (int i = 0; i < nnodes; i++)
-		for (int j = 0; j < nnodes; j++)
-		{
-			jacobian[i][j] = 0;
-			amat[i][j] = 0;
-		}
-
-	/////////////////////////// fetch head (depth)
-	nidx = pcs->GetNodeValueIndex("HEAD");
-
-	for (int i = 0; i < nnodes; i++)
-	{
-		haa[i] = pcs->GetNodeValue(nodes[i], nidx + 1);
-		haaOld[i] = pcs->GetNodeValue(nodes[i], nidx);
-	}
-	///////////////////////////// assemble upwinded coefficients
-	CalcOverlandCoefficients(haa, &axx, &ayy, &ast);
-	// compute axx, ayy, ast  basis functions edlluse, edttuse (element topology
-	// (with friction coef and inv. headdiff))
-	CalcOverlandNLTERMS(haa, haaOld, swval, swold);
-	// compute swval, swold, introduces surface structure in storage term
-	CalcOverlandCKWR(haa, ckwr, iups);
-	// compute ckwr, iups,  upstream weighting, hydraulic radius for channel
-	CalcOverlandUpwindedCoefficients(amat, ckwr, axx, ayy);
-	// Form elemental matrix
-	/////////////////////////// form residual vector and jacobi matrix
-	CalcOverlandResidual(haa, swval, swold, ast, residual, amat);
-	AssembleParabolicEquationNewtonJacobian(jacobian, haa, haaOld, axx, ayy,
-	                                        amat, ast, swold, residual, iups);
-	/////////////////////////// store
-	for (int i = 0; i < nnodes; i++)
-	{
-#if defined(NEW_EQS)  // WW
-		pcs->eqs_new->getRHS()[NodeShift[problem_dimension_dm] + eqs_number[i]] -=
-		    residual[i];
-#else
-		pcs->eqs->b[NodeShift[problem_dimension_dm] + eqs_number[i]] -=
-		    residual[i];
-#endif
-		for (int j = 0; j < nnodes; j++)
-#if defined(NEW_EQS)  // WW
-			(*pcs->eqs_new->getA())(NodeShift[problem_dimension_dm] + eqs_number[i],
-			                   NodeShift[problem_dimension_dm] +
-			                       eqs_number[j]) += jacobian[i][j];  // WW
-#endif
-	}
-
-	for (int i = 0; i < nnodes; i++)
-	{
-		free(jacobian[i]);
-		free(amat[i]);
-	}
-	free(jacobian);
-	free(amat);
-#endif
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task: Calculates jacobi matrix for AssembleParabolicEquationNewton()
-      be carefull with epsilon
-   Programing:
-   06/2007 JOD Implementation
-**************************************************************************/
-void CFiniteElementStd::AssembleParabolicEquationNewtonJacobian(
-    double** jacob,
-    double* haa,
-    double* hOld,
-    double axx,
-    double ayy,
-    double** amat,
-    double ast,
-    double* swold,
-    double* residual,
-    int* iups)
-{
-	// double** jacob;
-	double hEps[4], hKeep[4], swval_eps[4];
-	double sumjac, stor_eps, akrw, remember;
-	double epsilon = 1.e-7;  // be carefull, like in primary variable dependent
-	                         // source terms (critical depth, normal depth)
-
-	/* jacob = (double**) Malloc(nnodes * sizeof(double));
-	   for (int i = 0; i < nnodes; i++)
-	   jacob[i] = (double*) Malloc(nnodes*sizeof(double));
-	   for (int i = 0; i < nnodes; i++)
-	   for (int j = 0; j < nnodes; j++)
-	     jacob[i][j]= 0.0;
-	 */
-	for (int i = 0; i < nnodes; i++)
-	{
-		hEps[i] = haa[i] + epsilon;
-		hKeep[i] = haa[i];
-	}
-
-	CalcOverlandNLTERMS(hEps, hOld, swval_eps, swold);
-	// compute swval_eps, swold, introduces surface structure in storage term
-
-	for (int i = 0; i < nnodes; i++)  // Form jacobian !
-	{
-		remember = haa[i];
-		haa[i] = hEps[i];
-		sumjac = 0.0;
-
-		for (int j = 0; j < nnodes; j++)
-			if (i != j)  // nondiagonal
-			{
-				CalcOverlandCKWRatNodes(i, j, haa, &akrw, iups);
-				// compute ckwr, iups,  upstream weighting, hydraulic radius for
-				// channel
-				jacob[j][i] = CalcOverlandJacobiNodes(i, j, haa, hKeep, akrw,
-				                                      axx, ayy, amat, &sumjac) /
-				              epsilon;
-				// if(MediaProp->channel ==1)
-				// sumjac +=  swval_eps[i] * ast * (Haa[i] - Hold[i]);
-			}  // end if (i!=j)
-		// end j
-
-		// Compute diagonal for row i, Lump the storage term
-		stor_eps = ast * (swval_eps[i] - swold[i]);
-		sumjac = sumjac + stor_eps;
-		jacob[i][i] = (sumjac - residual[i]) / epsilon;
-		haa[i] = remember;
-	}  // end i
-
-	// return jacob;
 }
 
 void CFiniteElementStd::Assemble_totalStressCPL(const int phase)
@@ -8323,16 +7439,6 @@ void CFiniteElementStd::Assembly(bool updateA, bool updateRHS,
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
 			add2GlobalMatrixII();
 #endif
-			break;
-		//....................................................................
-		case O:  // Overland flow
-			if (pcs->m_num->nls_method == FiniteElement::NL_PICARD)  // PICARD
-			{
-				AssembleParabolicEquation();  // OK
-				add2GlobalMatrixII();
-			}
-			else
-				AssembleParabolicEquationNewton();  // NEWTON
 			break;
 		//....................................................................
 		case R:  // Richards flow
@@ -8968,81 +8074,6 @@ void CFiniteElementStd::CalcNodeMatParatemer()
 			pcs->SetNodeValue(nodes[i], idxp, nval);
 		}
 	}
-}
-
-// WW 08/2007
-ElementValue::ElementValue(CRFProcess* m_pcs, CElem* ele) : pcs(m_pcs)
-{
-	int NGPoints = 0, NGP = 0;
-	int ele_dim;
-
-	MshElemType::type ele_type = ele->GetElementType();
-	ele_dim = ele->GetDimension();
-
-	NGP = GetNumericsGaussPoints(ele_type);
-	if (ele_type == MshElemType::LINE)
-		// OKWW
-		NGPoints = m_pcs->m_num->ele_gauss_points;
-	else if (ele_type == MshElemType::TRIANGLE)
-		NGPoints = 3;
-	else if (ele_type == MshElemType::TETRAHEDRON)
-		NGPoints = 5;  // 15;
-	else
-		NGPoints = (int)MathLib::fastpow(NGP, ele_dim);
-
-	// WW Velocity.resize(m_pcs->m_msh->GetCoordinateFlag()/10, NGPoints);
-	Velocity.resize(3, NGPoints);
-	Velocity = 0.0;
-	Velocity0.resize(3, NGPoints);
-	Velocity0 = 0.0;
-	// 15.3.2007 Multi-phase flow WW
-	if (pcs->type == 1212 || pcs->type == 1313 || m_pcs->type == 42)
-	{
-		Velocity_g.resize(3, NGPoints);
-		Velocity_g = 0.0;
-	}
-}
-// WW 08/2007
-void ElementValue::getIPvalue_vec(const int IP, double* vec)
-{
-	// SB, BG
-	for (int i = 0; i < int(Velocity.Rows()); i++)
-		vec[i] = Velocity(i, IP);
-}
-// SB, BG 09/2010
-void ElementValue::getIPvalue_vec_phase(const int IP, int phase, double* vec)
-{
-	if (phase == 0)
-		for (int i = 0; (size_t)i < Velocity.Rows(); i++)
-			vec[i] = Velocity(i, IP);
-	else if (phase == 10)
-		for (int i = 0; (size_t)i < Velocity_g.Rows(); i++)
-			vec[i] = Velocity_g(i, IP);
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   01/2006 YD Implementation
-   last modification:
-**************************************************************************/
-void ElementValue::GetEleVelocity(double* vec)
-{
-	for (int i = 0; (size_t)i < Velocity.Rows(); i++)
-	{
-		vec[i] = 0.0;
-		for (int j = 0; (size_t)j < Velocity.Cols(); j++)
-			vec[i] += Velocity(i, j);
-		vec[i] /= Velocity.Cols();
-	}
-}
-// WW
-ElementValue::~ElementValue()
-{
-	Velocity.resize(0, 0);
-	Velocity0.resize(0, 0);
-	Velocity_g.resize(0, 0);
 }
 
 /**************************************************************************
@@ -12020,7 +11051,3 @@ void CFiniteElementStd::AssembleTHEquation(bool updateA, bool updateRHS)
 
 }  // end namespace
 
-//////////////////////////////////////////////////////////////////////////
-
-using FiniteElement::ElementValue;
-vector<ElementValue*> ele_gp_value;

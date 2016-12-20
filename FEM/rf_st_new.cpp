@@ -2261,21 +2261,8 @@ double GetRelativeCouplingPermeability(const CRFProcess* pcs, double head,
 	double relPerm;
 	double z = pcs->m_msh->nod_vector[msh_node]->getData()[2];
 
-	//	if (pcs->pcs_type_name == "OVERLAND_FLOW") {
-	if (pcs->getProcessType() == FiniteElement::OVERLAND_FLOW)
-	{
-		double sat = (head - z) / std::max(1.e-6, source_term->rill_height);
-		if (sat > 1)
-			relPerm = 1;
-		else if (sat < 0)
-			relPerm = 0;
-		else
-			relPerm = pow(sat, 2 * (1 - sat));
-	}
-	//	else if( pcs->pcs_type_name == "GROUNDWATER_FLOW")
-	else if (pcs->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
+	if (pcs->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
 		relPerm = 1;
-	//	else if( pcs->pcs_type_name == "RICHARDS_FLOW") {
 	else if (pcs->getProcessType() == FiniteElement::RICHARDS_FLOW)
 	{
 		/*CElem *m_ele = NULL;
@@ -2727,8 +2714,7 @@ void CSourceTermGroup::SetPolylineNodeVectorConditional(
 				for (size_t i = 0; i < number_of_nodes; i++)
 					ply_nod_vector[i] = assembled_mesh_node;
 			}  // end richards
-			else if (pcs_type_name == "OVERLAND_FLOW" ||
-			         pcs_type_name == "GROUNDWATER_FLOW")  // JOD 4.10.01
+			else if (pcs_type_name == "GROUNDWATER_FLOW")  // JOD 4.10.01
 			{
 				number_of_nodes = ply_nod_vector.size();
 				//				m_msh_cond->GetNODOnPLY(m_ply,
@@ -3187,8 +3173,7 @@ void CSourceTerm::SetNodeValues(const std::vector<long>& nodes,
 		{
 			m_nod_val->msh_node_number_conditional = nodes_cond[i];
 			// JOD 4.10.01
-			if ((getProcessType() == FiniteElement::OVERLAND_FLOW ||
-			     getProcessType() == FiniteElement::GROUNDWATER_FLOW) &&
+			if ((getProcessType() == FiniteElement::GROUNDWATER_FLOW) &&
 			    node_averaging)
 			{
 				double weights = 0;
@@ -3929,67 +3914,26 @@ void GetCouplingFieldVariables(double* h_this, double* h_cond,
 	*h_cond = m_pcs_cond->GetNodeValue(cnodev->msh_node_number_conditional,
 	                                   nidx_cond);
 
-	if (m_st->getProcessType() == FiniteElement::OVERLAND_FLOW)
+	if (m_st->pcs_pv_name_cond == "PRESSURE1")  // JOD 4.10.01
 	{
-		if (m_st->node_averaging)  // shift overland node on soil column top,
-		                           // averaging over nodes
-		{
-			*h_shifted = *h_this - *z_this + *z_cond;
-			*h_averaged = 0;
-			for (long i = 0;
-			     i < (long)cnodev->msh_node_numbers_averaging.size();
-			     i++)
-				*h_averaged +=
-				    cnodev->msh_node_weights_averaging[i] *
-				    (m_pcs_this->GetNodeValue(
-				         cnodev->msh_node_numbers_averaging[i], nidx) -
-				     m_pcs_this->m_msh
-				         ->nod_vector[cnodev->msh_node_numbers_averaging[i]]
-				         ->getData()[2]);
-
-			*h_averaged += *z_cond;
-			*z_this = *z_cond;
-		}     // end averaging
-		else  // no averaging
-		{
-			*h_shifted = *h_this;
-			*h_averaged = *h_this;
-		}  // end no averaging
-
-		if (m_st->pcs_pv_name_cond == "PRESSURE1")
-		{
-			*h_cond /= gamma;
-			*h_cond += *z_cond;
-		}
-		if (m_st->pcs_type_name_cond == "GROUNDWATER_FLOW")
-			h_cond = std::max(h_cond, z_this);  // groundwater level might not
-		                                        // reach overland flow bottom,
-		                                        // than only hydrostatic
-		                                        // overland pressure
-	}                                           // end overland flow
-	else                                        // richards & groundwater flow
+		*h_cond /= gamma;
+		*h_cond += *z_cond;
+	}
+	if (m_st->node_averaging)  // shift overland/groundwater node on soil
+							   // column top, averaging over nodes
 	{
-		if (m_st->pcs_pv_name_cond == "PRESSURE1")  // JOD 4.10.01
-		{
-			*h_cond /= gamma;
-			*h_cond += *z_cond;
-		}
-		if (m_st->node_averaging)  // shift overland/groundwater node on soil
-		                           // column top, averaging over nodes
-		{
-			*h_shifted = *h_cond - *z_cond;
-			*h_shifted += *z_this;
-			*z_cond = *z_this;
-		}  // end averaging
-		else
-			*h_shifted = *h_cond;
+		*h_shifted = *h_cond - *z_cond;
+		*h_shifted += *z_this;
+		*z_cond = *z_this;
+	}  // end averaging
+	else
+		*h_shifted = *h_cond;
 
-		if (m_st->getProcessPrimaryVariable() == FiniteElement::PRESSURE)
-		{
-			*h_this /= gamma;
-			*h_this += *z_this;
-		}
-	}  // end richards & groundwater flow
+	if (m_st->getProcessPrimaryVariable() == FiniteElement::PRESSURE)
+	{
+		*h_this /= gamma;
+		*h_this += *z_this;
+	}
 }
 
 /**************************************************************************
@@ -3999,24 +3943,14 @@ void GetCouplingFieldVariables(double* h_this, double* h_cond,
 double CalcCouplingValue(double factor, double h_this, double h_cond,
                          double z_cond, CSourceTerm* m_st)
 {
-	if (m_st->getProcessType() == FiniteElement::OVERLAND_FLOW)
+	if (m_st->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
 	{
-		if (m_st->no_surface_water_pressure)  // 4.10.01
+		if (h_this < z_cond && m_st->pcs_type_name_cond == "OVERLAND_FLOW")
 			return factor * (h_cond - z_cond);
 		else
-			return factor * (h_cond - h_this);
-	}  // richards & groundwater flow
-	else
-	{
-		if (m_st->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
-		{
-			if (h_this < z_cond && m_st->pcs_type_name_cond == "OVERLAND_FLOW")
-				return factor * (h_cond - z_cond);
-			else
-				return factor * h_cond;
-		}
-		else
-			// richards flow
-			return factor * (h_cond - z_cond);
+			return factor * h_cond;
 	}
+	else
+		// richards flow
+		return factor * (h_cond - z_cond);
 }

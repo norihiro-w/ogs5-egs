@@ -263,18 +263,6 @@ void MSHMoveNODUcFlow(CRFProcess* m_pcs)
 			else /* ohne Dichteunterschiede */
 				head = m_pcs->GetNodeValue(strang[0], nidy);
 
-			/* nicht �ber surface elevation */
-			CRFProcess* m_pcs_OLF = NULL;
-			m_pcs_OLF = PCSGet("OVERLAND_FLOW");
-			double SurfaceZ;
-
-			if (m_pcs_OLF != NULL)
-			{
-				SurfaceZ =
-				    m_pcs_OLF->m_msh->nod_vector[strang[0]]->getData()[2];
-				if (head > SurfaceZ) head = SurfaceZ;
-			}
-
 			/* Set minimum thickness */
 			z_bottom =
 			    m_pcs->m_msh->nod_vector[strang[anz_zeilen]]->getData()[2];

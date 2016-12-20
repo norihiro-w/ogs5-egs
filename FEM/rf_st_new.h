@@ -290,30 +290,6 @@ public:
 	}
 	void Set(CRFProcess* m_pcs, const int ShiftInNodeVector,
 	         std::string this_pv_name = "");
-	// WW    std::vector<CNodeValue*>group_vector;
-	/**
-	 * \brief process type for the physical process
-	 * possible values are
-	 * <table>
-	 * <tr><td>LIQUID_FLOW</td> <td>H process (incompressible flow)</td></tr>
-	 * <tr><td>GROUNDWATER_FLOW</td> <td>H process (incompressible
-	 * flow)</td></tr>
-	 * <tr><td>RIVER_FLOW</td> <td>H process (incompressible flow)</td></tr>
-	 * <tr><td>RICHARDS_FLOW</td> <td>H process (incompressible flow)</td></tr>
-	 * <tr><td>OVERLAND_FLOW</td> <td>process (incompressible flow)</td></tr>
-	 * <tr><td>GAS_FLOW</td> <td>H process (compressible flow)</td></tr>
-	 * <tr><td>TWO_PHASE_FLOW</td> <td>H2 process (incompressible/compressible
-	 * flow)</td></tr>
-	 * <tr><td>COMPONENTAL_FLOW</td> <td>H2 process (incompressible/compressible
-	 * flow)</td></tr>
-	 * <tr><td>HEAT_TRANSPORT</td> <td>T process (single/multi-phase
-	 * flow)</td></tr>
-	 * <tr><td>DEFORMATION</td> <td>M process (single/multi-phase
-	 * flow)</td></tr>
-	 * <tr><td>MASS_TRANSPORT</td> <td>C process (single/multi-phase
-	 * flow)</td></tr>
-	 * </table>
-	 */
 	std::string pcs_name;
 	std::string pcs_type_name;  // OK
 	std::string pcs_pv_name;    // OK

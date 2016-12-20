@@ -7,16 +7,6 @@
  *
  */
 
-/*========================================================================
-   GeoSys - class Matrix (Definition)
-		  class vec
-   Task:       Matrix object for full matrices.  If the size of matrix is
-			 small, this class can do efficient matrix operation.
-   Function:   See the definition below
-   programming:
-   22/08/2004  WW
-   ==========================================================================*/
-
 #include "sparse_matrix.h"
 
 #include <cfloat>
@@ -28,9 +18,6 @@
 
 namespace Math_Group
 {
-
-////////////////////////////////////////////////////////////
-#ifdef NEW_EQS
 
 /*\!
  ********************************************************************
@@ -61,8 +48,7 @@ CSparseMatrix::CSparseMatrix(const SparseTable& sparse_table, const int dof)
 	entry = new double[dof * dof * size_entry_column + 1];
 	entry[dof * dof * size_entry_column] = 0.;
 	zero_e = 0.;
-//
-#ifdef LIS  // PCH
+
 	IndexType counter, counter_ptr = 0, counter_col_idx = 0;
 	IndexType i, k, ii, jj, J, K;
 	IndexType row_in_sparse_table;
@@ -152,9 +138,8 @@ CSparseMatrix::CSparseMatrix(const SparseTable& sparse_table, const int dof)
 			}
 		}
 	}
-
-#endif
 }
+
 /*\!
  ********************************************************************
    Desstructor of sparse matrix
@@ -166,14 +151,12 @@ CSparseMatrix::~CSparseMatrix()
 	delete[] entry;
 	entry = NULL;
 
-#ifdef LIS  // PCH
 	delete[] ptr;
 	ptr = NULL;
 	delete[] col_idx;
 	col_idx = NULL;
 	delete[] entry_index;
 	entry_index = NULL;
-#endif
 }
 /*\!
  ********************************************************************
@@ -469,200 +452,6 @@ void CSparseMatrix::Write_BIN(std::ostream& os)
 	}
 }
 
-/********************************************************************
-   Perform A*x
-   Arguments:
-	 vec_sr: M*vec_s-->vec_r
-   01/2006 WW
-   08/2007 WW
-   10/2007 WW
-   03/2011 WW      CRS storage
-********************************************************************/
-void CSparseMatrix::multiVec(double* vec_s, double* vec_r)
-{
-	long i, j, k, ii, jj, kk, ll, idof, jdof, counter;
-	for (i = 0; i < rows * DOF; i++)
-		vec_r[i] = 0.0;
-	//
-	counter = 0;
-	if (DOF > 1)
-	{
-		// Although this piece of code can deal with the case
-		// of DOF = 1, we also prepare a special piece of code for
-		// the case of DOF = 1 just for efficiency
-		if (storage_type == CRS)
-		{
-			/// ptr is num_column_entries
-			for (ii = 0; ii < rows; ii++)
-				for (j = num_column_entries[ii]; j < num_column_entries[ii + 1];
-					 j++)
-				{
-					jj = entry_column[j];
-					for (idof = 0; idof < DOF; idof++)
-					{
-						kk = idof * rows + ii;
-						for (jdof = 0; jdof < DOF; jdof++)
-						{
-							ll = jdof * rows + jj;
-							k = (idof * DOF + jdof) * size_entry_column + j;
-							vec_r[kk] += entry[k] * vec_s[ll];
-							if (symmetry & (kk != ll))
-								vec_r[ll] += entry[k] * vec_s[kk];
-						}
-					}
-				}
-		}
-		else if (storage_type == JDS)
-		{
-			for (k = 0; k < max_columns; k++)
-				for (i = 0; i < num_column_entries[k]; i++)
-				{
-					ii = row_index_mapping_n2o[i];
-					jj = entry_column[counter];
-					for (idof = 0; idof < DOF; idof++)
-					{
-						kk = idof * rows + ii;
-						for (jdof = 0; jdof < DOF; jdof++)
-						{
-							ll = jdof * rows + jj;
-							j = (idof * DOF + jdof) * size_entry_column +
-								counter;
-							vec_r[kk] += entry[j] * vec_s[ll];
-							if (symmetry & (kk != ll))
-								vec_r[ll] += entry[j] * vec_s[kk];
-						}
-					}
-					counter++;
-				}
-		}
-	}
-	else  // DOF = 1
-	{
-		if (storage_type == CRS)
-		{
-			/// ptr is num_column_entries
-			for (ii = 0; ii < rows; ii++)
-				for (j = num_column_entries[ii]; j < num_column_entries[ii + 1];
-					 j++)
-				{
-					jj = entry_column[j];
-					vec_r[ii] += entry[j] * vec_s[jj];
-					if (symmetry & (ii != jj))
-						vec_r[jj] += entry[j] * vec_s[ii];
-				}
-		}
-		else if (storage_type == JDS)
-		{
-			for (k = 0; k < max_columns; k++)
-				for (i = 0; i < num_column_entries[k]; i++)
-				{
-					ii = row_index_mapping_n2o[i];
-					jj = entry_column[counter];
-					vec_r[ii] += entry[counter] * vec_s[jj];
-					if (symmetry & (ii != jj))
-						vec_r[jj] += entry[counter] * vec_s[ii];
-					counter++;
-				}
-		}
-	}
-}
-
-/*\!
- ********************************************************************
-   Perform A^T*x
-   Arguments:
-	  vec_sr: M^T*vec_s-->vec_r
-   10/2010 WW
-   03/2011 WW      CRS storage
- ********************************************************************/
-void CSparseMatrix::Trans_MultiVec(double* vec_s, double* vec_r)
-{
-	long i, j, k, ii, jj, kk, ll, idof, jdof, counter;
-	for (i = 0; i < rows * DOF; i++)
-		vec_r[i] = 0.0;
-	//
-	counter = 0;
-	if (DOF > 1)
-	{
-		// Although this piece of code can deal with the case
-		// of DOF = 1, we also prepare a special piece of code for
-		// the case of DOF = 1 just for efficiency
-		if (storage_type == CRS)
-		{
-			/// ptr is num_column_entries
-			for (ii = 0; ii < rows; ii++)
-				for (j = num_column_entries[ii]; j < num_column_entries[ii + 1];
-					 j++)
-				{
-					jj = entry_column[j];
-					for (idof = 0; idof < DOF; idof++)
-					{
-						kk = idof * rows + ii;
-						for (jdof = 0; jdof < DOF; jdof++)
-						{
-							ll = jdof * rows + jj;
-							k = (idof * DOF + jdof) * size_entry_column + j;
-							vec_r[ll] += entry[k] * vec_s[kk];
-							if (symmetry & (kk != ll))
-								vec_r[kk] += entry[k] * vec_s[ll];
-						}
-					}
-				}
-		}
-		else if (storage_type == JDS)
-		{
-			for (k = 0; k < max_columns; k++)
-				for (i = 0; i < num_column_entries[k]; i++)
-				{
-					ii = row_index_mapping_n2o[i];
-					jj = entry_column[counter];
-					for (idof = 0; idof < DOF; idof++)
-					{
-						kk = idof * rows + ii;
-						for (jdof = 0; jdof < DOF; jdof++)
-						{
-							ll = jdof * rows + jj;
-							j = (idof * DOF + jdof) * size_entry_column +
-								counter;
-							vec_r[ll] += entry[j] * vec_s[kk];
-							if (symmetry & (kk != ll))
-								vec_r[kk] += entry[j] * vec_s[ll];
-						}
-					}
-					counter++;
-				}
-		}
-	}
-	else  // DOF = 1
-	{
-		if (storage_type == CRS)
-		{
-			/// ptr is num_column_entries
-			for (ii = 0; ii < rows; ii++)
-				for (j = num_column_entries[ii]; j < num_column_entries[ii + 1];
-					 j++)
-				{
-					jj = entry_column[j];
-					vec_r[jj] += entry[j] * vec_s[ii];
-					if (symmetry & (ii != jj))
-						vec_r[ii] += entry[j] * vec_s[jj];
-				}
-		}
-		else if (storage_type == JDS)
-		{
-			for (k = 0; k < max_columns; k++)
-				for (i = 0; i < num_column_entries[k]; i++)
-				{
-					ii = row_index_mapping_n2o[i];
-					jj = entry_column[counter];
-					vec_r[jj] += entry[counter] * vec_s[ii];
-					if (symmetry & (ii != jj))
-						vec_r[ii] += entry[counter] * vec_s[jj];
-					counter++;
-				}
-		}
-	}
-}
 /*\!
  ********************************************************************
    Set
@@ -784,56 +573,6 @@ void CSparseMatrix::Diagonize(const long idiag, const double b_given, double* b)
 	b[idiag] = vdiag * b_given;
 }
 
-/*\!
- ********************************************************************
-   M^{-1}*A
-
-		  a_ij  i=j
-   M = {
-		  0     i!=j
-   Programm:
-   10/2007 WW
- ********************************************************************/
-void CSparseMatrix::Precond_Jacobi(double* vec_s, double* vec_r)
-{
-	long i, idof;
-	double diag = 0.;
-	//
-	if (DOF > 1)
-	{
-		// Although this piece of code can deal with the case
-		// of DOF = 1, we also prepare a special piece of code for
-		// the case of DOF = 1 just for efficiency
-		for (i = 0; i < rows; i++)
-			for (idof = 0; idof < DOF; idof++)
-			{
-				diag = entry[(idof * DOF + idof) * size_entry_column +
-							 diag_entry[i]];
-				if (fabs(diag) < DBL_MIN)
-					//        if(fabs(diag)<DBL_EPSILON)
-					diag = 1.0;
-				//  std::cout<<"Diagonal entry is zero. Abort simulation!!  "
-				//  <<"\n";
-				vec_r[idof * rows + i] = vec_s[idof * rows + i] / diag;
-			}
-		//
-	}
-	else  // DOF = 1
-
-		for (i = 0; i < rows; i++)
-		{
-			diag = entry[diag_entry[i]];
-			// if(fabs(diag)<DBL_EPSILON)
-			if (fabs(diag) < DBL_MIN) diag = 1.0;
-			//   std::cout<<"Diagonal entry is zero. Abort simulation!!  "
-			//   <<"\n";
-			//
-			vec_r[i] = vec_s[i] / diag;
-		}
-}
-
-
-#ifdef LIS
 /********************************************************************
    Get sparse matrix values in compressed row storage
    Programm:
@@ -850,8 +589,5 @@ int CSparseMatrix::GetCRSValue(double* value)
 
 	return success;
 }
-#endif  // LIS
-#endif  // NEW_EQS
-///////////////////////////////////////////////////////////
 
 }  // Namespace

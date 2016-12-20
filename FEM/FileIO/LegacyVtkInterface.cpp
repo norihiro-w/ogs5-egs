@@ -10,30 +10,28 @@
  *              http://www.opengeosys.org/project/license
  */
 
-// ** INCLUDES **
 #include "LegacyVtkInterface.h"
 
+#include <iomanip>
+#include <string>
+
 #include "display.h"
-#include "FEMEnums.h"
-#include "ProcessInfo.h"
-#include "fem_ele_std.h"
+
 #include "matrix_class.h"
+
 #include "msh_lib.h"
 #include "msh_mesh.h"
-#include "rf_mmp_new.h"  // this is for class CMediumProperties, what else???
-#include "rf_pcs.h"
-#include "rf_pcs.h"
 
+#include "FEMEnums.h"
+#include "fem_ele_std.h"
+#include "ElementValue.h"
+#include "ProcessInfo.h"
+#include "rf_mmp_new.h"
+#include "rf_pcs.h"
 #ifdef GEM_REACT
 #include "rf_REACT_GEM.h"
-#endif  // GEM_REACT
-
-#include <string>
-#include <iomanip>
-
-#if defined(VTK_FOUND) && defined(OGS_USE_QT)
-#include "vtkMath.h"
 #endif
+
 
 using namespace std;
 

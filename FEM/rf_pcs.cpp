@@ -9,63 +9,65 @@
 
 #include "rf_pcs.h"
 
-// C
 #ifndef __APPLE__
 #include <malloc.h>
 #endif
 
-// C++
 #include <cfloat>
 #include <iomanip>
 #include <iostream>
 #include <algorithm>
 #include <set>
 
-/*--------------------- OpenMP Parallel ------------------*/
-#if defined(LIS)
-#include "lis.h"
-#endif
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-/*--------------------- OpenMP Parallel ------------------*/
 
-#include "makros.h"
+#if defined(LIS)
+#include <lis.h>
+#endif
+
 #include "display.h"
 #include "FileToolsRF.h"
+#include "makros.h"
 #include "memory.h"
 #include "MemWatch.h"
 #include "StringTools.h"
 
-#include "rf_pcs_TH.h"
 
 #include "Curve.h"
+#if defined(NEW_EQS)
+#include "equation_class.h"
+#endif
 #include "mathlib.h"
 #include "InterpolationAlgorithms/InverseDistanceInterpolation.h"
 #include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
+#if defined(USE_PETSC)
+#include "PETSC/PETScLinearSolver.h"
+#endif
 
 #include "PointWithID.h"
 
 #include "msh_faces.h"
 
 #include "DistributionTools.h"
+#include "ElementMatrix.h"
 #include "eos.h"
 #include "fct_mpi.h"
 #include "FEMEnums.h"
 #include "fem_ele_std.h"
+#include "ElementValue.h"
 #include "files0.h"
 #include "msh_tools.h"
 #include "Output.h"
-#include "pcs_dm.h"
 #include "problem.h"
 #include "rfmat_cp.h"
 #include "rf_ic_new.h"
 #include "rf_fct.h"
 #include "rf_msp_new.h"
 #include "rf_node.h"
-#include "rf_st_new.h"
-#include "tools.h"
-
+#include "rf_pcs_dm.h"
+#include "rf_pcs_TH.h"
 #ifdef GEM_REACT
 // GEMS chemical solver
 #include "rf_REACT_GEM.h"
@@ -76,14 +78,8 @@ REACT_GEM* m_vec_GEM;
 #include "rf_REACT_BRNS.h"
 REACT_BRNS* m_vec_BRNS;
 #endif
-
-#if defined(USE_PETSC)
-#include "PETSC/PETScLinearSolver.h"
-#elif defined(NEW_EQS)
-#include "equation_class.h"
-#endif
-
-// MathLib
+#include "rf_st_new.h"
+#include "tools.h"
 
 
 using namespace std;
@@ -517,8 +513,6 @@ CRFProcess::~CRFProcess(void)
 **************************************************************************/
 void CRFProcess::AllocateMemGPoint()
 {
-	//	if (_pcs_type_name.find("FLOW") == 0)
-	//		return;
 	const size_t mesh_ele_vector_size(m_msh->ele_vector.size());
 	for (size_t i = 0; i < mesh_ele_vector_size; i++)
 		ele_gp_value.push_back(new ElementValue(this, m_msh->ele_vector[i]));
@@ -681,9 +675,9 @@ void CRFProcess::Create()
 		long gl_size = m_msh->GetNodesNumber(false);
 #endif
 		this->FCT_AFlux = new SparseMatrixDOK(gl_size, gl_size);
-		this->Gl_ML = new Math_Group::Vec(gl_size);
-		this->Gl_Vec = new Math_Group::Vec(gl_size);
-		this->Gl_Vec1 = new Math_Group::Vec(gl_size);
+		this->Gl_ML = new Math_Group::Vector(gl_size);
+		this->Gl_Vec = new Math_Group::Vector(gl_size);
+		this->Gl_Vec1 = new Math_Group::Vector(gl_size);
 	}
 	//----------------------------------------------------------------------------
 	// EQS - create equation system
@@ -2307,26 +2301,22 @@ void CRFProcess::Config(void)
 		cout << "Error in CRFProcess::Config - no MSH data" << endl;
 		return;
 	}
-	CheckMarkedElement();  // WW
+	CheckMarkedElement();
 
-	if (continuum_vector.size() == 0)  // YD
+	if (continuum_vector.size() == 0)
 		continuum_vector.push_back(1.0);
 
-	//	if (_pcs_type_name.compare("LIQUID_FLOW") == 0) {
-	if (this->getProcessType() == FiniteElement::LIQUID_FLOW ||
-	    this->getProcessType() == FiniteElement::FLUID_FLOW)
+	if (this->getProcessType() == FiniteElement::LIQUID_FLOW)
 	{
 		//		ScreenMessage2("CRFProcess::Config LIQUID_FLOW\n");
 		type = 1;
 		ConfigLiquidFlow();
 	}
-	//	if (_pcs_type_name.compare("GROUNDWATER_FLOW") == 0) {
 	if (this->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
 	{
 		type = 1;
 		ConfigGroundwaterFlow();
 	}
-	//	if (_pcs_type_name.compare("RICHARDS_FLOW") == 0) {
 	if (this->getProcessType() == FiniteElement::RICHARDS_FLOW)
 	{
 		if (continuum_vector.size() > 1)
@@ -2338,66 +2328,44 @@ void CRFProcess::Config(void)
 			type = 14;
 		ConfigUnsaturatedFlow();
 	}
-	//	if (_pcs_type_name.compare("OVERLAND_FLOW") == 0) {
-	if (this->getProcessType() == FiniteElement::OVERLAND_FLOW)
-	{
-		type = 66;
-		max_dim = 1;
-		ConfigGroundwaterFlow();
-	}
-	//	if (_pcs_type_name.compare("AIR_FLOW") == 0) { //OK
-	if (this->getProcessType() == FiniteElement::AIR_FLOW)  // OK
+	if (this->getProcessType() == FiniteElement::AIR_FLOW)
 	{
 		type = 5;
 		ConfigGasFlow();
 	}
-	//	if (_pcs_type_name.compare("TWO_PHASE_FLOW") == 0) {
 	if (this->getProcessType() == FiniteElement::TWO_PHASE_FLOW)
 	{
 		type = 12;
 		ConfigMultiphaseFlow();
 	}
-	//	if (_pcs_type_name.compare("COMPONENTAL_FLOW") == 0) {
-	//	if (COMPONENTAL_FLOW) {
-	//		type = 11;
-	//		ConfigNonIsothermalFlow();
-	//	}
-	//	if (_pcs_type_name.compare("HEAT_TRANSPORT") == 0) {
 	if (this->getProcessType() == FiniteElement::HEAT_TRANSPORT)
 	{
 		type = 3;
 		ConfigHeatTransport();
 	}
-	//	if (_pcs_type_name.compare("MASS_TRANSPORT") == 0) {
 	if (this->getProcessType() == FiniteElement::MASS_TRANSPORT)
 	{
 		type = 2;
 		ConfigMassTransport();
 	}
-	//	if (_pcs_type_name.find("DEFORMATION") != string::npos)
 	if (isDeformationProcess(getProcessType())) ConfigDeformation();
-	//	if (_pcs_type_name.find("FLUID_MOMENTUM") != string::npos
 	if (this->getProcessType() == FiniteElement::FLUID_MOMENTUM)
 	{
-		type = 55;  // WW
+		type = 55;
 		ConfigFluidMomentum();
 	}
-	//	if (_pcs_type_name.find("RANDOM_WALK") != string::npos) {
 	if (this->getProcessType() == FiniteElement::RANDOM_WALK)
 	{
-		type = 55;  // WW
+		type = 55;
 		ConfigRandomWalk();
 	}
-	//	if (_pcs_type_name.find("MULTI_PHASE_FLOW") != string::npos)
-	//{//24.02.2007 WW
 	if (this->getProcessType() ==
-	    FiniteElement::MULTI_PHASE_FLOW)  // 24.02.2007 WW
+		FiniteElement::MULTI_PHASE_FLOW)
 	{
 		type = 1212;
 		ConfigMultiPhaseFlow();
 	}
-	//	if (_pcs_type_name.find("PS_GLOBAL") != string::npos) {//24.02.2007 WW
-	if (this->getProcessType() == FiniteElement::PS_GLOBAL)  // 24.02.2007 WW
+	if (this->getProcessType() == FiniteElement::PS_GLOBAL)
 	{
 		type = 1313;
 		ConfigPS_Global();
@@ -4623,7 +4591,7 @@ void CRFProcess::AddFCT_CorrectionVector()
 	SparseMatrixDOK::col_t* col;
 	SparseMatrixDOK::mat_t::const_iterator ii;
 	SparseMatrixDOK::col_t::const_iterator jj;
-	Math_Group::Vec* ML = this->Gl_ML;
+	Math_Group::Vector* ML = this->Gl_ML;
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;  // WW
 	A = this->eqs_new->getA();
@@ -4768,8 +4736,8 @@ void CRFProcess::AddFCT_CorrectionVector()
 	//----------------------------------------------------------------------
 	// Assemble RHS: b_i += [- (1-theta) * L_ij] u_j^n
 	//----------------------------------------------------------------------
-	Math_Group::Vec* V1 = this->Gl_Vec1;
-	Math_Group::Vec* V = this->Gl_Vec;
+	Math_Group::Vector* V1 = this->Gl_Vec1;
+	Math_Group::Vector* V = this->Gl_Vec;
 	(*V1) = 0.0;
 	(*V) = 0.0;
 #if !defined(USE_PETSC)
@@ -4866,8 +4834,8 @@ void CRFProcess::AddFCT_CorrectionVector()
 	// Assemble RHS: b += alpha * f
 	//----------------------------------------------------------------------
 	// Calculate R+, R-
-	Math_Group::Vec* R_plus = this->Gl_Vec1;
-	Math_Group::Vec* R_min = this->Gl_Vec;
+	Math_Group::Vector* R_plus = this->Gl_Vec1;
+	Math_Group::Vector* R_min = this->Gl_Vec;
 	(*R_plus) = 0.0;
 	(*R_min) = 0.0;
 	for (size_t i = 0; i < node_size; i++)
@@ -5021,8 +4989,6 @@ void CRFProcess::GlobalAssembly()
 
 	bool Check2D3D;
 	Check2D3D = false;
-	if (type == 66)  // Overland flow
-		Check2D3D = true;
 	if (this->femFCTmode)  // NW
 	{
 		(*this->FCT_AFlux) = 0.0;
@@ -5245,9 +5211,6 @@ void CRFProcess::Integration(vector<double>& node_velue)
 	bool Check2D3D;
 	Check2D3D = false;
 	double n_val[8];
-
-	if (type == 66)  // Overland flow
-		Check2D3D = true;
 
 	vector<double> buffer((long)node_velue.size());
 	for (i = 0; i < (long)buffer.size(); i++)
@@ -7017,9 +6980,6 @@ std::string PCSProblemType()
 			case FiniteElement::LIQUID_FLOW:
 				pcs_problem_type = "LIQUID_FLOW";
 				break;
-			case FiniteElement::OVERLAND_FLOW:
-				pcs_problem_type = "OVERLAND_FLOW";
-				break;
 			case FiniteElement::GROUNDWATER_FLOW:
 				pcs_problem_type = "GROUNDWATER_FLOW";
 				break;
@@ -7069,103 +7029,6 @@ std::string PCSProblemType()
 				pcs_problem_type = "";
 		}
 	}
-
-	//	//----------------------------------------------------------------------
-	//	CRFProcess* m_pcs = NULL;
-	//	// H process
-	//	for (i = 0; i < no_processes; i++) {
-	//		m_pcs = pcs_vector[i];
-	//		switch (m_pcs->pcs_type_name[0]) {
-	//		case 'L':
-	//			pcs_problem_type = "LIQUID_FLOW";
-	//			break;
-	//			// case 'U':
-	//			//  pcs_problem_type = "UNCONFINED_FLOW";
-	//			//  break;
-	//		case 'O':
-	//			pcs_problem_type = "OVERLAND_FLOW";
-	//			break;
-	//		case 'G':
-	//			pcs_problem_type = "GROUNDWATER_FLOW";
-	//			break;
-	//		case 'T':
-	//			pcs_problem_type = "TWO_PHASE_FLOW";
-	//			break;
-	//		case 'C':
-	//			pcs_problem_type = "COMPONENTAL_FLOW";
-	//			break;
-	//		case 'R': //MX test 04.2005
-	//			pcs_problem_type = "RICHARDS_FLOW";
-	//			break;
-	//		}
-	//	}
-	//	//----------------------------------------------------------------------
-	//	// M process
-	//	for (i = 0; i < no_processes; i++) {
-	//		m_pcs = pcs_vector[i];
-	//		switch (m_pcs->pcs_type_name[0]) {
-	//		case 'D':
-	//			if (pcs_problem_type.empty())
-	//				pcs_problem_type = "DEFORMATION";
-	//			else
-	//				pcs_problem_type += "+DEFORMATION";
-	//			break;
-	//		}
-	//	}
-	//	//----------------------------------------------------------------------
-	//	// T process
-	//	for (i = 0; i < no_processes; i++) {
-	//		m_pcs = pcs_vector[i];
-	//		switch (m_pcs->pcs_type_name[0]) {
-	//		case 'H':
-	//			if (pcs_problem_type.empty())
-	//				pcs_problem_type = "HEAT_TRANSPORT";
-	//			else
-	//				pcs_problem_type += "+HEAT_TRANSPORT";
-	//			break;
-	//		}
-	//	}
-	//	//----------------------------------------------------------------------
-	//	// CB process
-	//	for (i = 0; i < no_processes; i++) {
-	//		m_pcs = pcs_vector[i];
-	//		switch (m_pcs->pcs_type_name[0]) {
-	//		case 'M':
-	//			if (pcs_problem_type.empty())
-	//				pcs_problem_type = "MASS_TRANSPORT";
-	//			else
-	//				pcs_problem_type += "+MASS_TRANSPORT";
-	//			break;
-	//		}
-	//	}
-	//	//----------------------------------------------------------------------
-	//	//----------------------------------------------------------------------
-	//	// FM process
-	//	for (i = 0; i < no_processes; i++) {
-	//		m_pcs = pcs_vector[i];
-	//		switch (m_pcs->pcs_type_name[0]) {
-	//		case 'F':
-	//			if (pcs_problem_type.empty())
-	//				pcs_problem_type = "FLUID_MOMENTUM";
-	//			else
-	//				pcs_problem_type += "+FLUID_MOMENTUM";
-	//			break;
-	//		}
-	//	}
-	//	//----------------------------------------------------------------------
-	//	for (i = 0; i < no_processes; i++) {
-	//		m_pcs = pcs_vector[i];
-	//		switch (m_pcs->pcs_type_name[7]) { // _pcs_type_name[7] should be
-	//'W'
-	// because 'R' is reserved for Richard Flow.
-	//		case 'W':
-	//			if (pcs_problem_type.empty())
-	//				pcs_problem_type = "RANDOM_WALK";
-	//			else
-	//				pcs_problem_type += "+RANDOM_WALK";
-	//			break;
-	//		}
-	//	}
 
 	return pcs_problem_type;
 }
@@ -9689,8 +9552,6 @@ double PCSGetEleMeanNodeSecondary_2(long index,
 		case 0:  // Liquid_Flow
 			break;
 		case 1:  // Groundwater Flow
-			break;
-		case 66:  // Overland Flow
 			break;
 		case 5:  // Air Flow
 			break;

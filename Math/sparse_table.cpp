@@ -19,8 +19,6 @@
 namespace Math_Group
 {
 
-#ifdef NEW_EQS
-
 /*\!
  ********************************************************************
    Create sparse matrix table
@@ -77,18 +75,11 @@ void SparseTable::Write(std::ostream& os)
  ********************************************************************/
 SparseTable::~SparseTable()
 {
-	if (entry_column) delete[] entry_column;
-	if (num_column_entries) delete[] num_column_entries;
-	if (row_index_mapping_n2o) delete[] row_index_mapping_n2o;
-	if (row_index_mapping_o2n) delete[] row_index_mapping_o2n;
-	if (diag_entry) delete[] diag_entry;
-	entry_column = NULL;
-	num_column_entries = NULL;
-	row_index_mapping_n2o = NULL;
-	row_index_mapping_o2n = NULL;
-	diag_entry = NULL;
+	delete[] entry_column;
+	delete[] num_column_entries;
+	delete[] row_index_mapping_n2o;
+	delete[] row_index_mapping_o2n;
+	delete[] diag_entry;
 }
-
-#endif  // NEW_EQS
 
 }  // Namespace

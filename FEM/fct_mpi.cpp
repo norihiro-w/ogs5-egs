@@ -161,8 +161,8 @@ void FCTCommRead(const std::string& file_base_name)
 	}
 }
 
-void gatherR(const CommunicationTable& ct, Math_Group::Vec& globalR_plus,
-             Math_Group::Vec& globalR_min)
+void gatherR(const CommunicationTable& ct, Math_Group::Vector& globalR_plus,
+			 Math_Group::Vector& globalR_min)
 {
 	int myrank = 0;
 	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);

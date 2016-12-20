@@ -7,13 +7,6 @@
  *
  */
 
-/**************************************************************************
-   FEMLib-Object: MAT-MP
-   Task: MediumProperties
-   Programing:
-   01/2004 OK Implementation
-**************************************************************************/
-
 #include "rf_mmp_new.h"
 
 #include <cfloat>
@@ -25,17 +18,17 @@
 #include "Curve.h"
 #include "mathlib.h"
 
+#include "ElementValue.h"
 #include "fem_ele_std.h"
 #include "fem_ele_vec.h"
 #include "files0.h"
 #include "mechanics_utils.h"
-#include "rf_msp_new.h"
-#include "rf_tim_new.h"
 #include "rfmat_cp.h"
-#include "pcs_dm.h"
+#include "rf_msp_new.h"
+#include "rf_pcs_dm.h"
+#include "rf_tim_new.h"
 #include "tools.h"
 
-extern double* GEOGetELEJacobianMatrix(long number, double* detjac);
 extern double gravity_constant;
 
 using namespace std;

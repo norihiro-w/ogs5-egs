@@ -269,7 +269,7 @@ public:
 	void WriteAll(std::ostream& os = std::cout) const;
 	void WriteNeighbors(std::ostream& os = std::cout) const;
 
-	Math_Group::Vec mat_vector;
+	Math_Group::Vector mat_vector;
 
 	int selected;
 

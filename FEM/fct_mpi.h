@@ -55,8 +55,8 @@ void FCTCommRead(const std::string& file_base_name);
 void gatherK(const CommunicationTable& ct,
              Math_Group::SparseMatrixDOK& globalK);
 
-void gatherR(const CommunicationTable& ct, Math_Group::Vec& globalR_plus,
-             Math_Group::Vec& globalR_min);
+void gatherR(const CommunicationTable& ct, Math_Group::Vector& globalR_plus,
+			 Math_Group::Vector& globalR_min);
 
 void computeD(const MeshLib::CFEMesh* m_msh,
               const Math_Group::SparseMatrixDOK& K,

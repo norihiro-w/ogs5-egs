@@ -27,7 +27,7 @@ namespace Math_Group
 {
 class SymMatrix;
 class Matrix;
-typedef Matrix Vec;
+typedef Matrix Vector;
 }
 namespace MeshLib
 {
@@ -55,7 +55,7 @@ struct ExtrapolationMethod
 
 using Math_Group::SymMatrix;
 using Math_Group::Matrix;
-using Math_Group::Vec;
+using Math_Group::Vector;
 
 using MeshLib::CNode;
 using MeshLib::CEdge;
@@ -242,75 +242,6 @@ private:
 	void ConfigNumerics(MshElemType::type elem_type);
 };
 
-/*------------------------------------------------------------------
-   Element matrices:
-   All local matrices are stored for the purpose of reducing
-   compatation  time when steady state of the problem is reached
-   12.01.2005. WW
-   ------------------------------------------------------------------*/
-class ElementMatrix
-{
-public:
-	ElementMatrix()
-	    : Mass(NULL),
-	      Mass_notsym(NULL),
-	      Laplace(NULL),
-	      Advection(NULL),
-	      Storage(NULL),
-	      Content(NULL),
-	      CouplingA(NULL),
-	      CouplingB(NULL),
-	      Stiffness(NULL),
-	      RHS(NULL)  // SB4200
-	{
-	}
-	~ElementMatrix();
-	// Allocate memory for strain coupling matrix
-	void AllocateMemory(CElem* ele, int type = 0);
-	// Set members
-	void SetMass(Matrix* mass) { Mass = mass; }
-	void SetMass_notsym(Matrix* mass) { Mass_notsym = mass; }
-	void SetLaplace(Matrix* laplace) { Laplace = laplace; }
-	void SetStiffness(Matrix* x) { Stiffness = x; }
-	void SetAdvection(Matrix* x) { Advection = x; }
-	void SetStorage(Matrix* x) { Storage = x; }
-	void SetContent(Matrix* x) { Content = x; }
-	void SetCouplingMatrixA(Matrix* cplM) { CouplingA = cplM; }
-	void SetCouplingMatrixB(Matrix* cplM) { CouplingB = cplM; }
-	void SetRHS(Vec* rhs) { RHS = rhs; }
-	// Get members
-	Matrix* GetMass() { return Mass; }
-	Matrix* GetMass_notsym() { return Mass_notsym; }
-	Matrix* GetLaplace() { return Laplace; }
-	Matrix* GetStiffness() { return Stiffness; }
-	Matrix* GetAdvection()  // SB4200
-	{
-		return Advection;
-	}
-	Matrix* GetStorage()  // SB4200
-	{
-		return Storage;
-	}
-	Matrix* GetContent()  // SB4200
-	{
-		return Content;
-	}
-	Matrix* GetCouplingMatrixA() { return CouplingA; }
-	Matrix* GetCouplingMatrixB() { return CouplingB; }
-	Vec* GetRHS() { return RHS; }
-
-private:
-	Matrix* Mass;
-	Matrix* Mass_notsym;
-	Matrix* Laplace;
-	Matrix* Advection;
-	Matrix* Storage;
-	Matrix* Content;
-	Matrix* CouplingA;  // Pressure coupling for M_Process
-	Matrix* CouplingB;  // Strain coupling gor H_Process
-	Matrix* Stiffness;
-	Vec* RHS;
-};
 }  // end namespace
 
 #endif

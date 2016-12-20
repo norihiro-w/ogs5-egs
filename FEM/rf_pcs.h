@@ -237,9 +237,9 @@ protected:  // WW
 	// ELE
 	std::vector<FiniteElement::ElementMatrix*> Ele_Matrices;
 	// Global matrix
-	Math_Group::Vec* Gl_Vec;                 // NW
-	Math_Group::Vec* Gl_Vec1;                // NW
-	Math_Group::Vec* Gl_ML;                  // NW
+	Math_Group::Vector* Gl_Vec;                 // NW
+	Math_Group::Vector* Gl_Vec1;                // NW
+	Math_Group::Vector* Gl_ML;                  // NW
 	Math_Group::SparseMatrixDOK* FCT_AFlux;  // NW
 #ifdef USE_PETSC
 	Math_Group::SparseMatrixDOK* FCT_K;

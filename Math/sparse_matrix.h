@@ -22,10 +22,6 @@
 namespace Math_Group
 {
 
-
-#ifdef NEW_EQS
-
-// Jagged Diagonal Storage
 class CSparseMatrix
 {
 public:
@@ -37,10 +33,7 @@ public:
 
 	CSparseMatrix(const SparseTable& sparse_table, const int dof);
 	~CSparseMatrix();
-	// Preconditioner
-	void Precond_Jacobi(double* vec_s, double* vec_r);
-	// TEMP
-	void Precond_ILU(double* /*vec_s*/, double* /*vec_r*/) {}
+
 	// Operator
 	void operator=(const double a);
 	void operator*=(const double a);
@@ -48,23 +41,20 @@ public:
 	void operator=(const CSparseMatrix& m);
 	void operator+=(const CSparseMatrix& m);
 	void operator-=(const CSparseMatrix& m);
-	// Vector pass through augment and bring results back.
-	void multiVec(double* vec_s, double* vec_r);
-	void Trans_MultiVec(double* vec_s, double* vec_r);
-	void Diagonize(const long idiag, const double b_given, double* b);
-	//
-	// Access to members
+
 	double& operator()(const long i, const long j = 0) const;
-	//
-	StorageType GetStorageType() const { return storage_type; }  // 05.2011. WW
+
+	void Diagonize(const long idiag, const double b_given, double* b);
+
+	StorageType GetStorageType() const { return storage_type; }
 	long Dim() const { return DOF * rows; }
 	int Dof() const { return DOF; }
-	void SetDOF(const int dof_n)  //_new. 02/2010. WW
+	void SetDOF(const int dof_n)
 	{
 		DOF = dof_n;
 	}
 	long Size() const { return rows; }
-#ifdef LIS  // These two pointers are in need for Compressed Row Storage
+
 	IndexType nnz() const  // PCH
 	{
 		return DOF * DOF * size_entry_column;
@@ -73,7 +63,7 @@ public:
 	IndexType* col_idx;
 	IndexType* entry_index;
 	int GetCRSValue(double* value);
-#endif
+
 	// Print
 	void Write(std::ostream& os = std::cout);
 	void Write_BIN(std::ostream& os);
@@ -81,7 +71,6 @@ private:
 	// Data
 	double* entry;
 	mutable double zero_e;
-	/// 0. 03.2011. WW
 	StorageType storage_type;
 	//
 	bool symmetry;
@@ -100,8 +89,6 @@ private:
 	//
 	int DOF;
 };
-// Since the pointer to member funtions gives lower performance
-#endif
 
 }
 

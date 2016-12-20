@@ -22,13 +22,14 @@ namespace Math_Group
 class Matrix
 {
 public:
-	Matrix(size_t rows, size_t cols = 1);
+	explicit Matrix(size_t rows, size_t cols = 1);
 	Matrix();
-	explicit Matrix(const Matrix& m);
+	Matrix(const Matrix& m);
+	virtual ~Matrix();
+
 	//
 	void resize(size_t rows, size_t cols = 1);
 	//
-	virtual ~Matrix();
 	void ReleaseMemory();  // 06.2010. WW
 
 	// Operators
@@ -135,7 +136,7 @@ public:
 	double& operator()(size_t i) const;
 };
 
-typedef Matrix Vec;
+typedef Matrix Vector;
 
 /*========================================================================
    GeoSys - class my_vector (Declaration)
@@ -161,8 +162,32 @@ public:
 	}
 	virtual void operator=(const vec<T>&);
 	virtual void resize(int newh);
-	virtual T& operator[](size_t i) { return (T&)_entry[i]; }
-	virtual const T& operator[](size_t i) const { return (const T&)_entry[i]; }
+	virtual T& operator[](size_t i)
+	{
+//#define gDEBUG
+#ifdef gDEBUG
+		if (i >= _size)
+		{
+			std::cout << "\n Index exceeds the size of the matrix"
+			          << "\n";
+			abort();
+		}
+#endif
+		return (T&)_entry[i];
+	}
+	virtual const T& operator[](size_t i) const
+	{
+#ifdef gDEBUG
+		if (i >= _size)
+		{
+			std::cout << "\n Index exceeds the size of the matrix"
+			          << "\n";
+			abort();
+		}
+#endif
+#undef gDEBUG
+		return (const T&)_entry[i];
+	}
 	virtual size_t Size() const { return _size; }
 
 	T* Entry() { return _entry; }

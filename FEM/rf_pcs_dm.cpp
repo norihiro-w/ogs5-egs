@@ -7,7 +7,7 @@
  *
  */
 
-#include "pcs_dm.h"
+#include "rf_pcs_dm.h"
 
 #include <cfloat>
 #include <cmath>
