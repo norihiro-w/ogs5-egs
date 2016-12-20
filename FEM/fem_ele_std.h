@@ -400,29 +400,7 @@ private:
 	bool add2global;
 };
 
-// Vector for storing element values WW
-class ElementValue
-{
-public:
-	ElementValue(CRFProcess* m_pcs, CElem* ele);
-	~ElementValue();
-	void getIPvalue_vec(const int IP, double* vec);
-	// SB 09/2010
-	void getIPvalue_vec_phase(const int IP, int phase, double* vec);
-	void GetEleVelocity(double* vec);
-	Matrix Velocity;
-	Matrix Velocity0;
 
-private:
-	// Friend class
-	friend class ::CRFProcess;
-	friend class FiniteElement::CFiniteElementStd;
-	friend class ::COutput;  // OK
-	// Process
-	CRFProcess* pcs;
-	// Data
-	Matrix Velocity_g;
-};
 }  // end namespace
 
 /*------------------------------------------------------------------

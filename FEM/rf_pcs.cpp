@@ -9,40 +9,42 @@
 
 #include "rf_pcs.h"
 
-// C
 #ifndef __APPLE__
 #include <malloc.h>
 #endif
 
-// C++
 #include <cfloat>
 #include <iomanip>
 #include <iostream>
 #include <algorithm>
 #include <set>
 
-/*--------------------- OpenMP Parallel ------------------*/
-#if defined(LIS)
-#include "lis.h"
-#endif
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-/*--------------------- OpenMP Parallel ------------------*/
 
-#include "makros.h"
+#if defined(LIS)
+#include <lis.h>
+#endif
+
 #include "display.h"
 #include "FileToolsRF.h"
+#include "makros.h"
 #include "memory.h"
 #include "MemWatch.h"
 #include "StringTools.h"
 
-#include "rf_pcs_TH.h"
 
 #include "Curve.h"
+#if defined(NEW_EQS)
+#include "equation_class.h"
+#endif
 #include "mathlib.h"
 #include "InterpolationAlgorithms/InverseDistanceInterpolation.h"
 #include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
+#if defined(USE_PETSC)
+#include "PETSC/PETScLinearSolver.h"
+#endif
 
 #include "PointWithID.h"
 
@@ -53,6 +55,7 @@
 #include "fct_mpi.h"
 #include "FEMEnums.h"
 #include "fem_ele_std.h"
+#include "ElementValue.h"
 #include "files0.h"
 #include "msh_tools.h"
 #include "Output.h"
@@ -63,9 +66,7 @@
 #include "rf_fct.h"
 #include "rf_msp_new.h"
 #include "rf_node.h"
-#include "rf_st_new.h"
-#include "tools.h"
-
+#include "rf_pcs_TH.h"
 #ifdef GEM_REACT
 // GEMS chemical solver
 #include "rf_REACT_GEM.h"
@@ -76,14 +77,8 @@ REACT_GEM* m_vec_GEM;
 #include "rf_REACT_BRNS.h"
 REACT_BRNS* m_vec_BRNS;
 #endif
-
-#if defined(USE_PETSC)
-#include "PETSC/PETScLinearSolver.h"
-#elif defined(NEW_EQS)
-#include "equation_class.h"
-#endif
-
-// MathLib
+#include "rf_st_new.h"
+#include "tools.h"
 
 
 using namespace std;
@@ -517,8 +512,6 @@ CRFProcess::~CRFProcess(void)
 **************************************************************************/
 void CRFProcess::AllocateMemGPoint()
 {
-	//	if (_pcs_type_name.find("FLOW") == 0)
-	//		return;
 	const size_t mesh_ele_vector_size(m_msh->ele_vector.size());
 	for (size_t i = 0; i < mesh_ele_vector_size; i++)
 		ele_gp_value.push_back(new ElementValue(this, m_msh->ele_vector[i]));

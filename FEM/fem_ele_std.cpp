@@ -7,44 +7,31 @@
  *
  */
 
-/*
-   The members of class Element definitions.
- */
-
 #include "fem_ele_std.h"
 
-// C++ STL
 #include <cfloat>
-//#include <iostream>
-//#include <limits>	// PCH to better use system max and min
+
 #include "Configure.h"
 #include "memory.h"
-// Method
-#include "mathlib.h"
-// Problems
-//#include "rf_mfp_new.h"
-#include "rf_mmp_new.h"
-#include "rf_msp_new.h"
-#include "eos.h"
-#include "SparseMatrixDOK.h"
 
-#include "pcs_dm.h"  // displacement coupled
-#include "rfmat_cp.h"
-// Steps
-//#include "rf_pcs.h"
-//#include "rf_tim_new.h"
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+#include "mathlib.h"
+#if defined(USE_PETSC)
 #include "PETSC/PETScLinearSolver.h"
-#else
 #endif
 #ifdef NEW_EQS
 #include "equation_class.h"
-using Math_Group::CSparseMatrix;
 #endif
 
-#include "pcs_dm.h"                 // displacement coupled
+#include "ElementValue.h"
+#include "eos.h"
 #include "fem_ele_vec.h"
 #include "mechanics_utils.h"
+#include "pcs_dm.h"
+#include "rfmat_cp.h"
+#include "rf_mmp_new.h"
+#include "rf_msp_new.h"
+#include "SparseMatrixDOK.h"
+
 
 extern double gravity_constant;     // TEST, must be put in input file
 #define COMP_MOL_MASS_AIR 28.96     // kg/kmol WW  28.96
@@ -8088,81 +8075,6 @@ void CFiniteElementStd::CalcNodeMatParatemer()
 	}
 }
 
-// WW 08/2007
-ElementValue::ElementValue(CRFProcess* m_pcs, CElem* ele) : pcs(m_pcs)
-{
-	int NGPoints = 0, NGP = 0;
-	int ele_dim;
-
-	MshElemType::type ele_type = ele->GetElementType();
-	ele_dim = ele->GetDimension();
-
-	NGP = GetNumericsGaussPoints(ele_type);
-	if (ele_type == MshElemType::LINE)
-		// OKWW
-		NGPoints = m_pcs->m_num->ele_gauss_points;
-	else if (ele_type == MshElemType::TRIANGLE)
-		NGPoints = 3;
-	else if (ele_type == MshElemType::TETRAHEDRON)
-		NGPoints = 5;  // 15;
-	else
-		NGPoints = (int)MathLib::fastpow(NGP, ele_dim);
-
-	// WW Velocity.resize(m_pcs->m_msh->GetCoordinateFlag()/10, NGPoints);
-	Velocity.resize(3, NGPoints);
-	Velocity = 0.0;
-	Velocity0.resize(3, NGPoints);
-	Velocity0 = 0.0;
-	// 15.3.2007 Multi-phase flow WW
-	if (pcs->type == 1212 || pcs->type == 1313 || m_pcs->type == 42)
-	{
-		Velocity_g.resize(3, NGPoints);
-		Velocity_g = 0.0;
-	}
-}
-// WW 08/2007
-void ElementValue::getIPvalue_vec(const int IP, double* vec)
-{
-	// SB, BG
-	for (int i = 0; i < int(Velocity.Rows()); i++)
-		vec[i] = Velocity(i, IP);
-}
-// SB, BG 09/2010
-void ElementValue::getIPvalue_vec_phase(const int IP, int phase, double* vec)
-{
-	if (phase == 0)
-		for (int i = 0; (size_t)i < Velocity.Rows(); i++)
-			vec[i] = Velocity(i, IP);
-	else if (phase == 10)
-		for (int i = 0; (size_t)i < Velocity_g.Rows(); i++)
-			vec[i] = Velocity_g(i, IP);
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   01/2006 YD Implementation
-   last modification:
-**************************************************************************/
-void ElementValue::GetEleVelocity(double* vec)
-{
-	for (int i = 0; (size_t)i < Velocity.Rows(); i++)
-	{
-		vec[i] = 0.0;
-		for (int j = 0; (size_t)j < Velocity.Cols(); j++)
-			vec[i] += Velocity(i, j);
-		vec[i] /= Velocity.Cols();
-	}
-}
-// WW
-ElementValue::~ElementValue()
-{
-	Velocity.resize(0, 0);
-	Velocity0.resize(0, 0);
-	Velocity_g.resize(0, 0);
-}
-
 /**************************************************************************
    FEMLib-Method:
    01/2006 OK Implementation
@@ -11138,7 +11050,3 @@ void CFiniteElementStd::AssembleTHEquation(bool updateA, bool updateRHS)
 
 }  // end namespace
 
-//////////////////////////////////////////////////////////////////////////
-
-using FiniteElement::ElementValue;
-vector<ElementValue*> ele_gp_value;

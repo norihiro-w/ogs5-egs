@@ -7,18 +7,13 @@
  *
  */
 
-/*
-   Class element declaration
-   class for finite element.
-   Designed and programmed by WW, 06/2004
- */
 #ifndef fem_dm_INC
 #define fem_dm_INC
-#include "fem_ele.h"
+
 #include "matrix_class.h"
-// Material properties
-//#include "rf_mfp_new.h"
-//#include "rf_mmp_new.h"
+
+#include "ElementValueDM.h"
+#include "fem_ele.h"
 
 namespace SolidProp
 {
@@ -47,47 +42,6 @@ using ::CRFProcess;
 using ::CMediumProperties;
 using process::CRFProcessDeformation;
 using MeshLib::CElem;
-
-// Vector for storing element values
-class ElementValue_DM
-{
-public:
-	ElementValue_DM(CElem* ele, const int NGP, bool has_coupling_loop);
-	~ElementValue_DM();
-	void ResetStress(bool cpl_loop);
-	void Write_BIN(std::fstream& os);
-	void Read_BIN(std::fstream& is);
-	void ReadElementStressASCI(std::fstream& is);
-
-	// Friend class
-	friend class SolidProp::CSolidProperties;
-	friend class process::CRFProcessDeformation;
-	friend class ::CMediumProperties;
-	friend class CFiniteElementVec;
-	Matrix* Stress0;  // Initial stress
-	Matrix* Stress;
-    Matrix* Stress_last_ts;
-    Matrix* Stress_current_ts;
-    Matrix* dTotalStress = nullptr;
-
-	Matrix* Strain;
-	Matrix* Strain_last_ts = nullptr;
-	Matrix* pStrain;
-	Matrix* y_surface;
-	// Preconsolidation pressure
-	Matrix* prep0;
-	Matrix* e_i;  // Void ratio
-	// Variables of single yield surface model
-	Matrix* xi;    // Rotational hardening variables
-	Matrix* MatP;  // Material parameters
-
-	// Discontinuity
-	double disp_j;
-	double tract_j;
-	bool Localized;
-	Matrix* NodesOnPath;
-	double* orientation;
-};
 
 // Derived element for deformation caculation
 class CFiniteElementVec : public CElement

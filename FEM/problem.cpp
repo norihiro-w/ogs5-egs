@@ -7,87 +7,54 @@
  *
  */
 
-/*=======================================================================
-   //Class Problem: Handle the data and their functions for time stepping
-
-                 and coupled processes within each time step, and finally
-                 solve a problem.
-   Design and implementation:  WW
-   Start time:  09.07.2008
-   Modification:
-            12.2008 WW Incorporate the changes from previous versions.
-   ========================================================================*/
 #include "problem.h"
 
 #include <cfloat>
 #include <iostream>
 #include <sstream>
-// kg44: max size for size_t (system_dependent) is set normally here
 #include <limits>
 
 #ifdef USE_PETSC
 #include <petsctime.h>
 #endif
 
-// WW
-//
-/*------------------------------------------------------------------------*/
-/* Pre-processor definitions */
 #include "makros.h"
 #include "display.h"
 #include "FileToolsRF.h"
 #include "MemWatch.h"
-/*------------------------------------------------------------------------*/
-// MSHLib
+
+#if defined(USE_PETSC)
+#include "PETSC/PETScLinearSolver.h"
+#endif
+
 #include "msh_lib.h"
 #include "msh_node.h"
 
-/*------------------------------------------------------------------------*/
-// Data file
-// OK411
-extern int ReadData(char*,
-                    GEOLIB::GEOObjects& geo_obj,
-                    std::string& unique_name);
-/* PCS */
-#include "pcs_dm.h"
-#include "rf_pcs.h"
-// 16.12.2008.WW #include "rf_apl.h"
-
-#include "rf_react.h"
-#include "rf_st_new.h"
-#include "rf_tim_new.h"
-#include "rfmat_cp.h"
-//#include "rf_vel_new.h"
-#include "rf_fluid_momentum.h"
-#include "rf_random_walk.h"
-// Finite element
-#include "Output.h"
+#include "ElementValue.h"
 #include "fem_ele_std.h"
-#include "files0.h"  // GetLineFromFile1
+#include "files0.h"
+#include "Output.h"
+#include "pcs_dm.h"
+#include "rfmat_cp.h"
 #include "rf_bc_new.h"
+#include "rf_fluid_momentum.h"
+#include "rf_kinreact.h"
 #include "rf_node.h"
 #include "rf_out_new.h"
-#include "tools.h"
-//
-#ifdef CHEMAPP
-#include "eqlink.h"
-#endif
-#ifdef UDE_REACT
-#include "rf_REACT_ude.h"
+#include "rf_pcs.h"
+#include "rf_pcs_TH.h"
+#include "rf_random_walk.h"
+#include "rf_react.h"
+#ifdef BRNS
+#include "rf_REACT_BRNS.h"
 #endif
 #ifdef GEM_REACT
 #include "rf_REACT_GEM.h"
 #endif
-#ifdef BRNS
-// BRNS dll link; HB 02.11.2007
-#include "rf_REACT_BRNS.h"
-#endif
-#include "rf_kinreact.h"
-#include "rf_pcs_TH.h"
+#include "rf_st_new.h"
+#include "rf_tim_new.h"
+#include "tools.h"
 
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
-#include "PETSC/PETScLinearSolver.h"
-#endif
 
 namespace process
 {
