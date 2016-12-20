@@ -16,7 +16,7 @@ namespace Math_Group
 {
 class SymMatrix;
 class Matrix;
-typedef Matrix Vec;
+typedef Matrix Vector;
 }
 
 using namespace Math_Group;
@@ -61,7 +61,7 @@ public:
 	void SetContent(Matrix* x) { Content = x; }
 	void SetCouplingMatrixA(Matrix* cplM) { CouplingA = cplM; }
 	void SetCouplingMatrixB(Matrix* cplM) { CouplingB = cplM; }
-	void SetRHS(Vec* rhs) { RHS = rhs; }
+	void SetRHS(Vector* rhs) { RHS = rhs; }
 	// Get members
 	Matrix* GetMass() { return Mass; }
 	Matrix* GetMass_notsym() { return Mass_notsym; }
@@ -81,7 +81,7 @@ public:
 	}
 	Matrix* GetCouplingMatrixA() { return CouplingA; }
 	Matrix* GetCouplingMatrixB() { return CouplingB; }
-	Vec* GetRHS() { return RHS; }
+	Vector* GetRHS() { return RHS; }
 
 private:
 	Matrix* Mass;
@@ -93,7 +93,7 @@ private:
 	Matrix* CouplingA;  // Pressure coupling for M_Process
 	Matrix* CouplingB;  // Strain coupling gor H_Process
 	Matrix* Stiffness;
-	Vec* RHS;
+	Vector* RHS;
 };
 }  // end namespace
 

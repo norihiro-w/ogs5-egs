@@ -46,24 +46,24 @@ void ElementMatrix::AllocateMemory(MeshLib::CElem* ele, int type)
 			Mass = new Matrix(nnodes, nnodes);
 			//        Laplace = new SymMatrix(nnodes);
 			Laplace = new Matrix(nnodes, nnodes);
-			RHS = new Vec(nnodes);
+			RHS = new Vector(nnodes);
 			break;
 		case 1:  // HM Partioned scheme, Flow
 			Mass = new Matrix(nnodes, nnodes);
 			//        Laplace = new SymMatrix(nnodes);
 			Laplace = new Matrix(nnodes, nnodes);
-			RHS = new Vec(nnodes);
+			RHS = new Vector(nnodes);
 			CouplingB = new Matrix(nnodes, dim * nnodesHQ);
 			break;
 		case 2:  // M_Process only
 			size = dim * nnodesHQ;
 			Stiffness = new Matrix(size, size);
-			RHS = new Vec(size);
+			RHS = new Vector(size);
 			break;
 		case 3:  // MH Partioned scheme, M_Process
 			size = dim * nnodesHQ;
 			Stiffness = new Matrix(size, size);
-			RHS = new Vec(size);
+			RHS = new Vector(size);
 			CouplingA = new Matrix(dim * nnodesHQ, nnodes);
 			break;
 		case 4:  // HM monothlic scheme
@@ -72,7 +72,7 @@ void ElementMatrix::AllocateMemory(MeshLib::CElem* ele, int type)
 			Laplace = new Matrix(nnodes, nnodes);
 			size = dim * nnodesHQ;
 			Stiffness = new Matrix(size, size);
-			RHS = new Vec(size + nnodes);
+			RHS = new Vector(size + nnodes);
 			CouplingA = new Matrix(dim * nnodesHQ, nnodes);
 			CouplingB = new Matrix(nnodes, dim * nnodesHQ);
 			break;
@@ -82,7 +82,7 @@ void ElementMatrix::AllocateMemory(MeshLib::CElem* ele, int type)
 			Advection = new Matrix(nnodes, nnodes);
 			Storage = new Matrix(nnodes, nnodes);
 			Content = new Matrix(nnodes, nnodes);
-			RHS = new Vec(nnodes);
+			RHS = new Vector(nnodes);
 			break;
 	}
 }

@@ -37,7 +37,7 @@ namespace FiniteElement
 using SolidProp::CSolidProperties;
 using Math_Group::Matrix;
 using Math_Group::SymMatrix;
-using Math_Group::Vec;
+using Math_Group::Vector;
 using ::CRFProcess;
 using ::CMediumProperties;
 using process::CRFProcessDeformation;
@@ -120,7 +120,7 @@ private:
 	Matrix* PressureC_S;     // Function of S
 	Matrix* PressureC_S_dp;  // Function of S and ds_dp
 	Matrix* Mass;            // For dynamic analysis
-	Vec* RHS;
+	Vector* RHS;
 	// Global RHS. 08.2010. WW
 	double* b_rhs;
 
@@ -223,7 +223,7 @@ private:
 	int* Idx_Vel;
 	double beta2, bbeta1;
 	// Auxillarary vector
-	Vec* dAcceleration;
+	Vector* dAcceleration;
 	void ComputeMass();
 };
 }  // end namespace

@@ -379,7 +379,7 @@ CFiniteElementStd::CFiniteElementStd(CRFProcess* Pcs, const int C_Sys_Flad,
 			Advection = new Matrix(size_m, size_m);
 		}
 		if (D_Flag) StrainCoupling = new Matrix(size_m, 60);
-		RHS = new Vec(size_m);
+		RHS = new Vector(size_m);
 	}
 	//
 	StiffMatrix = new Matrix(size_m, size_m);
@@ -6500,7 +6500,7 @@ void CFiniteElementStd::CalcFEM_FCT()
 		for (int j = 0; j < nnodes; j++)
 			(*FCT_MassL)(i) += (*Mass)(i, j);
 	// add into a global diagonal vector
-	Math_Group::Vec* ML = this->pcs->Gl_ML;
+	Math_Group::Vector* ML = this->pcs->Gl_ML;
 	for (int i = 0; i < nnodes; i++)
 	{
 #ifdef USE_PETSC

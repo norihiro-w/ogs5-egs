@@ -135,7 +135,7 @@ public:
 	double& operator()(size_t i) const;
 };
 
-typedef Matrix Vec;
+typedef Matrix Vector;
 
 /*========================================================================
    GeoSys - class my_vector (Declaration)

@@ -92,7 +92,7 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 			Idx_Vel[2] = pcs->GetNodeValueIndex("VELOCITY_DM_Z");
 		}
 		Mass = new Matrix(20, 20);
-		dAcceleration = new Vec(60);
+		dAcceleration = new Vector(60);
 
 		beta2 = dm_pcs->m_num->GetDynamicDamping_beta2();
 		bbeta1 = dm_pcs->m_num->GetDynamicDamping_bbeta();
@@ -233,7 +233,7 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 	if (pcs->Memory_Type == 0)  // Do not store local matrices
 	{
 		Stiffness = new Matrix(60, 60);
-		RHS = new Vec(60);
+		RHS = new Vector(60);
 		if (H_Process) PressureC = new Matrix(60, 20);
 	}
 	else  // Local matrices stored and allocated the pcs.cpp;

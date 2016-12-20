@@ -27,7 +27,7 @@ namespace Math_Group
 {
 class SymMatrix;
 class Matrix;
-typedef Matrix Vec;
+typedef Matrix Vector;
 }
 namespace MeshLib
 {
@@ -55,7 +55,7 @@ struct ExtrapolationMethod
 
 using Math_Group::SymMatrix;
 using Math_Group::Matrix;
-using Math_Group::Vec;
+using Math_Group::Vector;
 
 using MeshLib::CNode;
 using MeshLib::CEdge;

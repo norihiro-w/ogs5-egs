@@ -77,7 +77,7 @@ namespace FiniteElement
 using Math_Group::SymMatrix;
 using Math_Group::Matrix;
 using Math_Group::DiagonalMatrix;
-using Math_Group::Vec;
+using Math_Group::Vector;
 using process::CRFProcessDeformation;
 using ::CRFProcess;
 
@@ -249,7 +249,7 @@ private:
 	Matrix* Storage;    // SB4200
 	Matrix* Content;    // SB4209
 	Matrix* StrainCoupling;
-	Vec* RHS;
+	Vector* RHS;
 	DiagonalMatrix* FCT_MassL;  // NW
 	//-------------------------------------------------------
 	void SetHighOrderNodes();  // 25.2.2007 WW

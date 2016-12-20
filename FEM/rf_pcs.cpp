@@ -675,9 +675,9 @@ void CRFProcess::Create()
 		long gl_size = m_msh->GetNodesNumber(false);
 #endif
 		this->FCT_AFlux = new SparseMatrixDOK(gl_size, gl_size);
-		this->Gl_ML = new Math_Group::Vec(gl_size);
-		this->Gl_Vec = new Math_Group::Vec(gl_size);
-		this->Gl_Vec1 = new Math_Group::Vec(gl_size);
+		this->Gl_ML = new Math_Group::Vector(gl_size);
+		this->Gl_Vec = new Math_Group::Vector(gl_size);
+		this->Gl_Vec1 = new Math_Group::Vector(gl_size);
 	}
 	//----------------------------------------------------------------------------
 	// EQS - create equation system
@@ -4591,7 +4591,7 @@ void CRFProcess::AddFCT_CorrectionVector()
 	SparseMatrixDOK::col_t* col;
 	SparseMatrixDOK::mat_t::const_iterator ii;
 	SparseMatrixDOK::col_t::const_iterator jj;
-	Math_Group::Vec* ML = this->Gl_ML;
+	Math_Group::Vector* ML = this->Gl_ML;
 #if defined(NEW_EQS)
 	CSparseMatrix* A = NULL;  // WW
 	A = this->eqs_new->getA();
@@ -4736,8 +4736,8 @@ void CRFProcess::AddFCT_CorrectionVector()
 	//----------------------------------------------------------------------
 	// Assemble RHS: b_i += [- (1-theta) * L_ij] u_j^n
 	//----------------------------------------------------------------------
-	Math_Group::Vec* V1 = this->Gl_Vec1;
-	Math_Group::Vec* V = this->Gl_Vec;
+	Math_Group::Vector* V1 = this->Gl_Vec1;
+	Math_Group::Vector* V = this->Gl_Vec;
 	(*V1) = 0.0;
 	(*V) = 0.0;
 #if !defined(USE_PETSC)
@@ -4834,8 +4834,8 @@ void CRFProcess::AddFCT_CorrectionVector()
 	// Assemble RHS: b += alpha * f
 	//----------------------------------------------------------------------
 	// Calculate R+, R-
-	Math_Group::Vec* R_plus = this->Gl_Vec1;
-	Math_Group::Vec* R_min = this->Gl_Vec;
+	Math_Group::Vector* R_plus = this->Gl_Vec1;
+	Math_Group::Vector* R_min = this->Gl_Vec;
 	(*R_plus) = 0.0;
 	(*R_min) = 0.0;
 	for (size_t i = 0; i < node_size; i++)
