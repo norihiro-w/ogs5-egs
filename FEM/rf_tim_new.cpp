@@ -79,6 +79,7 @@ CTimeDiscretization::CTimeDiscretization(void)
 	last_rejected_timestep = 0;
 	iteration_type = IterationType::LINEAR;
 	last_dt_accepted = true;
+	usePIDControl = false;
 	usePIDControlInSelfAdaptive = false;
 }
 
