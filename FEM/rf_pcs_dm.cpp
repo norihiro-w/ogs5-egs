@@ -11,18 +11,24 @@
 
 #include <cfloat>
 #include <cmath>
+#include <ctime>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <time.h>
 
 #include "makros.h"
-#include "display.h"
 #include "MemWatch.h"
+#include "display.h"
 #include "StringTools.h"
 
 #include "Curve.h"
+#if defined(NEW_EQS)
+#include "equation_class.h"
+#endif
 #include "mathlib.h"
+#ifdef USE_PETSC
+#include "PETSC/PETScLinearSolver.h"
+#endif
 
 #include "geo_sfc.h"
 
@@ -41,13 +47,6 @@
 #include "rf_tim_new.h"
 #include "tools.h"
 
-// Solver
-#if defined(NEW_EQS)
-#include "equation_class.h"
-#endif
-#ifdef USE_PETSC
-#include "PETSC/PETScLinearSolver.h"
-#endif
 
 double LoadFactor = 1.0;
 double Tolerance_global_Newton = 0.0;
@@ -58,19 +57,16 @@ int problem_dimension_dm = 0;
 int PreLoad = 0;
 bool GravityForce = true;
 
-bool Localizing = false;  // for tracing localization
-// Last discontinuity element correponding to SeedElement
+bool Localizing = false;
 
 using namespace std;
 
 vector<DisElement*> LastElement(0);
-vector<long> ElementOnPath(0);  // Element on the discontinuity path
+vector<long> ElementOnPath(0);
 
-using FiniteElement::CFiniteElementVec;
-using FiniteElement::CFiniteElementStd;
-using FiniteElement::ElementValue_DM;
-using SolidProp::CSolidProperties;
-using Math_Group::Matrix;
+using namespace FiniteElement;
+using namespace SolidProp;
+using namespace Math_Group;
 
 namespace process
 {
@@ -111,11 +107,10 @@ CRFProcessDeformation::~CRFProcessDeformation()
 			WriteSolution();
 	}
 	//
-	for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
-	{
-		delete ele_value_dm[i];
-		ele_value_dm[i] = NULL;
-	}
+	for (auto p : ele_value_dm)
+		delete p;
+	ele_value_dm.clear();
+	
 	if (enhanced_strain_dm > 0)
 	{
 		while (ele_value_dm.size() > 0)
@@ -142,6 +137,12 @@ CRFProcessDeformation::~CRFProcessDeformation()
  **************************************************************************/
 void CRFProcessDeformation::Initialization()
 {
+	if (msp_vector.empty())
+	{
+		std::cout << "***ERROR: MSP data not found!\n";
+		return;
+	}
+
 	//-- NW 25.10.2011
 	// this section has to be executed at latest before calling InitGauss()
 	// Control for reading and writing solution
@@ -150,7 +151,7 @@ void CRFProcessDeformation::Initialization()
 	if (reload == 3) idata_type = read_write;
 	//--
 	if ((reload == 2 || reload == 3) && calcDiffFromStress0)
-		_isInitialStressNonZero = true;  // NW
+		_isInitialStressNonZero = true;
 
 	// Local assembliers
 	// An instaniate of CFiniteElementVec
@@ -174,35 +175,14 @@ void CRFProcessDeformation::Initialization()
 	//
 
 	// Initialize material transform tensor for tansverse isotropic elasticity
-	// UJG/WW. 25.11.2009
-	for (i = 0; i < (int)msp_vector.size(); i++)
-		msp_vector[i]->CalculateTransformMatrixFromNormalVector(
-		    problem_dimension_dm);
-
-	if (!msp_vector.size())
+	for (auto msp : msp_vector)
 	{
-		std::cout << "***ERROR: MSP data not found!"
-		          << "\n";
-		return;
+		msp->CalculateTransformMatrixFromNormalVector(problem_dimension_dm);
 	}
+
 	InitialMBuffer();
 	InitGauss();
-////////////////////////////////////
 
-#ifdef DECOVALEX
-	// DECOVALEX test
-	size_t i;
-	int idv0 = 0, idv1 = 0;
-	CRFProcess* h_pcs = NULL;
-	h_pcs = fem_dm->h_pcs;
-	if (h_pcs->type == 14)  // Richards
-	{
-		idv0 = h_pcs->GetNodeValueIndex("PRESSURE_I");
-		idv1 = h_pcs->GetNodeValueIndex("PRESSURE1");
-		for (i = 0; i < m_msh->GetNodesNumber(false); i++)
-			h_pcs->SetNodeValue(i, idv0, h_pcs->GetNodeValue(i, idv1));
-	}
-#endif
 
 	// Initial pressure is stored to evaluate pressure difference from the
 	// initial
@@ -211,11 +191,10 @@ void CRFProcessDeformation::Initialization()
 	// NW 28.08.2012
 	if (_isInitialStressNonZero)
 	{
-		std::cout << "->Initial stress is given."
-		          << "\n";
+		std::cout << "->Initial stress is given.\n";
 		CRFProcess* h_pcs = PCSGet("LIQUID_FLOW");
 		if (h_pcs)
-		{  // NW
+		{
 			assert(p0 == NULL);
 			std::cout << "->Found LIQUID_FLOW. Store initial liquid pressure."
 			          << "\n";
@@ -229,11 +208,7 @@ void CRFProcessDeformation::Initialization()
 		}
 	}
 
-	///////////////////////////
 	if (fem_dm->dynamic) CalcBC_or_SecondaryVariable_Dynamics();
-
-	// TEST
-	//   De_ActivateElement(false);
 }
 
 /*************************************************************************
@@ -323,69 +298,69 @@ double CRFProcessDeformation::getNormOfDisplacements()
 
 void CRFProcessDeformation::solveLinear()
 {
-    eqs_new->Initialize();
+	eqs_new->Initialize();
 
 #ifndef WIN32
-    BaseLib::MemWatch mem_watch;
-    ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
+	BaseLib::MemWatch mem_watch;
+	ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
 #endif
 
-    // Assemble and solve system equation
-    ScreenMessage("Assembling equation system...\n");
-    GlobalAssembly();
+	// Assemble and solve system equation
+	ScreenMessage("Assembling equation system...\n");
+	GlobalAssembly();
 
 #ifndef WIN32
-    ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
+	ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
 #endif
 
-    // init solution vector
-    if (getProcessType() != FiniteElement::DEFORMATION_FLOW)
-    {
+	// init solution vector
+	if (getProcessType() != FiniteElement::DEFORMATION_FLOW)
+	{
 #if defined(USE_PETSC)
-        InitializeRHS_with_u0();
+		InitializeRHS_with_u0();
 #endif
-    }
+	}
 
-    ScreenMessage("Calling linear solver...\n");
-    // solve du, p
+	ScreenMessage("Calling linear solver...\n");
+	// solve du, p
 #if defined(USE_PETSC)
-    //			eqs_new->EQSV_Viewer("eqs" +
-    // number2str(aktueller_zeitschritt) + "b");
-    eqs_new->Solver();
-    eqs_new->MappingSolution();
+	//			eqs_new->EQSV_Viewer("eqs" +
+	// number2str(aktueller_zeitschritt) + "b");
+	eqs_new->Solver();
+	eqs_new->MappingSolution();
 #elif defined(NEW_EQS)
-    bool compress_eqs = (this->Deactivated_SubDomain.size() > 0);
+	bool compress_eqs = (this->Deactivated_SubDomain.size() > 0);
 	eqs_new->Solver(compress_eqs);
 #endif
 
-    // update nodal values from solution
-    setDUFromSolution();
+	// update nodal values from solution
+	setDUFromSolution();
 
-    if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
-        setPressureFromSolution();
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+		setPressureFromSolution();
 }
 
 void CRFProcessDeformation::solveNewton()
 {
-    const int MaxIteration = m_num->nls_max_iterations;
-    const double Tolerance_global_Newton = m_num->nls_error_tolerance[0];
-    bool isConverged = false;
-    double absNormR0 = 0;
-    double absNormDX0 = 0;
+	const int MaxIteration = m_num->nls_max_iterations;
+	const double Tolerance_global_Newton = m_num->nls_error_tolerance[0];
+	bool isConverged = false;
+	double absNormR0 = 0;
+	double absNormDX0 = 0;
 
-    for (iter_nlin = 0; iter_nlin < MaxIteration; iter_nlin++)
-    {
-        ScreenMessage("-->Starting Newton-Raphson iteration: %d/%d\n", iter_nlin+1, MaxIteration);
-        ScreenMessage("------------------------------------------------\n");
+	for (iter_nlin = 0; iter_nlin < MaxIteration; iter_nlin++)
+	{
+		ScreenMessage("-->Starting Newton-Raphson iteration: %d/%d\n", iter_nlin+1, MaxIteration);
+		ScreenMessage("------------------------------------------------\n");
 
-        // Refresh solver
-        eqs_new->Initialize();
+		// Refresh solver
+		eqs_new->Initialize();
 #ifndef WIN32
-        if (iter_nlin == 0)
-        {
-            BaseLib::MemWatch mem_watch;
-            ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
-        }
+		if (iter_nlin == 0)
+		{
+			BaseLib::MemWatch mem_watch;
+			ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
+		}
 #endif
         // -----------------------------------------------------------------
         // Evaluate residuals and Jacobian
@@ -394,18 +369,18 @@ void CRFProcessDeformation::solveNewton()
         GlobalAssembly();
 
 #if defined(USE_PETSC)
-        double absNormR = eqs_new->GetVecNormRHS();
+		double absNormR = eqs_new->GetVecNormRHS();
 #elif defined(NEW_EQS)
-        double absNormR = eqs_new->ComputeNormRHS();
+		double absNormR = eqs_new->ComputeNormRHS();
 #endif
 
-        if (iter_nlin == 0)
-            absNormR0 = absNormR;
+		if (iter_nlin == 0)
+			absNormR0 = absNormR;
 
-        double relNormR = absNormR / (absNormR0 == 0 ? 1 : absNormR0);
+		double relNormR = absNormR / (absNormR0 == 0 ? 1 : absNormR0);
 
-        //
-        ScreenMessage("-->Newton-Raphson %d: Abs.Res.=%g, Rel.Res.=%g\n", iter_nlin+1, absNormR, relNormR);
+		//
+		ScreenMessage("-->Newton-Raphson %d: Abs.Res.=%g, Rel.Res.=%g\n", iter_nlin+1, absNormR, relNormR);
 
         if (relNormR <= Tolerance_global_Newton)
         {
@@ -419,47 +394,47 @@ void CRFProcessDeformation::solveNewton()
             break;
         }
 
-        ScreenMessage("Calling linear solver...\n");
+		ScreenMessage("Calling linear solver...\n");
 #if defined(USE_PETSC)
-        eqs_new->Solver();
-        eqs_new->MappingSolution();
+		eqs_new->Solver();
+		eqs_new->MappingSolution();
 #elif defined(NEW_EQS)
-        bool compress_eqs = (this->Deactivated_SubDomain.size() > 0);
+		bool compress_eqs = (this->Deactivated_SubDomain.size() > 0);
 		eqs_new->Solver(compress_eqs);
 #endif
 
 #if defined(USE_PETSC)
-        double absNormDX = eqs_new->GetVecNormX();
+		double absNormDX = eqs_new->GetVecNormX();
 #elif defined(NEW_EQS)
-        double absNormDX = eqs_new->NormX();
+		double absNormDX = eqs_new->NormX();
 #endif
-        if (iter_nlin == 0)
-        {
-            if (this->first_coupling_iteration)
-                norm_du0_pre_cpl_itr = .0;
-            absNormDX0 = absNormDX;
-        }
-        double relNormDX = absNormDX / (absNormDX0 == 0 ? 1 : absNormDX0);
+		if (iter_nlin == 0)
+		{
+			if (this->first_coupling_iteration)
+				norm_du0_pre_cpl_itr = .0;
+			absNormDX0 = absNormDX;
+		}
+		double relNormDX = absNormDX / (absNormDX0 == 0 ? 1 : absNormDX0);
 
-        ScreenMessage("-->Newton-Raphson %d: Abs.DU=%g, Rel.DU=%g\n", iter_nlin+1, absNormDX, relNormDX);
+		ScreenMessage("-->Newton-Raphson %d: Abs.DU=%g, Rel.DU=%g\n", iter_nlin+1, absNormDX, relNormDX);
 
-        // -----------------------------------------------------------------
-        // Update solution
-        // -----------------------------------------------------------------
-        incrementNodalDUFromSolution();
-        if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
-            incrementNodalPressureFromSolution();
+		// -----------------------------------------------------------------
+		// Update solution
+		// -----------------------------------------------------------------
+		incrementNodalDUFromSolution();
+		if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+			incrementNodalPressureFromSolution();
 
-    } // Newton-Raphson iteration
+	} // Newton-Raphson iteration
 
-    if (MaxIteration == 1)
-        isConverged = true;
+	if (MaxIteration == 1)
+		isConverged = true;
 
-    if (!isConverged)
-    {
-        accepted = false;
-        Tim->last_dt_accepted = false;
-    }
+	if (!isConverged)
+	{
+		accepted = false;
+		Tim->last_dt_accepted = false;
+	}
 }
 
 /*************************************************************************
@@ -486,7 +461,7 @@ double CRFProcessDeformation::Execute(int loop_process_number)
 	    num_type_name.find("EXCAVATION") != string::npos)
 		CheckMarkedElement();
 
-#if defined(NEW_EQS)
+#ifdef NEW_EQS
 	eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method, m_num->ls_max_iterations,
 							m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
 #endif
@@ -948,59 +923,59 @@ void CRFProcessDeformation::SetInitialGuess_EQS_VEC()
 void CRFProcessDeformation::setDUFromSolution()
 {
 #if defined(USE_PETSC)
-    double* eqs_x = eqs_new->GetGlobalSolution();
+	double* eqs_x = eqs_new->GetGlobalSolution();
 #elif defined(NEW_EQS)
-    double const* eqs_x = eqs_new->getX();
+	double* eqs_x = eqs_new->getX();
 #endif
 
-    long shift = 0;
-    for (int i = 0; i < problem_dimension_dm; i++)
-    {
-        long const number_of_nodes = num_nodes_p_var[i];
-        // u_n array is temporally used for du
-        int const var_id_tn = p_var_index[i] - 1;
+	long shift = 0;
+	for (int i = 0; i < problem_dimension_dm; i++)
+	{
+		long const number_of_nodes = num_nodes_p_var[i];
+		// u_n array is temporally used for du
+		int const var_id_tn = p_var_index[i] - 1;
 
-        for (long j = 0; j < number_of_nodes; j++)
-        {
+		for (long j = 0; j < number_of_nodes; j++)
+		{
 #ifdef USE_PETSC
-            long k = m_msh->Eqs2Global_NodeIndex[j] * pcs_number_of_primary_nvals + i;
-            double du = eqs_x[k];
+			long k = m_msh->Eqs2Global_NodeIndex_Q[j] * pcs_number_of_primary_nvals + i;
+			double du = eqs_x[k];
 #else
-            double du = eqs_x[j + shift];
+			double du = eqs_x[j + shift];
 #endif
-            SetNodeValue(j, var_id_tn, du);
-        }
-        shift += number_of_nodes;
-    }
+			SetNodeValue(j, var_id_tn, du);
+		}
+		shift += number_of_nodes;
+	}
 }
 
 void CRFProcessDeformation::setPressureFromSolution()
 {
 #if defined(USE_PETSC)
-    double* eqs_x = eqs_new->GetGlobalSolution();
+	double* eqs_x = eqs_new->GetGlobalSolution();
 #elif defined(NEW_EQS)
-    double const* eqs_x = eqs_new->getX();
+	double* eqs_x = eqs_new->getX();
 #endif
 
-    long shift = 0;
-    for (int i = problem_dimension_dm; i < pcs_number_of_primary_nvals; i++)
-    {
-        long const number_of_nodes = num_nodes_p_var[i];
-        int const var_id_tn1 = p_var_index[i];
+	long shift = 0;
+	for (int i = problem_dimension_dm; i < pcs_number_of_primary_nvals; i++)
+	{
+		long const number_of_nodes = num_nodes_p_var[i];
+		int const var_id_tn1 = p_var_index[i];
 
-        for (long j = 0; j < number_of_nodes; j++)
-        {
+		for (long j = 0; j < number_of_nodes; j++)
+		{
 #ifdef USE_PETSC
-            long k = m_msh->Eqs2Global_NodeIndex[j] * pcs_number_of_primary_nvals + i;
+			long k = m_msh->Eqs2Global_NodeIndex_Q[j] * pcs_number_of_primary_nvals + i;
 #else
-            long k = j + shift;
+			long k = j + shift;
 #endif
-            double p = eqs_x[k];
-            SetNodeValue(j, var_id_tn1, p);
-        }
+			double p = eqs_x[k];
+			SetNodeValue(j, var_id_tn1, p);
+		}
 
-        shift += number_of_nodes;
-    }
+		shift += number_of_nodes;
+	}
 }
 
 /**************************************************************************
@@ -1025,77 +1000,77 @@ void CRFProcessDeformation::setPressureFromSolution()
 void CRFProcessDeformation::incrementNodalDUFromSolution()
 {
 #if defined(USE_PETSC)
-    double* eqs_x = eqs_new->GetGlobalSolution();
+	double* eqs_x = eqs_new->GetGlobalSolution();
 #elif defined(NEW_EQS)
-    double const* eqs_x = eqs_new->getX();
+	double* eqs_x = eqs_new->getX();
 #endif
 
-    long shift = 0;
-    for (int i = 0; i < problem_dimension_dm; i++)
-    {
-        long const number_of_nodes = num_nodes_p_var[i];
-        int const var_id_tn = p_var_index[i] - 1;
+	long shift = 0;
+	for (int i = 0; i < problem_dimension_dm; i++)
+	{
+		long const number_of_nodes = num_nodes_p_var[i];
+		int const var_id_tn = p_var_index[i] - 1;
 
-        for (long j = 0; j < number_of_nodes; j++)
-        {
+		for (long j = 0; j < number_of_nodes; j++)
+		{
 #ifdef USE_PETSC
-            long k = m_msh->Eqs2Global_NodeIndex[j] * pcs_number_of_primary_nvals + i;
-            double du = eqs_x[k];
+			long k = m_msh->Eqs2Global_NodeIndex_Q[j] * pcs_number_of_primary_nvals + i;
+			double du = eqs_x[k];
 #else
-            double du = eqs_x[j + shift];
+			double du = eqs_x[j + shift];
 #endif
-            // du = du + d(du)
-            SetNodeValue(j, var_id_tn, GetNodeValue(j, var_id_tn) + du);
-        }
-        shift += number_of_nodes;
-    }
+			// du = du + d(du)
+			SetNodeValue(j, var_id_tn, GetNodeValue(j, var_id_tn) + du);
+		}
+		shift += number_of_nodes;
+	}
 }
 
 // p_n1 += dp
 void CRFProcessDeformation::incrementNodalPressureFromSolution()
 {
 #if defined(USE_PETSC)
-    double* eqs_x = eqs_new->GetGlobalSolution();
+	double* eqs_x = eqs_new->GetGlobalSolution();
 #elif defined(NEW_EQS)
-    double const* eqs_x = eqs_new->getX();
+	double* eqs_x = eqs_new->getX();
 #endif
 
-    long shift = 0;
-    for (int i = problem_dimension_dm; i < pcs_number_of_primary_nvals; i++)
-    {
-        long const number_of_nodes = num_nodes_p_var[i];
-        int const ColIndex = p_var_index[i];
+	long shift = 0;
+	for (int i = problem_dimension_dm; i < pcs_number_of_primary_nvals; i++)
+	{
+		long const number_of_nodes = num_nodes_p_var[i];
+		int const ColIndex = p_var_index[i];
 
-        for (long j = 0; j < number_of_nodes; j++)
-        {
+		for (long j = 0; j < number_of_nodes; j++)
+		{
 #ifdef USE_PETSC
-            long k = m_msh->Eqs2Global_NodeIndex[j] * pcs_number_of_primary_nvals + i;
+			long k = m_msh->Eqs2Global_NodeIndex_Q[j] * pcs_number_of_primary_nvals + i;
 #else
-            long k = j + shift;
+			long k = j + shift;
 #endif
-            double dp = eqs_x[k];
-            SetNodeValue(j, ColIndex, GetNodeValue(j, ColIndex) + dp);
-        }
+			double dp = eqs_x[k];
+			SetNodeValue(j, ColIndex, GetNodeValue(j, ColIndex) + dp);
+		}
 
-        shift += number_of_nodes;
-    }
+		shift += number_of_nodes;
+	}
 }
 
 void CRFProcessDeformation::incrementNodalDisplacement()
 {
-    // u = u + du
-    for (int i = 0; i < problem_dimension_dm; i++)
-    {
-        long const number_of_nodes = num_nodes_p_var[i];
-        int const var_id_tn = p_var_index[i] - 1;
+	// u = u + du
+	for (int i = 0; i < problem_dimension_dm; i++)
+	{
+		long const number_of_nodes = num_nodes_p_var[i];
+		int const var_id_tn = p_var_index[i] - 1;
 
-        for (long j = 0; j < number_of_nodes; j++)
-        {
-            double last_ts_u = GetNodeValue(j, var_id_tn + 1);
-            double du = GetNodeValue(j, var_id_tn);
-            SetNodeValue(j, var_id_tn + 1, last_ts_u + du);
-        }
-    }
+		for (long j = 0; j < number_of_nodes; j++)
+		{
+			double last_ts_u = GetNodeValue(j, var_id_tn + 1);
+			double du = GetNodeValue(j, var_id_tn);
+			SetNodeValue(j, var_id_tn + 1, last_ts_u + du);
+		}
+	}
 }
 
 /**************************************************************************
@@ -1220,14 +1195,14 @@ double CRFProcessDeformation::NormOfUpdatedNewton()
 
 void CRFProcessDeformation::zeroNodalDU()
 {
-    // set du_n1 = 0
-    for (int i = 0; i < problem_dimension_dm; i++)
-    {
-        int var_id_du1 = p_var_index[i] - 1;
-        long number_of_nodes = num_nodes_p_var[i];
-        for (long j = 0; j < number_of_nodes; j++)
-            SetNodeValue(j, var_id_du1, 0.0);
-    }
+	// set du_n1 = 0
+	for (int i = 0; i < problem_dimension_dm; i++)
+	{
+		int var_id_du1 = p_var_index[i] - 1;
+		long number_of_nodes = num_nodes_p_var[i];
+		for (long j = 0; j < number_of_nodes; j++)
+			SetNodeValue(j, var_id_du1, 0.0);
+	}
 }
 
 /**************************************************************************
@@ -1669,21 +1644,21 @@ void CRFProcessDeformation::Extropolation_GaussValue()
 		for (int k = 0; k < NS; k++)
 			SetNodeValue(i, Idx_Stress[k], 0.0);
 
-    // Clean nodal strain
-    NS = 4;
-    Idx_Stress[0] = GetNodeValueIndex("STRAIN_XX");
-    Idx_Stress[1] = GetNodeValueIndex("STRAIN_YY");
-    Idx_Stress[2] = GetNodeValueIndex("STRAIN_ZZ");
-    Idx_Stress[3] = GetNodeValueIndex("STRAIN_XY");
-    if (problem_dimension_dm == 3)
-    {
-        NS = 6;
-        Idx_Stress[4] = GetNodeValueIndex("STRAIN_XZ");
-        Idx_Stress[5] = GetNodeValueIndex("STRAIN_YZ");
-    }
-    for (long i = 0; i < LowOrderNodes; i++)
-        for (int k = 0; k < NS; k++)
-            SetNodeValue(i, Idx_Stress[k], 0.0);
+	// Clean nodal strain
+	NS = 4;
+	Idx_Stress[0] = GetNodeValueIndex("STRAIN_XX");
+	Idx_Stress[1] = GetNodeValueIndex("STRAIN_YY");
+	Idx_Stress[2] = GetNodeValueIndex("STRAIN_ZZ");
+	Idx_Stress[3] = GetNodeValueIndex("STRAIN_XY");
+	if (problem_dimension_dm == 3)
+	{
+		NS = 6;
+		Idx_Stress[4] = GetNodeValueIndex("STRAIN_XZ");
+		Idx_Stress[5] = GetNodeValueIndex("STRAIN_YZ");
+	}
+	for (long i = 0; i < LowOrderNodes; i++)
+		for (int k = 0; k < NS; k++)
+			SetNodeValue(i, Idx_Stress[k], 0.0);
 
 	// set extrapolated nodal values
 	for (long i = 0; i < (long)m_msh->ele_vector.size(); i++)
@@ -2067,93 +2042,105 @@ long CRFProcessDeformation::MarkBifurcatedNeighbor(const int PathIndex)
 **************************************************************************/
 void CRFProcessDeformation::GlobalAssembly()
 {
-	{
-		GlobalAssembly_DM();
+	GlobalAssembly_DM();
 
-		if (type / 10 == 4)
-		{  // p-u monolithic scheme
+	if (type / 10 == 4)
+	{  // p-u monolithic scheme
 
-			// if(!fem_dm->dynamic)   ///
-			//  RecoverSolution(1);  // p_i-->p_0
-			// 2.
-			// Assemble pressure eqs
-			// Changes for OpenMP
-			GlobalAssembly_std(true);
+		// if(!fem_dm->dynamic)   ///
+		//  RecoverSolution(1);  // p_i-->p_0
+		// 2.
+		// Assemble pressure eqs
+		// Changes for OpenMP
+		GlobalAssembly_std(true);
 #if 0
-            const size_t n_nodes_linear = m_msh->GetNodesNumber(false);
-            const size_t n_nodes_quard = m_msh->GetNodesNumber(true);
-            const size_t offset_H = problem_dimension_dm * n_nodes_quard;
-			if (this->eqs_new->size_A > offset_H + n_nodes_linear)
-			{
-	            // set dummy diagonal entry of rows corresponding to unused quadratic nodes for H
-	            std::cout << "set dummy diagonal entry of rows corresponding to unused quadratic nodes for H\n";
-	            std::cout << "-> Linear nodes = " << n_nodes_linear << ", Quadratic nodes = " << n_nodes_quard << "\n";
-	            std::cout << "-> Constrain equation index from " << offset_H +  n_nodes_linear << " to " << offset_H + n_nodes_quard << "\n";
-	            for (size_t i=n_nodes_linear; i<n_nodes_quard; i++) {
-					(*this->eqs_new->getA())(offset_H+i,offset_H+i)=1.0;
-	            }
+		const size_t n_nodes_linear = m_msh->GetNodesNumber(false);
+		const size_t n_nodes_quard = m_msh->GetNodesNumber(true);
+		const size_t offset_H = problem_dimension_dm * n_nodes_quard;
+		if (this->eqs_new->size_A > offset_H + n_nodes_linear)
+		{
+			// set dummy diagonal entry of rows corresponding to unused quadratic nodes for H
+			std::cout << "set dummy diagonal entry of rows corresponding to unused quadratic nodes for H\n";
+			std::cout << "-> Linear nodes = " << n_nodes_linear << ", Quadratic nodes = " << n_nodes_quard << "\n";
+			std::cout << "-> Constrain equation index from " << offset_H +  n_nodes_linear << " to " << offset_H + n_nodes_quard << "\n";
+			for (size_t i=n_nodes_linear; i<n_nodes_quard; i++) {
+				(*this->eqs_new->getA())(offset_H+i,offset_H+i)=1.0;
 			}
-#if defined(USE_PETSC)  //|| defined(other parallel libs)//03~04.3012. WW
-            eqs_new->EQSV_Viewer("eqs" + number2str(aktueller_zeitschritt) + "a");
-#endif
-#endif
 		}
-// if(!fem_dm->dynamic)
-//   RecoverSolution(2);  // p_i-->p_0
+#if defined(USE_PETSC)
+		eqs_new->EQSV_Viewer("eqs" + number2str(aktueller_zeitschritt) + "a");
+#endif
+#endif
+	}
+
+	if (write_leqs)
+	{
+		std::string fname = FileName + "_" +
+							convertProcessTypeToString(this->getProcessType()) +
+							number2str(aktueller_zeitschritt) + "_" +
+							number2str(iter_nlin) + "_leqs_assembly.txt";
+#if defined(NEW_EQS)
+		std::ofstream Dum(fname.c_str(), ios::out);
+		eqs_new->Write(Dum);
+		Dum.close();
+#elif defined(USE_PETSC)
+		eqs_new->EQSV_Viewer(fname);
+#endif
+	}
+
+
+	//   RecoverSolution(2);  // p_i-->p_0
 
 
 #if 0
-            {
-		   ofstream Dum(std::string("eqs_after_assembly.txt").c_str(), ios::out); // WW
-		   this->eqs_new->Write(Dum);
-		   Dum.close();
-            }
+	{
+		ofstream Dum(std::string("eqs_after_assembly.txt").c_str(), ios::out); // WW
+		this->eqs_new->Write(Dum);
+		Dum.close();
+	}
 #endif
-		// Apply Neumann BC
-		IncorporateSourceTerms();
-// DumpEqs("rf_pcs2.txt");
+	// Apply Neumann BC
+	ScreenMessage("-> impose Neumann BC and source/sink terms\n");
+	IncorporateSourceTerms();
 
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012.
-		ScreenMessage2d("assemble PETSc matrix and vectors...\n");
-		eqs_new->AssembleUnkowns_PETSc();
-		eqs_new->AssembleRHS_PETSc();
-		eqs_new->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY);
+#if defined(USE_PETSC)
+	ScreenMessage2d("assemble PETSc matrix and vectors...\n");
+	eqs_new->AssembleUnkowns_PETSc();
+	eqs_new->AssembleRHS_PETSc();
+	eqs_new->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY);
 //		eqs_new->EQSV_Viewer("eqs_after_assembl");
 #endif
 
-		// Apply Dirchlete bounday condition
-		if (!fem_dm->dynamic)
-			IncorporateBoundaryConditions();
-		else
-			CalcBC_or_SecondaryVariable_Dynamics(true);
+	// Apply Dirchlete bounday condition
+	ScreenMessage("-> impose Dirichlet BC\n");
+	if (!fem_dm->dynamic)
+		IncorporateBoundaryConditions();
+	else
+		CalcBC_or_SecondaryVariable_Dynamics(true);
 
-#if 0
-            {
-           ofstream Dum(std::string("eqs_after_BCST.txt").c_str(), ios::out); // WW
-           this->eqs_new->Write(Dum);
-           Dum.close();
-            }
+	if (write_leqs)
+	{
+		std::string fname = FileName + "_" +
+							convertProcessTypeToString(this->getProcessType()) +
+							number2str(aktueller_zeitschritt) + "_" +
+							number2str(iter_nlin) + "_leqs_assembly_BCST.txt";
+#if defined(NEW_EQS)
+		std::ofstream Dum(fname.c_str(), ios::out);
+		eqs_new->Write(Dum);
+		Dum.close();
+#elif defined(USE_PETSC)
+			eqs_new->EQSV_Viewer(fname);
 #endif
-
-#define atest_dump
-#ifdef test_dump
-		string fname = FileName + "rf_pcs_omp.txt";
-		ofstream Dum1(fname.c_str(), ios::out);  // WW
-		eqs_new->Write(Dum1);
-		Dum1.close();  //   abort();
-#endif
+	}
 
 #define atest_bin_dump
-#ifdef test_bin_dump  // WW
-		string fname = FileName + ".eqiation_binary.bin";
+#ifdef test_bin_dump
+	string fname = FileName + ".eqiation_binary.bin";
 
-		ofstream Dum1(fname.data(), ios::out | ios::binary | ios::trunc);
-		if (Dum1.good()) eqs_new->Write_BIN(Dum1);
-		Dum1.close();
+	ofstream Dum1(fname.data(), ios::out | ios::binary | ios::trunc);
+	if (Dum1.good()) eqs_new->Write_BIN(Dum1);
+	Dum1.close();
 #endif
-		//
-	}
-	ScreenMessage("Global assembly is done\n");
 }
 
 /*!  \brief Assembe matrix and vectors
@@ -2163,11 +2150,18 @@ void CRFProcessDeformation::GlobalAssembly()
  */
 void CRFProcessDeformation::GlobalAssembly_DM()
 {
+	const size_t dn = m_msh->ele_vector.size() / 10;
+	const bool print_progress = (dn >= 100);
+	if (print_progress)
+		ScreenMessage("start local assembly for %d elements...\n",
+		              m_msh->ele_vector.size());
+
 	long i;
 	MeshLib::CElem* elem = NULL;
 
 	for (i = 0; i < (long)m_msh->ele_vector.size(); i++)
 	{
+		if (print_progress && (i + 1) % dn == 0) ScreenMessage("* ");
 		elem = m_msh->ele_vector[i];
 		if (!elem->GetMark())  // Marked for use
 			continue;
@@ -2176,6 +2170,8 @@ void CRFProcessDeformation::GlobalAssembly_DM()
 		fem_dm->ConfigElement(elem);
 		fem_dm->LocalAssembly(0);
 	}
+	if (print_progress)
+		ScreenMessage("done\n");
 }
 
 /**************************************************************************
