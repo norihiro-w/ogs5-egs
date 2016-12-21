@@ -23,7 +23,7 @@
 #include "FileToolsRF.h"
 #include "MemWatch.h"
 
-#if defined(USE_PETSC)
+#ifdef USE_PETSC
 #include "PETSC/PETScLinearSolver.h"
 #endif
 
@@ -277,15 +277,6 @@ Problem::Problem(char* filename)
 	m_vec_BRNS->InitBRNS(this);
 #endif
 
-#ifdef CHEMAPP
-	CEqlink* eq = NULL;
-	eq = eq->GetREACTION();
-	if (cp_vec.size() > 0 && eq)  // MX
-	{
-		eq->TestCHEMAPPParameterFile(pcs_vector[0]->file_name_base);
-		if (eq->flag_chemapp) eq->callCHEMAPP(pcs_vector[0]->file_name_base);
-	}
-#endif
 	//  delete rc;
 
 	//----------------------------------------------------------------------
@@ -385,12 +376,11 @@ Problem::Problem(char* filename)
 	//========================================================================
 	CRFProcessDeformation* dm_pcs = NULL;
 
-	//  //WW
 	for (size_t i = 0; i < no_processes; i++)
 	{
 		m_pcs = pcs_vector[i];
-		m_pcs->CalcSecondaryVariables(true);  // WW
-		m_pcs->Extropolation_MatValue();      // WW
+		m_pcs->CalcSecondaryVariables(true);
+		m_pcs->Extropolation_MatValue();
 	}
 	// Calculation of the initial stress and released load for excavation
 	// simulation
@@ -400,7 +390,6 @@ Problem::Problem(char* filename)
 	if (dm_pcs) dm_pcs->CreateInitialState4Excavation();
 
 #ifdef OGS_DELETE_EDGES_AFTER_INIT
-	// Free memory occupied by edges. 09.2012. WW
 	if (!fluid_mom_pcs)
 	{
 		for (size_t k = 0; k < fem_msh_vector.size(); k++)
@@ -1468,11 +1457,6 @@ void Problem::PostCouplingLoop()
 		m_pcs->Extropolation_MatValue();         // WW
 		if (m_pcs->cal_integration_point_value)  // WW
 			m_pcs->Extropolation_GaussValue();
-		// BG
-		if ((m_pcs->simulator == "ECLIPSE") || (m_pcs->simulator == "DUMUX"))
-		{
-			m_pcs->Extropolation_GaussValue();
-		}
 		// JT: Now done in PreCouplingLoop() // m_pcs->CopyTimestepNODValues();
 		// //MB
 		if (force_post_node_copy)
@@ -1487,13 +1471,6 @@ void Problem::PostCouplingLoop()
 			}
 		}
 	}
-// WW
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-	//#ifndef NEW_EQS                                //WW. 07.11.2008
-	if (total_processes[1])
-		total_processes[1]->AssembleParabolicEquationRHSVector();
-#endif
 	LOPCalcELEResultants();
 }
 
@@ -1524,17 +1501,9 @@ inline double Problem::LiquidFlow()
 		m_pcs->selected = false;
 	if (!m_pcs->selected) return error;
 	//  error = m_pcs->Execute();
-	// Cases: decide, weather to use GEOSYS, ECLIPSE or DuMux; BG 10/2010
-	if ((m_pcs->simulator.compare("GEOSYS") ==
-	     0))  //         ||(m_pcs->simulator.compare("ECLIPSE")==0)){ //
-	          //         standard: use GeoSys
-	{
-		error = m_pcs->ExecuteNonLinear(loop_process_number);
-#ifdef RESET_4410
-		PCSCalcSecondaryVariables();  // PCS member function
-#endif
-		m_pcs->CalIntegrationPointValue();  // WW
-	}
+	error = m_pcs->ExecuteNonLinear(loop_process_number);
+	PCSCalcSecondaryVariables();
+	m_pcs->CalIntegrationPointValue();
 
 	return error;
 }
@@ -1549,43 +1518,16 @@ inline double Problem::LiquidFlow()
    -------------------------------------------------------------------------*/
 inline double Problem::RichardsFlow()
 {
-	//-------  WW
 	double error = 0.;
 	CRFProcess* m_pcs = total_processes[2];
 	if (!m_pcs->selected) return error;
-	bool twoflowcpl = false;
-	if (total_processes[1] || total_processes[6]) twoflowcpl = true;
-	if (twoflowcpl)
-	{  //-------  WW
-		// JOD coupling
-		lop_coupling_iterations = m_pcs->m_num->cpl_max_iterations;
-		if (pcs_vector.size() > 1 && lop_coupling_iterations > 1)
-			m_pcs->CopyCouplingNODValues();
-		// WW if(m_pcs->adaption) PCSStorage();
-		CFEMesh* m_msh = MeshLib::FEMGet("RICHARDS_FLOW");
-		error = m_pcs->ExecuteNonLinear(loop_process_number);
-		if (m_pcs->saturation_switch == true)
-			m_pcs->CalcSaturationRichards(1, false);  // JOD
-		else
-			// WW
-			m_pcs->CalcSecondaryVariablesUnsaturatedFlow();
-		// WW#ifndef NEW_EQS //WW. 07.11.2008
-		// WW      if(lop_coupling_iterations > 1) // JOD  coupling
-		// WW         pcs_coupling_error = m_pcs->CalcCouplingNODError();
-		// WW#endif
-		conducted = true;  // WW
-	}
-	else  // WW
+	error = m_pcs->ExecuteNonLinear(loop_process_number);
+	if (m_pcs->TimeStepAccept())
 	{
-		CFEMesh* m_msh = MeshLib::FEMGet("RICHARDS_FLOW");  // WW
-		error = m_pcs->ExecuteNonLinear(loop_process_number);
-		if (m_pcs->TimeStepAccept())
-		{
-			// WW
-			m_pcs->CalcSecondaryVariablesUnsaturatedFlow();
-			CalcVelocities = true;
-			conducted = true;  // WW
-		}
+		// WW
+		m_pcs->CalcSecondaryVariablesUnsaturatedFlow();
+		CalcVelocities = true;
+		conducted = true;  // WW
 	}
 	if (m_pcs->TimeStepAccept()) m_pcs->CalIntegrationPointValue();  // WW
 	return error;
@@ -1654,20 +1596,11 @@ inline double Problem::MultiPhaseFlow()
 
 	// m_pcs->CalculateFluidDensitiesAndViscositiesAtNodes(m_pcs);
 
-	// Cases: decide, weather to use GEOSYS, ECLIPSE or DuMux; BG 10/2010
-	if ((m_pcs->simulator.compare("GEOSYS") ==
-	     0))  // ||(m_pcs->simulator.compare("ECLIPSE")==0)){ // standard: use
-	          // GeoSys
-	{
-		// if((m_pcs->simulator.compare("GEOSYS")==0)
-		// ||(m_pcs->simulator.compare("ECLIPSE")==0)){ // standard: use GeoSys
-		error = m_pcs->ExecuteNonLinear(loop_process_number);
-		if (m_pcs->TimeStepAccept()) m_pcs->CalIntegrationPointValue();  // WW
-	}
+	error = m_pcs->ExecuteNonLinear(loop_process_number);
+	if (m_pcs->TimeStepAccept()) m_pcs->CalIntegrationPointValue();
 
 	// CO2-Phase_Transition BG, NB
-	if ((m_pcs->Phase_Transition_Model == 1) &&
-	    ((m_pcs->simulator.compare("GEOSYS") == 0)))
+	if (m_pcs->Phase_Transition_Model == 1)
 	{
 		// check if mfp-model for density and viscosity is 18
 		if (m_pcs->Tim->step_current == 1)
@@ -1710,8 +1643,6 @@ inline double Problem::MultiPhaseFlow()
 
 	if (m_pcs->tim_type == FiniteElement::TIM_STEADY) m_pcs->selected = false;
 
-	// TestOutputEclipse(m_pcs);
-	// TestOutputDuMux(m_pcs);
 
 	if (m_pcs->OutputMassOfGasInModel == true)  // 05/2012 BG
 		OutputMassOfGasInModel(m_pcs);
@@ -2194,79 +2125,6 @@ inline double Problem::GroundWaterFlow()
 	double error = 1.0e+8;
 	CRFProcess* m_pcs = total_processes[1];
 	if (!m_pcs->selected) return error;  // 12.12.2008 WW
-
-	//----- For the coupling with the soil column approach. 05.2009. WW
-	MeshLib::GridsTopo* neighb_grid = NULL;
-	MeshLib::GridsTopo* neighb_grid_this = NULL;
-	CRFProcess* neighb_pcs = total_processes[2];
-	std::vector<double> border_flux;
-	int idx_flux = 0, idx_flux_this;
-	// WW int no_local_nodes;
-
-	long i;
-	if (neighb_pcs)
-	{
-		for (i = 0; i < (long)neighb_pcs->m_msh->grid_neighbors.size(); i++)
-		{
-			neighb_grid = neighb_pcs->m_msh->grid_neighbors[i];
-			if (neighb_grid->getNeighbor_Name().find("SECTOR_GROUND") !=
-			    std::string::npos)
-				break;
-			neighb_grid = NULL;
-		}
-		for (i = 0; i < (long)m_pcs->m_msh->grid_neighbors.size(); i++)
-		{
-			neighb_grid_this = m_pcs->m_msh->grid_neighbors[i];
-			if (neighb_grid_this->getNeighbor_Name().find("SECTOR_SOIL") !=
-			    std::string::npos)
-				break;
-			neighb_grid_this = NULL;
-		}
-	}
-	//------------
-	if (neighb_grid)
-	{
-		CSourceTerm* m_st = NULL;
-		CNodeValue* m_nod_val = NULL;
-		// long l = 0, m = 0;
-		// WW no_local_nodes = neighb_pcs->m_msh->getNumberOfMeshLayers()+1;
-
-		if (aktueller_zeitschritt == 1)
-		{
-			m_st = new CSourceTerm();
-			st_vector.push_back(m_st);
-			std::vector<CNodeValue*> node_values;
-			for (i = 0; i < neighb_grid->getBorderNodeNumber(); i++)
-			{
-				m_nod_val = new CNodeValue();
-				node_values.push_back(m_nod_val);
-			}
-			m_pcs->st_node_value.push_back(node_values);
-		}
-		// l = (long)m_pcs->st_node_value.size();
-		long* local_indxs = neighb_grid->getBorderNodeIndicies();
-		long* local_indxs_this = neighb_grid_this->getBorderNodeIndicies();
-		border_flux.resize(neighb_grid->getBorderNodeNumber());
-		idx_flux = neighb_pcs->GetNodeValueIndex("VELOCITY_Z1");
-
-		for (i = 0; i < neighb_grid->getBorderNodeNumber(); i++)
-			border_flux[local_indxs_this[i]] =
-			    neighb_pcs->GetNodeValue(local_indxs[i], idx_flux) /
-			    neighb_pcs->time_unit_factor;
-
-		m_pcs->Integration(border_flux);
-
-		// m = l - neighb_grid->getBorderNodeNumber();
-		for (i = 0; i < (long)m_pcs->st_node_value.back().size(); i++)
-		{
-			m_nod_val = m_pcs->st_node_value.back()[i];
-			m_nod_val->msh_node_number = local_indxs_this[i];
-			m_nod_val->geo_node_number = local_indxs_this[i];
-			m_nod_val->node_value = -border_flux[local_indxs_this[i]];
-		}
-	}
-	//-------------------------------
-
 	error = m_pcs->ExecuteNonLinear(loop_process_number);
 	//................................................................
 	// Calculate secondary variables
@@ -2275,41 +2133,13 @@ inline double Problem::GroundWaterFlow()
 	// std::cout << "      Calculation of secondary NOD values" << "\n";
 	if (m_pcs->TimeStepAccept())
 	{
-#ifdef RESET_4410
 		PCSCalcSecondaryVariables();  // PCS member function
-#endif
 		// std::cout << "      Calculation of secondary GP values" << "\n";
 		m_pcs->CalIntegrationPointValue();  // WW
 		m_pcs->cal_integration_point_value =
 		    true;  // WW Do not extropolate Gauss velocity
 
-		if (neighb_grid)
-		{
-			m_pcs->Extropolation_GaussValue();
-			m_pcs->cal_integration_point_value = false;
-			idx_flux_this = m_pcs->GetNodeValueIndex("VELOCITY_Z1");
-			for (i = 0; i < neighb_grid->getBorderNodeNumber(); i++)
-				border_flux[i] = m_pcs->GetNodeValue(i, idx_flux_this);
-			m_pcs->Integration(border_flux);
-			for (i = 0; i < neighb_grid->getBorderNodeNumber(); i++)
-				neighb_pcs->SetNodeValue(i, idx_flux, border_flux[i]);
-			//         neighb_pcs->SetNodeValue(i+no_local_nodes, idx_flux,
-			//         border_flux[i]);
-		}
 	}
-// ELE values
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-	//#ifndef NEW_EQS                                //WW. 07.11.2008
-	if (m_pcs->tim_type == FiniteElement::TIM_STEADY)  // CMCD 05/2006
-	{
-		// std::cout << "      Calculation of secondary ELE values" << "\n";
-		m_pcs->AssembleParabolicEquationRHSVector();  // WW
-		                                              // LOPCalcNODResultants();
-		m_pcs->CalcELEVelocities();
-		m_pcs->selected = false;
-	}
-#endif
 	return error;
 }
 
@@ -2463,9 +2293,6 @@ inline double Problem::MassTrasport()
 	}
 #endif  // GEM_REACT
 
-#ifdef CHEMAPP
-	if (Eqlink_vec.size() > 0) Eqlink_vec[0]->ExecuteEQLINK();
-#endif
 #ifdef BRNS
 	if (m_vec_BRNS->init_flag == true)
 		m_vec_BRNS->RUN(dt /*time value in seconds*/);
@@ -2717,13 +2544,10 @@ void Problem::LOPCalcELEResultants()
 	for (size_t p = 0; p < no_processes; p++)
 	{
 		m_pcs = pcs_vector[p];
-		if (!m_pcs->selected)  // OK4108
+		if (!m_pcs->selected)
 			continue;
-		// cout << "LOPCalcELEResultants: " << m_pcs->pcs_type_name << endl;
-		// TF
 		std::string pcs_type_name(
 		    convertProcessTypeToString(m_pcs->getProcessType()));
-		//		switch (m_pcs->pcs_type_name[0]) {
 		switch (pcs_type_name[0])
 		{
 			default:
@@ -2809,64 +2633,25 @@ inline void Problem::ASMCalcNodeWDepth(CRFProcess* m_pcs)
 /**************************************************************************/
 void Problem::PCSCalcSecondaryVariables()
 {
-	// WW  long j;
-
 	int i, ptype;
 	CRFProcess* m_pcs = NULL;
-	// OK411 CRFProcess* m_pcs_phase_1 = NULL;
-	// OK411 CRFProcess* m_pcs_phase_2 = NULL;
-	// WW int
-	// ndx_p_gas_old,ndx_p_gas_new,ndx_p_liquid_old,ndx_p_liquid_new,ndx_p_cap_old;
-	//----------------------------------------------------------------------
-	// OK411 bool pcs_cpl = true;
-	//----------------------------------------------------------------------
-	// Check if NAPLdissolution is modeled, required by
-	// MMPCalcSecondaryVariablesNew
 	bool NAPLdiss = false;
 	NAPLdiss = KNaplDissCheck();
 	/* go through all processes */
 	int no_processes = (int)pcs_vector.size();
 	for (i = 0; i < no_processes; i++)
 	{
-		/* get process */
-		// pcs = pcs->GetProcessByNumber(i+1);
 		m_pcs = pcs_vector[i];  // JOD
 		if (m_pcs != NULL)
 		{
 			ptype = m_pcs->GetObjType();
 			switch (ptype)
 			{
-				case 1: /* Flow process */
-					// do nothing
-					break;
-				case 66:
-					// Temp mit pcs, only for test MB
-					ASMCalcNodeWDepth(m_pcs);
-					break;
-				case 11: /* Non-isothermal flow process */
-					break;
-				case 13: /* Non-isothermal flow process */
-					break;
-				case 2: /* Mass transport process */
-					break;
-				case 3: /* Heat transport */
-					// do nothing
-					break;
-				case 4: /* Deformation */
-					// do nothing
-					break;
-				case 41: /* Deformation-flow coupled system in monolithic scheme
-				            */
-					// do nothing
-					break;
 				case 12: /* Multi-phase flow process */
 					MMPCalcSecondaryVariablesNew(m_pcs, NAPLdiss);
 					// MMPCalcSecondaryVariablesNew(m_pcs);
 					break;
 				default:
-					// std::cout << "PCSCalcSecondaryVariables - nothing to do"
-					// <<
-					//"\n";
 					break;
 			}
 		}  // If
@@ -2886,22 +2671,6 @@ bool Problem::Check()
 		if (!m_pcs->Check()) return false;
 	}
 	return true;
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   06/2009 OK Implementation
-**************************************************************************/
-bool MODCreate()
-{
-	PCSConfig();      // OK
-	if (!PCSCheck())  // OK
-	{
-		std::cout << "Not enough data for MOD creation.\n";
-		return false;
-	}
-	else
-		return true;
 }
 
 #ifdef BRNS
