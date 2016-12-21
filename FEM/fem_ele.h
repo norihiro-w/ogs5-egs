@@ -198,8 +198,8 @@ protected:
 	double dbuff[20];
 
 #if defined(USE_PETSC)
-	int* idxm;          //> global indices of local matrix rows
-	int* idxn;          //> global indices of local matrix columns
+	int* row_ids;          //> global indices of local matrix rows
+	int* col_ids;          //> global indices of local matrix columns
 #endif
 	ExtrapolationMethod::type extrapo_method;
 	ExtrapolationMethod::type GetExtrapoMethod() { return extrapo_method; }

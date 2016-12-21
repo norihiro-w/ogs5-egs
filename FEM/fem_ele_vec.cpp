@@ -1398,8 +1398,8 @@ void CFiniteElementVec::add2GlobalMatrixII()
 				const int ki = k * nnodesHQ + i;
 				//          ScreenMessage2("-> ki=%d, idx=%d \n", ki, i_buff +
 				//          k);
-				idxm[ki] = i_buff + k;
-				idxn[ki] = idxm[ki];
+				row_ids[ki] = i_buff + k;
+				col_ids[ki] = row_ids[ki];
 			}
 			// local_vec[i] = 0.;
 		}
@@ -1441,14 +1441,14 @@ void CFiniteElementVec::add2GlobalMatrixII()
 #endif  // ifdef assmb_petsc_test
 
 	//	ScreenMessage2("-> addMatrixEntries begin\n");
-	eqs->addMatrixEntries(m_dim, idxm, n_dim, idxn, &local_matrix[0]);
+	eqs->addMatrixEntries(m_dim, row_ids, n_dim, col_ids, &local_matrix[0]);
 	//	ScreenMessage2("-> addMatrixEntries end\n");
 	//	ScreenMessage2("-> setArrayValues begin\n");
 
 	static double temp_vec[100];
 	for (int i = 0; i < m_dim; i++)
 		temp_vec[i] = -local_vec[i];  // r -= RHS
-	eqs->setArrayValues(1, m_dim, idxm, &temp_vec[0]);
+	eqs->setArrayValues(1, m_dim, row_ids, &temp_vec[0]);
 	//	ScreenMessage2("-> add2petsc end\n");
 	// eqs->AssembleRHS_PETSc();
 	// eqs->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY );
