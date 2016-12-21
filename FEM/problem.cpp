@@ -434,33 +434,15 @@ Problem::~Problem()
 	exe_flag = NULL;
 	//
 	PCSDestroyAllProcesses();
-	//
-	if (GetRFProcessProcessingAndActivation("MT") &&
-	    GetRFProcessNumComponents() > 0)
-	{
-		DestroyREACT();  // SB
-		cp_vec.clear();  // Destroy component properties vector
-	}
 	for (size_t i = 0; i < out_vector.size(); i++)
 		delete out_vector[i];
 	out_vector.clear();
-//
-#ifdef CHEMAPP
-	if (Eqlink_vec.size() > 0)
-	{
-		Eqlink_vec[0]->DestroyMemory();
-		Eqlink_vec.clear();
-	}
-#endif
-// WW ClockTimeVec[0]->PrintTimes();
+
 #ifdef GEM_REACT
-	// HS:
 	delete m_vec_GEM;
 #endif
 
 #ifdef BRNS
-	// Here to delete BRNS instance; HB 12.11.2007
-	// delete m_vec_BRNS.at(0);
 	delete m_vec_BRNS;
 #endif
 

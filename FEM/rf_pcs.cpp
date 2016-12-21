@@ -86,43 +86,16 @@ using namespace std;
 using namespace MeshLib;
 using namespace Math_Group;
 
-/*-------------------- ITPACKV    ---------------------------*/
-extern void transM2toM6(void);
-/*-------------------- ITPACKV    ---------------------------*/
-/*-------------------- JAD    ---------------------------*/
-extern void transM2toM5(void);
-/*-------------------- JAD    ---------------------------*/
-/*-----------------------------------------------------------------------*/
-/* LOP */
-// 16.12.2008. WW #include "rf_apl.h" // Loop...
-// 16.12.2008. WW #include "loop_pcs.h"
 extern VoidFuncVoid LOPCalcSecondaryVariables_USER;
-//------------------------------------------------------------------------
-// PCS
-VoidXFuncVoidX PCSDestroyELEMatrices[PCS_NUMBER_MAX];
-//------------------------------------------------------------------------
+
 // Globals, to be checked
+VoidXFuncVoidX PCSDestroyELEMatrices[PCS_NUMBER_MAX];
 int pcs_no_components = 0;
-bool pcs_monolithic_flow = false;
 int pcs_deformation = 0;
 int dm_number_of_primary_nvals = 2;
-bool show_onces_adp = true;
-bool show_onces_mod = true;
-bool show_onces_mod_flow = true;
-bool show_onces_density = true;
-int memory_opt = 0;
 int problem_2d_plane_dm;
-int anz_nval = 0;
-int anz_nval0 = 0;  // WW
-//
-int size_eval = 0;  // WW
-
-NvalInfo* nval_data = NULL;
-int anz_eval = 0;
-EvalInfo* eval_data = NULL;
-string project_title("New project");  // OK41
-
-bool hasAnyProcessDeactivatedSubdomains = false;  // NW
+int size_eval = 0;
+bool hasAnyProcessDeactivatedSubdomains = false;
 
 //--------------------------------------------------------
 // Coupling Flag. WW
@@ -163,7 +136,6 @@ extern size_t max_dim;  // OK411 todo
 // PCS vector
 //////////////////////////////////////////////////////////////////////////
 // It is better to have space between data type and data name. WW
-vector<LINEAR_SOLVER*> PCS_Solver;  // WW
 vector<CRFProcess*> pcs_vector;
 vector<double*> ele_val_vector;  // PCH
 // vector<string> ele_val_name_vector; // PCH
@@ -279,8 +251,6 @@ CRFProcess::CRFProcess(void)
 	timebuffer = 1.0e-5;  // WW
 	//_pcs_type_name.empty();
 	adaption = false;          // HS 03.2008
-	this->EclipseData = NULL;  // BG 09/2009, coupling to Eclipse
-	this->DuMuxData = NULL;    // SBG 09/2009, coupling to DuMux
 	cpl_overlord = NULL;
 	cpl_underling = NULL;
 	pcs_is_cpl_overlord = false;
@@ -295,8 +265,6 @@ CRFProcess::CRFProcess(void)
 	// Reload solutions
 	reload = -1;
 	nwrite_restart = 1;  // kg44 write every timestep is default
-	pcs_nval_data = NULL;
-	pcs_eval_data = NULL;
 	non_linear = false;                   // OK/CMCD
 	cal_integration_point_value = false;  // WW
 	continuum = 0;
@@ -316,12 +284,6 @@ CRFProcess::CRFProcess(void)
 	this->Phase_Transition_Model = 0;  // BG, 11/2010, flag for using CO2 Phase
 	                                   // transition (0...not used, 1...used)
 	//----------------------------------------------------------------------
-	m_bCheck = false;     // OK
-	m_bCheckOBJ = false;  // OK
-	m_bCheckNOD = false;  // OK
-	m_bCheckELE = false;  // OK
-	m_bCheckEQS = false;  // OK
-	//
 	write_boundary_condition = false;  // 15.01.2008. WW
 	OutputMassOfGasInModel = false;    // 05/2012     BG
 	WriteProcessed_BC = -1;            // 26.08.2011. WW
@@ -1427,12 +1389,6 @@ void PCSDestroyAllProcesses(void)
 	for (j = 0; j < (int)pcs_vector.size(); j++)
 	{
 		m_process = pcs_vector[j];
-		if (m_process->pcs_nval_data)
-			m_process->pcs_nval_data =
-			    (PCS_NVAL_DATA*)Free(m_process->pcs_nval_data);
-		if (m_process->pcs_eval_data)
-			m_process->pcs_eval_data =
-			    (PCS_EVAL_DATA*)Free(m_process->pcs_eval_data);
 #ifdef PCS_NOD
 		for (i = 0; i < NodeListSize(); i++)
 		{
@@ -1820,7 +1776,6 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 			*pcs_file >> cpl_type_name;
 			if (cpl_type_name.compare("MONOLITHIC") == 0)
 			{
-				pcs_monolithic_flow = true;
 				pcs_deformation = 11;
 			}
 			pcs_file->ignore(MAX_ZEILE, '\n');
@@ -3750,250 +3705,7 @@ void CRFProcess::ConfigTH()
 	p_var_index = new int[2];
 }
 
-//////////////////////////////////////////////////////////////////////////
-// Configuration NOD
-//////////////////////////////////////////////////////////////////////////
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-//#ifndef NEW_EQS                                   //WW. 07.11.2008
-/*************************************************************************
-   ROCKFLOW - Function:
-   Task: Config node values
-   Programming: 02/2003 OK Implementation
-   04/2004   WW   Modification for 3D problems
-   last modified:
- **************************************************************************/
-void CRFProcess::ConfigNODValues1(void)
-{
-	int i;
-	int pcs_nval = 0;
-	const int DOF = GetPrimaryVNumber();
-	anz_nval0 = anz_nval;
-	number_of_nvals = 2 * DOF + pcs_number_of_secondary_nvals;
-	// NVAL
-	pcs_nval_data =
-	    (PCS_NVAL_DATA*)Malloc(number_of_nvals * sizeof(PCS_NVAL_DATA));
-	/*----------------------------------------------------------------*/
-	for (i = 0; i < DOF; i++)
-	{
-		/* Primary variable - old time */
-		// NVAL pcs_nval_data[pcs_nval] = (PCS_NVAL_DATA *)
-		// Malloc(sizeof(PCS_NVAL_DATA));
-		strcpy(pcs_nval_data[pcs_nval].name,
-		       pcs_primary_function_name[pcs_nval - i]);
-		// Change name for the previous time level
-		/*
-		   char *ch = strchr(pcs_nval_data[pcs_nval].name, '1');
-		   if( ch != NULL )
-		   {
-		   int pos = ch-pcs_nval_data[pcs_nval].name;
-		   pcs_nval_data[pcs_nval].name[pos]='0';
-		   }
-		   else
-		   strcat(pcs_nval_data[pcs_nval].name, "0");   */
-		//-------------------------------------------------------------------------------
-		strcpy(pcs_nval_data[pcs_nval].einheit,
-		       pcs_primary_function_unit[pcs_nval - i]);
-		pcs_nval_data[pcs_nval].timelevel = 0;
-		pcs_nval_data[pcs_nval].speichern = 0;  // WW
-		pcs_nval_data[pcs_nval].laden = 0;
-		pcs_nval_data[pcs_nval].restart = 1;
-		pcs_nval_data[pcs_nval].adapt_interpol = 1;
-		pcs_nval_data[pcs_nval].vorgabe = 0.0;
-#ifdef PCS_NOD
-		pcs_nval_data[pcs_nval].nval_index = pcs_nval;
-#else
-		pcs_nval_data[pcs_nval].nval_index = anz_nval + pcs_nval;
-#endif
-		pcs_nval++;
-		/* Primary variable - new time */
-		// NVAL pcs_nval_data[pcs_nval] = (PCS_NVAL_DATA *)
-		// Malloc(sizeof(PCS_NVAL_DATA));
-		strcpy(pcs_nval_data[pcs_nval].name,
-		       pcs_primary_function_name[pcs_nval - i - 1]);
-		strcpy(pcs_nval_data[pcs_nval].einheit,
-		       pcs_primary_function_unit[pcs_nval - i - 1]);
-		pcs_nval_data[pcs_nval].timelevel = 1;
-		pcs_nval_data[pcs_nval].speichern = 1;
 
-		pcs_nval_data[pcs_nval].laden = 0;
-		pcs_nval_data[pcs_nval].restart = 1;
-		pcs_nval_data[pcs_nval].adapt_interpol = 1;
-		pcs_nval_data[pcs_nval].vorgabe = 0.0;
-#ifdef PCS_NOD
-		pcs_nval_data[pcs_nval].nval_index = pcs_nval;
-#else
-		pcs_nval_data[pcs_nval].nval_index = anz_nval + pcs_nval;
-#endif
-		pcs_nval++;
-	}
-
-	/*----------------------------------------------------------------*/
-	/* Secondary variables */
-	for (i = 0; i < pcs_number_of_secondary_nvals; i++)
-	{
-		// NVAL pcs_nval_data[pcs_nval] = (PCS_NVAL_DATA *)
-		// Malloc(sizeof(PCS_NVAL_DATA));
-		strcpy(pcs_nval_data[pcs_nval].name, pcs_secondary_function_name[i]);
-		strcpy(pcs_nval_data[pcs_nval].einheit, pcs_secondary_function_unit[i]);
-		//  pcs_nval_data[i+2]->timelevel = 1; // always at new time level
-		pcs_nval_data[pcs_nval].timelevel = pcs_secondary_function_timelevel[i];
-		if (pcs_nval_data[pcs_nval].timelevel == 1)
-			pcs_nval_data[pcs_nval].speichern = 1;
-		else
-			pcs_nval_data[pcs_nval].speichern = 0;
-		pcs_nval_data[pcs_nval].laden = 0;
-		pcs_nval_data[pcs_nval].restart = 1;
-		pcs_nval_data[pcs_nval].adapt_interpol = 1;
-		pcs_nval_data[pcs_nval].vorgabe = 0.0;
-#ifdef PCS_NOD
-		pcs_nval_data[pcs_nval].nval_index = pcs_nval;
-#else
-		pcs_nval_data[pcs_nval].nval_index = anz_nval + pcs_nval;
-#endif
-		if (type == 4 || type == 41)
-			if (dm_number_of_primary_nvals == 2 ||
-			    (dm_number_of_primary_nvals == 3 && this->type == 41))
-			{
-				// Block:
-				// STRESS_ZX, STRESS_YZ, STRAIN_ZX, STRAIN_ZY and LUMPED_STRESS
-				if (i == 3 || i == 4 || i == 9 || i == 10 || i == 13)
-					pcs_nval_data[pcs_nval].speichern = 0;
-				if (!problem_2d_plane_dm)
-					//  Block STRESS_ZZ and STRAIN_ZZ
-					if (i == 5 || i == 11)
-						pcs_nval_data[pcs_nval].speichern = 0;
-				// if(!pcs_plasticity)
-				// {
-				//   if(i==12) pcs_nval_data[pcs_nval].speichern = 0;
-				//   //STRAIN_PLS
-				// }
-			}
-		pcs_nval++;
-	}
-	pcs_nval_data = pcs_nval_data;
-}
-
-/*************************************************************************
-   ROCKFLOW - Function: CRFProcess::PCSConfigNODValues
-   Task: Config node values
-   Programming: 02/2003 OK Implementation
-   last modified:
- **************************************************************************/
-void CRFProcess::ConfigNODValues2(void)
-{
-	int i;
-
-	number_of_nvals = 2 * GetPrimaryVNumber() + pcs_number_of_secondary_nvals;
-	for (i = 0; i < number_of_nvals; i++)
-		ModelsAddNodeValInfoStructure(
-		    pcs_nval_data[i].name, pcs_nval_data[i].einheit,
-		    pcs_nval_data[i].speichern, pcs_nval_data[i].laden,
-		    pcs_nval_data[i].restart, pcs_nval_data[i].adapt_interpol,
-		    pcs_nval_data[i].vorgabe);
-}
-#endif  //#ifndef NEW_EQS //WW. 07.11.2008
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   07/2004 OK Implementation
-**************************************************************************/
-int PCSGetNODValueIndex(const string& name, int timelevel)
-{
-	// PCS primary variables
-	int pcs_vector_size = (int)pcs_vector.size();
-	int i, j;
-	CRFProcess* m_pcs = NULL;
-	if (pcs_vector_size > 0)
-		for (i = 0; i < pcs_vector_size; i++)
-		{
-			m_pcs = pcs_vector[i];
-			for (j = 0; j < m_pcs->number_of_nvals; j++)
-				if ((name.compare(m_pcs->pcs_nval_data[j].name) == 0) &&
-				    (m_pcs->pcs_nval_data[j].timelevel == timelevel))
-					return m_pcs->pcs_nval_data[j].nval_index;
-		}
-	cout << "Error in PCSGetNODValueIndex: " << name << endl;
-	return -1;
-}
-
-//////////////////////////////////////////////////////////////////////////
-// Configuration ELE
-//////////////////////////////////////////////////////////////////////////
-
-/*************************************************************************
-   ROCKFLOW - Function:
-   Task: Config element values
-   Programming: 02/2003 OK Implementation
-   last modified:
-   06/2004  WW
- **************************************************************************/
-void CRFProcess::ConfigELEValues1(void)
-{
-	int i;
-	if (pcs_number_of_evals)
-		pcs_eval_data =
-		    (PCS_EVAL_DATA*)Malloc(pcs_number_of_evals * sizeof(PCS_EVAL_DATA));
-	for (i = 0; i < pcs_number_of_evals; i++)
-	{
-		// pcs_eval_data[i] = (PCS_EVAL_DATA *) Malloc(sizeof(PCS_EVAL_DATA));
-		strcpy(pcs_eval_data[i].name, pcs_eval_name[i]);
-		strcpy(pcs_eval_data[i].einheit, pcs_eval_unit[i]);
-		pcs_eval_data[i].speichern = 1;
-		pcs_eval_data[i].laden = 0;
-		pcs_eval_data[i].restart = 1;
-		pcs_eval_data[i].adapt_interpol = 1;
-		pcs_eval_data[i].vorgabe = 0.0;
-		pcs_eval_data[i].index = anz_eval + i;
-		pcs_eval_data[i].eval_index = anz_eval + i;  // SB
-	}
-}
-
-/*************************************************************************
-   ROCKFLOW - Function:
-   Task: Config element values
-   Programming: 04/2003 OK Implementation
-   last modified:
- **************************************************************************/
-void CRFProcess::ConfigELEValues2(void)
-{
-	int i;
-	for (i = 0; i < pcs_number_of_evals; i++)
-		ModelsAddElementValInfoStructure(
-		    pcs_eval_data[i].name, pcs_eval_data[i].einheit,
-		    pcs_eval_data[i].speichern, pcs_eval_data[i].laden,
-		    pcs_eval_data[i].restart, pcs_eval_data[i].adapt_interpol,
-		    pcs_eval_data[i].vorgabe);
-}
-
-/*************************************************************************
-   ROCKFLOW - Function: CRFProcess::PCSGetELEValueIndex
-   Task: Provide index for element values
-   Programming: 08/2003 SB Implementation
-   last modified:
- **************************************************************************/
-int PCSGetELEValueIndex(char* name)
-{
-	int i;
-	CRFProcess* m_process = NULL;
-	int j;
-	int no_processes = (int)pcs_vector.size();
-	for (j = 0; j < no_processes; j++)
-	{
-		m_process = pcs_vector[j];
-		for (i = 0; i < m_process->pcs_number_of_evals; i++)
-			if (strcmp(m_process->pcs_eval_data[i].name, name) == 0)
-				return m_process->pcs_eval_data[i].eval_index;
-	}
-	printf("PCSGetELEValueIndex Alert\n");
-	printf("%s \n", name);
-	return -1;
-}
-
-//////////////////////////////////////////////////////////////////////////
-// Configuration ELE matrices
-//////////////////////////////////////////////////////////////////////////
 
 /**************************************************************************
    FEMLib-Method:
@@ -4537,41 +4249,6 @@ void CRFProcess::CopyU_n()
 	}
 }
 
-/*************************************************************************
-   ROCKFLOW - Function:
-   Task: Calculate element matrices
-   Programming:
-   05/2003 OK Implementation
-   09/2005 OK gas flow removed
-   last modified:
- **************************************************************************/
-void CRFProcess::CalculateElementMatrices(void)
-{
-	switch (this->type)
-	{
-		case 1:  // SM
-			break;
-		case 2:  // MTM2
-			break;
-		case 3:  // HTM
-			break;
-		case 5:  // Gas flow
-			break;
-		case 11:
-			break;
-		case 12:  // MMP
-			break;
-		case 13:  // MPC
-			break;
-		case 66:  // OF
-			break;
-		default:
-			DisplayMsgLn(
-			    "CalculateElementMatrices: no CalculateElementMatrices "
-			    "specified");
-			abort();
-	}
-}
 
 /*************************************************************************
    GeoSys-Function:
@@ -5369,48 +5046,6 @@ void CRFProcess::AllocateLocalMatrixMemory()
 	}
 }
 
-/*************************************************************************
-   ROCKFLOW - Function:
-   Task: Assemble system matrix
-   Programming: 05/2003 OK Implementation
-   ToDo: Prototyp function
-   last modified:
- **************************************************************************/
-void CRFProcess::AssembleSystemMatrixNew(void)
-{
-	switch (type)
-	{
-		case 1:
-			// MakeGS_ASM_NEW(eqs->b,eqs->x,ddummy);
-			// SMAssembleMatrix(eqs->b,eqs->x,ddummy,this);
-			break;
-		case 2:  // MTM2
-			break;
-		case 3:  // HTM
-			break;
-		case 5:  // Gas flow
-			break;
-		case 11:
-			break;
-		case 12:
-			break;
-		case 13:
-			break;
-		case 66:
-			// MakeGS_ASM_NEW(eqs->b,eqs->x,ddummy);
-			// SMAssembleMatrix(eqs->b,eqs->x,ddummy,this);
-			break;
-		default:
-			DisplayMsgLn(
-			    "CalculateElementMatrices: no CalculateElementMatrices "
-			    "specified");
-			abort();
-	}
-	IncorporateSourceTerms();
-	IncorporateBoundaryConditions();
-}
-
-// WW
 /**************************************************************************
    FEMLib-Method: CRFProcess::IncorporateBoundaryConditions
    Task: set PCS boundary conditions
@@ -6857,20 +6492,6 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 #endif
 }
 
-// WW
-int CRFProcess::GetNODValueIndex(const string& name, int timelevel)
-{
-	for (int j = 0; j < number_of_nvals; j++)
-		if ((name.compare(pcs_nval_data[j].name) == 0) &&
-		    (pcs_nval_data[j].timelevel == timelevel))
-			return pcs_nval_data[j].nval_index;
-	cout << "Error in PCSGetNODValueIndex: " << name << endl;
-	return -1;
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Specials
-///////////////////////////////////////////////////////////////////////////
 
 /*-------------------------------------------------------------------------
    ROCKFLOW - Function: PCSRestart
@@ -7251,21 +6872,6 @@ string GetPFNamebyCPName(string inname)
 }  // SB:namepatch
 
 //========================================================================
-// OK former model functions
-int GetRFControlGridAdapt(void)
-{
-	// OK  return (get_rfcp_adaptive_mesh_refinement_flag(rfcp));
-	if (show_onces_adp) cout << "GetRFControlGridAdapt - to be removed" << endl;
-	show_onces_adp = false;
-	return 0;
-}
-
-int GetRFControlModel(void)
-{
-	if (show_onces_mod) cout << "GetRFControlModel - to be removed" << endl;
-	show_onces_mod = false;
-	return -1;
-}
 
 int GetRFProcessChemicalModel(void)
 {
@@ -7273,13 +6879,6 @@ int GetRFProcessChemicalModel(void)
 	return 0;
 }
 
-int GetRFProcessFlowModel(void)
-{
-	if (show_onces_mod_flow)
-		cout << "GetRFProcessFlowModel - to be removed" << endl;
-	show_onces_mod_flow = false;
-	return 0;
-}
 
 int GetRFProcessHeatReactModel(void)
 {
@@ -7337,14 +6936,6 @@ int GetRFControlModex(void)
 	return 0;
 }
 
-int GetRFProcessDensityFlow(void)
-{
-	if (show_onces_density)
-		cout << "GetRFProcessDensityFlow - to be removed" << endl;
-	show_onces_density = false;
-	return 0;
-}
-
 int GetRFProcessNumContinua(void)
 {
 	cout << "GetRFProcessNumContinua - to be removed" << endl;
@@ -7367,128 +6958,6 @@ int GetRFProcessSimulation(void)
 {
 	cout << "GetRFProcessSimulation - to be removed" << endl;
 	return -1;
-}
-
-/**************************************************************************
-   ROCKFLOW - Funktion: ModelsAddNodeValInfoStructure
-
-   Aufgabe:
-   Fuellt die Knotendaten-Infostruktur mit den zugehoerigen Modelldaten.
-   Wird vom Modell der Reihe nach fuer jede Knotengroesse aufgerufen.
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E:char *name         :Name der Knotengroesse fuer Ergebnisdatei
-   E:char *einheit      :Name der phys. Einheit fuer Ergebnisdatei
-   E:int speichern      :Werte sollen gespeichert werden (0/1)
-   E:int laden          :Werte sollen geladen werden falls vorhanden (0/1)
-   E:int restart        :Werte sollen bei Restart geladen werden (0/1)
-   E:int adapt_interpol :Werte sollen beim verfeinern auf Kinder interpoliert
-(0/1)
-   E:double vorgabe     :Vorgabe falls keine Restartdaten oder
-Anfangsbedingungen vorhanden sind
-
-   Ergebnis:
-   Knotenindex der gerade vergeben wurde
-
-   Programmaenderungen:
-   09/2000   CT    Erste Version
-
-**************************************************************************/
-int ModelsAddNodeValInfoStructure(char* name,
-                                  char* einheit,
-                                  int speichern,
-                                  int laden,
-                                  int restart,
-                                  int adapt_interpol,
-                                  double vorgabe)
-{
-	anz_nval++;
-	nval_data = (NvalInfo*)Realloc(nval_data, anz_nval * sizeof(NvalInfo));
-
-	nval_data[anz_nval - 1].name = NULL;
-	nval_data[anz_nval - 1].einheit = NULL;
-
-	if (name)
-	{
-		nval_data[anz_nval - 1].name =
-		    (char*)Malloc(((int)strlen(name) + 1) * sizeof(char));
-		strcpy(nval_data[anz_nval - 1].name, name);
-	}
-	if (einheit)
-	{
-		nval_data[anz_nval - 1].einheit =
-		    (char*)Malloc(((int)strlen(einheit) + 1) * sizeof(char));
-		strcpy(nval_data[anz_nval - 1].einheit, einheit);
-	}
-
-	nval_data[anz_nval - 1].speichern = speichern;
-	nval_data[anz_nval - 1].laden = laden;
-	nval_data[anz_nval - 1].restart = restart;
-	nval_data[anz_nval - 1].adapt_interpol = adapt_interpol;
-	nval_data[anz_nval - 1].vorgabe = vorgabe;
-
-	return anz_nval - 1;
-}
-
-/**************************************************************************
-   ROCKFLOW - Funktion: ModelsAddElementValInfoStructure
-
-   Aufgabe:
-   Fuellt die Elementdaten-Infostruktur mit den zugehoerigen Modelldaten.
-   Wird vom Modell der Reihe nach fuer jede Elementgroesse aufgerufen.
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E:char *name         :Name der Elementgroesse fuer Ergebnisdatei
-   E:char *einheit      :Name der phys. Einheit fuer Ergebnisdatei
-   E:int speichern      :Werte sollen gespeichert werden (0/1)
-   E:int laden          :Werte sollen geladen werden falls vorhanden (0/1)
-   E:int restart        :Werte sollen bei Restart geladen werden (0/1)
-   E:int adapt_interpol :Werte sollen beim verfeinern auf Kinder interpoliert
-(0/1)
-   E:double vorgabe     :Vorgabe falls keine Restartdaten oder
-Anfangsbedingungen vorhanden sind
-
-   Ergebnis:
-   Elementindex der gerade vergeben wurde
-
-   Programmaenderungen:
-   09/2000   CT    Erste Version
-
-**************************************************************************/
-int ModelsAddElementValInfoStructure(char* name,
-                                     char* einheit,
-                                     int speichern,
-                                     int laden,
-                                     int restart,
-                                     int adapt_interpol,
-                                     double vorgabe)
-{
-	anz_eval++;
-	eval_data = (EvalInfo*)Realloc(eval_data, anz_eval * sizeof(EvalInfo));
-
-	eval_data[anz_eval - 1].name = NULL;
-	eval_data[anz_eval - 1].einheit = NULL;
-
-	if (name)
-	{
-		eval_data[anz_eval - 1].name =
-		    (char*)Malloc(((int)strlen(name) + 1) * sizeof(char));
-		strcpy(eval_data[anz_eval - 1].name, name);
-	}
-	if (einheit)
-	{
-		eval_data[anz_eval - 1].einheit =
-		    (char*)Malloc(((int)strlen(einheit) + 1) * sizeof(char));
-		strcpy(eval_data[anz_eval - 1].einheit, einheit);
-	}
-
-	eval_data[anz_eval - 1].speichern = speichern;
-	eval_data[anz_eval - 1].laden = laden;
-	eval_data[anz_eval - 1].restart = restart;
-	eval_data[anz_eval - 1].adapt_interpol = adapt_interpol;
-	eval_data[anz_eval - 1].vorgabe = vorgabe;
-
-	return anz_eval - 1;
 }
 
 /**************************************************************************
@@ -11726,415 +11195,6 @@ void MMPCalcSecondaryVariablesNew(CRFProcess* m_pcs, bool NAPLdiss)
    PCSLib-Method:
    07/2007 OK Implementation
 **************************************************************************/
-bool CRFProcess::OBJRelations()
-{
-	bool succeed = true;
-	std::cout << "OBJ->PCS relations" << '\n';
-
-	std::string pcs_type_name(
-	    convertProcessTypeToString(this->getProcessType()));
-
-	// NUM
-	std::cout << " - NUM->PCS" << '\n';
-	m_num = NUMGet(pcs_type_name);
-	if (!m_num)
-	{
-		std::cout << "Warning in CRFProcess::Create() - no NUM data - default"
-		          << "\n";
-		succeed = false;
-	}
-	else
-	{
-		num_type_name = "NEW";  // OK
-	}
-
-	// TIM
-	cout << " - TIM->PCS" << '\n';
-	Tim = TIMGet(pcs_type_name);
-	if (Tim)
-	{
-		// Time unit factor //WW OK: -> TIM
-		if (Tim->time_unit.find("MINUTE") != string::npos)
-			time_unit_factor = 60.0;
-		else if (Tim->time_unit.find("HOUR") != string::npos)
-			time_unit_factor = 3600.0;
-		else if (Tim->time_unit.find("DAY") != string::npos)
-			time_unit_factor = 86400.0;
-		else if (Tim->time_unit.find("MONTH") != string::npos)
-			time_unit_factor = 2592000.0;
-		else if (Tim->time_unit.find("YEAR") != string::npos)
-			time_unit_factor = 31536000;
-	}
-	else
-		cout << "Warning in CRFProcess::Create() - no TIM data - default"
-		     << endl;
-
-	// OUT
-
-	// MSH
-	if (fem_msh_vector.size() == 1)
-		m_msh = fem_msh_vector[0];
-	else
-		m_msh = MSHGet(pcs_type_name);
-	if (!m_msh)
-	{
-		cout << "Warning in CRFProcess::Create() - no MSH data" << endl;
-		succeed = false;
-	}
-
-	return succeed;
-}
-
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-bool CRFProcess::NODRelations()
-{
-	bool succeed = true;
-	size_t DOF = GetPrimaryVNumber();  // OK should be PCS member variable
-
-	cout << "NOD->PCS relations" << '\n';
-
-	// BC
-	cout << " - BC->PCS" << '\n';
-	if (pcs_type_name_vector.size() &&
-	    pcs_type_name_vector[0].find("DYNAMIC") != string::npos)  // WW
-
-		setBC_danymic_problems();
-	else
-	{
-		// create BC groups for each process
-		CBoundaryConditionsGroup* m_bc_group = NULL;
-		std::string pcs_type_name(
-		    convertProcessTypeToString(this->getProcessType()));
-		for (size_t i = 0; i < DOF; i++)
-		{
-			BCGroupDelete(pcs_type_name, pcs_primary_function_name[i]);
-			m_bc_group = new CBoundaryConditionsGroup();
-			// OK
-			m_bc_group->setProcessTypeName(pcs_type_name);
-			m_bc_group->setProcessPrimaryVariableName(
-			    pcs_primary_function_name[i]);  // OK
-			m_bc_group->Set(this, Shift[i]);
-		}
-	}
-
-	// ST
-	if (pcs_type_name_vector.size() &&
-	    pcs_type_name_vector[0].find("DYNAMIC") != string::npos)  // WW
-
-		setST_danymic_problems();
-
-	CSourceTermGroup* m_st_group = NULL;
-	if (WriteSourceNBC_RHS == 2)  // Read from file
-		ReadRHS_of_ST_NeumannBC();
-	else  // WW
-	{     // Calculate directly
-		std::string pcs_type_name(
-		    convertProcessTypeToString(this->getProcessType()));
-		for (size_t i = 0; i < DOF; i++)
-		{
-			m_st_group =
-			    STGetGroup(pcs_type_name, pcs_primary_function_name[i]);
-			if (!m_st_group)
-			{
-				m_st_group = new CSourceTermGroup();
-				// OK
-				m_st_group->pcs_type_name = pcs_type_name;
-				// OK
-				m_st_group->pcs_pv_name = pcs_primary_function_name[i];
-				m_st_group->Set(this, Shift[i]);
-			}
-		}
-		if (WriteSourceNBC_RHS == 1)  // WW
-			WriteRHS_of_ST_NeumannBC();
-	}
-
-	// NOD values
-	cout << "->Config NOD values" << '\n';
-
-	// Names
-	nod_val_name_vector.clear();
-	//
-	for (int i = 0; i < pcs_number_of_primary_nvals; i++)
-	{
-		// new time
-		nod_val_name_vector.push_back(pcs_primary_function_name[i]);
-		// old time //need this MB!
-		nod_val_name_vector.push_back(pcs_primary_function_name[i]);
-	}
-	for (int i = 0; i < pcs_number_of_secondary_nvals; i++)
-		// new time
-		nod_val_name_vector.push_back(pcs_secondary_function_name[i]);
-	if ((int)nod_val_name_vector.size() !=
-	    (2 * pcs_number_of_primary_nvals + pcs_number_of_secondary_nvals))
-		succeed = false;
-
-	// Values
-	double* nod_values = NULL;
-	const size_t nod_val_vector_size(nod_val_vector.size());
-	for (size_t i = 0; i < nod_val_vector_size; i++)
-	{
-		delete nod_val_vector[i];
-		nod_val_vector[i] = NULL;
-	}
-	nod_val_vector.clear();
-	//
-	// OK m_msh->NodesNumber_Quadratic;
-	number_of_nvals = 2 * DOF + pcs_number_of_secondary_nvals;
-	size_t nn = m_msh->nod_vector.size();  // 11.12.2012. WW
-	for (long j = 0; j < number_of_nvals; j++)
-	{
-		nod_values = new double[nn];
-		for (size_t i = 0; i < nn; i++)
-			nod_values[i] = 0.0;
-		nod_val_vector.push_back(nod_values);
-	}
-	if ((long)nod_val_vector.size() != (long)m_msh->nod_vector.size())
-		succeed = false;
-
-	// IC
-	cout << "->Assign IC" << '\n';
-	if (reload == 2 && type != 4 && type != 41) ReadSolution();  // WW
-	SetIC();
-
-	if (pcs_type_name_vector.size() &&
-	    pcs_type_name_vector[0].find("DYNAMIC") != string::npos)  // WW
-		setIC_danymic_problems();
-	return succeed;
-}
-
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-bool CRFProcess::ELERelations()
-{
-	bool succeed = true;
-	// OK->MB please shift to Config()
-	//	if (_pcs_type_name.compare("GROUNDWATER_FLOW") == 0)
-	if (this->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
-		MeshLib::MSHDefineMobile(this);
-	//
-	if (type == 4 || type == 41)
-		m_msh->SwitchOnQuadraticNodes(true);
-	else
-		m_msh->SwitchOnQuadraticNodes(false);
-	CheckMarkedElement();
-
-	// ELE - GP values
-	AllocateMemGPoint();
-
-	// ELE values
-	double* ele_values = NULL;                      // PCH
-	int number_of_evals = 2 * pcs_number_of_evals;  // PCH, increase memory
-	if (number_of_evals > 0)  // WW added this "if" condition
-	{
-		// Names
-		for (int i = 0; i < pcs_number_of_evals; i++)
-		{
-			// new time
-			ele_val_name_vector.push_back(pcs_eval_name[i]);
-			// old time
-			ele_val_name_vector.push_back(pcs_eval_name[i]);
-		}
-		if (ele_val_name_vector.size() == 0) succeed = false;
-
-		// Values
-		size_t m_msh_ele_vector_size(m_msh->ele_vector.size());
-		if (ele_val_vector.size() == 0)
-			for (size_t j = 0; j < m_msh_ele_vector_size; j++)
-			{
-				ele_values = new double[number_of_evals];
-				size_eval += number_of_evals;  // WW
-				for (int i = 0; i < number_of_evals; i++)
-					ele_values[i] = 0.0;
-				ele_val_vector.push_back(ele_values);
-			}
-		else
-			for (size_t j = 0; j < m_msh_ele_vector_size; j++)
-			{
-				ele_values = ele_val_vector[j];
-				/* //Comment by WW
-				   #ifndef SX
-				   #ifdef GCC
-				   size = malloc_usable_size( ele_values )/sizeof(double);
-				   #elif HORIZON
-				   //KG44: malloc_usable_size and _msize are not available
-				   #else
-				   size= _msize( ele_values )/sizeof(double);
-				   #endif
-				   #endif
-				 */
-				ele_values =
-				    resize(ele_values, size_eval, size_eval + number_of_evals);
-				size_eval += number_of_evals;
-				ele_val_vector[j] = ele_values;
-			}
-		if (ele_val_vector.size() != m_msh->ele_vector.size()) succeed = false;
-	}
-
-	// ELE matrices
-	if (Memory_Type != 0)
-	{
-		AllocateLocalMatrixMemory();
-		if ((long)Ele_Matrices.size() != (long)m_msh->ele_vector.size())
-			succeed = false;
-	}
-
-	// Element matrix output. WW
-	if (Write_Matrix)
-	{
-		cout << "->Write Matrix" << '\n';
-		string m_file_name =
-		    FileName + "_" +
-		    convertProcessTypeToString(this->getProcessType()) +
-		    "_element_matrix.txt";
-		matrix_file = new fstream(m_file_name.c_str(), ios::trunc | ios::out);
-		if (!matrix_file->good())
-			cout << "Warning in GlobalAssembly: Matrix files are not found"
-			     << endl;
-	}
-
-	// FEM
-	if (type == 4 || type == 41)
-	{
-		// Set initialization function
-		CRFProcessDeformation* dm_pcs = (CRFProcessDeformation*)this;
-		dm_pcs->Initialization();
-		if (!dm_pcs->GetFEM_Assembler()) succeed = false;
-	}
-	else  // Initialize FEM calculator
-	{
-		int Axisymm = 1;                           // ani-axisymmetry
-		if (m_msh->isAxisymmetry()) Axisymm = -1;  // Axisymmetry is true
-		// OK4801 needs NUM
-		fem = new CFiniteElementStd(this, Axisymm * m_msh->GetCoordinateFlag());
-		fem->SetGaussPointNumber(m_num->ele_gauss_points);
-		if (!fem) succeed = false;
-	}
-
-	return succeed;
-}
-
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-#if !defined(NEW_EQS) && !defined(USE_PETSC)  // WW. 07.11.2008. 04.2012
-bool CRFProcess::CreateEQS()
-{
-	if (!m_num) return false;  // OK46
-	bool succeed = true;
-	//----------------------------------------------------------------------------
-	if (eqs) return false;
-	//----------------------------------------------------------------------------
-	int DOF = GetPrimaryVNumber();  // OK should be PCS member variable
-	//----------------------------------------------------------------------------
-	// EQS - create equation system
-	cout << "->Create EQS" << '\n';
-	//----------------------------------------------------------------------------
-	if (type == 4)
-	{
-		eqs = CreateLinearSolverDim(m_num->ls_storage_method, DOF,
-		                            DOF * m_msh->GetNodesNumber(true));
-		InitializeLinearSolver(eqs, m_num);
-		PCS_Solver.push_back(eqs);  // WW
-	}
-	//----------------------------------------------------------------------------
-	else if (type == 41)
-	{
-		if (num_type_name.find("EXCAVATION") != string::npos)
-			eqs = CreateLinearSolverDim(m_num->ls_storage_method,
-			                            DOF - 1,
-			                            DOF * m_msh->GetNodesNumber(true));
-		else
-			eqs =
-			    CreateLinearSolverDim(m_num->ls_storage_method, DOF,
-			                          (DOF - 1) * m_msh->GetNodesNumber(true) +
-			                              m_msh->GetNodesNumber(false));
-		InitializeLinearSolver(eqs, m_num);
-		PCS_Solver.push_back(eqs);  // WW
-	}
-	//----------------------------------------------------------------------------
-	else
-	{
-		/*
-		    // If there is a solver exsiting. WW
-		    CRFProcess* m_pcs = NULL;
-		    for(int i=0; i<(int)pcs_vector.size(); i++)
-		   {
-		      m_pcs = pcs_vector[i];
-		      if(m_pcs&&m_pcs->eqs)
-		     {
-		        if(m_pcs->_pcs_type_name.find("DEFORMATION")==string::npos)
-		          break;
-		     }
-		   }
-		   // If unique mesh
-		   if(m_pcs&&m_pcs->eqs&&(fem_msh_vector.size()==1))
-		   eqs = m_pcs->eqs;
-		   //
-		   else
-		   {
-		 */
-		eqs = CreateLinearSolver(m_num->ls_storage_method,
-		                         m_msh->GetNodesNumber(false));
-		InitializeLinearSolver(eqs, m_num);
-		PCS_Solver.push_back(eqs);
-		//}
-	}
-	//----------------------------------------------------------------------------
-	std::string pcs_type_name(
-	    convertProcessTypeToString(this->getProcessType()));
-	strcpy(eqs->pcs_type_name, pcs_type_name.data());
-	//----------------------------------------------------------------------------
-	if ((int)PCS_Solver.size() == 0) succeed = false;
-	//----------------------------------------------------------------------------
-	return succeed;
-}
-#endif
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-//#ifndef NEW_EQS                                   //WW. 07.11.2008
-void PCSCreateNew()
-{
-	int i;
-	CRFProcess* m_pcs = NULL;
-	//----------------------------------------------------------------------
-	for (i = 0; i < (int)pcs_vector.size(); i++)
-	{
-		m_pcs = pcs_vector[i];
-		m_pcs->CreateNew();
-		//----------------------------------------------------------------------
-	}
-}
-
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-void CRFProcess::CreateNew()
-{
-	pcs_type_number = (int)pcs_vector.size();
-	Config();
-	m_bCheckOBJ = OBJRelations();
-	m_bCheckEQS = CreateEQS();
-	m_bCheckNOD = NODRelations();
-	m_bCheckELE = ELERelations();
-	MMP2PCSRelation(this);
-	ConfigureCouplingForLocalAssemblier();
-}
-#endif
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
 bool CRFProcess::Check()
 {
 	// MMP
@@ -12162,215 +11222,6 @@ bool PCSCheck()
 
 	return true;
 }
-
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-#if !defined(NEW_EQS) && !defined(USE_PETSC)  // WW. 07.11.2008. 04.2012
-void EQSDelete()
-{
-	LINEAR_SOLVER* eqs = NULL;
-	CRFProcess* m_pcs = NULL;
-	//----------------------------------------------------------------------
-	for (size_t i = 0; i < PCS_Solver.size(); i++)
-	{
-		eqs = PCS_Solver[i];
-		FiniteElement::ProcessType pcs_type(
-		    FiniteElement::convertProcessType(eqs->pcs_type_name));
-		m_pcs = PCSGet(pcs_type);
-		if (eqs->unknown_vector_indeces)
-			eqs->unknown_vector_indeces =
-			    (int*)Free(eqs->unknown_vector_indeces);
-		if (eqs->unknown_node_numbers)
-			eqs->unknown_node_numbers = (long*)Free(eqs->unknown_node_numbers);
-		if (eqs->unknown_update_methods)
-			eqs->unknown_update_methods =
-			    (int*)Free(eqs->unknown_update_methods);
-		eqs = DestroyLinearSolver(eqs);
-		PCS_Solver.erase((PCS_Solver.begin() + i));
-	}
-	// PCS_Solver.clear();
-}
-#endif
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-void CRFProcess::NODRelationsDelete()
-{
-	std::string pcs_type_name(convertProcessTypeToString(getProcessType()));
-	// BC
-	for (size_t i = 0; i < GetPrimaryVNumber(); i++)
-		BCGroupDelete(pcs_type_name, pcs_primary_function_name[i]);
-	const size_t bc_node_value_size(bc_node_value.size());
-	for (size_t i = 0; i < bc_node_value_size; i++)
-	{
-		delete bc_node_value[i];
-		bc_node_value[i] = NULL;
-	}
-	bc_node_value.clear();
-
-	// ST
-	for (size_t i = 0; i < GetPrimaryVNumber(); i++)
-		STGroupDelete(pcs_type_name, pcs_primary_function_name[i]);
-
-	CNodeValue* nod_val = NULL;
-	const size_t st_node_value_size(st_node_value.size());
-	for (size_t i = 0; i < st_node_value_size; i++)
-	{
-		for (size_t ii = 0; ii < st_node_value[i].size(); ii++)
-		{
-			nod_val = st_node_value[i][ii];
-			// OK delete st_node_value[i];
-			// OK st_node_value[i] = NULL;
-			if (nod_val->check_me)  // OK
-			{
-				nod_val->check_me = false;
-				delete nod_val;
-				nod_val = NULL;
-			}
-		}
-	}
-	st_node_value.clear();
-
-	// NOD values
-	nod_val_name_vector.clear();
-	const size_t nod_val_vector_size(nod_val_vector.size());
-	for (size_t i = 0; i < nod_val_vector_size; i++)
-	{
-		delete nod_val_vector[i];
-		nod_val_vector[i] = NULL;
-	}
-	nod_val_vector.clear();
-}
-
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-void CRFProcess::ELERelationsDelete()
-{
-	long i;
-	//----------------------------------------------------------------------
-	// FEM element
-	if (fem) delete fem;  // WW
-	fem = NULL;
-	//----------------------------------------------------------------------
-	// ELE matrices
-	ElementMatrix* eleMatrix = NULL;
-	ElementValue* gp_ele = NULL;
-	if (Ele_Matrices.size() > 0)
-	{
-		for (i = 0; i < (long)Ele_Matrices.size(); i++)
-		{
-			eleMatrix = Ele_Matrices[i];
-			delete eleMatrix;
-			eleMatrix = NULL;
-		}
-		Ele_Matrices.clear();
-	}
-	//----------------------------------------------------------------------
-	// ELE - GP values
-	if (ele_gp_value.size() > 0)
-	{
-		for (i = 0; i < (long)ele_gp_value.size(); i++)
-		{
-			gp_ele = ele_gp_value[i];
-			delete gp_ele;
-			gp_ele = NULL;
-		}
-		ele_gp_value.clear();
-	}
-	//----------------------------------------------------------------------
-	// ELE values
-	ele_val_name_vector.clear();
-	for (i = 0; i < (long)ele_val_vector.size(); i++)
-	{
-		delete ele_val_vector[i];
-		// delete[] ele_val_vector[i];
-		ele_val_vector[i] = NULL;
-	}
-	ele_val_vector.clear();
-	//----------------------------------------------------------------------
-}
-
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-void CRFProcess::OBJRelationsDelete()
-{
-	//----------------------------------------------------------------------------
-	cout << "OBJ->PCS relations delete" << '\n';
-	//----------------------------------------------------------------------------
-	m_num = NULL;
-	Tim = NULL;
-	m_msh = NULL;
-	//----------------------------------------------------------------------------
-}
-
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-void CRFProcess::Delete()
-{
-	//----------------------------------------------------------------------------
-	cout << "PCS  delete" << '\n';
-	//----------------------------------------------------------------------------
-	ELERelationsDelete();
-	NODRelationsDelete();
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-	//#ifndef NEW_EQS                                //WW. 07.11.2008
-	EQSDelete();
-#endif
-	OBJRelationsDelete();
-	// MMP2PCSRelation(this);
-	// ConfigureCouplingForLocalAssemblier();
-	//----------------------------------------------------------------------------
-}
-
-/**************************************************************************
-   PCSLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-//#ifndef NEW_EQS                                   //WW 07.11.2008
-void CRFProcess::EQSDelete()
-{
-	std::string pcs_type_name(
-	    convertProcessTypeToString(this->getProcessType()));
-	LINEAR_SOLVER* eqs = NULL;
-	for (size_t i = 0; i < PCS_Solver.size(); i++)
-	{
-		eqs = PCS_Solver[i];
-		if (pcs_type_name.compare(eqs->pcs_type_name) == 0)
-		{
-			if (eqs->unknown_vector_indeces)
-				eqs->unknown_vector_indeces =
-				    (int*)Free(eqs->unknown_vector_indeces);
-			if (eqs->unknown_node_numbers)
-				eqs->unknown_node_numbers =
-				    (long*)Free(eqs->unknown_node_numbers);
-			if (eqs->unknown_update_methods)
-				eqs->unknown_update_methods =
-				    (int*)Free(eqs->unknown_update_methods);
-			eqs = DestroyLinearSolver(eqs);
-			eqs = NULL;
-		}
-	}
-
-	for (size_t i = 0; i < PCS_Solver.size(); i++)
-	{
-		eqs = PCS_Solver[i];
-		if (pcs_type_name.compare(eqs->pcs_type_name) == 0)
-			PCS_Solver.erase((PCS_Solver.begin() + i));
-	}
-}
-#endif
 
 /*************************************************************************
    ROCKFLOW - Function: CRFProcess::

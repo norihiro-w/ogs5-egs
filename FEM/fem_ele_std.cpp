@@ -14,12 +14,12 @@
 #include "Configure.h"
 #include "memory.h"
 
+#ifdef NEW_EQS
+#include "equation_class.h"
+#endif
 #include "mathlib.h"
 #if defined(USE_PETSC)
 #include "PETSC/PETScLinearSolver.h"
-#endif
-#ifdef NEW_EQS
-#include "equation_class.h"
 #endif
 
 #include "ElementMatrix.h"
@@ -852,7 +852,7 @@ void CFiniteElementStd::SetMaterial(int /*phase*/)
 #ifndef OGS_ONLY_TH
 	// 03.2009 PCH
 	if ((PCSGet("RICHARDS_FLOW") && PCSGet("HEAT_TRANSPORT")) ||
-	    pcs->type == 1212 || pcs->type == 1313 || pcs->type == 42)
+	    pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || pcs->getProcessType() == FiniteElement::PS_GLOBAL || pcs->type == 42)
 	{
 		FluidProp = MFPGet("LIQUID");
 		FluidProp->Fem_Ele_Std = this;
@@ -958,16 +958,12 @@ double CFiniteElementStd::CalCoefMass()
 			// drho/dp    ::    alpha = 1 - K/Ks
 			// Second term (of Se) below vanishes for incompressible grains
 			// WW if(D_Flag > 0  && rho_val > MKleinsteZahl)
-			if (dm_pcs &&
-			    MediaProp->storage_model ==
-			        7)  // Add MediaProp->storage_model.  29.09.2011. WW
+			if (dm_pcs && MediaProp->storage_model == 7)
 			{
 				biot_val = SolidProp->biot_const;
 				poro_val = MediaProp->Porosity(Index, pcs->m_num->ls_theta);
-				val = 0.;  // WX:04.2013
+				val = 0.;
 
-				// WW if(SolidProp->K == 0) //WX: if HM Partitioned, K still 0
-				// here
 				if (fabs(SolidProp->K) < DBL_MIN)  // WW 29.09.2011
 				{
 					if (SolidProp->Youngs_mode < 10 ||
@@ -1023,12 +1019,12 @@ double CFiniteElementStd::CalCoefMass()
 				val *= storage_effstress;
 			}
 
-            if (M_Process && pcs->use_total_stress_coupling)
-            {
-                if (fabs(SolidProp->K) < DBL_MIN)
-                    SolidProp->Calculate_Lame_Constant();
-                val += std::pow(SolidProp->biot_const, 2) / SolidProp->K;
-            }
+			if (M_Process && pcs->use_total_stress_coupling)
+			{
+				if (fabs(SolidProp->K) < DBL_MIN)
+					SolidProp->Calculate_Lame_Constant();
+				val += std::pow(SolidProp->biot_const, 2) / SolidProp->K;
+			}
 
 			val /= time_unit_factor;
 			break;
@@ -1601,7 +1597,7 @@ void CFiniteElementStd::CalCoefLaplace(bool Gravity, int ip)
 					exit(0);
 				}
 				Matrix const& transform_tensor(*MeshElement->getTransformTensor());
-				Matrix t_transform_tensor(*MeshElement->getTransformTensor());
+				Matrix t_transform_tensor(transform_tensor);
 				transform_tensor.GetTranspose(t_transform_tensor);
 				Matrix global_tensor(dim, dim);
 				for (size_t i = 0; i < ele_dim; i++)
@@ -1613,7 +1609,7 @@ void CFiniteElementStd::CalCoefLaplace(bool Gravity, int ip)
 					for (size_t j = 0; j < dim; j++)
 						for (size_t k = 0; k < dim; k++)
 							global_tensor(i, j) +=
-								transform_tensor(i, k) *
+							    transform_tensor(i, k) *
 							    temp_tensor(k, j);
 				// cout << "K:" << endl; global_tensor.Write();
 				for (size_t i = 0; i < dim; i++)
@@ -1679,8 +1675,9 @@ void CFiniteElementStd::CalCoefLaplace(bool Gravity, int ip)
 					          << "\n";
 					exit(0);
 				}
-				Matrix t_transform_tensor(*MeshElement->getTransformTensor());
-				MeshElement->getTransformTensor()->GetTranspose(t_transform_tensor);
+				Matrix const& transform_tensor(*MeshElement->getTransformTensor());
+				Matrix t_transform_tensor(transform_tensor);
+				transform_tensor.GetTranspose(t_transform_tensor);
 				Matrix global_tensor(dim, dim);
 				for (size_t i = 0; i < ele_dim; i++)
 					for (size_t j = 0; j < ele_dim; j++)
@@ -1692,7 +1689,7 @@ void CFiniteElementStd::CalCoefLaplace(bool Gravity, int ip)
 					for (size_t j = 0; j < dim; j++)
 						for (size_t k = 0; k < dim; k++)
 							global_tensor(i, j) +=
-								(*MeshElement->getTransformTensor())(i, k) *
+							    transform_tensor(i, k) *
 							    temp_tensor(k, j);
 				}
 				// cout << "K:" << endl; global_tensor.Write();
@@ -4071,7 +4068,7 @@ void CFiniteElementStd::CalcLaplace()
 		double water_depth = 1.0;
 		// The following "if" is done by WW
 		if (PcsType == G && MediaProp->unconfined_flow_group == 1 &&
-			MeshElement->GetDimension() == 2 && !pcs->m_msh->hasCrossSection())
+		    MeshElement->GetDimension() == 2 && !pcs->m_msh->hasCrossSection())
 		{
 			water_depth = 0.0;
 			for (i = 0; i < nnodes; i++)
@@ -4321,7 +4318,7 @@ void CFiniteElementStd::CalcAdvection()
 	bool multiphase = false;
 	// 18.02.2008, 04.09.2008 WW
 	if (!cpl_pcs && (pcs->type != 2) && (pcs->type != 5)) return;
-	if (cpl_pcs && cpl_pcs->type == 1212)
+	if (cpl_pcs && cpl_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)
 	{
 		multiphase = true;
 		m_mfp_g = mfp_vector[1];
@@ -4424,7 +4421,7 @@ void CFiniteElementStd::CalcAdvection()
 					(*Advection)(i, j) +=
 					    fkt * shapefct[i] * vel[k] * dshapefct[k * nnodes + j];
 #endif
-		if (pcs->m_num->ele_supg_method > 0)  // NW
+		if (pcs->m_num->ele_supg_method > 0)
 		{
 			vel[0] = gp_ele->Velocity(0, gp);
 			vel[1] = gp_ele->Velocity(1, gp);
@@ -4648,35 +4645,38 @@ void CFiniteElementStd::SetHighOrderNodes()
  **************************************************************************/
 void CFiniteElementStd::CalcStrainCoupling(int phase)
 {
-	int kl, gp, gp_r, gp_s, gp_t;
-	double fkt, du = 0.0;
+	(*StrainCoupling) = 0.0;
+
 	SetHighOrderNodes();
-	// Loop over Gauss points
-	for (gp = 0; gp < nGaussPoints; gp++)
+	for (int gp = 0; gp < nGaussPoints; gp++)
 	{
-		fkt = GetGaussData(gp, gp_r, gp_s, gp_t);
+		int gp_r, gp_s, gp_t;
+		double fkt = GetGaussData(gp, gp_r, gp_s, gp_t);
 
 		ComputeGradShapefct(2);
-		ComputeShapefct(1);
 		ComputeShapefct(2);
+		ComputeShapefct(1);
 		//
 		fkt *= CalCoefStrainCouping(phase);
 		for (size_t i = 0; i < dim; i++)
 		{
 			for (int k = 0; k < nnodes; k++)
+			{
 				for (int l = 0; l < nnodesHQ; l++)
 				{
-					kl = nnodesHQ * i + l;
-					du = dshapefctHQ[kl];
-					if (i == 0 && axisymmetry) du += shapefctHQ[l] / Radius;
+					int kl = nnodesHQ * i + l;
+					double du = dshapefctHQ[kl];
+					if (i == 0 && axisymmetry)
+						du += shapefctHQ[l] / Radius;
 					(*StrainCoupling)(k, kl) += shapefct[k] * du * fkt;
 				}
+			}
 		}
 	}
+
 	setOrder(1);
 	// StrainCoupling->Write();
 
-	/// Ouput the matrix, 07.2011. WW
 	if (pcs->matrix_file)
 	{
 		(*pcs->matrix_file) << "---Strain couping matrix: " << endl;
@@ -5191,7 +5191,7 @@ void CFiniteElementStd::Cal_Velocity()
 		// NW
 		if (k == 2 && (!HEAD_Flag) && FluidProp->CheckGravityCalculation())
 		{
-			if ((FluidProp->density_model == 14))
+			if (FluidProp->density_model == 14)
 			{
 				dens_arg[0] = interpolate(NodalVal1);
 				dens_arg[1] = interpolate(NodalValC) + T_KILVIN_ZERO;
@@ -5206,20 +5206,21 @@ void CFiniteElementStd::Cal_Velocity()
 				                       // CalCoefLaplace()
 				if (PcsType == V || PcsType == P)
 				{
+					auto& tensor(*MeshElement->getTransformTensor());
 					for (size_t i = 0; i < dim; i++)
 						for (size_t j = 0; j < ele_dim; j++)
 						{
 							if (PcsType == V)
 								vel_g[i] +=
 								    rho_g * gravity_constant *
-									(*MeshElement->getTransformTensor())(i, k) *
-									(*MeshElement->getTransformTensor())(2, k);
+								    tensor(i, k) *
+								    tensor(2, k);
 							if (PcsType == P)  // PCH 05.2009
 								vel_g[i] +=
 								    coef * GasProp->Density() /
 								    FluidProp->Density() *
-									(*MeshElement->getTransformTensor())(i, k) *
-									(*MeshElement->getTransformTensor())(2, k);
+								    tensor(i, k) *
+								    tensor(2, k);
 						}
 				}
 			}  // To be correctted
@@ -5829,13 +5830,13 @@ void CFiniteElementStd::AssembleRHS(int dimension)
 			NodalVal[i] -= NodalVal2[i];
 
 	// Store the influence into the global vectors.
+#if defined(NEW_EQS)
 	m_pcs = PCSGet("FLUID_MOMENTUM");
 	for (int i = 0; i < nnodes; i++)
 	{
-#if defined(NEW_EQS)  // WW
 		m_pcs->eqs_new->getRHS()[eqs_number[i]] += NodalVal[i];
-#endif
 	}
+#endif
 	// OK. Let's add gravity term that incorporates the density coupling term.
 	// This is convenient. The function is already written in RF.
 	// Assemble_Gravity();
@@ -6117,34 +6118,37 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 		return;
 	}
 #if 0
-	if (myrank==1 && act_nodes != nnodes) {
+	if (myrank>=0 && act_nodes != nnodes) {
 		bool found = false;
 		for (int i=0; i<nnodes; i++)
 			if (MeshElement->GetNode(i)->GetEquationIndex()==292) found = true;
+		found = true;
 		if (found) {
-			std::cout << "-> Index: " << Index << "\n";
-			std::cout << "-> Nodes: \n";
+			std::stringstream ss;
+			ss << "-> Index: " << Index << "\n";
+			ss << "-> Nodes: \n";
 			for (int i=0; i<nnodes; i++)
-				std::cout << MeshElement->GetNode(i)->GetEquationIndex() << " ";
-			std::cout << "\n";
-			std::cout << "-> u0,u1: \n";
+				ss << MeshElement->GetNode(i)->GetEquationIndex() << " ";
+			ss << "\n";
+			ss << "-> u0,u1: \n";
 			for (int i=0; i<nnodes; i++) {
-				std::cout << NodalVal_p0[i] << " "<< NodalVal_p1[i] << " "<< NodalVal_T0[i] << " "<< NodalVal_T1[i] << "\n";
+				ss << NodalVal_p0[i] << " "<< NodalVal_p1[i] << " "<< NodalVal_T0[i] << " "<< NodalVal_T1[i] << "\n";
 			}
-			std::cout << "\n";
+			ss << "\n";
 
-			std::cout << "-> Velocity: \n";
-			ele_gp_value[Index]->Velocity.Write();
-			std::cout << "-> StiffMatrix: \n";
-			StiffMatrix->Write(std::cout);
-			std::cout << "-> RHS: \n";
-			RHS->Write(std::cout);
-			std::cout << "-> act_nodes =" << act_nodes << "\n";
-			std::cout << "-> local_idx: \n";
+			ss << "-> Velocity: \n";
+			ele_gp_value[Index]->Velocity.Write(ss);
+			ss << "-> StiffMatrix: \n";
+			StiffMatrix->Write(ss);
+			ss << "-> RHS: \n";
+			RHS->Write(ss);
+			ss << "-> act_nodes =" << act_nodes << "\n";
+			ss << "-> local_idx: \n";
 			for (int i = 0; i < act_nodes; i++)
-				std::cout << local_idx[i] << " ";
-			std::cout << "\n";
-			std::cout << "\n";
+				ss << local_idx[i] << " ";
+			ss << "\n";
+			ss << "\n";
+			ScreenMessage2("\n%s\n", ss.str().data());
 		}
 	}
 #endif
@@ -6865,71 +6869,71 @@ void CFiniteElementStd::AssembleMixedHyperbolicParabolicEquation()
 
 void CFiniteElementStd::Assemble_totalStressCPL(const int phase)
 {
-    if (this->pcs->tim_type == FiniteElement::TIM_STEADY)
-        return;
+	if (this->pcs->tim_type == FiniteElement::TIM_STEADY)
+		return;
 
-    bool updateRHS = false;
-    if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION)
-    {
-        updateRHS = true;
-    }
-    else if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW
-             && FiniteElement::isNewtonKind(dm_pcs->m_num->nls_method))
-    {
-        updateRHS = true;
-    }
+	bool updateRHS = false;
+	if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION)
+	{
+		updateRHS = true;
+	}
+	else if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW
+			 && FiniteElement::isNewtonKind(dm_pcs->m_num->nls_method))
+	{
+		updateRHS = true;
+	}
 
-    ElementValue_DM const* ev_dm = ele_value_dm[Index];
-    for (int k = 0; k < nnodes; k++)
-        NodalVal[k] = 0.0;
+	ElementValue_DM const* ev_dm = ele_value_dm[Index];
+	for (int k = 0; k < nnodes; k++)
+		NodalVal[k] = 0.0;
 
-    // r += -Np^T biot/K*d(TotalStress_v)/dt
-    for (int gp = 0; gp < nGaussPoints; gp++)
-    {
-        int gp_r, gp_s, gp_t;
-        double fkt = GetGaussData(gp, gp_r, gp_s, gp_t);
-        ComputeShapefct(1);
+	// r += -Np^T biot/K*d(TotalStress_v)/dt
+	for (int gp = 0; gp < nGaussPoints; gp++)
+	{
+		int gp_r, gp_s, gp_t;
+		double fkt = GetGaussData(gp, gp_r, gp_s, gp_t);
+		ComputeShapefct(1);
 
-        //
-        //double gp_p = interpolate(NodalVal1);
+		//
+		//double gp_p = interpolate(NodalVal1);
 
-        // increment of volumetric total stress
-        double dSv = MeanStress(*ev_dm->dTotalStress, gp);
-        //dSv -= SolidProp->biot_const * gp_p;
+		// increment of volumetric total stress
+		double dSv = MeanStress(*ev_dm->dTotalStress, gp);
+		//dSv -= SolidProp->biot_const * gp_p;
 
-        // alpha/K*dSv/dt
-        fkt *= - SolidProp->biot_const / SolidProp->K * dSv / dt;
+		// alpha/K*dSv/dt
+		fkt *= - SolidProp->biot_const / SolidProp->K * dSv / dt;
 
-        //
-        for (int k = 0; k < nnodes; k++)
-        {
-            (*RHS)(k) += shapefct[k] * fkt;
-            NodalVal[k] += shapefct[k] * fkt;
-        }
-    }
+		//
+		for (int k = 0; k < nnodes; k++)
+		{
+			(*RHS)(k) += shapefct[k] * fkt;
+			NodalVal[k] += shapefct[k] * fkt;
+		}
+	}
 
-    if (updateRHS)
-    {
+	if (updateRHS)
+	{
 #ifdef NEW_EQS
-        // add to global RHS
-        int shift_index = 0;
-        if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
-            shift_index = problem_dimension_dm + phase;
+		// add to global RHS
+		int shift_index = 0;
+		if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
+			shift_index = problem_dimension_dm + phase;
 
-        for (int i = 0; i < nnodes; i++)
-        {
-            eqs_rhs[NodeShift[shift_index] + eqs_number[i]] += NodalVal[i];
-        }
+		for (int i = 0; i < nnodes; i++)
+		{
+			eqs_rhs[NodeShift[shift_index] + eqs_number[i]] += NodalVal[i];
+		}
 #endif
-    }
+	}
 
-    //TODO MONO
-    if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
-    {
-        assert("Not supported yet.");
-        ogsAbort(1);
-        //Assemble_strainCPL_Matrix(fac, phase);
-    }
+	//TODO MONO
+	if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
+	{
+		assert("Not supported yet.");
+		ogsAbort(1);
+		//Assemble_strainCPL_Matrix(fac, phase);
+	}
 }
 
 /***************************************************************************
@@ -6947,13 +6951,14 @@ void CFiniteElementStd::Assemble_totalStressCPL(const int phase)
  **************************************************************************/
 void CFiniteElementStd::Assemble_strainCPL(const int phase)
 {
-    if (this->pcs->tim_type == FiniteElement::TIM_STEADY) return;
+	if (this->pcs->tim_type == FiniteElement::TIM_STEADY)
+		return;
 
-    if (pcs->use_total_stress_coupling)
-    {
-        Assemble_totalStressCPL(phase);
-        return;
-    }
+	if (pcs->use_total_stress_coupling)
+	{
+		Assemble_totalStressCPL(phase);
+		return;
+	}
 
     int i, j;
 	double* u_n = NULL;  // Dynamic
@@ -7063,9 +7068,8 @@ void CFiniteElementStd::Assemble_strainCPL(const int phase)
 			(*RHS)(i + LocalShift) += NodalVal[i];
 		}
 	}
-	// Monolithic scheme.
-	// if(D_Flag == 41)
-	if (dm_pcs->type == 41)  // 06.2011. WW
+
+	if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
 		Assemble_strainCPL_Matrix(fac, phase);
 }
 //**************************************************************************
@@ -7200,7 +7204,7 @@ void CFiniteElementStd::AssembleMassMatrix(int option)
 		{
 			for (int j = 0; j < nnodes; j++)
 			{
-#if defined(NEW_EQS)
+#ifdef NEW_EQS
 				(*A)(cshift + eqs_number[i], cshift + eqs_number[j]) +=
 				    (*Mass)(i, j);
 #endif
@@ -7259,7 +7263,6 @@ void CFiniteElementStd::Config()
 // If deformation related
 
 #else
-	// EQS indices
 	for (i = 0; i < nn; i++)
 		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex();
 #endif
@@ -7272,8 +7275,8 @@ void CFiniteElementStd::Config()
 	//----------------------------------------------------------------------
 	//----------------------------------------------------------------------
 	// ?2WW
-	if ((D_Flag == 41 && pcs_deformation > 100) || dynamic)
-		dm_pcs = (process::CRFProcessDeformation*)pcs;
+	if (D_Flag)
+		dm_pcs = (CRFProcessDeformation*)PCSGetDeformation();
 	//----------------------------------------------------------------------
 	// Initialize RHS
 	if (pcs->Memory_Type > 0)
@@ -7315,7 +7318,7 @@ void CFiniteElementStd::Config()
 		{
 			NodalValC[i] = cpl_pcs->GetNodeValue(nodes[i], idx_c0);
 			NodalValC1[i] = cpl_pcs->GetNodeValue(nodes[i], idx_c1);
-			if (cpl_pcs->type == 1212 || cpl_pcs->type == 42)
+			if (cpl_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || cpl_pcs->type == 42)
 			{
 				NodalVal_p2[i] = cpl_pcs->GetNodeValue(nodes[i], idx_c1 + 2);
 				NodalVal_p20[i] = cpl_pcs->GetNodeValue(nodes[i], idx_c0 + 2);
@@ -7366,7 +7369,8 @@ void CFiniteElementStd::Assembly(bool updateA, bool updateRHS,
 			AssembleParabolicEquation();
 			Assemble_Gravity();
 			Assemble_RHS_LIQUIDFLOW();
-			if (dm_pcs) Assemble_strainCPL();
+			if (dm_pcs)
+				Assemble_strainCPL();
 			add2GlobalMatrixII();
 			break;
 		//....................................................................
@@ -7648,7 +7652,7 @@ void CFiniteElementStd::ExtropolateGauss(CRFProcess* m_pcs, const int idof)
 	MshElemType::type ElementType = MeshElement->GetElementType();
 
 	// Multi-phase flow 03.2009 PCH
-	if (m_pcs->type == 1212 || m_pcs->type == 1313 || m_pcs->type == 42)
+	if (m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || m_pcs->getProcessType() == FiniteElement::PS_GLOBAL || m_pcs->type == 42)
 	{
 		switch (idof)
 		{
@@ -7688,7 +7692,7 @@ void CFiniteElementStd::ExtropolateGauss(CRFProcess* m_pcs, const int idof)
 		//
 		//
 		// PCH 05.2009
-		if (m_pcs->type == 1212 || m_pcs->type == 1313 || m_pcs->type == 42)
+		if (m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || m_pcs->getProcessType() == FiniteElement::PS_GLOBAL || m_pcs->type == 42)
 			NodalVal2[i] = gp_ele->Velocity_g(idof, gp) * time_unit_factor;
 	}
 
@@ -7716,7 +7720,7 @@ void CFiniteElementStd::ExtropolateGauss(CRFProcess* m_pcs, const int idof)
 	{
 		// average
 		avgEV = CalcAverageGaussPointValues(NodalVal1);
-		if (m_pcs->type == 1212 || m_pcs->type == 1313)
+		if (m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || m_pcs->getProcessType() == FiniteElement::PS_GLOBAL)
 			avgEV1 = CalcAverageGaussPointValues(NodalVal2);
 	}
 
@@ -7746,7 +7750,7 @@ void CFiniteElementStd::ExtropolateGauss(CRFProcess* m_pcs, const int idof)
 		m_pcs->SetNodeValue(nodes[i], idx_vel[idof], EV);
 		//
 		// Multi-phase flow PCH 05.2009
-		if (m_pcs->type == 1212 || m_pcs->type == 1313 || m_pcs->type == 42)
+		if (m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || m_pcs->getProcessType() == FiniteElement::PS_GLOBAL || m_pcs->type == 42)
 		{
 			// Calculate values at nodes
 			if (this->GetExtrapoMethod() == ExtrapolationMethod::EXTRAPO_LINEAR)
@@ -7811,7 +7815,7 @@ void CFiniteElementStd::CalcSatution()
 		idx_cp = pcs->GetNodeValueIndex("PRESSURE2") + 1;
 		idx_S = pcs->GetNodeValueIndex("SATURATION2") + 1;
 	}
-	if (pcs->type == 1212 || pcs->type == 42) sign = 1.0;
+	if (pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW || pcs->type == 42) sign = 1.0;
 	//
 	for (i = 0; i < nnodes; i++)
 	{
@@ -7930,7 +7934,7 @@ void CFiniteElementStd::CalcNodeMatParatemer()
 		{
 			NodalValC[i] = cpl_pcs->GetNodeValue(nodes[i], idx_c0);
 			NodalValC1[i] = cpl_pcs->GetNodeValue(nodes[i], idx_c1);
-			if (cpl_pcs->type == 1212)
+			if (cpl_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)
 				NodalVal_p2[i] = cpl_pcs->GetNodeValue(nodes[i], idx_c1 + 2);
 			// AKS
 			NodalVal_p20[i] = pcs->GetNodeValue(nodes[i], idx_c0 + 2);
@@ -8120,12 +8124,8 @@ void CFiniteElementStd::AssembleParabolicEquationRHSVector()
 	//----------------------------------------------------------------------
 	StiffMatrix->multi(NodalVal1, NodalVal);
 //----------------------------------------------------------------------
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-// TODO
-#else
 #ifdef NEW_EQS
-	eqs_rhs = pcs->eqs_new->getRHS();  // WW
-#endif
+	eqs_rhs = pcs->eqs_new->getRHS();
 	for (i = 0; i < nnodes; i++)
 	{
 		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex();

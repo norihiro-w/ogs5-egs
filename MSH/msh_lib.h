@@ -52,7 +52,7 @@ void Read_RFI(std::istream& msh_file, MeshLib::CFEMesh* m_msh);
 int MSHSetMaxMMPGroups();
 
 void MSHDelete(std::string);
-void DATWriteParticleFile(int);
+//void DATWriteParticleFile(int);
 
 MeshLib::CFEMesh* MSHGet(const std::string& mat_type_name);
 

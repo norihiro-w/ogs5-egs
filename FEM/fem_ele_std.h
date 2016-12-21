@@ -62,24 +62,18 @@ namespace process
 {
 class CRFProcessDeformation;
 }
-// using SolidProp::CSolidProperties; // evil in header!
 namespace SolidProp
 {
 class CSolidProperties;
 }
-// Predeclared classes  01/07, WW
 class CMediumProperties;
 class CFluidProperties;
-
 class CRFProcess;
+
+using namespace Math_Group;
+
 namespace FiniteElement
 {
-using Math_Group::SymMatrix;
-using Math_Group::Matrix;
-using Math_Group::DiagonalMatrix;
-using Math_Group::Vector;
-using process::CRFProcessDeformation;
-using ::CRFProcess;
 
 class CFiniteElementStd : public CElement
 {
@@ -312,22 +306,9 @@ private:
 	// Assembly of parabolic equation
 	void AssembleParabolicEquation();  // OK4104
 	void AssembleMixedHyperbolicParabolicEquation();
-	void AssembleParabolicEquationNewton();
-	// JOD
-	void AssembleParabolicEquationNewtonJacobian(double** jacob,
-	                                             double* Haa,
-	                                             double* HaaOld,
-	                                             double axx,
-	                                             double ayy,
-	                                             double** amat,
-	                                             double ast,
-	                                             double* swold,
-	                                             double* residuall,
-	                                             int* iups);
-	void Assemble_strainCPL(
-	    const int phase = 0);  // Assembly of strain coupling
+	void Assemble_strainCPL(const int phase = 0);  // Assembly of strain coupling
 	void Assemble_strainCPL_Matrix(const double fac, const int phase = 0);
-    void Assemble_totalStressCPL(const int phase = 0);
+	void Assemble_totalStressCPL(const int phase = 0);
 
 	void AssembleMassMatrix(int option);  // PCH
 	// Assembly of RHS by Darcy's gravity term

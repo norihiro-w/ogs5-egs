@@ -7,119 +7,22 @@
  *
  */
 
-/**************************************************************************
-   ROCKFLOW - Object: Process PCS
-   Task:
-   Programing:
-   02/2003 OK Implementation
-   11/2004 OK PCS2
-**************************************************************************/
 #ifndef rf_pcs_INC
 #define rf_pcs_INC
 
 #include "makros.h"
 
-// MSHLib
+#include "SparseMatrixDOK.h"
+
 #include "msh_lib.h"
 
-// PCSLib
 #include "ProcessInfo.h"
+#include "prototyp.h"
 #include "rf_bc_new.h"
 #include "rf_num_new.h"
 #include "rf_tim_new.h"
 
-#include "SparseMatrixDOK.h"
-
-//#include "rf_st_new.h"//CMCD 02_06
-// C++ STL
-//#include <fstream>
-//
-// The follows are implicit declaration. WW
-//---------------------------------------------------------------------------
-#if defined(USE_PETSC)  // || defined(using other parallel scheme)
-namespace petsc_group
-{
-class PETScLinearSolver;
-}
-#endif
-
-namespace FiniteElement
-{
-class CFiniteElementStd;
-class CFiniteElementVec;
-class ElementMatrix;
-class ElementValue;
-}
-
-namespace MeshLib
-{
-class CFEMesh;
-}
-
-#ifdef NEW_EQS  // WW
-namespace Math_Group
-{
-class Linear_EQS;
-}
-using Math_Group::Linear_EQS;
-#endif
-
-// using Math_Group::SparseMatrixDOK;
-//
-
-/*
-class etr_data
-{
-public:
-    double x;
-    double y;
-    double val;
-};
-*/
-
-class CSourceTermGroup;
-class CSourceTerm;
-class CNodeValue;
-class Problem;         // WW
-class CECLIPSEData;    // BG Coupling to Eclipse
-class CDUMUXData;      // BG Coupling to DuMux
-class CPlaneEquation;  // BG Calculating Plane Equation
-using FiniteElement::CFiniteElementStd;
-using FiniteElement::CFiniteElementVec;
-using FiniteElement::ElementMatrix;
-using FiniteElement::ElementValue;
-using MeshLib::CFEMesh;
-//---------------------------------------------------------------------------
-
 #define PCS_FILE_EXTENSION ".pcs"
-
-typedef struct /* Knotenwert-Informationen */
-{
-	char name[80];      /* Name der Knotengroesse */
-	char einheit[10];   /* Einheit der Knotengroesse */
-	int speichern;      /* s.u., wird Wert gespeichert ? */
-	int laden;          /* s.u., wird Wert zu Beginn geladen ? */
-	int restart;        /* s.u., wird Wert bei Restart geladen ? */
-	int adapt_interpol; /* Soll Wert bei Adaption auf Kinder interpoliert
-	                       werden? */
-	double vorgabe;     /* Default-Wert fuer Initialisierung */
-	int nval_index;
-	int pcs_this;
-	int timelevel;
-} PCS_NVAL_DATA;
-
-typedef struct /* element data info */
-{
-	char name[80];      /* Name der Elementgroesse */
-	char einheit[10];   /* Einheit der Elementgroesse */
-	int speichern;      /* s.u., wird Wert gespeichert ? */
-	int laden;          /* s.u., wird Wert zu Beginn geladen ? */
-	int restart;        /* s.u., wird Wert bei Restart geladen ? */
-	int adapt_interpol; /* Soll Wert bei Adaption auf Kinder vererbt werden? */
-	double vorgabe;     /* Default-Wert fuer Initialisierung */
-	int eval_index;
-	int index;
-} PCS_EVAL_DATA;
 
 typedef struct
 {
@@ -158,39 +61,48 @@ typedef struct
 } VirialCoefficients;
 
 
-// MB moved inside the Process object
-// extern vector<double*>nod_val_vector; //OK
-// extern vector<string>nod_val_name_vector; //OK
-// extern void pcs->SetNodeValue(long,int,double); //OK
-// extern double pcs->GetNodeValue(long,int); //OK
-// extern int pcs->GetNodeValueIndex(string); //OK
+#if defined(USE_PETSC)
+namespace petsc_group
+{
+class PETScLinearSolver;
+}
+#endif
 
-// Element values for all process
-// Moved inside Process object
-// extern vector<double*>ele_val_vector; //PCH
-// extern vector<string>eld_val_name_vector; //PCH
-// extern void SetElementValue(long,int,double); //PCH
-// extern double GetElementValue(long,int); //PCH
-// extern int GetElementValueIndex(string); //PCH
-/**************************************************************************
-   FEMLib-Class:
-   Task:
-   Programing:
-   03/2003 OK Implementation
-   02/2005 WW Local element assembly (all protected members)
-   12/2005 OK MSH_TYPE
-   last modification:
-   05/2010 TF inserted pointer to instance of class Problem inclusive access
-functions
-**************************************************************************/
+namespace FiniteElement
+{
+class CFiniteElementStd;
+class CFiniteElementVec;
+class ElementMatrix;
+class ElementValue;
+}
+
+namespace MeshLib
+{
+class CFEMesh;
+}
+
+#ifdef NEW_EQS
+namespace Math_Group
+{
+class Linear_EQS;
+}
+#endif
+
+class CSourceTermGroup;
+class CSourceTerm;
+class CNodeValue;
+class Problem;
+class CPlaneEquation;
+
+using namespace FiniteElement;
+using namespace MeshLib;
+
 
 /**
  * class manages the physical processes
  */
 class CRFProcess : public ProcessInfo
 {
-	//----------------------------------------------------------------------
-	// Properties
 protected:
 	/**
 	 * _problem is a pointer to an instance of class Problem.
@@ -215,8 +127,6 @@ protected:  // WW
 	friend class FiniteElement::ElementValue;
 	friend class ::CSourceTermGroup;
 	friend class ::Problem;
-	friend class CECLIPSEData;  // BG
-	friend class CDUMUXData;    // SBG
 	/// Number of nodes to a primary variable. 11.08.2010. WW
 	int* p_var_index;
 	long* num_nodes_p_var;
@@ -271,15 +181,9 @@ protected:
 	int mysize;
 	int myrank;
 #elif defined(NEW_EQS)
-#ifdef LIS
 public:
 	Linear_EQS* eqs_new;
-#else
-	Linear_EQS* eqs_new;
-#endif  // LIS endif for Fluid Momentum	// PCH
 	bool configured_in_nonlinearloop;
-#else
-	LINEAR_SOLVER* eqs;
 #endif
 
 //
@@ -419,12 +323,6 @@ public:
 	// Construction / destruction
 	CRFProcess(void);
 	void Create(void);
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-	void CreateNew(void);
-	void CreateFDMProcess();
-	void DestroyFDMProcess();
-#endif
 	virtual ~CRFProcess();
 	//....................................................................
 	// IO
@@ -484,13 +382,6 @@ public:
 #if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
 	void SetSTWaterGemSubDomain(int myrank);
 #endif
-	// ECLIPSE interface:
-	CDUMUXData* DuMuxData;      // SBG
-	CECLIPSEData* EclipseData;  // BG
-	void CalGPVelocitiesfromECLIPSE(std::string path,
-	                                int timestep,
-	                                int phase_index,
-	                                std::string phase);
 	std::string
 	    simulator;  // which solver to use, i.e. GeoSys, ECLIPSE or DuMux
 	std::string simulator_path;  // path for executable of external simulator
@@ -527,7 +418,6 @@ public:
 	std::string file_name_base;  // OK
 	// Access to PCS
 	// Configuration 1 - NOD
-	PCS_NVAL_DATA* pcs_nval_data;  /// OK
 	int number_of_nvals;
 	int pcs_number_of_primary_nvals;
 	size_t GetPrimaryVNumber() const
@@ -571,7 +461,6 @@ public:
 	   pcs_secondary_function_value_history[index];}//CMCD for analytical
 	   solution*/
 	// Configuration 2 - ELE
-	PCS_EVAL_DATA* pcs_eval_data;
 	int pcs_number_of_evals;
 	const char* pcs_eval_name[PCS_NUMBER_MAX];
 	const char* pcs_eval_unit[PCS_NUMBER_MAX];
@@ -659,20 +548,6 @@ public:
 	    int method);  // OK // PETSC version in rf_pcs1.cpp WW
 #endif
 
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-	void ConfigNODValues1(void);
-	void ConfigNODValues2(void);
-	void CreateNODValues(void);
-	void SetNODValues();           // OK
-	void CalcFluxesForCoupling();  // MB
-	void SetNODFlux();             // OK
-	//
-	void AssembleParabolicEquationRHSVector();  // OK
-	// 15-EQS
-	//(vector<long>&); //OK
-	void AssembleParabolicEquationRHSVector(MeshLib::CNode*);
-#endif
 	double CalcIterationNODError(FiniteElement::ErrorMethod method,
 	                             bool nls_error,
 	                             bool cpl_error = false);  // OK
@@ -687,8 +562,6 @@ public:
 	void CopyCouplingNODValues();
 	// WWvoid CalcFluxesForCoupling(); //MB
 	// Configuration 2 - ELE
-	void ConfigELEValues1(void);
-	void ConfigELEValues2(void);
 	void CreateELEValues(void);
 	void CreateELEGPValues();
 	void AllocateMemGPoint();  // NEW Gauss point values for CFEMSH WW
@@ -722,11 +595,6 @@ public:
 	double ExecuteNonLinear(int loop_process_number, bool print_pcs = true);
 	void PrintStandardIterationInformation(bool write_std_errors, double nl_error);
 
-	virtual void CalculateElementMatrices(void);
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-	void DDCAssembleGlobalMatrix();
-#endif
-	virtual void AssembleSystemMatrixNew(void);
 	// This function is a part of the monolithic scheme
 	//  and it is related to ST, BC, IC, TIM and OUT. WW
 	void SetOBJNames();
@@ -750,15 +618,9 @@ public:
 #endif  //#if !defined(USE_PETSC) // && !defined(other parallel libs)//03.3012.
 // WW
 // WW void CheckBCGroup(); //OK
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
 #ifdef NEW_EQS           // WW
 	void EQSInitialize();
 	void EQSSolver(double* x);  // PCH
-#else
-	int ExecuteLinearSolver(void);
-	int ExecuteLinearSolver(LINEAR_SOLVER* eqs);
-	LINEAR_SOLVER* getEQSPointer() const { return eqs; }  // WW
-#endif
 #endif
 
 	CTimeDiscretization* GetTimeStepping() const { return Tim; }
@@ -878,26 +740,7 @@ public:
 	// NEW
 	CRFProcess* CopyPCStoDM_PCS();
 	CRFProcess* CopyPCStoTH_PCS();
-	bool OBJRelations();        // OK
-	void OBJRelationsDelete();  // OK
-	bool NODRelations();        // OK
-	bool ELERelations();        // OK
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-	bool CreateEQS();  // OK
-	void EQSDelete();  // OK
-	// Dumping matrix and RHS. WW
-	void DumpEqs(std::string file_name);
-#endif
-	bool Check();                 // OK
-	void NODRelationsDelete();    // OK
-	void ELERelationsDelete();    // OK
-	bool m_bCheckOBJ;             // OK
-	bool m_bCheckNOD;             // OK
-	bool m_bCheckELE;             // OK
-	bool m_bCheckEQS;             // OK
-	void Delete();                // OK
-	bool m_bCheck;                // OK
+	bool Check();
 	int ExcavMaterialGroup;       // WX
 	int ExcavDirection;           // WX
 	int ExcavCurve;               // WX
@@ -988,21 +831,17 @@ extern CRFProcess* PCSGetMass(size_t component_number);  // JT
 extern CRFProcess* PCSGetDeformation();                  // JT
 extern bool PCSConfig();                                 //
 // NOD
-extern int PCSGetNODValueIndex(const std::string&, int);
 extern double PCSGetNODValue(long, char*, int);
 extern void PCSSetNODValue(long, const std::string&, double, int);
 // ELE
-extern int PCSGetELEValueIndex(char*);
 extern double PCSGetELEValue(long index,
                              double* gp,
                              double theta,
                              const std::string& nod_fct_name);
 // Specials
 extern void PCSRestart();
-extern std::string PCSProblemType();
 // PCS global variables
 extern int pcs_no_components;
-extern bool pcs_monolithic_flow;
 extern int pcs_deformation;
 
 // ToDo
@@ -1029,55 +868,9 @@ extern double PCSGetEleMeanNodeSecondary_2(long index,
                                            int timelevel);
 extern std::string GetPFNamebyCPName(std::string line_string);
 
-extern int memory_opt;
 
-typedef struct /* Knotenwert-Informationen */
-{
-	char* name;         /* Name der Knotengroesse */
-	char* einheit;      /* Einheit der Knotengroesse */
-	int speichern;      /* s.u., wird Wert gespeichert ? */
-	int laden;          /* s.u., wird Wert zu Beginn geladen ? */
-	int restart;        /* s.u., wird Wert bei Restart geladen ? */
-	int adapt_interpol; /* Soll Wert bei Adaption auf Kinder interpoliert
-	                       werden? */
-	double vorgabe;     /* Default-Wert fuer Initialisierung */
-} NvalInfo;
-extern int anz_nval;  /* Anzahl der Knotenwerte */
-extern int anz_nval0; /* Anzahl der Knotenwerte */
-extern NvalInfo* nval_data;
-extern int ModelsAddNodeValInfoStructure(
-    char*, char*, int, int, int, int, double);
-
-typedef struct /* Elementwert-Informationen */
-{
-	char* name;         /* Name der Elementgroesse */
-	char* einheit;      /* Einheit der Elementgroesse */
-	int speichern;      /* s.u., wird Wert gespeichert ? */
-	int laden;          /* s.u., wird Wert zu Beginn geladen ? */
-	int restart;        /* s.u., wird Wert bei Restart geladen ? */
-	int adapt_interpol; /* Soll Wert bei Adaption auf Kinder vererbt werden? */
-	double vorgabe;     /* Default-Wert fuer Initialisierung */
-} EvalInfo;
-extern int anz_eval; /* Anzahl der Elementwerte */
-extern EvalInfo* eval_data;
-extern int ModelsAddElementValInfoStructure(
-    char*, char*, int, int, int, int, double);
-
-extern int GetRFControlGridAdapt(void);
-extern int GetRFControlModel(void);
-extern int GetRFProcessChemicalModel(void);
-extern int GetRFProcessFlowModel(void);
-extern int GetRFProcessHeatReactModel(void);
 extern int GetRFProcessNumPhases(void);
-extern int GetRFProcessProcessing(char*);
-extern int GetRFProcessProcessingAndActivation(const char*);
 extern long GetRFProcessNumComponents(void);
-extern int GetRFControlModex(void);
-extern int GetRFProcessDensityFlow(void);
-extern int GetRFProcessNumContinua(void);
-extern int GetRFProcessNumElectricFields(void);
-extern int GetRFProcessNumTemperatures(void);
-extern int GetRFProcessSimulation(void);
 
 // Coupling Flag. WW
 extern bool T_Process;               // Heat
@@ -1097,9 +890,7 @@ extern int pcs_number_heat;         // JT2012
 extern std::vector<int>
     pcs_number_mass;  // JT2012 (allow DOF_NUMBER_MAX components)
 //
-extern std::string project_title;  // OK41
 extern bool pcs_created;
-extern std::vector<LINEAR_SOLVER*> PCS_Solver;  // WW
 // OK
 extern void MMPCalcSecondaryVariablesNew(CRFProcess* m_pcs, bool NAPLdiss);
 extern void CalcNewNAPLSat(CRFProcess* m_pcs);  // CB 01/08
@@ -1107,11 +898,6 @@ extern void CalcNewNAPLSat(CRFProcess* m_pcs);  // CB 01/08
 extern double CalcNAPLDens(CRFProcess* m_pcs, int node);
 extern void SetFlowProcessType();           // CB 01/08
 extern void CopyTimestepNODValuesSVTPhF();  // CB 13/08
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-//#ifndef NEW_EQS                                   //WW. 07.11.2008
-extern void PCSCreateNew();  // OK
-#endif
 extern bool PCSCheck();  // OK
 // New solvers WW
 // Create sparse graph for each mesh    //1.11.2007 WW

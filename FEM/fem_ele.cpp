@@ -11,10 +11,15 @@
 
 #include <cfloat>
 
-#include "msh_elem.h"
-#include "rf_pcs.h"
-#include "femlib.h"
 #include "mathlib.h"
+
+#include "msh_elem.h"
+
+#include "femlib.h"
+#include "rf_pcs.h"
+
+using namespace MeshLib;
+using namespace Math_Group;
 
 namespace FiniteElement
 {
@@ -191,12 +196,13 @@ void CElement::ConfigElement(CElem* MElement, bool FaceIntegration)
 				double dy(coords_node_i[1] - coords_node_0[1]);
 				double dz(coords_node_i[2] - coords_node_0[2]);
 
-				X[i] = (*MeshElement->getTransformTensor())(0, 0) * dx +
-					   (*MeshElement->getTransformTensor())(1, 0) * dy +
-					   (*MeshElement->getTransformTensor())(2, 0) * dz;
-				Y[i] = (*MeshElement->getTransformTensor())(0, 1) * dx +
-					   (*MeshElement->getTransformTensor())(1, 1) * dy +
-					   (*MeshElement->getTransformTensor())(2, 1) * dz;
+				auto &trans_tensor = *MeshElement->getTransformTensor();
+				X[i] = trans_tensor(0, 0) * dx +
+				       trans_tensor(1, 0) * dy +
+				       trans_tensor(2, 0) * dz;
+				Y[i] = trans_tensor(0, 1) * dx +
+				       trans_tensor(1, 1) * dy +
+				       trans_tensor(2, 1) * dz;
 				//               Z[i] =  a_node->Z();
 				Z[i] = coords_node_i[2];
 			}
@@ -425,7 +431,6 @@ double CElement::interpolate(double* nodalVal, const int order) const
 **************************************************************************/
 double CElement::interpolate(const int idx, CRFProcess* m_pcs, const int order)
 {
-	int i;
 	int nn = nnodes;
 	double* inTerpo = shapefct;
 	double val = 0.0;
@@ -435,7 +440,7 @@ double CElement::interpolate(const int idx, CRFProcess* m_pcs, const int order)
 		inTerpo = shapefctHQ;
 	}
 	//
-	for (i = 0; i < nn; i++)
+	for (int i = 0; i < nn; i++)
 		node_val[i] = m_pcs->GetNodeValue(nodes[i], idx);
 	for (int i = 0; i < nn; i++)
 		val += node_val[i] * inTerpo[i];
@@ -1056,13 +1061,14 @@ void CElement::ComputeGradShapefct(int order)
 			}
 		}
 	}
+	auto &t_tensor = *MeshElement->getTransformTensor();
 	// 1D element in 3D
 	if ((dim == 3 && ele_dim == 1) || (dim == 2 && ele_dim == 1))
 		for (int i = 0; i < nNodes; i++)
 		{
 			for (size_t j = 1; j < dim; j++)
-				dN[j * nNodes + i] = (*MeshElement->getTransformTensor())(j)*dN[i];
-			dN[i] *= (*MeshElement->getTransformTensor())(0);
+				dN[j * nNodes + i] = t_tensor(j)*dN[i];
+			dN[i] *= t_tensor(0);
 		}
 	// 2D element in 3D
 	if (dim == 3 && ele_dim == 2)
@@ -1076,7 +1082,7 @@ void CElement::ComputeGradShapefct(int order)
 				dN[j * nNodes + i] = 0.0;
 				for (size_t k = 0; k < ele_dim; k++)
 					dN[j * nNodes + i] +=
-						(*MeshElement->getTransformTensor())(j, k) *
+					    t_tensor(j, k) *
 					    dShapefct[k * nNodes + i];
 			}
 	}

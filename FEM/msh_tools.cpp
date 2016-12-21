@@ -256,12 +256,7 @@ void MSHMoveNODUcFlow(CRFProcess* m_pcs)
 			 * Druckverteilung  verformt */
 			/* Standrohrspiegelh�he bestimmen */
 			nidy = m_pcs->GetNodeValueIndex("HEAD") + 1;
-			if (GetRFProcessDensityFlow()) /* mit Dichteunterschiede */
-			{
-				// OK_MOD     head = MODCalcHeadInColumn_MB(strang, anz_zeilen);
-			}
-			else /* ohne Dichteunterschiede */
-				head = m_pcs->GetNodeValue(strang[0], nidy);
+			head = m_pcs->GetNodeValue(strang[0], nidy);
 
 			/* Set minimum thickness */
 			z_bottom =

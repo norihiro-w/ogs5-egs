@@ -7,28 +7,13 @@
  *
  */
 
-/*
-   Class element declaration
-   class for finite element.
-   Designed and programmed by WW, 06/2004
- */
-
 #ifndef fem_INC
 #define fem_INC
 
-// C++
-//#include <vector>
-//#include <string>
-
 #include "prototyp.h"
 #include "MSHEnums.h"
+#include "matrix_class.h"
 
-namespace Math_Group
-{
-class SymMatrix;
-class Matrix;
-typedef Matrix Vector;
-}
 namespace MeshLib
 {
 class CElem;
@@ -53,21 +38,13 @@ struct ExtrapolationMethod
 	};
 };
 
-using Math_Group::SymMatrix;
-using Math_Group::Matrix;
-using Math_Group::Vector;
-
-using MeshLib::CNode;
-using MeshLib::CEdge;
-using MeshLib::CElem;
-
 class CElement
 {
 public:
 	CElement(int CoordFlag, const int order = 1);
 	virtual ~CElement();
 	//
-	void ConfigElement(CElem* MElement, bool FaceIntegration = false);
+	void ConfigElement(MeshLib::CElem* MElement, bool FaceIntegration = false);
 	void setOrder(const int order);
 	// Set Gauss point
 	void SetGaussPoint(const int gp, int& gp_r, int& gp_s, int& gp_t);
@@ -128,7 +105,7 @@ public:
 	void SetCenterGP();
 	int GetGPindex() const { return gp; }
 	int GetElementIndex() const { return Index; }
-	CElem* GetMeshElement() const  // OK
+	MeshLib::CElem* GetMeshElement() const  // OK
 	{
 		return MeshElement;
 	}
@@ -147,7 +124,7 @@ public:
 	}
 
 protected:
-	CElem* MeshElement;
+	MeshLib::CElem* MeshElement;
 	long* element_nodes_dom;  // Only a pointer. For domain decomposition. WW
 
 	friend class ::CRFProcess;
