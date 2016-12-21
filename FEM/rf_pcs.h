@@ -600,7 +600,7 @@ public:
 	//  and it is related to ST, BC, IC, TIM and OUT. WW
 	void SetOBJNames();
 	// ST
-	void IncorporateSourceTerms(const int rank = -1);
+	void IncorporateSourceTerms();
 // WW void CheckSTGroup(); //OK
 #ifdef GEM_REACT
 	void IncorporateSourceTerms_GEMS(

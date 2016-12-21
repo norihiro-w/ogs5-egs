@@ -5806,79 +5806,44 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, const int axis)
    05/2006 WW DDC
    08/2006 YD FCT use
 **************************************************************************/
-void CRFProcess::IncorporateSourceTerms(const int rank)
+void CRFProcess::IncorporateSourceTerms()
 {
 	double value = 0, fac = 1.0, time_fac;
 	int interp_method = 0;
 	int curve, valid = 0;
-	long msh_node, shift;
-	MshElemType::type EleType;  // ii
-	double q_face = 0.0;
-	CElem* elem = NULL;
-	CElem* face = NULL;
-	ElementValue* gp_ele = NULL;
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+	long msh_node_id, shift;
+#if defined(USE_PETSC)
 	vector<int> st_eqs_id;
 	vector<double> st_eqs_value;
 	vector<vector<int> > dof_node_id(this->GetPrimaryVNumber());
 	vector<vector<double> > dof_node_value(this->GetPrimaryVNumber());
 #else
-	double* eqs_rhs = NULL;
-	long bc_eqs_index = -1;
-	int dim_space = 0;  // kg44 better define here and not in a loop!
+	double* eqs_rhs = eqs_new->getRHS();
 #endif
-	double vel[3];
-	bool is_valid;            // YD
-	CFunction* m_fct = NULL;  // YD
-	long i;                   //, group_vector_length;
 
 	double Scaling = 1.0;
-	bool quadr = false;
 	if (type == 4 || type / 10 == 4)
-	{
 		fac = Scaling;
-		quadr = true;
-	}
-
-	CNodeValue* cnodev = NULL;
-	CSourceTerm* m_st = NULL;
-	//
-	long begin = 0;
-	long end = 0;
-	long gindex = 0;
 
 	//====================================================================
 	// Look for active boundary elements if constrain is given
-	for (unsigned i = 0; i < st_vector.size(); i++)
+	for (CSourceTerm* st : st_vector)
 	{
-		CSourceTerm* st = st_vector[i];
 		if (!st->has_constrain) continue;
 
 		CSourceTermGroup m_st_group;
-		m_st_group.pcs_type_name =
-		    FiniteElement::convertProcessTypeToString(st->getProcessType());
-		m_st_group.pcs_pv_name = FiniteElement::convertPrimaryVariableToString(
-		    st->getProcessPrimaryVariable());
+		m_st_group.pcs_type_name = FiniteElement::convertProcessTypeToString(st->getProcessType());
+		m_st_group.pcs_pv_name = FiniteElement::convertPrimaryVariableToString(st->getProcessPrimaryVariable());
 		int idx = GetNodeValueIndex(m_st_group.pcs_pv_name) / 2;
 		m_st_group.Set(this, Shift[idx]);
 	}
 
-	for (size_t is = 0; is < st_node_value.size(); is++)
+	for (size_t is = 0; is < st_vector.size(); is++)
 	{
-		m_st = NULL;
-		if (is < st_vector.size()) m_st = st_vector[is];
-		if (rank == -1)
-		{
-			begin = 0;
-			end = (long)st_node_value[is].size();
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
-#ifdef NEW_EQS           // WW
-			eqs_rhs = eqs_new->getRHS();  // 27.11.2007 WW
-#else
-				eqs_rhs = eqs->b;
-#endif
-#endif
-		}
+		CSourceTerm* m_st = st_vector[is];
+		long const begin = 0;
+		long const end = (long)st_node_value[is].size();
+		bool const isQuadratic = FiniteElement::isPrimaryVariableDisplacement(m_st->getProcessPrimaryVariable());
 		std::vector<bool> active_elements;
 
 		// constrain
@@ -5963,6 +5928,9 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 		// exchange condition needs to update a coefficient matrix
 		if (m_st->is_transfer_bc)
 		{
+			if (st_node_value[is].empty())
+				continue;
+
 			// only Neumann BC
 			if (m_st->getSTType() != FiniteElement::NEUMANN) continue;
 
@@ -5970,9 +5938,8 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 			if (m_st->getGeoType() == GEOLIB::POINT)
 			{
 				if (m_st->has_constrain && !active_elements[0]) continue;
-				cnodev = st_node_value[is][0];
-				const int k_eqs_id = m_msh->nod_vector[cnodev->geo_node_number]
-				                         ->GetEquationIndex();
+				CNodeValue* cnodev = st_node_value[is][0];
+				const int k_eqs_id = m_msh->nod_vector[cnodev->geo_node_number]->GetEquationIndex();
 #if defined(USE_PETSC)
 				eqs_new->addMatrixEntry(k_eqs_id, k_eqs_id,
 				                        m_st->transfer_h_values[0]);
@@ -6022,101 +5989,42 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 		// Add ST to RHS
 		for (long i = begin; i < end; i++)
 		{
-			gindex = i;
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-			if (rank > -1) gindex = st_node_value_in_dom[i];
-#endif
+			long gindex = i;
+			CNodeValue* cnodev = st_node_value[is][gindex];
 
-			cnodev = st_node_value[is][gindex];
-
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-			msh_node = cnodev->geo_node_number;
+#if defined(USE_PETSC)
+			msh_node_id = cnodev->geo_node_number;
 			// Check whether the node is in this subdomain
-			if (quadr)
-			{
-				if (!m_msh->isNodeLocal(msh_node)) continue;
-			}
-			else
-			{
-				if (!m_msh->isNodeLocal(msh_node)) continue;
-			}
+			if (!m_msh->isNodeLocal(msh_node_id)) continue;
 
 			int dof_per_node = 0;
-			if (m_msh->GetNodesNumber(false) == m_msh->GetNodesNumber(true))
+			if (!isQuadratic)
 			{
 				dof_per_node = pcs_number_of_primary_nvals;
 				shift = cnodev->msh_node_number / m_msh->GetNodesNumber(false);
 			}
 			else
 			{
-				if (msh_node < static_cast<long>(m_msh->GetNodesNumber(false)))
-					dof_per_node = pcs_number_of_primary_nvals;
-				else
-					dof_per_node = m_msh->GetMaxElementDim();
-				shift = cnodev->msh_node_number / m_msh->GetNodesNumber(true);
+//				if (msh_node_id < static_cast<long>(m_msh->GetNodesNumber(false)))
+//					dof_per_node = pcs_number_of_primary_nvals;
+//				else
+				dof_per_node = m_msh->GetMaxElementDim();
+				shift = cnodev->msh_node_number / m_msh->GetNodesNumber(isQuadratic);
 			}
 
 #else
 			shift = cnodev->msh_node_number - cnodev->geo_node_number;
-			msh_node = cnodev->msh_node_number;
-			msh_node -= shift;
+			msh_node_id = cnodev->msh_node_number;
+			msh_node_id -= shift;
 #endif
 			value = cnodev->node_value;
 			//--------------------------------------------------------------------
 			// Tests
-			if (msh_node < 0) continue;
+			if (msh_node_id < 0) continue;
 			//--------------------------------------------------------------------
 			// CPL
 			// if(m_st->_pcs_type_name_cond.size()>0) continue; // this is a CPL
 			// source term, JOD removed
-			//--------------------------------------------------------------------
-			// system dependent YD
-			if (cnodev->getProcessDistributionType() ==
-			    FiniteElement::SYSTEM_DEPENDENT)
-			{
-				long no_st_ele = (long)m_st->element_st_vector.size();
-				for (long i_st = 0; i_st < no_st_ele; i_st++)
-				{
-					long ele_index = m_st->element_st_vector[i_st];
-					elem = m_msh->ele_vector[ele_index];
-					if (elem->GetMark())
-					{
-						fem->ConfigElement(elem);
-						fem->Cal_Velocity();
-					}
-					gp_ele = ele_gp_value[ele_index];
-					gp_ele->GetEleVelocity(vel);
-					EleType = elem->GetElementType();
-					if (EleType == MshElemType::LINE)  // Line
-						cnodev->node_value += vel[0];
-					// Traingle & Qua
-					if (EleType == MshElemType::TRIANGLE ||
-					    EleType == MshElemType::QUAD)
-					{
-						for (size_t i_face = 0;
-						     i_face < m_msh->face_vector.size();
-						     i_face++)
-						{
-							face = m_msh->face_vector[i_face];
-							if ((size_t)m_st->element_st_vector[i_st] ==
-							    face->GetOwner()->GetIndex())
-								//
-								q_face = PointProduction(
-								             vel, m_msh->face_normal[i_face]) *
-								         face->GetVolume();
-							// for(i_node)
-						}
-						cnodev->node_value = +q_face / 2;
-					}
-				}
-				//--------------------------------------------------------------------
-				// MB
-				// if(m_st->conditional && !m_st->river)
-				//{
-
-				GetNODValue(value, cnodev, m_st);
-			}  // st_node.size()>0&&(long)st_node.size()>i
-			//----------------------------------------------------------------------------------------
 			//--------------------------------------------------------------------
 			// Please do not move the this section
 			curve = cnodev->CurveIndex;
@@ -6155,7 +6063,8 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 				{
 					if (m_st->getFunctionName().length() > 0)
 					{
-						m_fct = FCTGet(pcs_number);
+						bool is_valid;
+						CFunction* m_fct = FCTGet(pcs_number);
 						if (m_fct)
 							time_fac = m_fct->GetValue(
 							    aktuelle_zeit,
@@ -6169,7 +6078,8 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 				}
 				else if (!m_st->getFunctionName().empty())
 				{
-					m_fct = FCTGet(m_st->getFunctionName());
+					CFunction* m_fct = FCTGet(m_st->getFunctionName());
+					bool is_valid;
 					if (m_fct)
 						time_fac = m_fct->GetValue(aktuelle_zeit, &is_valid);
 					else
@@ -6190,31 +6100,31 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 					value *= vec_scale_eqs[1];
 				}
 			}
-//------------------------------------------------------------------
-// EQS->RHS
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+			//------------------------------------------------------------------
+			// EQS->RHS
+#if defined(USE_PETSC)
+			MeshLib::CNode* node = m_msh->nod_vector[msh_node_id];
+			int global_node_id = node->GetEquationIndex(isQuadratic);
+//			{
+//				static int cnt = 0;
+//				if (cnt < 3)
+//				{
+//					cnt++;
+//					ScreenMessage2("-> ST: node %d, msh_node_num=%d, shift=%d, eqs_id=%d\n", node->GetIndex(), cnodev->msh_node_number, shift, global_node_id);
+//				}
+//			}
 
-			st_eqs_id.push_back(static_cast<int>(
-			    m_msh->nod_vector[msh_node]->GetEquationIndex() * dof_per_node +
-			    shift));
+			st_eqs_id.push_back(global_node_id * dof_per_node + shift);
 			st_eqs_value.push_back(value);
 			if (m_num->petsc_split_fields)
 			{
-				int dof_id =
-				    m_st->getProcessPrimaryVariable() == FiniteElement::PRESSURE
-				        ? 0
-				        : 1;  // TODO
-				dof_node_id[dof_id].push_back(static_cast<int>(
-				    m_msh->nod_vector[msh_node]->GetEquationIndex()));
+				int dof_id = m_st->getProcessPrimaryVariable() == FiniteElement::PRESSURE ? 0 : 1;  // TODO
+				dof_node_id[dof_id].push_back(static_cast<int>(node->GetEquationIndex()));
 				dof_node_value[dof_id].push_back(value);
 			}
 
 #else
-			if (rank > -1)
-				bc_eqs_index = msh_node + shift;
-			else
-				bc_eqs_index =
-					m_msh->nod_vector[msh_node]->GetEquationIndex(quadr) + shift;
+			long bc_eqs_index = m_msh->nod_vector[msh_node_id]->GetEquationIndex(isQuadratic) + shift;
 			eqs_rhs[bc_eqs_index] += value;
 #endif
 		}
@@ -6229,66 +6139,28 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 	long gem_node_index = -1, glocalindex = -1;
 	if (flag_couple_GEMS == 1 && aktueller_zeitschritt > 1)
 	{
-		begin = 0;
-		if (rank == -1)  // serial version and also Version for PETSC!!
-
-			end = (long)Water_ST_vec.size();
-		else  // parallel version
-		{
-			end = 0;
-			if (rank_stgem_node_value_in_dom.size() > 0)
-				end = rank_stgem_node_value_in_dom[0];
-		}
+		long begin = 0;
+		long end = (long)Water_ST_vec.size();
 		// only when switch is on and not in the first time step
 		// loop over the Water_ST_vec vector,
 		// add the excess water to the right-hand-side of the equation
 		for (long i = begin; i < end; i++)
 		{
-			if (rank > -1)  // parallel version: stgem_node_value_in_dom and
-			                // stgem_local_index_in_dom contain only values for
-			                // the corresponding domain  == rank
-			{
-				//				cout << "rank " << rank ;
-				gindex = stgem_node_value_in_dom[i];  // contains indexes to
-				                                      // water-st_vec
-				//				cout << " gindex " << gindex << " i " << i <<
-				//endl
-				//;
-				// contains index to node
-				glocalindex = stgem_local_index_in_dom[i];
-//				cout << " gem_node_index " << gem_node_index << "\n";
+			gem_node_index = Water_ST_vec[i].index_node;
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-
-				st_eqs_id.push_back(static_cast<int>(
-				    m_msh->nod_vector[glocalindex]->GetEquationIndex()));
-				st_eqs_value.push_back(Water_ST_vec[gindex].water_st_value);
-#else
-				eqs_rhs[glocalindex] += Water_ST_vec[gindex].water_st_value;
-#endif
-			}
-			else  // serial version
-			{
-				gem_node_index = Water_ST_vec[i].index_node;
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-				st_eqs_id.push_back(static_cast<int>(
-				    m_msh->nod_vector[gem_node_index]->GetEquationIndex()));
-				st_eqs_value.push_back(Water_ST_vec[i].water_st_value);
+			st_eqs_id.push_back(static_cast<int>(
+				m_msh->nod_vector[gem_node_index]->GetEquationIndex()));
+			st_eqs_value.push_back(Water_ST_vec[i].water_st_value);
 
 #else
-				eqs_rhs[gem_node_index] += Water_ST_vec[i].water_st_value;
+			eqs_rhs[gem_node_index] += Water_ST_vec[i].water_st_value;
 #endif
-			}
 		}
 		// after finished adding to RHS, clear the vector
 		Water_ST_vec.clear();
-		if (rank > -1)
-		{
-			stgem_node_value_in_dom.clear();
-			stgem_local_index_in_dom.clear();
-			rank_stgem_node_value_in_dom.clear();
-		}
 	}
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
+
+#if defined(USE_PETSC)
 	if (m_num->petsc_split_fields)
 	{
 		//				for (unsigned i=0; i<eqs_new->vec_subRHS.size(); i++)
