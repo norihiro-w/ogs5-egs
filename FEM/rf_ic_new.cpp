@@ -18,28 +18,25 @@
 
 #include "rf_ic_new.h"
 
-// C++ STL
 #include <iostream>
 #include <list>
-// FEM-Makros
-//#include "files0.h"
-#include "makros.h"
+
 #include "display.h"
 #include "FileToolsRF.h"
-#include "files0.h"
+#include "makros.h"
+
 #include "mathlib.h"
-// Base
-//#include "StringTools.h"
-// GEOLIB
+
 #include "GEOObjects.h"
-// MSHLib
+
 #include "msh_lib.h"
-// FEMLib
+
+#include "files0.h"
+#include "InitialCondition.h"
+#include "rfmat_cp.h"
 #include "rf_node.h"
 #include "rf_pcs.h"
-#include "rfmat_cp.h"
 #include "tools.h"
-#include "InitialCondition.h"
 
 //==========================================================================
 using namespace std;
@@ -374,7 +371,6 @@ ios::pos_type CInitialCondition::Read(std::ifstream* ic_file,
 				setGeoObj(pnt);
 
 				in.clear();
-				geo_name = "";  // REMOVE CANDIDATE
 			}
 			if (geo_type_name.find("POLYLINE") != string::npos)
 			{
@@ -528,7 +524,6 @@ void CInitialCondition::Set(int nidx)
 		{
 			case GEOLIB::POINT:
 				SetPoint(nidx);
-				std::cout << "WARNING: CInitialCondition::Set - ToDo" << endl;
 				break;
 			case GEOLIB::POLYLINE:
 				SetPolyline(nidx);
@@ -617,7 +612,13 @@ void CInitialCondition::SetByElementValues(int nidx)
 	}
 
 	CRFProcess* pcs = this->getProcess();
-	// MeshLib::CFEMesh* msh = pcs->m_msh;
+#ifdef USE_PETSC
+	MeshLib::CFEMesh* msh = pcs->m_msh;
+	std::map<size_t, size_t> map_global2local_ele_id;
+	for (size_t i=0; i<map_global2local_ele_id.size(); i++)
+		map_global2local_ele_id.insert(std::make_pair((size_t)msh->getElementVector()[i]->GetGlobalIndex(), i));
+#endif
+
 	// read element values
 	std::vector<long> ic_ele_ids;
 	std::map<long, double> map_eleId_values;
@@ -632,10 +633,17 @@ void CInitialCondition::SetByElementValues(int nidx)
 
 		in.str(line_string);
 		in >> ele_id >> val;
+		in.clear();
+#ifdef USE_PETSC
+		auto itr = map_global2local_ele_id.find(ele_id);
+		if (itr == map_global2local_ele_id.end())
+			continue;
+		ele_id = itr->second;
+#endif
 		ic_ele_ids.push_back(ele_id);
 		map_eleId_values[ele_id] = val;
-		in.clear();
 	}
+
 
 	//// interpolate nodal values
 	// std::vector<double> vec_nod_values;
@@ -673,15 +681,21 @@ void CInitialCondition::SetByElementValues(int nidx)
 void CInitialCondition::SetPoint(int nidx)
 {
 	if (m_msh && this->getProcessDistributionType() == FiniteElement::CONSTANT)
-		this->getProcess()->SetNodeValue(
-		    this->getProcess()->m_msh->GetNODOnPNT(
-		        static_cast<const GEOLIB::Point*>(getGeoObj())),
-		    nidx,
-		    geo_node_value);
-	else
+	{
+		auto node_id = this->getProcess()->m_msh->GetNODOnPNT(static_cast<const GEOLIB::Point*>(getGeoObj()));
+		if (node_id >= 0) {
+			ScreenMessage2("-> node ID %d is found for POINT %s\n", node_id, getGeoName().data());
+			this->getProcess()->SetNodeValue(node_id, nidx, geo_node_value);
+		} else {
+#ifndef USE_PETSC
+			ScreenMessage("Error in CInitialCondition::SetPoint - point %s not found\n", getGeoName().data());
+#endif
+		}
+	} else {
 		std::cerr << "Error in CInitialCondition::SetPoint - point: "
 		          << *(static_cast<const GEOLIB::Point*>(getGeoObj()))
 		          << " not found" << endl;
+	}
 }
 
 /**************************************************************************
@@ -695,20 +709,20 @@ void CInitialCondition::SetEle(int nidx)
 	switch (getGeoType())
 	{
 		case GEOLIB::POINT:
-			std::cout << "Warning CInitialCondition::Set - ToDo"
+			std::cout << "Warning CInitialCondition::SetEle - ToDo"
 			          << "\n";
 			break;
 		case GEOLIB::POLYLINE:
 			// SetPolyline(nidx);
-			std::cout << "Warning CInitialCondition::Set - ToDo"
+			std::cout << "Warning CInitialCondition::SetEle - ToDo"
 			          << "\n";
 			break;
 		case GEOLIB::SURFACE:
-			std::cout << "Warning CInitialCondition::Set - ToDo"
+			std::cout << "Warning CInitialCondition::SetEle - ToDo"
 			          << "\n";
 			break;
 		case GEOLIB::VOLUME:
-			std::cout << "Warning CInitialCondition::Set - ToDo"
+			std::cout << "Warning CInitialCondition::SetEle - ToDo"
 			          << "\n";
 			break;
 		case GEOLIB::GEODOMAIN:
@@ -872,12 +886,9 @@ void CInitialCondition::SetDomain(int nidx)
 	{
 		if (this->getProcessDistributionType() == FiniteElement::CONSTANT)
 		{
-			//................................................................
 			node_val = geo_node_value;
-			// OK MSH
 			for (i = 0; i < m_msh->GetNodesNumber(true); i++)
 				this->getProcess()->SetNodeValue(i, nidx, node_val);
-			//................................................................
 		}
 		//--------------------------------------------------------------------
 		// Remove unused stuff by WW
