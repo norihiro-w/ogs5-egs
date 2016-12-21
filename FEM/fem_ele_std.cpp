@@ -5993,68 +5993,6 @@ void CFiniteElementStd::add2GlobalMatrixII(bool updateA, bool updateRHS)
 		eqs->addMatrixEntries(m_dim, row_ids, n_dim, col_ids, local_matrix);
 	if (updateRHS)
 		eqs->setArrayValues(1, m_dim, row_ids, local_vec);
-
-//#define assmb_petsc_test
-#ifdef assmb_petsc_test
-	char rank_char[10];
-	sprintf(rank_char, "%d", eqs->getMPI_Rank());
-	string fname = FileName + rank_char + "_e_matrix.txt";
-	ofstream os_t(fname.c_str(), ios::app);
-	os_t << "\n=================================================="
-	     << "\n";
-#endif
-
-	{
-		local_matrix = StiffMatrix->getEntryArray();
-		local_vec = RHS->getEntryArray();
-
-		for (int i = 0; i < nnodes; i++)
-		{
-			const int i_buff = MeshElement->GetNode(i)->GetEquationIndex() * dof;
-			for (int k = 0; k < dof; k++)
-			{
-				const int ki = k * nnodes + i;
-				row_ids[ki] = i_buff + k;
-				col_ids[ki] = row_ids[ki];
-			}
-			// local_vec[i] = 0.;
-		}
-	}
-
-// TEST
-#ifdef assmb_petsc_test
-	{
-		os_t << "\n------------------" << act_nodes* dof << "\n";
-		os_t << "Element ID: " << index << "\n";
-		StiffMatrix->Write(os_t);
-		RHS->Write(os_t);
-
-		os_t << "Node ID: ";
-		for (int i = 0; i < nnodes; i++)
-		{
-			os_t << MeshElement->GetNode(i)->GetEquationIndex() << " ";
-		}
-		os_t << "\n";
-		os_t << "Act. Local ID: ";
-		for (int i = 0; i < act_nodes; i++)
-		{
-			os_t << local_idx[i] << " ";
-		}
-		os_t << "\n";
-		os_t << "Act. Global ID:";
-		for (int i = 0; i < act_nodes * dof; i++)
-		{
-			os_t << idxm[i] << " ";
-		}
-		os_t << "\n";
-	}
-	os_t.close();
-#endif  // ifdef assmb_petsc_test
-
-	if (updateA) eqs->addMatrixEntries(m_dim, row_ids, n_dim, col_ids, local_matrix);
-	if (updateRHS) eqs->setArrayValues(1, m_dim, row_ids, local_vec);
-	// eqs->AssembleRHS_PETSc();
-	// eqs->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY );
 }
 
 void CFiniteElementStd::add2GlobalMatrixII_Split(bool updateA, bool updateRHS)
