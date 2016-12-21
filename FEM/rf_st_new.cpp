@@ -15,77 +15,50 @@
  last modified
  **************************************************************************/
 
-#include "makros.h"
-// C++ STL
-//#include <fstream>
+#include "rf_st_new.h"
+
+#include <algorithm>
 #include <cfloat>
 #include <iostream>
 #include <set>
-#include <algorithm>
 
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
 #include "display.h"
-#include "FileToolsRF.h"
-
-#include "MemWatch.h"
-#include "files0.h"
-#include "mathlib.h"
-
-#include "MshEditor.h"    //NB
-#include "PointWithID.h"  // NB
-
-// GeoSys-GeoLib
-#include "GEOObjects.h"
-
-// GeoSys-MshLib
-#include "fem_ele.h"
-
-#include "tools.h"  //GetLineFromFile
-
-// GeoSys-FEMLib
-// OK_IC #include "rfsousin.h"
-#include "rf_st_new.h"
-#include "rf_tim_new.h"
-
-// Math
-#include "matrix_class.h"
-
-// BaseLib
 #include "FileTools.h"
-
-//#include "pcs_dm.h"
-
-// FEM
-//#include "problem.h"
-// For analytical source terms
-#include "rf_mfp_new.h"
-#include "rf_node.h"
-#include "rfmat_cp.h"
-
-// Base
+#include "FileToolsRF.h"
+#include "makros.h"
+#include "MemWatch.h"
 #include "quicksort.h"
+#include "readNonBlankLineFromInputStream.h"
 
-// MathLib
+#include "mathlib.h"
+#include "matrix_class.h"
 #include "InterpolationAlgorithms/InverseDistanceInterpolation.h"
 #include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
 
-// FileIO
-#include "GeoIO.h"
-#include "ProcessIO.h"
-#include "readNonBlankLineFromInputStream.h"
-
-#include "SourceTerm.h"
+#include "GEOObjects.h"
+#include "PointWithID.h"
 
 #include "DistributionTools.h"
+#include "fem_ele.h"
+#include "rfmat_cp.h"
+#include "rf_mfp_new.h"
+#include "rf_mmp_new.h"
+#include "rf_node.h"
+#include "rf_pcs.h"
+#include "rf_tim_new.h"
+#include "SourceTerm.h"
+#include "tools.h"
+#include "FileIO/GeoIO.h"
+#include "FileIO/ProcessIO.h"
 
-using FiniteElement::CElement;
-using MeshLib::CElem;
-using MeshLib::CEdge;
-using MeshLib::CNode;
-using Math_Group::vec;
+
+using namespace FiniteElement;
+using namespace MeshLib;
+using namespace Math_Group;
 
 #ifndef GRAVITY_CONSTANT
 #define GRAVITY_CONSTANT 9.81
@@ -95,7 +68,8 @@ std::vector<CSourceTerm*> st_vector;
 std::list<CSourceTermGroup*> st_group_list;
 std::vector<std::string> analytical_processes;
 std::vector<std::string> analytical_processes_polylines;
-std::vector<NODE_HISTORY*> node_history_vector;  // CMCD
+std::vector<NODE_HISTORY*> node_history_vector;
+
 /**************************************************************************
  FEMLib-Method:
  Task: ST constructor
@@ -1136,6 +1110,8 @@ void CSourceTermGroup::Set(CRFProcess* m_pcs, const int ShiftInNodeVector,
 			    m_pcs)
 				continue;
 
+		ScreenMessage("* %s on %s\n", FiniteElement::convertPrimaryVariableToString(st->getProcessPrimaryVariable()).data(), st->getGeoName().data());
+
 		//-- 23.02.3009. WW
 		if (st->getProcessDistributionType() == FiniteElement::DIRECT)
 		{   // NB For climate ST, the source terms (recharge in this case) will
@@ -1173,6 +1149,13 @@ void CSourceTermGroup::Set(CRFProcess* m_pcs, const int ShiftInNodeVector,
 		//------------------------------------------------------------------
 		nodes_vector.clear();
 		getNodesOnDistribution(distData, *m_msh, nodes_vector);
+		if (nodes_vector.empty())
+		{
+#ifndef USE_PETSC
+			ScreenMessage("-> ***ERROR* No nodes found on %s %s\n", st->getGeoName().data());
+#endif
+			continue;
+		}
 		//------------------------------------------------------------------
 		// Calculate ST values
 		//------------------------------------------------------------------
@@ -2653,23 +2636,6 @@ void CSourceTerm::SetNOD()
 	              ShiftInNodeVector);
 }
 
-/**************************************************************************
- MSHLib-Method:
- Task:
- Programing:
- 11/2007 JOD
- last modification:
- **************************************************************************/
-// void CSourceTermGroup::SetPolylineNodeVector(CGLPolyline* m_ply,
-// std::vector<long>&ply_nod_vector)
-//{
-//   if (m_ply->getType() == 100)                   // WW
-//      m_msh->GetNodesOnArc(m_ply, ply_nod_vector);
-//   else if (m_ply->getType() == 3)                // JOD
-//      m_msh->GetNODOnPLY_XY(m_ply, ply_nod_vector);
-//   else
-//      m_msh->GetNODOnPLY(m_ply, ply_nod_vector);
-//}
 
 /**************************************************************************
  MSHLib-Method:
@@ -2747,53 +2713,6 @@ void CSourceTermGroup::SetPolylineNodeVectorConditional(
 	}  // end !area_assembly
 }
 
-#if 0
-// 09/2010 TF
-void CSourceTermGroup::SetPolylineNodeVectorConditional(CSourceTerm* st,
-		std::vector<size_t>& ply_nod_vector,
-		std::vector<size_t>& ply_nod_vector_cond)
-{
-	size_t assembled_mesh_node, number_of_nodes;
-
-	if (st->node_averaging) {
-		if (m_msh_cond) {
-			if (pcs_type_name == "RICHARDS_FLOW") {
-				m_msh_cond->GetNODOnPLY(
-						static_cast<const GEOLIB::Polyline*> (st->getGeoObj()),
-						ply_nod_vector_cond);
-				number_of_nodes = ply_nod_vector_cond.size();
-				assembled_mesh_node = ply_nod_vector[0];
-				ply_nod_vector.resize(number_of_nodes);
-				for (size_t i = 0; i < number_of_nodes; i++)
-					ply_nod_vector[i] = assembled_mesh_node;
-			} // end richards
-			else if (pcs_type_name == "OVERLAND_FLOW"
-			// JOD 4.10.01
-					|| pcs_type_name == "GROUNDWATER_FLOW") {
-				number_of_nodes = ply_nod_vector.size();
-				m_msh_cond->GetNODOnPLY(
-						static_cast<const GEOLIB::Polyline*> (st->getGeoObj()),
-						ply_nod_vector_cond);
-				assembled_mesh_node = ply_nod_vector_cond[0];
-				ply_nod_vector_cond.resize(number_of_nodes);
-				for (size_t i = 0; i < number_of_nodes; i++)
-					ply_nod_vector_cond[i] = assembled_mesh_node;
-			} // end overland, groundwater
-			else std::cout
-					<< "Warning in CSourceTermGroup::SetPolylineNodeVectorConditional - no area assembly for this process"
-					<< "\n";
-		} // end mesh_cond
-		else std::cout
-				<< "Warning in CSourceTermGroup::SetPLY - no MSH_COND data"
-				<< "\n";
-	} // end area_assembly
-	else {
-		number_of_nodes = ply_nod_vector.size();
-		ply_nod_vector_cond.resize(number_of_nodes);
-		st->SetNOD2MSHNOD(ply_nod_vector, ply_nod_vector_cond);
-	} // end !area_assembly
-}
-#endif
 
 /**************************************************************************
  MSHLib-Method:
@@ -3173,7 +3092,7 @@ void CSourceTerm::SetNodeValues(const std::vector<long>& nodes,
 		{
 			m_nod_val->msh_node_number_conditional = nodes_cond[i];
 			// JOD 4.10.01
-			if ((getProcessType() == FiniteElement::GROUNDWATER_FLOW) &&
+			if (getProcessType() == FiniteElement::GROUNDWATER_FLOW &&
 			    node_averaging)
 			{
 				double weights = 0;
@@ -3212,96 +3131,6 @@ void CSourceTerm::SetNodeValues(const std::vector<long>& nodes,
 	}                                                     // end nodes
 }
 
-// 09/2010 TF
-// void CSourceTerm::SetNodeValues(const std::vector<size_t>& nodes, const
-// std::vector<size_t>& nodes_cond,
-//		const std::vector<double>& node_values, int ShiftInNodeVector)
-//{
-//   size_t number_of_nodes (nodes.size());
-//
-//   for (size_t i = 0; i < number_of_nodes; i++)
-//   {
-//      CNodeValue *m_nod_val = new CNodeValue();
-//      m_nod_val->msh_node_number = nodes[i] + ShiftInNodeVector;
-//      m_nod_val->geo_node_number = nodes[i];
-//      m_nod_val->setProcessDistributionType (getProcessDistributionType());
-//      m_nod_val->node_value = node_values[i];
-//      m_nod_val->CurveIndex = CurveIndex;
-//
-//      if (_coupled)                               // JOD 4.7.10
-//      {
-//         m_nod_val->msh_node_number_conditional = nodes_cond[i];
-//         if ((getProcessType() == OVERLAND_FLOW
-//            || getProcessType() == GROUNDWATER_FLOW)
-//            && node_averaging)                    // JOD 4.10.01
-//         {
-//            double weights = 0;
-//            for (size_t j = 0; j < number_of_nodes; j++)
-//            {
-//               m_nod_val->msh_node_numbers_averaging.push_back(nodes[j]);
-//               m_nod_val->msh_node_weights_averaging.push_back(
-//                  node_values[j]);
-//               weights += node_values[j];
-//            }
-//            for (size_t j = 0; j < number_of_nodes; j++)
-//               m_nod_val->msh_node_weights_averaging[j] /= weights;
-//         }
-//      }
-//
-//      //		if (getProcessDistributionType() == RIVER) {
-//      //			m_nod_val->node_value = node_value_vectorArea[i];
-//      //			m_nod_val->node_parameterA = node_value_vectorA[i];
-//      //			m_nod_val->node_parameterB = node_value_vectorB[i];
-//      //			m_nod_val->node_parameterC = node_value_vectorC[i];
-//      //			m_nod_val->node_parameterD = node_value_vectorD[i];
-//      //			m_nod_val->node_parameterE = node_value_vectorE[i];
-//      //		}
-//      if (getProcessDistributionType() == FiniteElement::CRITICALDEPTH
-//         || getProcessDistributionType() == FiniteElement::NORMALDEPTH
-//         || getProcessDistributionType() == FiniteElement::ANALYTICAL)
-//      {
-//         m_nod_val->node_value = node_value_vectorArea[i];
-//                                                  //CMCD bugfix on 4.9.06
-//         m_nod_val->node_area = node_value_vectorArea[i];
-//      }
-//      _pcs->st_node_value.push_back(m_nod_val);   //WW
-//      _pcs->st_node.push_back(this);              //WW
-//   }                                              // end nodes
-//}
-
-/**************************************************************************
- MSHLib-Method:
- Task:
- Programing:
- 11/2005 MB
- last modification:
- **************************************************************************/
-// void CSourceTerm::SetNOD2MSHNOD(vector<long>&nodes,
-//		vector<long>&conditional_nodes)
-//{
-//	CGLPoint* m_pnt = NULL;
-//	long number;
-//	CFEMesh* m_msh_cond = NULL;
-//	CFEMesh* m_msh_this = NULL;
-//
-//	m_msh_cond = MeshLib::FEMGet(pcs_type_name_cond);
-//	m_msh_this = MeshLib::FEMGet(convertProcessTypeToString(m_st->getProcessType()));
-//	m_pnt = new CGLPoint;
-//
-//	for (long i = 0; i < (long) nodes.size(); i++) {
-//		m_pnt->x = m_msh_this->nod_vector[nodes[i]]->X();
-//		m_pnt->y = m_msh_this->nod_vector[nodes[i]]->Y();
-//		m_pnt->z = m_msh_this->nod_vector[nodes[i]]->Z();
-//
-//		number = m_msh_cond->GetNODOnPNT(m_pnt);
-//		conditional_nodes[i] = number;
-//
-//	}
-//
-//	delete m_pnt;
-//
-//}
-
 void CSourceTerm::SetNOD2MSHNOD(std::vector<long>& nodes,
                                 std::vector<long>& conditional_nodes)
 {
@@ -3311,9 +3140,6 @@ void CSourceTerm::SetNOD2MSHNOD(std::vector<long>& nodes,
 	for (size_t i = 0; i < nodes.size(); i++)
 	{
 		const GEOLIB::Point pnt(m_msh_this->nod_vector[nodes[i]]->getData());
-		//      pnt[0] = m_msh_this->nod_vector[nodes[i]]->X();
-		//      pnt[1] = m_msh_this->nod_vector[nodes[i]]->Y();
-		//      pnt[2] = m_msh_this->nod_vector[nodes[i]]->Z();
 
 		conditional_nodes[i] = m_msh_cond->GetNODOnPNT(&pnt);
 	}
@@ -3328,9 +3154,6 @@ void CSourceTerm::SetNOD2MSHNOD(const std::vector<size_t>& nodes,
 	for (size_t i = 0; i < nodes.size(); i++)
 	{
 		const GEOLIB::Point pnt(m_msh_this->nod_vector[nodes[i]]->getData());
-		//		pnt[0] = m_msh_this->nod_vector[nodes[i]]->X();
-		//		pnt[1] = m_msh_this->nod_vector[nodes[i]]->Y();
-		//		pnt[2] = m_msh_this->nod_vector[nodes[i]]->Z();
 
 		conditional_nodes[i] = m_msh_cond->GetNODOnPNT(&pnt);
 	}
