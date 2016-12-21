@@ -349,6 +349,11 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 	//
 	// Time unit factor
 	time_unit_factor = pcs->time_unit_factor;
+#if defined(USE_PETSC)
+	size_t size = 60;      // dim * nnodesHQ;
+	row_ids = new int[size];  //> global indices of local matrix rows
+	col_ids = new int[size];  //> global indices of local matrix columns
+#endif
 }
 
 //  Constructor of class Element_DM
@@ -955,7 +960,7 @@ void CFiniteElementVec::LocalAssembly(const int update)
 	if (PressureC_S) (*PressureC_S) = 0.0;
 	if (PressureC_S_dp) (*PressureC_S_dp) = 0.0;
 	for (int i = 0; i < nnodesHQ; i++)
-		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex();
+		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex(true);
 
 	// For strain and stress extropolation all element types
 	// Number of elements associated to nodes
@@ -1352,106 +1357,35 @@ void CFiniteElementVec::GlobalAssembly_PressureCoupling(Matrix* pCMatrix,
 #endif
 
 #ifdef USE_PETSC
-/*!
-   \brief Add the local stiff matrix to the global one
-
-   04.2012. WW
- */
 //------------------------------------------------------
+// Add the local stiff matrix to the global one
 void CFiniteElementVec::add2GlobalMatrixII()
 {
-	int i;
-	int m_dim, n_dim;
-	int dof = pcs->pcs_number_of_primary_nvals;
+	int const ndof = pcs->pcs_number_of_primary_nvals;
+	int const m_dim = nnodesHQ * ndof;
+	int const n_dim = m_dim;
+	double* local_matrix = Stiffness->getEntryArray();
+	double* local_vec = RHS->getEntryArray();
 
-	double* local_matrix = NULL;
-	double* local_vec = NULL;
-	petsc_group::PETScLinearSolver* eqs = pcs->eqs_new;
-
-//#define assmb_petsc_test
-#ifdef assmb_petsc_test
-	char rank_char[10];
-	sprintf(rank_char, "%d", eqs->getMPI_Rank());
-	std::string fname = FileName + rank_char + "_e_matrix.txt";
-	std::ofstream os_t(fname.c_str(), std::ios::app);
-	os_t << "\n=================================================="
-	     << "\n";
-#endif
-
-
+	for (int i = 0; i < nnodesHQ; i++)
 	{
-		//	  ScreenMessage2("-> internal elements = %d \n", Index);
-		m_dim = nnodesHQ * dof;
-		n_dim = m_dim;
-		//----------------------------------------------------------------------
-		// For overlapped partition DDC
-		local_matrix = Stiffness->getEntryArray();
-		local_vec = RHS->getEntryArray();
-
-		for (i = 0; i < nnodesHQ; i++)
+		MeshLib::CNode const* node = MeshElement->GetNode(i);
+		const int offset = node->GetEquationIndex(true) * ndof;
+		const bool isGhost = !pcs->m_msh->isNodeLocal(node->GetIndex());
+		for (int k = 0; k < ndof; k++)
 		{
-			const int i_buff = MeshElement->GetNode(i)->GetEquationIndex() * dof;
-			//        ScreenMessage2("-> node id=%d, eqs_id=%d \n",
-			//        MeshElement->GetNode(i)->GetIndex(), i_buff);
-			for (int k = 0; k < dof; k++)
-			{
-				const int ki = k * nnodesHQ + i;
-				//          ScreenMessage2("-> ki=%d, idx=%d \n", ki, i_buff +
-				//          k);
-				row_ids[ki] = i_buff + k;
-				col_ids[ki] = row_ids[ki];
-			}
-			// local_vec[i] = 0.;
+			const int ki = k * nnodesHQ + i;
+			row_ids[ki] = isGhost ? -1 : (offset + k);
+			col_ids[ki] = offset + k;
 		}
 	}
 
-// TEST
-#ifdef assmb_petsc_test
-	{
-		os_t << "\n------------------" << act_nodes* dof << "\n";
-		Stiffness->Write(os_t);
-		RHS->Write(os_t);
-
-		os_t << "Node ID: ";
-		for (i = 0; i < this->nnodesHQ; i++)
-		{
-			os_t << MeshElement->GetNode(i)->GetEquationIndex() << " ";
-		}
-		os_t << "\n";
-		os_t << "Act. Local ID: ";
-		for (i = 0; i < act_nodes; i++)
-		{
-			os_t << local_idx[i] << " ";
-		}
-		os_t << "\n";
-		os_t << "Act. Global ID:";
-		for (i = 0; i < act_nodes * dof; i++)
-		{
-			os_t << idxm[i] << " ";
-		}
-		os_t << "\n";
-		os_t << "All Global ID:";
-		for (i = 0; i < nnodesHQ * dof; i++)
-		{
-			os_t << idxn[i] << " ";
-		}
-		os_t << "\n";
-	}
-	os_t.close();
-#endif  // ifdef assmb_petsc_test
-
-	//	ScreenMessage2("-> addMatrixEntries begin\n");
-	eqs->addMatrixEntries(m_dim, row_ids, n_dim, col_ids, &local_matrix[0]);
-	//	ScreenMessage2("-> addMatrixEntries end\n");
-	//	ScreenMessage2("-> setArrayValues begin\n");
+	pcs->eqs_new->addMatrixEntries(m_dim, row_ids, n_dim, col_ids, &local_matrix[0]);
 
 	static double temp_vec[100];
 	for (int i = 0; i < m_dim; i++)
 		temp_vec[i] = -local_vec[i];  // r -= RHS
-	eqs->setArrayValues(1, m_dim, row_ids, &temp_vec[0]);
-	//	ScreenMessage2("-> add2petsc end\n");
-	// eqs->AssembleRHS_PETSc();
-	// eqs->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY );
+	pcs->eqs_new->setArrayValues(1, m_dim, row_ids, &temp_vec[0]);
 }
 #endif
 
