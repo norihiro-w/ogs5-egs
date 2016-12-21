@@ -349,14 +349,6 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 	//
 	// Time unit factor
 	time_unit_factor = pcs->time_unit_factor;
-#if defined(USE_PETSC)     // || defined(other parallel libs)//03~04.3012. WW
-	size_t size = 60;      // dim * nnodesHQ;
-	idxm = new int[size];  //> global indices of local matrix rows
-	idxn = new int[size];  //> global indices of local matrix columns
-	local_idx = new int[size];  //> local index for local assemble
-// local_matrix = new double[size_m * size_m]; //> local matrix
-// local_vec = new double[size_m]; //> local vector
-#endif
 }
 
 //  Constructor of class Element_DM
@@ -953,24 +945,6 @@ void CFiniteElementVec::LocalAssembly(const int update)
 	ns = 4;
 	if (MeshElement->GetDimension() == 3) ns = 6;
 
-#ifdef USE_PETSC
-	int* g_index = MeshElement->getGhostNodeIndices();
-	if (g_index)  // ghost nodes pcs->pcs_number_of_primary_nvals
-	{
-		act_nodes = g_index[0];
-		act_nodes_h = g_index[1];
-		for (int i = 0; i < act_nodes_h; i++)
-			local_idx[i] = g_index[i + 2];
-	}
-	else
-	{
-		act_nodes = nnodes;
-		act_nodes_h = nnodesHQ;
-		for (int i = 0; i < nnodesHQ; i++)
-			local_idx[i] = i;
-	}
-#endif
-
 #if defined(NEW_EQS)
 	b_rhs = pcs->eqs_new->getRHS();
 #endif
@@ -1404,66 +1378,7 @@ void CFiniteElementVec::add2GlobalMatrixII()
 	     << "\n";
 #endif
 
-	if (act_nodes_h != nnodesHQ)
-	{
-		//	  ScreenMessage2("-> overlapped elements = %d. act_nodes_h=%d \n",
-		// Index, act_nodes_h);
-		m_dim = act_nodes_h * dof;
-		n_dim = nnodesHQ * dof;
-		// ScreenMessage2("-> m_dim = %d, n_dim=%d\n", m_dim, n_dim);
 
-		const int dim_full = nnodesHQ * dof;
-		int i_dom, in;
-		// put the subdomain portion of local stiffness matrix to Mass
-		double* loc_m = Stiffness->getEntryArray();
-		double* loc_v = RHS->getEntryArray();
-
-		for (i = 0; i < nnodesHQ; i++)
-		{
-			const int i_buff = MeshElement->GetNode(i)->GetEquationIndex() * dof;
-			for (int k = 0; k < dof; k++)
-			{
-				idxn[k * nnodesHQ + i] = i_buff + k;
-				//            ScreenMessage2("-> ki=%d, idxn=%d \n", k*nnodesHQ
-				//            + i, i_buff + k);
-			}
-			// local_vec[i] = 0.;
-		}
-
-		static std::vector<double> temp_local_vec(60);
-		static std::vector<double> temp_local_matrix(60 * 60);
-		local_matrix = &temp_local_matrix[0];
-		local_vec = &temp_local_vec[0];
-		for (i = 0; i < m_dim; i++)
-		{
-			i_dom = i / act_nodes_h;
-			in = i % act_nodes_h;
-			int i_full = local_idx[in] + i_dom * nnodesHQ;
-			local_vec[i] = loc_v[i_full];
-			i_full *= dim_full;
-
-			idxm[i] =
-				MeshElement->GetNode(local_idx[in])->GetEquationIndex() * dof +
-			    i_dom;
-			//        ScreenMessage2("-> ki=%d, idxm=%d \n", i, idxm[i]);
-
-			for (int j = 0; j < dim_full; j++)
-			{
-				local_matrix[i * dim_full + j] = loc_m[i_full + j];
-// TEST
-#ifdef assmb_petsc_test
-				os_t << "(" << local_idx[in] << ") "
-				     << local_matrix[i * dim_full + j] << " ";
-#endif  //#ifdef assmb_petsc_test
-			}
-
-// TEST
-#ifdef assmb_petsc_test
-			os_t << "\n";
-#endif  //#ifdef assmb_petsc_test
-		}
-	}
-	else
 	{
 		//	  ScreenMessage2("-> internal elements = %d \n", Index);
 		m_dim = nnodesHQ * dof;

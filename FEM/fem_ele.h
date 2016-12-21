@@ -105,27 +105,21 @@ public:
 	void SetCenterGP();
 	int GetGPindex() const { return gp; }
 	int GetElementIndex() const { return Index; }
-	MeshLib::CElem* GetMeshElement() const  // OK
+	MeshLib::CElem* GetMeshElement() const
 	{
 		return MeshElement;
 	}
+
 	// For extropolating gauss value to node
 	int GetLocalIndex(const int gp_r, const int gp_s, int gp_t);
 
-	// DDC 05/2006
-	void SetElementNodesDomain(long* ele_nodes)
-	{
-		element_nodes_dom = ele_nodes;
-	}
-
-	void SetRWPT(const int idx)  // PCH
+	void SetRWPT(const int idx)
 	{
 		PT_Flag = idx;
 	}
 
 protected:
 	MeshLib::CElem* MeshElement;
-	long* element_nodes_dom;  // Only a pointer. For domain decomposition. WW
 
 	friend class ::CRFProcess;
 	friend class process::CRFProcessDeformation;
@@ -203,14 +197,9 @@ protected:
 	double node_val[20];
 	double dbuff[20];
 
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-	int act_nodes;      //> activated nodes
-	int act_nodes_h;    //> activated nodes for high order elements
+#if defined(USE_PETSC)
 	int* idxm;          //> global indices of local matrix rows
 	int* idxn;          //> global indices of local matrix columns
-	int* local_idx;     //> local index for local assemble
-// double *local_matrix; //>  local matrix
-// double *local_vec; //>  local vector
 #endif
 	ExtrapolationMethod::type extrapo_method;
 	ExtrapolationMethod::type GetExtrapoMethod() { return extrapo_method; }

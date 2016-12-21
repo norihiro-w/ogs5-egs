@@ -110,12 +110,7 @@ CElement::CElement(int CoordFlag, const int order)
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
 	idxm = NULL;        //> global indices of local matrix rows
 	idxn = NULL;        //> global indices of local matrix columns
-	local_idx = NULL;   //> local index for local assemble
-	// local_matrix = NULL; //>  local matrix
-	// local_vec = NULL; //>  local vector
-	act_nodes = act_nodes_h = 0;
 #endif
-	element_nodes_dom = NULL;
 	gp = 0;
 	idx_c0 = idx_c1 = 0;
 	Index = 0;
@@ -142,11 +137,6 @@ CElement::~CElement()
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
 	if (idxm) delete[] idxm;
 	if (idxn) delete[] idxn;
-	if (local_idx) delete[] local_idx;
-// if (local_idx)
-//  delete [] local_matrix;
-// if (local_idx)
-//  delete [] local_vec;
 #endif
 }
 
