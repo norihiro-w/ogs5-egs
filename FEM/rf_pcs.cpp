@@ -11055,8 +11055,12 @@ void CRFProcess::WriteBC()
 	if (size_bc == 0 && size_st == 0) return;
 
 	std::string m_file_name =
-	    FileName + "_" + convertProcessTypeToString(this->getProcessType()) +
-	    "_BC_ST.asc";
+	    FileName + "_" + convertProcessTypeToString(this->getProcessType()) + "_BC_ST";
+#ifdef USE_PETSC
+	m_file_name += "_rank" + std::to_string(myrank) + ".asc";
+#else
+	m_file_name += ".asc";
+#endif
 	std::ofstream os(m_file_name.c_str(), ios::trunc | ios::out);
 	if (!os.good())
 	{
@@ -11083,7 +11087,8 @@ void CRFProcess::WriteBC()
 			//            std::setw(14)
 			//            << bc_node_value[i]->node_value << endl;
 			double const* const pnt(m_msh->nod_vector[nindex]->getData());
-			os << nindex << "  " << bc_node_value[i]->pcs_pv_name << " "
+			os << m_msh->nod_vector[nindex]->GetGlobalIndex();
+			os << "  " << bc_node_value[i]->pcs_pv_name << " "
 			   << std::setw(14) << pnt[0] << " " << std::setw(14) << pnt[1]
 			   << " " << std::setw(14) << pnt[2] << " " << std::setw(14)
 			   << bc_node_value[i]->node_value << endl;
