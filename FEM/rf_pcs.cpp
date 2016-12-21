@@ -5037,15 +5037,11 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 
 	// WW
 	double Scaling = 1.0;
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
 	bool quadr = false;
-#endif
 	if (type == 4 || type / 10 == 4)
 	{
 		fac = Scaling;
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
 		quadr = true;
-#endif
 	}
 	long begin = 0;
 	long end = 0;
@@ -5285,7 +5281,7 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, bool updateA,
 			else
 				// WW#
 				bc_eqs_index =
-				    m_msh->nod_vector[bc_msh_node]->GetEquationIndex();
+					m_msh->nod_vector[bc_msh_node]->GetEquationIndex(quadr);
 #endif
 			//..............................................................
 			if (FiniteElement::isNewtonKind(m_num->nls_method)
@@ -5901,16 +5897,11 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 	long i;                   //, group_vector_length;
 
 	double Scaling = 1.0;
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
 	bool quadr = false;
-#endif
 	if (type == 4 || type / 10 == 4)
 	{
 		fac = Scaling;
-
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
 		quadr = true;
-#endif
 	}
 
 	CNodeValue* cnodev = NULL;
@@ -6287,7 +6278,7 @@ void CRFProcess::IncorporateSourceTerms(const int rank)
 				bc_eqs_index = msh_node + shift;
 			else
 				bc_eqs_index =
-				    m_msh->nod_vector[msh_node]->GetEquationIndex() + shift;
+					m_msh->nod_vector[msh_node]->GetEquationIndex(quadr) + shift;
 			eqs_rhs[bc_eqs_index] += value;
 #endif
 		}

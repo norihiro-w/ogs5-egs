@@ -776,7 +776,7 @@ void CFEMesh::ConstructGrid()
 #if defined(USE_PETSC)
 		Eqs2Global_NodeIndex.push_back(nod_vector[e]->GetEquationIndex());
 #else
-		nod_vector[e]->SetEquationIndex(e);
+		nod_vector[e]->SetEquationIndex(e, quadratic);
 		Eqs2Global_NodeIndex.push_back(nod_vector[e]->GetIndex());
 #endif
 	}
@@ -1023,6 +1023,7 @@ void CFEMesh::GenerateHighOrderNodes()
 
 	// Setup 1d line elements at the end
 	if (_msh_n_lines > 0)
+	{
 		for (size_t e = 0; e < e_size; e++)
 		{
 			thisElem0 = ele_vector[e];
@@ -1100,14 +1101,15 @@ void CFEMesh::GenerateHighOrderNodes()
 			thisElem0->SetOrder(true);
 			thisElem0->SetNodes(e_nodes0, true);
 		}
+	}
 	//
 	NodesNumber_Quadratic = (long)nod_vector.size();
-	for (auto e = NodesNumber_Linear; e < NodesNumber_Quadratic; e++)
+	for (auto e = 0; e < NodesNumber_Quadratic; e++)
 	{
-#if !defined(USE_PETSC)  // && !defined(USE_OTHER Parallel solver lib)
-		nod_vector[e]->SetEquationIndex(e);
+#if !defined(USE_PETSC)
+		nod_vector[e]->SetEquationIndex(e, true);
 #endif
-		Eqs2Global_NodeIndex.push_back(nod_vector[e]->GetIndex());
+		Eqs2Global_NodeIndex.push_back(nod_vector[e]->GetIndex()); //TODO Eqs2Global_NodeIndex_Q
 	}
 	for (size_t e = 0; e < e_size; e++)
 	{
