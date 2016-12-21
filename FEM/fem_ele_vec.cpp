@@ -1440,61 +1440,49 @@ void CFiniteElementVec::ComputeMass()
  **************************************************************************/
 void CFiniteElementVec::GlobalAssembly_RHS()
 {
-	int i, j, k;
-	double fact, val_n = 0.0;
-	double* a_n = NULL;
-	double biot = 1.0;
-	// WW double dent_w = 1000.0;
-	bool Residual;
-	Residual = false;
-	fact = 1.0;
-	k = 0;
+	bool Residual = false;
 
-	biot = smat->biot_const;
-	if (Flow_Type >= 0)
+	if (H_Process)
 	{
 		if (pcs->type / 10 == 4)  // Monolithic scheme
 		{
-			// If nonlinear deformation
-			if (pcs_deformation > 100) Residual = true;
+			if (FiniteElement::isNewtonKind(pcs->m_num->nls_method))
+				Residual = true;
 		}
 		else  // Partitioned scheme
 			Residual = true;
 	}
+
+	double fact = 0;
+	double* a_n = nullptr;
 	if (dynamic)
 	{
 		fact = bbeta1 * dt;
 		Residual = true;
-		// Solution of the previous step
-        a_n = pcs->GetLastTimeStepSolution();
+		a_n = pcs->GetLastTimeStepSolution();
 	}
+
 	// Assemble coupling matrix
 	// If dynamic GetNodeValue(nodes[i],idx_P0) = 0;
 	if (Residual)
 	{
-		double* p0 = pcs->GetInitialFluidPressure();  // NW should calculate (p
-		                                              // - p0) because OGS
-		                                              // calculates (stress -
-		                                              // stress0)
+		// should calculate (p - p0) because OGS calculates (stress - stress0)
+		double* p0 = pcs->GetInitialFluidPressure();
 		switch (Flow_Type)
 		{
 			case 0:  // Liquid flow
 				// For monolithic scheme and liquid flow, the limit of positive
 				// pressure must be removed
-				for (i = 0; i < nnodes; i++)
+				for (int i = 0; i < nnodes; i++)
 				{
-					val_n = h_pcs->GetNodeValue(nodes[i], idx_P1);
-					//                AuxNodal[i] = LoadFactor*( val_n
-					//                -Max(pcs->GetNodeValue(nodes[i],idx_P0),0.0));
+					auto val_n = h_pcs->GetNodeValue(nodes[i], idx_P1);
 					if (pcs->PCS_ExcavState == 1)
-						// WX:07.2011 for HM excavation
 						val_n -= h_pcs->GetNodeValue(nodes[i], idx_P1 - 1);
 
 					// Initial pressure should be subtracted, i.e. (p-p0)
 					// because DEFORMATION
 					// calculates stress balance of changes from the initial
 					// stress.
-					// NW 28.08.2012
 					if (pcs->calcDiffFromStress0 && p0 != NULL)
 					{
 						val_n -= p0[nodes[i]];
@@ -1503,45 +1491,29 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 				}
 				break;
 			case 10:  // Ground_flow. Will be merged to case 0
-				// WW dent_w =  m_mfp->Density();
-				for (i = 0; i < nnodes; i++)
+				for (int i = 0; i < nnodes; i++)
 					AuxNodal[i] =
 					    LoadFactor * h_pcs->GetNodeValue(nodes[i], idx_P1);
 				break;
 			case 1:  // Richards flow
-#ifdef DECOVALEX
-				int idv0;
-				// DECOVALEX
-				idv0 = S_Water * h_pcs->GetNodeValueIndex("PRESSURE_I");
-#endif
-				//
-				for (i = 0; i < nnodes; i++)
+				for (int i = 0; i < nnodes; i++)
 				{
-					val_n = h_pcs->GetNodeValue(nodes[i], idx_P1);
-					if (biot < 0.0 && val_n < 0.0)
+					auto val_n = h_pcs->GetNodeValue(nodes[i], idx_P1);
+					if (smat->biot_const < 0.0 && val_n < 0.0)
 						AuxNodal[i] = 0.0;
 					else
-// DECOVALEX
-#ifdef DECOVALEX
-						AuxNodal[i] =
-						    LoadFactor *
-						    (val_n -
-						     Max(h_pcs->GetNodeValue(nodes[i], idv0), 0.0));
-#else
 						AuxNodal[i] = LoadFactor * S_Water * val_n;
-#endif
 				}
 				break;
 			case 2:
 			{  // Multi-phase-flow: p_g-Sw*p_c
-				// 07.2011. WW
 				const int dim_times_nnodesHQ(dim * nnodesHQ);
-				for (i = 0; i < dim_times_nnodesHQ; i++)
+				for (int i = 0; i < dim_times_nnodesHQ; i++)
 					AuxNodal1[i] = 0.0;
 
 				if (smat->bishop_model > 0)
 				{
-					for (i = 0; i < nnodes; i++)
+					for (int i = 0; i < nnodes; i++)
 					{
 						double bishop_coef = 1.;  // bishop
 						double S_e = 1.;
@@ -1561,19 +1533,19 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 						}
 						if (smat->bishop_model == 1 ||
 						    smat->bishop_model == 2)  // pg-bishop*pc 05.2011 WX
-							val_n = h_pcs->GetNodeValue(nodes[i], idx_P2) -
+							auto val_n = h_pcs->GetNodeValue(nodes[i], idx_P2) -
 							        bishop_coef *
 							            h_pcs->GetNodeValue(nodes[i], idx_P1);
 						else
-							val_n = h_pcs->GetNodeValue(nodes[i],
+							auto val_n = h_pcs->GetNodeValue(nodes[i],
 							                            idx_P2)  // pg - Sw*pc
 							        -
 							        AuxNodal_S[i] *
 							            h_pcs->GetNodeValue(nodes[i], idx_P1);
-						val_n = h_pcs->GetNodeValue(nodes[i], idx_P2) -
+						auto val_n = h_pcs->GetNodeValue(nodes[i], idx_P2) -
 						        AuxNodal_S[i] *
 						            h_pcs->GetNodeValue(nodes[i], idx_P1);
-						if (biot < 0.0 && val_n < 0.0)
+						if (smat->biot_const < 0.0 && val_n < 0.0)
 							AuxNodal[i] = 0.0;
 						else
 							AuxNodal[i] = val_n * LoadFactor;
@@ -1583,14 +1555,6 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 				}
 				else
 				{
-					/*
-					   for (i=0;i<nnodes;i++)
-					   {
-					   if(AuxNodal0[i]<0.0)
-					      AuxNodal0[i] = 0.;
-					   }
-					 */
-
 					PressureC->multi(AuxNodal2, AuxNodal1, LoadFactor);
 					PressureC_S->multi(AuxNodal0, AuxNodal1, -1.0 * LoadFactor);
 				}
@@ -1598,14 +1562,14 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 				break;
 			}
 			case 3:  // Multi-phase-flow: SwPw+SgPg	// PCH 05.05.2009
-				for (i = 0; i < nnodes; i++)
+				for (int i = 0; i < nnodes; i++)
 				{
 					double Snw = h_pcs->GetNodeValue(nodes[i], idx_Snw);
 					double Sw = 1.0 - Snw;
 					double Pw = h_pcs->GetNodeValue(nodes[i], idx_P1);
 					double Pnw = h_pcs->GetNodeValue(nodes[i], idx_P2);
-					val_n = Sw * Pw + Snw * Pnw;
-					if (biot < 0.0 && val_n < 0.0)
+					auto val_n = Sw * Pw + Snw * Pnw;
+					if (smat->biot_const < 0.0 && val_n < 0.0)
 						AuxNodal[i] = 0.0;
 					else
 						AuxNodal[i] = val_n * LoadFactor;
@@ -1613,44 +1577,47 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 				break;
 		}
 
-		// If dymanic
 		if (dynamic)
-			for (i = 0; i < nnodes; i++)
+		{
+			for (int i = 0; i < nnodes; i++)
 			{
 				AuxNodal[i] *= fact;
 				AuxNodal[i] +=
 				    dt * a_n[nodes[i] + NodeShift[problem_dimension_dm]] +
 				    pcs->GetNodeValue(nodes[i], idx_P);
 			}
+		}
 
 		const int dim_times_nnodesHQ(dim * nnodesHQ);
 		// Coupling effect to RHS
-		if (Flow_Type != 2)  // 07.2011. WW
+		if (Flow_Type != 2)
 		{
-			for (i = 0; i < dim_times_nnodesHQ; i++)
+			for (int i = 0; i < dim_times_nnodesHQ; i++)
 				AuxNodal1[i] = 0.0;
 			PressureC->multi(AuxNodal, AuxNodal1);
 		}
-		for (i = 0; i < dim_times_nnodesHQ; i++)
-			(*RHS)(i) -= fabs(biot) * AuxNodal1[i];
+		for (int i = 0; i < dim_times_nnodesHQ; i++)
+			(*RHS)(i) -= fabs(smat->biot_const) * AuxNodal1[i];
 	}  // End if partioned
 
 	// If dymanic
 	if (dynamic)
+	{
 		for (size_t i = 0; i < dim; i++)
-			for (j = 0; j < nnodesHQ; j++)
-				for (k = 0; k < nnodesHQ; k++)
+			for (int j = 0; j < nnodesHQ; j++)
+				for (int k = 0; k < nnodesHQ; k++)
 					(*RHS)(i* nnodesHQ + j) +=
 					    (*Mass)(j, k) * ((*dAcceleration)(i* nnodesHQ + k) +
 					                     a_n[nodes[k] + NodeShift[i]]);
+	}
 
-// RHS->Write();
+	// RHS->Write();
 
 #ifndef USE_PETSC
 	//	std::cerr << "e: " << Index << "\n";
 	for (size_t i = 0; i < dim; i++)
 	{
-		for (j = 0; j < nnodesHQ; j++)
+		for (int j = 0; j < nnodesHQ; j++)
 		{
 			//		    std::cerr << eqs_number[j] << "," << NodeShift[i] << ","
 			//<< i * nnodesHQ + j << "\n";
@@ -1661,7 +1628,6 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 		}
 	}
 #endif
-	// WX:07.2011 if not on excav boundary, RHS=0
 	int valid = 0;
 	if (excavation)
 	{
