@@ -4302,12 +4302,16 @@ void CRFProcess::AddFCT_CorrectionVector()
 	// constructed.
 	for (size_t i = 0; i < node_size; i++)
 	{
+#ifdef USE_PETSC
 		const size_t i_global = FCT_GLOB_ADDRESS(i);
+#endif
 		col = &fct_f[i];
 		for (jj = col->begin(); jj != col->end(); jj++)
 		{
 			const size_t j = (*jj).first;
+#ifdef USE_PETSC
 			const size_t j_global = FCT_GLOB_ADDRESS(j);
+#endif
 			if (i > j || i == j)
 				continue;  // do below only for upper triangle due to symmetric
 
@@ -4403,11 +4407,13 @@ void CRFProcess::AddFCT_CorrectionVector()
 		// L*u^n
 		for (size_t i = 0; i < node_size; i++)
 		{
+#ifdef USE_PETSC
 			const size_t i_global = FCT_GLOB_ADDRESS(i);
+#endif
 			for (size_t j = 0; j < node_size; j++)
 			{
-				const size_t j_global = FCT_GLOB_ADDRESS(j);
 #ifdef USE_PETSC
+				const size_t j_global = FCT_GLOB_ADDRESS(j);
 				// b+=-(1-theta)*D*u^n
 				(*V)(i) += (*FCT_d)(i_global, j_global) * (*V1)(j);
 #else
