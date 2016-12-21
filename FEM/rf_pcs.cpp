@@ -3684,50 +3684,47 @@ void CRFProcess::ConfigTH()
 **************************************************************************/
 void CRFProcess::CheckMarkedElement()
 {
-	size_t i, j;
-	bool done;
-	CElem* elem = NULL;
-	CNode* node = NULL;
+	for (CNode* node : m_msh->nod_vector)
+		node->SetMark(false);
 
-	size_t ele_vector_size(m_msh->ele_vector.size());
-
-	for (size_t l = 0; l < ele_vector_size; l++)
+	for (CElem* elem : m_msh->ele_vector)
 	{
-		elem = m_msh->ele_vector[l];
-		done = false;
-		for (i = 0; i < Deactivated_SubDomain.size(); i++)
-			if (elem->GetPatchIndex() ==
-			    static_cast<size_t>(Deactivated_SubDomain[i]))
+		bool done = false;
+		for (auto mat_id : Deactivated_SubDomain)
+		{
+			if (elem->GetPatchIndex() == (unsigned)mat_id)
 			{
-				elem->MarkingAll(false);
+				elem->SetMark(false);
+				//elem->MarkingAll(false);
 				done = true;
 				break;
 			}
-		if (done)
-			continue;
-		else
+		}
+		if (!done)
 			elem->MarkingAll(true);
 	}
-	size_t node_vector_size = m_msh->nod_vector.size();
-	for (size_t l = 0; l < node_vector_size; l++)
-		while (m_msh->nod_vector[l]->getConnectedElementIDs().size())
-			m_msh->nod_vector[l]->getConnectedElementIDs().pop_back();
 
-	for (size_t l = 0; l < ele_vector_size; l++)
+	for (auto node : m_msh->nod_vector)
+		node->getConnectedElementIDs().clear();
+
+	for (size_t l = 0; l < m_msh->ele_vector.size(); l++)
 	{
-		elem = m_msh->ele_vector[l];
+		CElem* elem = m_msh->ele_vector[l];
 		if (!elem->GetMark()) continue;
-		for (i = 0; i < elem->GetNodesNumber(m_msh->getOrder()); i++)
+		for (size_t i = 0; i < elem->GetNodesNumber(m_msh->getOrder()); i++)
 		{
-			done = false;
-			node = elem->GetNode(i);
-			for (j = 0; j < node->getConnectedElementIDs().size(); j++)
+			bool done = false;
+			auto node = elem->GetNode(i);
+			for (size_t j = 0; j < node->getConnectedElementIDs().size(); j++)
+			{
 				if (l == node->getConnectedElementIDs()[j])
 				{
 					done = true;
 					break;
 				}
-			if (!done) node->getConnectedElementIDs().push_back(l);
+			}
+			if (!done)
+				node->getConnectedElementIDs().push_back(l);
 		}
 	}
 }
