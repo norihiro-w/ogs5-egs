@@ -95,6 +95,7 @@ class Problem;
 class CPlaneEquation;
 
 using namespace FiniteElement;
+using namespace Math_Group;
 using namespace MeshLib;
 
 
