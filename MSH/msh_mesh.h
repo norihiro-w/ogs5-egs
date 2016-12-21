@@ -217,6 +217,8 @@ public:
 
 	int calMaximumConnectedLocalNodes(bool quadratic, std::vector<int> &d_nnz);
 	int calMaximumConnectedGhostNodes(bool quadratic, std::vector<int> &o_nnz);
+	/// Get number of elements of the entire mesh
+	int getNumElementsGlobal() const { return glb_ElementsNumber; }
 	/// Get number of nodes of the entire mesh
 	int getNumNodesGlobal() const { return glb_NodesNumber_Linear; }
 	/// Get number of nodes of the entire mesh of quadratic elements
