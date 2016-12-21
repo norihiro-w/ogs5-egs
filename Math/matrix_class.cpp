@@ -24,8 +24,8 @@ Matrix::Matrix(size_t rows, size_t cols)
       ncols(cols),
       ncols0(cols),
       size(nrows * ncols),
-      data(new double[size]),
-      Sym(false)
+	  data(size),
+	  Sym(false)
 {
 	for (size_t i = 0; i < size; i++)
 		data[i] = 0.0;
@@ -37,7 +37,6 @@ Matrix::Matrix()
       ncols(0),
       ncols0(0),
       size(nrows * ncols),
-      data(NULL),
       Sym(false)
 {
 }
@@ -48,7 +47,7 @@ Matrix::Matrix(const Matrix& m)
       ncols(m.ncols),
       ncols0(m.ncols),
       size(nrows * ncols),
-      data(new double[size]),
+	  data(size),
       Sym(m.Sym)
 {
 	for (size_t i = 0; i < size; i++)
@@ -57,33 +56,23 @@ Matrix::Matrix(const Matrix& m)
 
 void Matrix::resize(size_t rows, size_t cols)
 {
-	if (size > 0)
-	{
-		delete[] data;
-		data = NULL;
-	}
-
 	Sym = false;
 	nrows = rows;
 	ncols = cols;
 	nrows0 = rows;
 	ncols0 = ncols;
 	size = nrows * ncols;
-	data = new double[size];
+	data.resize(size);
 	for (size_t i = 0; i < size; i++)
 		data[i] = 0.0;
 }
 
 Matrix::~Matrix()
 {
-	delete[] data;
-	data = NULL;
 }
-// 06.2010. WW
+
 void Matrix::ReleaseMemory()
 {
-	delete[] data;
-	data = NULL;
 }
 
 void Matrix::operator=(double a)
@@ -274,7 +263,7 @@ void Matrix::Write(std::ostream& os)
 **************************************************************************/
 void Matrix::Write_BIN(std::fstream& os)
 {
-	os.write((char*)data, size * sizeof(double));
+	os.write((char*)data.data(), size * sizeof(double));
 }
 /**************************************************************************
    MathLib-Method:
@@ -295,7 +284,7 @@ SymMatrix::SymMatrix(size_t dim) : Matrix(0)
 	Sym = true;
 	nrows = ncols = dim;
 	size = (int)nrows * (nrows + 1) / 2;
-	data = new double[size];
+	data.resize(size);
 	nrows0 = ncols0 = dim;
 	for (size_t i = 0; i < size; i++)
 		data[i] = 0.0;
@@ -309,7 +298,6 @@ SymMatrix::SymMatrix() : Matrix(0)
 	nrows0 = 0;
 	ncols0 = 0;
 	size = 0;
-	data = 0;
 }
 SymMatrix::SymMatrix(const SymMatrix& m) : Matrix(0)
 {
@@ -319,23 +307,17 @@ SymMatrix::SymMatrix(const SymMatrix& m) : Matrix(0)
 	nrows0 = m.nrows0;
 	ncols0 = m.ncols0;
 	size = m.size;
-	data = new double[size];
+	data.resize(size);
 	for (size_t i = 0; i < size; i++)
 		data[i] = 0.0;
 }
 
 void SymMatrix::resize(size_t dim)
 {
-	if (size > 0)
-	{
-		delete[] data;
-		data = NULL;
-	}
-
 	Sym = true;
 	nrows = ncols = dim;
 	size = (int)nrows * (nrows + 1) / 2;
-	data = new double[size];
+	data.resize(size);
 	nrows0 = ncols0 = dim;
 	for (size_t i = 0; i < size; i++)
 		data[i] = 0.0;
@@ -429,9 +411,9 @@ double& SymMatrix::operator()(size_t i, size_t j) const
 #endif
 
 	if (i >= j)
-		return data[i * (i + 1) / 2 + j];
+		return ((double*)data.data())[i * (i + 1) / 2 + j];
 	else
-		return data[j * (j + 1) / 2 + i];
+		return ((double*)data.data())[j * (j + 1) / 2 + i];
 }
 
 void SymMatrix::LimitSize(size_t dim)
@@ -455,7 +437,7 @@ DiagonalMatrix::DiagonalMatrix(size_t dim) : Matrix(0)
 	Sym = true;
 	nrows = ncols = dim;
 	size = dim;
-	data = new double[dim];
+	data.resize(dim);
 	nrows0 = ncols0 = dim;
 	for (size_t i = 0; i < size; i++)
 		data[i] = 0.0;
@@ -470,7 +452,6 @@ DiagonalMatrix::DiagonalMatrix() : Matrix(0)
 	nrows0 = 0;
 	ncols0 = 0;
 	size = 0;
-	data = 0;
 	dummy_zero = 0.0;
 }
 DiagonalMatrix::DiagonalMatrix(const DiagonalMatrix& m) : Matrix(0)
@@ -481,7 +462,7 @@ DiagonalMatrix::DiagonalMatrix(const DiagonalMatrix& m) : Matrix(0)
 	nrows0 = m.nrows0;
 	ncols0 = m.ncols0;
 	size = m.size;
-	data = new double[size];
+	data.resize(size);
 	for (size_t i = 0; i < size; i++)
 		data[i] = 0.0;
 	dummy_zero = 0.0;
@@ -489,16 +470,10 @@ DiagonalMatrix::DiagonalMatrix(const DiagonalMatrix& m) : Matrix(0)
 
 void DiagonalMatrix::resize(size_t dim)
 {
-	if (size > 0)
-	{
-		delete[] data;
-		data = NULL;
-	}
-
 	Sym = true;
 	nrows = ncols = dim;
 	size = dim;
-	data = new double[size];
+	data.resize(size);
 	nrows0 = ncols0 = dim;
 	for (size_t i = 0; i < size; i++)
 		data[i] = 0.0;
@@ -573,7 +548,7 @@ double& DiagonalMatrix::operator()(size_t i, size_t j) const
 #endif
 
 	if (i == j)
-		return data[i];  // temporary
+		return ((double*)data.data())[i];  // temporary
 	else
 		return dummy_zero;
 }
@@ -588,7 +563,7 @@ double& DiagonalMatrix::operator()(size_t i) const
 	}
 #endif
 
-	return data[i];
+	return ((double*)data.data())[i];
 }
 
 void DiagonalMatrix::LimitSize(size_t dim)
