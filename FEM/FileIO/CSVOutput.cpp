@@ -88,11 +88,7 @@ void writeNodeData(COutput* output, std::string const& filename)
 	for (long i=0; i<(long)msh->GetNodesNumber(false); i++)
 	{
 		MeshLib::CNode* node = msh->getNodeVector()[i];
-#ifdef USE_PETSC
-		os << node->GetEquationIndex() << delim;
-#else
-		os << node->GetIndex() << delim;
-#endif
+		os << node->GetGlobalIndex() << delim;
 		for (size_t j=0; j<vec_pcs_value_index.size(); j++)
 		{
 			auto pcs = vec_pcs[j];
