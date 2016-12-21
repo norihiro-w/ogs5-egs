@@ -412,7 +412,7 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 			line.str(str_buf);
 			if (str_buf.find("petsc") != string::npos)
 			{
-				line >> str_buf >> lsover_name >> pres_name >>
+				line >> str_buf >> ls_solver_name >> ls_precond_name >>
 				    ls_error_tolerance >> ls_max_iterations >> ls_theta;
 			}
 			else
@@ -424,7 +424,32 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 				line >> ls_theta;
 				line >> ls_precond;
 				line >> ls_storage_method;
+#ifdef USE_PETSC
+				ls_solver_name = "bcgs";
+				ls_precond_name = "bjacobi";
+				if (ls_method == 4)
+					ls_solver_name = "bcgs";
+				else if (ls_method == 9)
+					ls_solver_name = "gmres";
+				if (ls_precond == 1)
+					ls_precond_name = "bjacobi";
+				else if (ls_precond == 2) // ILU
+					ls_precond_name = "bjacobi";
+				else if (ls_precond == 9) // ILUT
+					ls_precond_name = "bjacobi";
+
+				ScreenMessage("-> configure linear solver from Lis options (solver=%s, precon=%s)\n", ls_solver_name.data(), ls_precond_name.data());
+#endif
 			}
+			line.clear();
+			continue;
+		}
+		//....................................................................
+		// subkeyword found
+		if (line_string.find("$PETSC_LINEAR_SOLVER") != string::npos)
+		{
+			line.str(GetLineFromFile1(num_file));
+			line >> ls_solver_name >> ls_precond_name >> ls_error_tolerance >> ls_max_iterations;
 			line.clear();
 			continue;
 		}

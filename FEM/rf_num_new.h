@@ -28,8 +28,8 @@ public:
 	std::ios::pos_type Read(std::ifstream*);
 	void Write(std::fstream*);
 
-	const char* getLinearSolverName() const { return lsover_name.c_str(); }
-	const char* getPreconditionerName() const { return pres_name.c_str(); }
+	const char* getLinearSolverName() const { return ls_solver_name.c_str(); }
+	const char* getPreconditionerName() const { return ls_precond_name.c_str(); }
 
 	void setNonLinearErrorMethod(FiniteElement::ErrorMethod nls_method)
 	{
@@ -55,14 +55,14 @@ private:
 	double* DynamicDamping;
 	FiniteElement::ErrorMethod _pcs_nls_error_method;
 	FiniteElement::ErrorMethod _pcs_cpl_error_method;
-	std::string lsover_name;
-	std::string pres_name;
 
 public:
 
 	std::string pcs_type_name;
 	//
 	// LS - Linear Solver
+	std::string ls_solver_name;
+	std::string ls_precond_name;
 	int ls_method;
 	int ls_max_iterations;
 	int ls_error_method;
