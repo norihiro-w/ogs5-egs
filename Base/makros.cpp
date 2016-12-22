@@ -23,8 +23,8 @@ int myrank;
 void ogsAbort(int i)
 {
 #ifdef USE_PETSC
-    MPI_Abort(MPI_COMM_WORLD, i);
+	MPI_Abort(MPI_COMM_WORLD, i);
 #else
-    exit(i);
+	exit(i);
 #endif
 }
