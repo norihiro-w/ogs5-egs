@@ -7,28 +7,13 @@
  *
  */
 
-/*
-   Class element declaration
-   class for finite element.
-   Designed and programmed by WW, 06/2004
- */
-
 #ifndef fem_INC
 #define fem_INC
 
-// C++
-//#include <vector>
-//#include <string>
-
 #include "prototyp.h"
 #include "MSHEnums.h"
+#include "matrix_class.h"
 
-namespace Math_Group
-{
-class SymMatrix;
-class Matrix;
-typedef Matrix Vector;
-}
 namespace MeshLib
 {
 class CElem;
@@ -53,21 +38,13 @@ struct ExtrapolationMethod
 	};
 };
 
-using Math_Group::SymMatrix;
-using Math_Group::Matrix;
-using Math_Group::Vector;
-
-using MeshLib::CNode;
-using MeshLib::CEdge;
-using MeshLib::CElem;
-
 class CElement
 {
 public:
 	CElement(int CoordFlag, const int order = 1);
 	virtual ~CElement();
 	//
-	void ConfigElement(CElem* MElement, bool FaceIntegration = false);
+	void ConfigElement(MeshLib::CElem* MElement, bool FaceIntegration = false);
 	void setOrder(const int order);
 	// Set Gauss point
 	void SetGaussPoint(const int gp, int& gp_r, int& gp_s, int& gp_t);
@@ -128,27 +105,21 @@ public:
 	void SetCenterGP();
 	int GetGPindex() const { return gp; }
 	int GetElementIndex() const { return Index; }
-	CElem* GetMeshElement() const  // OK
+	MeshLib::CElem* GetMeshElement() const
 	{
 		return MeshElement;
 	}
+
 	// For extropolating gauss value to node
 	int GetLocalIndex(const int gp_r, const int gp_s, int gp_t);
 
-	// DDC 05/2006
-	void SetElementNodesDomain(long* ele_nodes)
-	{
-		element_nodes_dom = ele_nodes;
-	}
-
-	void SetRWPT(const int idx)  // PCH
+	void SetRWPT(const int idx)
 	{
 		PT_Flag = idx;
 	}
 
 protected:
-	CElem* MeshElement;
-	long* element_nodes_dom;  // Only a pointer. For domain decomposition. WW
+	MeshLib::CElem* MeshElement;
 
 	friend class ::CRFProcess;
 	friend class process::CRFProcessDeformation;
@@ -226,14 +197,9 @@ protected:
 	double node_val[20];
 	double dbuff[20];
 
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-	int act_nodes;      //> activated nodes
-	int act_nodes_h;    //> activated nodes for high order elements
-	int* idxm;          //> global indices of local matrix rows
-	int* idxn;          //> global indices of local matrix columns
-	int* local_idx;     //> local index for local assemble
-// double *local_matrix; //>  local matrix
-// double *local_vec; //>  local vector
+#if defined(USE_PETSC)
+	int* row_ids;          //> global indices of local matrix rows
+	int* col_ids;          //> global indices of local matrix columns
 #endif
 	ExtrapolationMethod::type extrapo_method;
 	ExtrapolationMethod::type GetExtrapoMethod() { return extrapo_method; }

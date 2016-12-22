@@ -40,8 +40,9 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 	// 2 long size_sbd_nodes_h = 0;
 	// 3 long size_sbd_elems = 0;
 	// 4 long size_g_elems = 0;
-	static const int nheaders = 10;
-	int mesh_header[nheaders];
+	static const int nheaders = 11;
+	int mesh_header[nheaders] = {-1};
+	MeshHeader meshHeader;
 
 	MeshNodes* s_nodes = (MeshNodes*)malloc(sizeof(MeshNodes));
 	int* elem_info = (int*)malloc(1);
@@ -50,12 +51,11 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 	int tag[] = {0, 1, 2};
 	MPI_Status status;
 
-	ifstream is;
-#ifdef MULTI_MESH_FILE
-	stringstream ss(stringstream::in | stringstream::out);
-#endif
+	ifstream is; // only root opens the file
 
-	if (myrank == 0)
+	const bool isRoot = (myrank == 0);
+	bool axisymmetric = false;
+	if (isRoot)
 	{
 		std::string str_var = file_base_name + "_partitioned.msh";
 		is.open(str_var.c_str());
@@ -73,13 +73,16 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 			else
 			{
 				ScreenMessage("-> cannot find a partitioned mesh file\n");
-				PetscFinalize();
-				exit(1);
+				MPI_Abort(MPI_COMM_WORLD, 1);
 			}
 		}
-		getline(is, str_var);
+		std::string str_line;
+		getline(is, str_line);
+		getline(is, str_line);
+		std::stringstream ss(str_line);
 		int num_parts;
-		is >> num_parts >> ws;
+		std::string temp;
+		ss >> num_parts >> temp >> ws;
 		if (num_parts != mysize)
 		{
 			string str_m =
@@ -92,34 +95,41 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 			PetscFinalize();
 			exit(1);
 		}
+		if (temp == "AXISYMMETRY") {
+			axisymmetric = true;
+			ScreenMessage("-> the mesh is axisymmetric\n");
+		}
 	}
 
 	CFEMesh* mesh = new CFEMesh(geo_obj, unique_name);
+	int i_axisymmetric = axisymmetric ? 1 : 0;
+	MPI_Bcast(&i_axisymmetric, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	axisymmetric = (i_axisymmetric!=0);
+	mesh->isAxisymmetry(axisymmetric);
 	mesh_vec.push_back(mesh);
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	ScreenMessage("-> Parallel reading the partitioned mesh\n");
+	ScreenMessage("-> reading the partitioned mesh\n");
 	for (int i = 0; i < mysize; i++)
 	{
-		if (myrank == 0)
+		// read a subdomain for rank i
+		//-------------------------------------------------------------------------
+		// root reads the header and boradcasts
+		if (isRoot)
 		{
-#ifdef MULTI_MESH_FILE
-			ss.clear();
-			ss.str("");
-			ss << i;
-			str_var = file_base_name + "_" + ss.str() + ".msh";
-
-			is.open(str_var.c_str());
-			getline(is, str_var);
-#endif
-
-			// cout<<"-->Parallel reading the partitioned mesh: "<<i<<endl;
-
 			for (int j = 0; j < nheaders; j++)
 				is >> mesh_header[j];
 			is >> ws;
+
+			//if (mesh->_vec_globalNodeID2domID.empty())
+			//{
+			//	mesh->_vec_globalNodeID2domID.resize(mesh_header[7], -1); // global nnodes
+			//}
 		}
 		MPI_Bcast(mesh_header, nheaders, MPI_INT, 0, MPI_COMM_WORLD);
+		meshHeader.set(mesh_header);
+
+		// debug output
 		if (i == myrank)
 		{
 			std::stringstream ss;
@@ -127,94 +137,72 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 				ss << mesh_header[j] << " ";
 			ScreenMessage2d("-> header: %s\n", ss.str().c_str());
 		}
-		// cout<<"\ncccccccccc "<<mesh_header[0]<<"    "<<mesh_header[1]
-		//	<<"   " <<mesh_header[2]<<"  "<<mesh_header[3]<<endl;
 
 		//-------------------------------------------------------------------------
 		// Node
-		s_nodes =
-		    (MeshNodes*)realloc(s_nodes, sizeof(MeshNodes) * mesh_header[0]);
-		if (i > 0) BuildNodeStruc(s_nodes, &MPI_node);
+		const bool hasQuadraticNodes = (meshHeader.n_dom_nodes_L != meshHeader.n_dom_nodes_Q);
+		s_nodes = (MeshNodes*)realloc(s_nodes, sizeof(MeshNodes) * meshHeader.n_dom_nodes_Q);
 
-		if (myrank == 0)
+		if (i > 0) // no need to broadcast if rank i is root
+			BuildNodeStruc(s_nodes, &MPI_node);
+
+		// root reads node data and broadcasts to rank-i
+		if (isRoot)
 		{
-			// Nodes
-			for (int k = 0; k < mesh_header[0]; k++)
+			for (int k = 0; k < meshHeader.n_dom_nodes_Q; k++)
 			{
 				MeshNodes* anode = &s_nodes[k];
-				is >> anode->index;
+				is >> anode->global_id >> anode->dom_id >> anode->eqs_id;
+				if (hasQuadraticNodes)
+					is >> anode->eqs_id_Q;
 				is >> anode->x >> anode->y >> anode->z >> ws;
-			}
-			/*
-			//TEST
-			for(k=0; k<mesh_header[0]; k++)
-			{
-			MeshNodes *anode = &s_nodes[k];
-			cout<<anode->index<<" ";
 
-			cout<<anode->x<<" "<<anode->y<<" "<<anode->z<<endl;
-
+				//mesh->_vec_globalNodeID2domID[anode->global_id] = anode->dom_id;
 			}
-			*/
 			if (i == 0)
 			{
-				mesh->setSubdomainNodes(&mesh_header[0], s_nodes);
+				mesh->setSubdomainNodes(meshHeader, s_nodes);
 			}
 			else
 			{
-				MPI_Send(s_nodes, mesh_header[0], MPI_node, i, tag[0],
-				         MPI_COMM_WORLD);
+				MPI_Send(s_nodes, meshHeader.n_dom_nodes_Q, MPI_node, i, tag[0], MPI_COMM_WORLD);
 			}
 		}
 
+		// rank-i recieve the node data
 		if (i > 0)
 		{
 			if (myrank == i)
 			{
-				MPI_Recv(s_nodes, mesh_header[0], MPI_node, 0, tag[0],
+				MPI_Recv(s_nodes, meshHeader.n_dom_nodes_Q, MPI_node, 0, tag[0],
 				         MPI_COMM_WORLD, &status);
-				mesh->setSubdomainNodes(mesh_header, s_nodes);
-
-				/*
-				//TEST
-				for(k=0; k<mesh_header[0]; k++)
-				{
-				    MeshNodes *anode = &s_nodes[k];
-				    cout<<anode->index<<" ";
-				    cout<<anode->x<<" "<<anode->y<<" "<<anode->z<<endl;
-				}
-				*/
+				mesh->setSubdomainNodes(meshHeader, s_nodes);
 			}
 		}
 
 		//-------------------------------------------------------------------------
 		// Element
-		const int size_elem_info = mesh_header[2] + mesh_header[8];
+		const int size_elem_info = meshHeader.n_inner_elements + meshHeader.n_element_integers;
 		elem_info = (int*)realloc(elem_info, sizeof(int) * size_elem_info);
 		for (int ii = 0; ii < size_elem_info; ii++)
 			elem_info[ii] = -1;
-		if (myrank == 0)
+		if (isRoot)
 		{
-			int counter = mesh_header[2];
-			for (int j = 0; j < mesh_header[2]; j++)
+			int counter = meshHeader.n_inner_elements;
+			for (int j = 0; j < meshHeader.n_inner_elements; j++)
 			{
 				elem_info[j] = counter;
-				is >> elem_info[counter];  // mat. idx
-				counter++;
-				is >> elem_info[counter];  // type
-				counter++;
-				is >> elem_info[counter];  // nnodes
-				const int nn_e = elem_info[counter];
-				counter++;
+				is >> elem_info[counter++];  // global ele. ID
+				is >> elem_info[counter++];  // mat. idx
+				is >> elem_info[counter++];  // type
+				is >> elem_info[counter++];    // nnodes
+				const int nn_e = elem_info[counter-1];
 				for (int k = 0; k < nn_e; k++)
-				{
-					is >> elem_info[counter];
-					counter++;
-				}
+					is >> elem_info[counter++];
 			}
 
 			if (i == 0)
-				mesh->setSubdomainElements(mesh_header, elem_info, true);
+				mesh->setSubdomainElements(meshHeader, elem_info, true);
 			else
 				MPI_Send(elem_info, size_elem_info, MPI_INT, i, tag[1],
 				         MPI_COMM_WORLD);
@@ -225,7 +213,7 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 			{
 				MPI_Recv(elem_info, size_elem_info, MPI_INT, 0, tag[1],
 				         MPI_COMM_WORLD, &status);
-				mesh->setSubdomainElements(mesh_header, elem_info, true);
+				mesh->setSubdomainElements(meshHeader, elem_info, true);
 			}
 		}
 
@@ -237,43 +225,38 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 
 		//-------------------------------------------------------------------------
 		// Ghost element
-		const int size_elem_g_info = mesh_header[3] + mesh_header[9];
+		const int size_elem_g_info = meshHeader.n_ghost_elements + meshHeader.n_ghost_element_integers;
 		elem_info = (int*)realloc(elem_info, sizeof(int) * size_elem_g_info);
 		if (myrank == 0)
 		{
-			int counter = mesh_header[3];
-			for (int j = 0; j < mesh_header[3]; j++)
+			int counter = meshHeader.n_ghost_elements;
+			for (int j = 0; j < meshHeader.n_ghost_elements; j++)
 			{
 				elem_info[j] = counter;
-				is >> elem_info[counter];  // mat. idx
-				counter++;
-				is >> elem_info[counter];  // type
-				counter++;
+				is >> elem_info[counter++];  // ele. idx
+				is >> elem_info[counter++];  // mat. idx
+				is >> elem_info[counter++];  // type
 				is >> elem_info[counter];  // nnodes
 				const int nn_e = elem_info[counter];
 				counter++;
 				for (int k = 0; k < nn_e; k++)
 				{
-					is >> elem_info[counter];
-					counter++;
+					is >> elem_info[counter++];
 				}
-				is >> elem_info[counter];
-				// const int nn_e_g =  elem_info[counter];
-				counter++;
+				is >> elem_info[counter++];
+				// const int nn_e_g =  elem_info[counter++];
 				// ghost nodes for linear element
 				is >> elem_info[counter];
-				const int nn_e_g_quad = elem_info[counter];
-				counter++;
-				for (int k = 0; k < nn_e_g_quad;
-				     k++)  // NW use nn_e_g_quad instead of nn_e_g
+				const int nn_e_g_quad = elem_info[counter++];
+				// NW use nn_e_g_quad instead of nn_e_g
+				for (int k = 0; k < nn_e_g_quad; k++)
 				{
-					is >> elem_info[counter];
-					counter++;
+					is >> elem_info[counter++];
 				}
 			}
 
 			if (i == 0)
-				mesh->setSubdomainElements(mesh_header, elem_info, false);
+				mesh->setSubdomainElements(meshHeader, elem_info, false);
 			else
 				MPI_Send(elem_info, size_elem_g_info, MPI_INT, i, tag[2],
 				         MPI_COMM_WORLD);
@@ -284,7 +267,7 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 			{
 				MPI_Recv(elem_info, size_elem_g_info, MPI_INT, 0, tag[2],
 				         MPI_COMM_WORLD, &status);
-				mesh->setSubdomainElements(mesh_header, elem_info, false);
+				mesh->setSubdomainElements(meshHeader, elem_info, false);
 			}
 		}
 	}
@@ -308,15 +291,117 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 
 	if (mysize > 1) MPI_Type_free(&MPI_node);
 
+	//-------------------------------------------------------------------------------------
+	ScreenMessage("-> global: nnodes_l=%d, nnodes_g=%d\n", mesh->getNumNodesGlobal(), mesh->getNumNodesGlobal_Q());
 	MPI_Barrier(MPI_COMM_WORLD);
 	ScreenMessage2(
-	    "-> nelements_g=%d, nnodes_gl=%d, nnodes_gq=%d, nnodes_ll=%d, "
+	    "-> nelements=%d, nnodes=%d, nnodes_q=%d, nnodes_ll=%d, "
 	    "nnodes_lq=%d\n",
 	    mesh->getElementVector().size(), mesh->GetNodesNumber(false),
 	    mesh->GetNodesNumber(true), mesh->getNumNodesLocal(),
 	    mesh->getNumNodesLocal_Q());
 	MPI_Barrier(MPI_COMM_WORLD);
 
+	//-------------------------------------------------------------------------------------
+#if 0
+	if (mesh->hasHigherOrderNodes())
+	{
+		// assign global equation IDs to local nodes. IDs should be continuous even for quadratic nodes
+		ScreenMessage("-> assgin global equation IDs to local nodes\n");
+		int global_eqs_id_Q = 0;
+		for (int i=0; i<mysize; i++)
+		{
+			if (i==myrank)
+			{
+				//ScreenMessage2("-> assgin global equation index for quadratic from id %d\n", global_eqs_id_Q);
+				for (CNode* node : mesh->getNodeVector())
+				{
+					if (mesh->isNodeLocal(node->GetIndex()))
+						node->SetEquationIndex(global_eqs_id_Q++, true);
+					else
+						node->SetEquationIndex(-1, true);
+				}
+				//ScreenMessage2("-> set global_eqs_id_Q=%d\n", global_eqs_id_Q);
+			}
+			MPI_Bcast(&global_eqs_id_Q, 1, MPI_INT, i, MPI_COMM_WORLD);
+			MPI_Barrier(MPI_COMM_WORLD);
+		}
+		if (myrank == mysize-1)
+		{
+			//ScreenMessage2("-> global_eqs_id_Q=%d, mesh->getNumNodesGlobal_Q=%d\n", global_eqs_id_Q, mesh->getNumNodesGlobal_Q());
+			if (global_eqs_id_Q != mesh->getNumNodesGlobal_Q())
+				ScreenMessage2("*** error: global_eqs_id_Q (%d) != mesh->getNumNodesGlobal_Q (%d)\n", global_eqs_id_Q, mesh->getNumNodesGlobal_Q());
+		}
+
+		// get global equation IDs of ghost nodes from other ranks
+		ScreenMessage("-> assgin global equation IDs to ghost nodes\n");
+		for (int i=0; i<mysize; i++)
+		{
+			// send a list of ghost nodes in this rank
+			std::vector<int> vec_ghost_node_localIDs;
+			std::vector<int> vec_ghost_node_globalIDs;
+			if (i==myrank)
+			{
+				//ScreenMessage2("-> send a list of ghost node IDs\n");
+				for (CNode* node : mesh->getNodeVector())
+				{
+					if (mesh->isNodeLocal(node->GetIndex()))
+						continue;
+					vec_ghost_node_localIDs.push_back(node->GetIndex());
+					vec_ghost_node_globalIDs.push_back(node->GetEquationIndex());
+				}
+				ScreenMessage2("-> looking for equations ids for %d ghost nodes\n", vec_ghost_node_globalIDs.size());
+			}
+			int vec_ghost_node_globalIDs_size = vec_ghost_node_globalIDs.size();
+			MPI_Bcast(&vec_ghost_node_globalIDs_size, 1, MPI_INT, i, MPI_COMM_WORLD);
+			if (i!=myrank)
+				vec_ghost_node_globalIDs.resize(vec_ghost_node_globalIDs_size);
+			MPI_Bcast(vec_ghost_node_globalIDs.data(), vec_ghost_node_globalIDs.size(), MPI_INT, i, MPI_COMM_WORLD);
+			//if (i!=myrank)
+			//	ScreenMessage2("-> received %d ghost node IDs from rank %d\n", vec_ghost_node_globalIDs.size(), i);
+
+			// for each ghost node
+			std::vector<int> vec_rank_data(mysize);
+			for (size_t j=0; j<vec_ghost_node_globalIDs.size(); j++)
+			{
+				int node_globalID = vec_ghost_node_globalIDs[j];
+				//ScreenMessage("-> look for a node with global ID %d\n", node_globalID);
+				MPI_Barrier(MPI_COMM_WORLD);
+				// who owns this?
+				int global_eqs_id_Q = -1;
+				if (i != myrank)
+				{
+					CNode* node = mesh->findNodeByGlobalID(node_globalID);
+					if (node) {
+						global_eqs_id_Q = node->GetEquationIndex(true);
+						//ScreenMessage2("-> found a node (local id=%d, global id=%d, global id(Q)=%d)\n", node->GetIndex(), node_globalID, global_eqs_id_Q);
+					}
+				}
+				MPI_Gather(&global_eqs_id_Q, 1, MPI_INT, vec_rank_data.data(), 1, MPI_INT, i, MPI_COMM_WORLD);
+				//
+				if (i == myrank)
+				{
+					//ScreenMessage2("-> gathered a result of node look up\n");
+					int reccv_eqsid = -1;
+					for (size_t ii=0; ii<vec_rank_data.size(); ii++)
+					{
+						if (vec_rank_data[ii]!=-1) {
+							reccv_eqsid = vec_rank_data[ii];
+							break;
+						}
+					}
+					//ScreenMessage2("-> global node id=%d, global equation ID (Q)=%d\n", node_globalID, reccv_eqsid);
+					if (reccv_eqsid<0)
+						ScreenMessage2("*** error: not found global equation ID (Q) for node %d\n", vec_ghost_node_localIDs[j]);
+					mesh->nod_vector[vec_ghost_node_localIDs[j]]->SetEquationIndex(reccv_eqsid, true);
+				}
+			}
+		}
+
+	}
+#endif
+
+	//-------------------------------------------------------------------------------------
 	mesh->ConstructGrid();
 	mesh->FillTransformMatrix();
 	// mesh->calMaximumConnectedNodes();
@@ -331,28 +416,31 @@ void FEMRead(const string& file_base_name, vector<MeshLib::CFEMesh*>& mesh_vec,
 
    WW. 02~03.2012
 */
-void CFEMesh::setSubdomainNodes(int* header, const MeshNodes* s_nodes)
+void CFEMesh::setSubdomainNodes(MeshHeader const& header, const MeshNodes* s_nodes)
 {
-	int k;
+	NodesNumber_Quadratic = header.n_dom_nodes_Q;
+	NodesNumber_Linear = header.n_dom_nodes_L;
 
-	NodesNumber_Quadratic = header[0];
-	NodesNumber_Linear = header[1];
+	loc_NodesNumber_Linear = header.n_inner_nodes_L;
+	loc_NodesNumber_Quadratic = header.n_inner_nodes_Q;
+	glb_NodesNumber_Linear = header.n_global_nodes_L;
+	glb_NodesNumber_Quadratic = header.n_global_nodes_Q;
+	glb_ElementsNumber = header.n_global_elements;
 
-	loc_NodesNumber_Linear = header[4];
-	loc_NodesNumber_Quadratic = header[5];
-	glb_NodesNumber_Linear = header[6];
-	glb_NodesNumber_Quadratic = header[7];
-
-	nod_vector.resize(header[0]);
-	_global_local_nodeids.reserve(header[0]);
-	for (k = 0; k < header[0]; k++)
+	nod_vector.resize(NodesNumber_Quadratic);
+	_global_local_nodeids.reserve(NodesNumber_Quadratic);
+	_vec_node_dom_ids.reserve(NodesNumber_Quadratic);
+	for (size_t k = 0; k < NodesNumber_Quadratic; k++)
 	{
 		const MeshNodes* anode = &s_nodes[k];
 		CNode* new_node = new CNode(k, anode->x, anode->y, anode->z);
-		new_node->SetEquationIndex(anode->index);
+		new_node->SetGlobalIndex(anode->global_id);
+		new_node->SetEquationIndex(anode->eqs_id, false);
+		new_node->SetEquationIndex(anode->eqs_id_Q, true);
 		nod_vector[k] = new_node;
 		_global_local_nodeids.push_back(
-		    std::make_pair((std::size_t)anode->index, (std::size_t)k));
+		    std::make_pair((std::size_t)anode->global_id, (std::size_t)k));
+		_vec_node_dom_ids.push_back(anode->dom_id);
 	}
 }
 
@@ -364,40 +452,28 @@ void CFEMesh::setSubdomainNodes(int* header, const MeshNodes* s_nodes)
    @param inside :    indicator for inside domain
    WW. 02~03.2012
 */
-void CFEMesh::setSubdomainElements(int* header, const int* elem_info,
+void CFEMesh::setSubdomainElements(MeshHeader const& header, const int* elem_info,
                                    const bool inside)
 {
-	int i;
-	int k;
-	int counter;
-	int mat_idx;
-	int e_type;
-	int nnodes;
-
-	int ne = 0;
-	if (inside)
-		ne = header[2];
-	else
-		ne = header[3];
+	int ne = inside ? header.n_inner_elements : header.n_ghost_elements;
 
 	// Element
-	for (i = 0; i < ne; i++)
+	//std::stringstream ss;
+	for (int i = 0; i < ne; i++)
 	{
 		CElem* new_elem = new CElem(ele_vector.size());
 		ele_vector.push_back(new_elem);
 
-		counter = elem_info[i];
+		int counter = elem_info[i];
 
-		mat_idx = elem_info[counter];
-		counter++;
-		e_type = elem_info[counter];
-		counter++;
-		nnodes = elem_info[counter];
-		counter++;
+		new_elem->global_index = elem_info[counter++];
+		int mat_idx = elem_info[counter++];
+		int e_type = elem_info[counter++];
+		int nnodes = elem_info[counter++];
 
 		new_elem->nnodesHQ = nnodes;
 		new_elem->nodes_index.resize(new_elem->nnodesHQ);
-		for (k = 0; k < new_elem->nnodesHQ; k++)
+		for (int k = 0; k < new_elem->nnodesHQ; k++)
 		{
 			new_elem->nodes_index[k] = elem_info[counter];
 			counter++;
@@ -414,7 +490,7 @@ void CFEMesh::setSubdomainElements(int* header, const int* elem_info,
 			int* ele_gnidx = new_elem->g_index;
 			ele_gnidx[0] = nn_gl;
 			ele_gnidx[1] = nn_g;
-			for (k = 2; k < nn_g + 2; k++)
+			for (int k = 2; k < nn_g + 2; k++)
 			{
 				ele_gnidx[k] = elem_info[counter];
 				counter++;
@@ -481,8 +557,9 @@ void CFEMesh::setSubdomainElements(int* header, const int* elem_info,
 
 		new_elem->InitializeMembers();
 
-		// new_elem->WriteIndex();
+		//new_elem->WriteIndex(ss);
 	}
+	//ScreenMessage2("\n%s\n", ss.str().data());
 }
 
 /*!
@@ -559,66 +636,70 @@ void CFEMesh::ConfigHighOrderElements()
 		}
 	}
 }
-//
-int CFEMesh::calMaximumConnectedNodes()
+
+int CFEMesh::calMaximumConnectedLocalNodes(bool quadratic, std::vector<int> &d_nnz)
 {
-	int max_connected_nodes = 0;
-	for (size_t i = 0; i < nod_vector.size(); i++)
+	d_nnz.resize(quadratic ? this->getNumNodesLocal_Q() : this->getNumNodesLocal());
+	size_t max_connected_nodes = 0;
+	const int node0_eqsId = nod_vector[0]->GetEquationIndex(quadratic);
+	for (size_t i=0; i<this->GetNodesNumber(quadratic); i++)
 	{
-		const int k = static_cast<int>(nod_vector[i]->getNumConnectedNodes());
-		if (k > max_connected_nodes) max_connected_nodes = k;
+		CNode* node = nod_vector[i];
+		if (!this->isNodeLocal(node->GetIndex()))
+			continue;
+		size_t cnt_local = 0;
+		for (auto node_id : node->getConnectedNodes())
+			if (this->isNodeLocal(node_id))
+				cnt_local++;
+		max_connected_nodes = std::max(max_connected_nodes, cnt_local);
+		int eqs_id = node->GetEquationIndex(quadratic) - node0_eqsId;
+		d_nnz[eqs_id] = cnt_local;
 	}
-	ScreenMessage2d("-> max. connected nodes = %d\n", max_connected_nodes);
-
-	int msize;
-	// int mrank;
-	int* i_cnt;
-	int* i_disp;
-	int* i_recv;
-
-	MPI_Comm_size(MPI_COMM_WORLD, &msize);
-	// MPI_Comm_rank(MPI_COMM_WORLD,&mrank);
-
-	i_cnt = (int*)malloc(msize * sizeof(int));
-	i_disp = (int*)malloc(msize * sizeof(int));
-	i_recv = (int*)malloc(msize * sizeof(int));
-
-	for (int i = 0; i < msize; i++)
-	{
-		i_cnt[i] = 1;
-		i_disp[i] = i;
-	}
-
-	MPI_Allgatherv(&max_connected_nodes, 1, MPI_INT, i_recv, i_cnt, i_disp,
-	               MPI_INT, MPI_COMM_WORLD);
-
-	max_connected_nodes = 0;
-	for (int i = 0; i < msize; i++)
-	{
-		if (i_recv[i] > max_connected_nodes) max_connected_nodes = i_recv[i];
-	}
-	free(i_cnt);
-	free(i_recv);
-	free(i_disp);
-
+	ScreenMessage2d("-> max. connected local nodes = %d\n", max_connected_nodes);
 	return max_connected_nodes;
 }
 
+int CFEMesh::calMaximumConnectedGhostNodes(bool quadratic, std::vector<int> &o_nnz)
+{
+	o_nnz.resize(quadratic ? this->getNumNodesLocal_Q() : this->getNumNodesLocal());
+	size_t max_connected_nodes = 0;
+	const int node0_eqsId = nod_vector[0]->GetEquationIndex(quadratic);
+	for (size_t i=0; i<this->GetNodesNumber(quadratic); i++)
+	{
+		CNode* node = nod_vector[i];
+		if (!this->isNodeLocal(node->GetIndex()))
+			continue;
+		size_t cnt_ghost = 0;
+		for (auto node_id : node->getConnectedNodes())
+			if (!this->isNodeLocal(node_id))
+				cnt_ghost++;
+		max_connected_nodes = std::max(max_connected_nodes, cnt_ghost);
+		int eqs_id = node->GetEquationIndex(quadratic) - node0_eqsId;
+		o_nnz[eqs_id] = cnt_ghost;
+	}
+	ScreenMessage2d("-> max. connected ghost nodes = %d\n", max_connected_nodes);
+	return max_connected_nodes;
+}
+
+
 void BuildNodeStruc(MeshNodes* anode, MPI_Datatype* MPI_Node_ptr)
 {
-	MPI_Datatype my_comp_type[4];
-	int nblocklen[4];
-	MPI_Aint disp[4], base;
-	int j;
+	static const int ncomp = 7;
+	MPI_Datatype my_comp_type[ncomp];
+	int nblocklen[ncomp];
+	MPI_Aint disp[ncomp], base;
 
-	my_comp_type[0] = MPI_INT;
-	my_comp_type[1] = MPI_DOUBLE;
-	my_comp_type[2] = MPI_DOUBLE;
-	my_comp_type[3] = MPI_DOUBLE;
-	nblocklen[0] = 1;
-	nblocklen[1] = 1;
-	nblocklen[2] = 1;
-	nblocklen[3] = 1;
+	int counter = 0;
+	my_comp_type[counter++] = MPI_INT;
+	my_comp_type[counter++] = MPI_INT;
+	my_comp_type[counter++] = MPI_INT;
+	my_comp_type[counter++] = MPI_INT;
+	my_comp_type[counter++] = MPI_DOUBLE;
+	my_comp_type[counter++] = MPI_DOUBLE;
+	my_comp_type[counter++] = MPI_DOUBLE;
+	counter = 0;
+	for (int i=0; i<ncomp; i++)
+		nblocklen[counter++] = 1;
 
 // Compute displacement of struct MeshNodes
 
@@ -639,11 +720,14 @@ for (j=0; j <3; j++)
 
 #ifndef __MPIUNI_H
 	MPI_Get_address(anode, disp);
-	MPI_Get_address(&(anode[0].x), disp + 1);
-	MPI_Get_address(&(anode[0].y), disp + 2);
-	MPI_Get_address(&(anode[0].z), disp + 3);
+	MPI_Get_address(&anode->dom_id, disp + 1);
+	MPI_Get_address(&anode->eqs_id, disp + 2);
+	MPI_Get_address(&anode->eqs_id_Q, disp + 3);
+	MPI_Get_address(&(anode[0].x), disp + 4);
+	MPI_Get_address(&(anode[0].y), disp + 5);
+	MPI_Get_address(&(anode[0].z), disp + 6);
 	base = disp[0];
-	for (j = 0; j < 4; j++)
+	for (int j = 0; j < ncomp; j++)
 	{
 		disp[j] -= base;
 
@@ -653,7 +737,7 @@ for (j=0; j <3; j++)
 #endif
 
 	// build datatype describing structure
-	MPI_Type_create_struct(4, nblocklen, disp, my_comp_type, MPI_Node_ptr);
+	MPI_Type_create_struct(ncomp, nblocklen, disp, my_comp_type, MPI_Node_ptr);
 	MPI_Type_commit(MPI_Node_ptr);
 }
 

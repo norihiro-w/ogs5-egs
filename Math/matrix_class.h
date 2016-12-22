@@ -43,7 +43,7 @@ public:
 
 	void GetTranspose(Matrix& m) const;
 
-	double* getEntryArray() { return data; }
+	double* getEntryArray() { return data.data(); }
 
 	// vec_result = This*vec. vec_result must be initialized
 	void multi(const double* vec, double* vec_result, double fac = 1.0);
@@ -55,6 +55,7 @@ public:
 	// Access to members
 	inline double& operator()(size_t i, size_t j = 0) const
 	{
+//#define gDEBUG
 #ifdef gDEBUG
 		if (i >= nrows || j >= ncols)
 		{
@@ -63,7 +64,7 @@ public:
 			abort();
 		}
 #endif
-		return data[i * ncols + j];
+		return ((double*)data.data())[i * ncols + j];
 	}
 	void LimitSize(size_t nRows, size_t nCols = 1);
 
@@ -80,7 +81,7 @@ protected:
 	size_t nrows, nrows0;
 	size_t ncols, ncols0;
 	size_t size;
-	double* data;
+	std::vector<double> data;
 	bool Sym;
 };
 

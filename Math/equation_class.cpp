@@ -59,9 +59,10 @@ std::vector<Math_Group::Linear_EQS*> EQS_Vector;
 std::vector<Math_Group::SparseTable*> SparseTable_Vector;
 using namespace std;
 
-//
+
 namespace Math_Group
 {
+
 /**************************************************************************
    Task: Linear equation::Constructor
    Programing:
@@ -177,7 +178,7 @@ void Linear_EQS::WriteRHS(ostream& os)
 //**************************************************************************
 void Linear_EQS::Write_BIN(ostream& os)
 {
-	if ((A->GetStorageType() != CRS) || (!A)) return;
+	if (!A) return;
 
 	A->Write_BIN(os);
 	os.write((char*)b, A->Dim() * sizeof(double));
@@ -199,64 +200,8 @@ void Linear_EQS::WriteX(ostream& os)
 
 /**************************************************************************
    Task: Linear equation::Solver
-   Programing:
 
-   PARDISO openmp-paralle direct solver: 805
-
-   LIS matrix solver options
-   CG -i {cg|1}
-   BiCG -i {bicg|2}
-   CGS -i {cgs|3}
-   BiCGSTAB -i {bicgstab|4}
-   BiCGSTAB(l) -i {bicgstabl|5} -ell [2] Value for l
-   GPBiCG -i {gpbicg|6}
-   TFQMR -i {tfqmr|7}
-   Orthomin(m) -i {orthomin|8} -restart [40] Value for Restart m
-   GMRES(m) -i {gmres|9} -restart [40] Value for Restart m
-   Jacobi -i {jacobi|10}
-   Gauss-Seidel -i {gs|11}
-   SOR -i {sor|12} -omega [1.9] Value for Relaxation Coefficient  (0 <  < 2)
-   BiCGSafe -i {bicgsafe|13}
-   CR -i {cr|14}
-   BiCR -i {bicr|15}
-   CRS -i {crs|16}
-   BiCRSTAB -i {bicrstab|17}
-   GPBiCR -i {gpbicr|18}
-   BiCRSafe -i {bicrsafe|19}
-   FGMRES(m) -i {fgmres|20} -restart [40] Value for Restart m
-   IDR(s) -i {idrs|21} -restart [40] Value for Restart s
-
-   Preconditioner Option Auxiliary Option
-   None -p {none|0}
-   Jacobi -p {jacobi|1}
-   ILU(k) -p {ilu|2} -ilu_fill [0] Fill level k
-   SSOR -p {ssor|3} -ssor_w [1.0] Relaxation Coefficient  (0 <  < 2)
-   Hybrid -p {hybrid|4} -hybrid_i [sor] Iterative method
-   -hybrid_maxiter [25] Maximum number of iterations
-   -hybrid_tol [1.0e-3] Convergence criteria
-   -hybrid_w [1.5] Relaxation Coefficient  for
-   the SOR method (0 <  < 2)
-   -hybrid_ell [2] Value for l of the BiCGSTAB(l) method
-   -hybrid_restart [40] Restart values for GMRES and Orthomin
-   I+S -p {is|5} -is_alpha [1.0] Parameter ?for preconditioner
-   of a I + ?(m) type
-   -is_m [3] Parameter m for preconditioner
-   of a I + ?(m) type
-   SAINV -p {sainv|6} -sainv_drop [0.05] Drop criteria
-   SA-AMG -p {saamg|7} -saamg_unsym [false] Selection of asymmetric version
-   Crout ILU -p {iluc|8} -iluc_drop [0.05] Drop criteria
-   -iluc_rate [5.0] Ratio of Maximum fill-in
-   ILUT -p {ilut|9} -ilut_drop [0.05] Drop criteria
-   -ilut_rate [5.0] Ratio of Maximum fill-in
-   additive Schwarz -adds true -adds_iter [1] Number of iterations
-
-   02/2008 PCH OpenMP parallelization by LIS
-   03/2009 PCH Solver type and precondition options added for .num file
 **************************************************************************/
-#if defined(USE_MPI)
-#else  // if defined(USE_MPI)
-
-#if defined(LIS) || defined(MKL)
 Linear_EQS::IndexType Linear_EQS::searcgNonZeroEntries(
     IndexType nrows, IndexType* ptr, double* value,
     std::vector<IndexType>& vec_nz_rows, std::vector<IndexType>& vec_z_rows)
@@ -322,7 +267,6 @@ void Linear_EQS::compressCRS(const IndexType* org_ptr,
 	new_ptr[vec_nz_rows.size()] = nnz_counter;
 	// assert(n_nz_entries==nnz_counter);
 }
-#endif
 
 #ifdef MKL
 void Linear_EQS::solveWithPARDISO(bool compress_if_possible)
@@ -826,7 +770,6 @@ int Linear_EQS::solveWithLIS(bool compress)
 }
 #endif
 
-#if defined(LIS) || defined(MKL)
 int Linear_EQS::Solver(bool compress)
 {
 	(void)compress;
@@ -859,8 +802,6 @@ int Linear_EQS::Solver(bool compress)
 
 	return iter;
 }
-#endif
-#endif
 
 /**************************************************************************
    Task: Linear equation::SetKnownXi
@@ -900,6 +841,4 @@ double Linear_EQS::NormX()
 	return sqrt(dot(x, x));
 }
 
-
-//------------------------------------------------------------------------
 }  // namespace

@@ -292,6 +292,9 @@ public:
 #if defined(USE_PETSC)
 	bool isOverlapped() const { return g_index != NULL; }
 	int* getGhostNodeIndices() { return g_index; }
+	long GetGlobalIndex() const { return global_index; }
+#else
+	long GetGlobalIndex() const { return this->GetIndex(); }
 #endif
 
 private:
@@ -305,6 +308,7 @@ private:
 	Math_Group::vec<long> nodes_index;
 #if defined(USE_PETSC)
 	int* g_index;
+	long global_index = -1;
 #endif
 
 	size_t nedges;

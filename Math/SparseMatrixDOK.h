@@ -7,19 +7,13 @@
  *
  */
 
-/*
- * SparseMatrixDOK.h
- *
- *  Created on: Oct 6, 2011
- *      Author: NW
- */
-
 #ifndef SPARSEMATRIXDOK_H_
 #define SPARSEMATRIXDOK_H_
 
-#include <vector>
+#include <iostream>
 #include <map>
 #include <set>
+#include <vector>
 
 namespace Math_Group
 {
@@ -66,7 +60,7 @@ public:
 
 	const mat_t& GetRawData() const { return mat_row; }
 
-	mat_t& GetRawData() { return mat_row; };
+	mat_t& GetRawData() { return mat_row; }
 	size_t SizeOfNonZeroEntries();
 	void CalculateNonZeroEntries();
 

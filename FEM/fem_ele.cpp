@@ -11,10 +11,15 @@
 
 #include <cfloat>
 
-#include "msh_elem.h"
-#include "rf_pcs.h"
-#include "femlib.h"
 #include "mathlib.h"
+
+#include "msh_elem.h"
+
+#include "femlib.h"
+#include "rf_pcs.h"
+
+using namespace MeshLib;
+using namespace Math_Group;
 
 namespace FiniteElement
 {
@@ -103,14 +108,9 @@ CElement::CElement(int CoordFlag, const int order)
 #endif
 
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-	idxm = NULL;        //> global indices of local matrix rows
-	idxn = NULL;        //> global indices of local matrix columns
-	local_idx = NULL;   //> local index for local assemble
-	// local_matrix = NULL; //>  local matrix
-	// local_vec = NULL; //>  local vector
-	act_nodes = act_nodes_h = 0;
+	row_ids = NULL;        //> global indices of local matrix rows
+	col_ids = NULL;        //> global indices of local matrix columns
 #endif
-	element_nodes_dom = NULL;
 	gp = 0;
 	idx_c0 = idx_c1 = 0;
 	Index = 0;
@@ -135,13 +135,8 @@ CElement::~CElement()
 	shapefctHQ = NULL;
 
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
-	if (idxm) delete[] idxm;
-	if (idxn) delete[] idxn;
-	if (local_idx) delete[] local_idx;
-// if (local_idx)
-//  delete [] local_matrix;
-// if (local_idx)
-//  delete [] local_vec;
+	if (row_ids) delete[] row_ids;
+	if (col_ids) delete[] col_ids;
 #endif
 }
 
@@ -191,12 +186,13 @@ void CElement::ConfigElement(CElem* MElement, bool FaceIntegration)
 				double dy(coords_node_i[1] - coords_node_0[1]);
 				double dz(coords_node_i[2] - coords_node_0[2]);
 
-				X[i] = (*MeshElement->getTransformTensor())(0, 0) * dx +
-					   (*MeshElement->getTransformTensor())(1, 0) * dy +
-					   (*MeshElement->getTransformTensor())(2, 0) * dz;
-				Y[i] = (*MeshElement->getTransformTensor())(0, 1) * dx +
-					   (*MeshElement->getTransformTensor())(1, 1) * dy +
-					   (*MeshElement->getTransformTensor())(2, 1) * dz;
+				auto &trans_tensor = *MeshElement->getTransformTensor();
+				X[i] = trans_tensor(0, 0) * dx +
+				       trans_tensor(1, 0) * dy +
+				       trans_tensor(2, 0) * dz;
+				Y[i] = trans_tensor(0, 1) * dx +
+				       trans_tensor(1, 1) * dy +
+				       trans_tensor(2, 1) * dz;
 				//               Z[i] =  a_node->Z();
 				Z[i] = coords_node_i[2];
 			}
@@ -425,7 +421,6 @@ double CElement::interpolate(double* nodalVal, const int order) const
 **************************************************************************/
 double CElement::interpolate(const int idx, CRFProcess* m_pcs, const int order)
 {
-	int i;
 	int nn = nnodes;
 	double* inTerpo = shapefct;
 	double val = 0.0;
@@ -435,7 +430,7 @@ double CElement::interpolate(const int idx, CRFProcess* m_pcs, const int order)
 		inTerpo = shapefctHQ;
 	}
 	//
-	for (i = 0; i < nn; i++)
+	for (int i = 0; i < nn; i++)
 		node_val[i] = m_pcs->GetNodeValue(nodes[i], idx);
 	for (int i = 0; i < nn; i++)
 		val += node_val[i] * inTerpo[i];
@@ -1056,13 +1051,14 @@ void CElement::ComputeGradShapefct(int order)
 			}
 		}
 	}
+	auto &t_tensor = *MeshElement->getTransformTensor();
 	// 1D element in 3D
 	if ((dim == 3 && ele_dim == 1) || (dim == 2 && ele_dim == 1))
 		for (int i = 0; i < nNodes; i++)
 		{
 			for (size_t j = 1; j < dim; j++)
-				dN[j * nNodes + i] = (*MeshElement->getTransformTensor())(j)*dN[i];
-			dN[i] *= (*MeshElement->getTransformTensor())(0);
+				dN[j * nNodes + i] = t_tensor(j)*dN[i];
+			dN[i] *= t_tensor(0);
 		}
 	// 2D element in 3D
 	if (dim == 3 && ele_dim == 2)
@@ -1076,7 +1072,7 @@ void CElement::ComputeGradShapefct(int order)
 				dN[j * nNodes + i] = 0.0;
 				for (size_t k = 0; k < ele_dim; k++)
 					dN[j * nNodes + i] +=
-						(*MeshElement->getTransformTensor())(j, k) *
+					    t_tensor(j, k) *
 					    dShapefct[k * nNodes + i];
 			}
 	}

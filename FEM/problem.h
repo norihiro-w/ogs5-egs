@@ -7,17 +7,13 @@
  *
  */
 
-/*
-  Class to define a problem to be solved.
-  Programming WW 08.07.2008
-*/
 #ifndef problem_INC
 #define problem_INC
 
 #include <vector>
+
 class CRFProcess;
 
-// GEOLIB
 #include "GEOObjects.h"
 
 //---------------------------------------------------------------------
@@ -26,22 +22,24 @@ class Problem;
 typedef double (Problem::*ProblemMemFn)(void);
 #define Call_Member_FN(object, ptrToMember) ((object)->*(ptrToMember))
 //---------------------------------------------------------------------
+
 class Problem
 {
 public:
-	Problem(char* filename = NULL);
+	explicit Problem(char* filename);
 	~Problem();
 
 	bool Euler_TimeDiscretize();
 	void RosenBrock_TimeDiscretize() {}
 	//
 	void SetActiveProcesses();
-	void SetTimeActiveProcesses();  // JT2012
+	void SetTimeActiveProcesses();
 	void PCSRestart();
 	//
 	bool CouplingLoop();
 	void PostCouplingLoop();
 	void PreCouplingLoop(CRFProcess* m_pcs = NULL);
+
 	// Copy u_n for auto time stepping
 	double* GetBufferArray(const bool is_x_k = false)
 	{
@@ -109,30 +107,28 @@ private:
 	std::vector<int> coupled_process_index;
 	//
 	bool* exe_flag;
-	inline int AssignProcessIndex(CRFProcess* m_pcs, bool activefunc = true);
+	int AssignProcessIndex(CRFProcess* m_pcs, bool activefunc = true);
 	//
 	void PCSCreate();
 	// Perform processes:
-	inline double LiquidFlow();
-	inline double RichardsFlow();
-	inline double TwoPhaseFlow();
-	inline double MultiPhaseFlow();
-	inline double PS_Global();
-	inline double GroundWaterFlow();
-	inline double AirFlow();
-	inline double HeatTransport();
-	inline double FluidMomentum();
-	inline double RandomWalker();
-	inline double MassTrasport();
-	inline double Deformation();
-	inline double TH_Monolithic();
+	double LiquidFlow();
+	double RichardsFlow();
+	double TwoPhaseFlow();
+	double MultiPhaseFlow();
+	double PS_Global();
+	double GroundWaterFlow();
+	double AirFlow();
+	double HeatTransport();
+	double FluidMomentum();
+	double RandomWalker();
+	double MassTrasport();
+	double Deformation();
+	double TH_Monolithic();
 	// Accessory
 	void LOPCalcELEResultants();
-	inline void ASMCalcNodeWDepth(CRFProcess* m_pcs);
+	void ASMCalcNodeWDepth(CRFProcess* m_pcs);
 	void PCSCalcSecondaryVariables();
-	bool Check();                               // OK
-	void TestOutputEclipse(CRFProcess* m_pcs);  // BG
-	void TestOutputDuMux(CRFProcess* m_pcs);    // BG
+	bool Check();
 	void OutputMassOfComponentInModel(std::vector<CRFProcess*> flow_pcs,
 	                                  CRFProcess* transport_pcs);  // BG
 	void OutputMassOfGasInModel(CRFProcess* m_pcs);                // BG
@@ -141,13 +137,12 @@ private:
 	 * pointer to an instance of class GEOObjects,
 	 * that manages geometric entities
 	 */
-	GEOLIB::GEOObjects* _geo_obj;  // TF
-	                               /**
-	                                * project/file name for geometry file,
-	                                * used to access data in data manager GEOObjects
-	                                */
-	std::string _geo_name;         // TF
+	GEOLIB::GEOObjects* _geo_obj;
+	/**
+	 * project/file name for geometry file,
+	 * used to access data in data manager GEOObjects
+	 */
+	std::string _geo_name;
 };
 
-extern bool MODCreate();  // OK
 #endif

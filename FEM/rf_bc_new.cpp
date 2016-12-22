@@ -7,83 +7,33 @@
  *
  */
 
-/**************************************************************************
-   FEMLib - Class: BC BoundaryConditions
-   Task:
-   Programing:
-   02/2004 OK Implementation
-   last modified
-**************************************************************************/
 #include "rf_bc_new.h"
 
-// C++ STL
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
 #include <iostream>
 
-#include "makros.h"
 #include "display.h"
 #include "FileToolsRF.h"
+#include "makros.h"
 #include "memory.h"
-
-// FileIO
-#include "BoundaryConditionIO.h"
-#include "GeoIO.h"
-#include "ProcessIO.h"
 #include "readNonBlankLineFromInputStream.h"
-#include "files0.h"
 
-// GEOLib
-//#include "geo_lib.h"
-//#include "geo_sfc.h"
+#include "mathlib.h"
+#include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
 
-// GEOLIB
 #include "GEOObjects.h"
 
-// MSHLib
-//#include "mshlib.h"
-// FEMLib
-extern void remove_white_space(std::string*);
-//#include "problem.h"
-#include "tools.h"
-//#include "rf_node.h"
-//#include "rf_pcs.h"
-//#include "rf_fct.h"
-#include "rfmat_cp.h"
-//#include "geo_ply.h"
-// MathLib
-#include "InterpolationAlgorithms/PiecewiseLinearInterpolation.h"
-#include "mathlib.h"
-
 #include "BoundaryCondition.h"
-
 #include "DistributionTools.h"
+#include "files0.h"
+#include "rfmat_cp.h"
+#include "tools.h"
+#include "FileIO/BoundaryConditionIO.h"
+#include "FileIO/GeoIO.h"
+#include "FileIO/ProcessIO.h"
 
-#ifndef _WIN32
-#include <cstdio>
-#include <cstdlib>
-#include <sys/resource.h>
-#include <sys/time.h>
-#include <unistd.h>
-
-double cputime(double x)
-{
-	struct rusage rsrc;
-	double usr, sys;
-
-	if (getrusage(RUSAGE_SELF, &rsrc) == -1)
-	{
-		perror("times");
-		exit(1);
-	}
-
-	usr = rsrc.ru_utime.tv_sec + 1.0e-6 * rsrc.ru_utime.tv_usec;
-	sys = rsrc.ru_stime.tv_sec + 1.0e-6 * rsrc.ru_stime.tv_usec;
-
-	return usr + sys - x;
-}
-#endif
 
 CBoundaryConditionNode::CBoundaryConditionNode()
 {
@@ -925,7 +875,13 @@ void CBoundaryCondition::SetByElementValues(long ShiftInNodeVector)
 	}
 
 	CRFProcess* pcs = this->getProcess();
-	// MeshLib::CFEMesh* msh = pcs->m_msh;
+#ifdef USE_PETSC
+	MeshLib::CFEMesh* msh = pcs->m_msh;
+	std::map<size_t, size_t> map_global2local_ele_id;
+	for (size_t i=0; i<map_global2local_ele_id.size(); i++)
+		map_global2local_ele_id.insert(std::make_pair((size_t)msh->getElementVector()[i]->GetGlobalIndex(), i));
+#endif
+
 	// read element values
 	std::vector<long> bc_ele_ids;
 	std::map<long, double> map_eleId_val;
@@ -940,9 +896,15 @@ void CBoundaryCondition::SetByElementValues(long ShiftInNodeVector)
 
 		in.str(line_string);
 		in >> ele_id >> val;
+		in.clear();
+#ifdef USE_PETSC
+		auto itr = map_global2local_ele_id.find(ele_id);
+		if (itr == map_global2local_ele_id.end())
+			continue;
+		ele_id = itr->second;
+#endif
 		map_eleId_val[ele_id] = val;
 		bc_ele_ids.push_back(ele_id);
-		in.clear();
 	}
 
 	// get a list of nodes connecting elements
@@ -1107,6 +1069,7 @@ void CBoundaryConditionsGroup::Set(CRFProcess* pcs, int ShiftInNodeVector,
 			++p_bc;
 			continue;
 		}
+		ScreenMessage("* %s on %s\n", FiniteElement::convertPrimaryVariableToString(bc->getProcessPrimaryVariable()).data(), bc->getGeoName().data());
 
 		//-- 23.02.3009. WW
 		if (bc->getProcessDistributionType() == FiniteElement::DIRECT)

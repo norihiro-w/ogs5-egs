@@ -24,16 +24,19 @@ void getNodesOnDistribution(DistributionData& dis_data,
 {
 	if (dis_data.geo_type == GEOLIB::POINT)
 	{
-		// ScreenMessage2("-> looking for nodes on POINT %s\n",
-		// dis_data.geo_name.c_str());
+		ScreenMessage2("-> looking for nodes on POINT %s\n",
+					   dis_data.geo_name.c_str());
 		long node_id = msh.GetNODOnPNT(
 		    static_cast<const GEOLIB::Point*>(dis_data.geo_obj));
 		if (node_id >= 0)
 		{
 			nodes_vector.push_back(node_id);
 			ScreenMessage2("-> node ID %d is found for POINT %s\n",
-			               node_id,
+						   msh.getNodeVector()[node_id]->GetGlobalIndex(),
 			               dis_data.geo_name.c_str());
+		} else {
+			ScreenMessage2("-> No node is found for POINT %s\n",
+						   dis_data.geo_name.c_str());
 		}
 	}
 	else if (dis_data.geo_type == GEOLIB::POLYLINE)
@@ -59,8 +62,7 @@ void getNodesOnDistribution(DistributionData& dis_data,
 	}
 	else if (dis_data.geo_type == GEOLIB::SURFACE)
 	{
-		ScreenMessage2d("-> looking for nodes on SURFACE %s\n",
-		                dis_data.geo_name.c_str());
+		//ScreenMessage2("-> looking for nodes on SURFACE %s\n", dis_data.geo_name.c_str());
 		GEOLIB::Surface const* sfc(
 		    static_cast<const GEOLIB::Surface*>(dis_data.geo_obj));
 
@@ -94,6 +96,7 @@ void getNodesOnDistribution(DistributionData& dis_data,
 			//#endif
 			std::vector<size_t> msh_nod_vec;
 			msh.GetNODOnSFC(sfc, msh_nod_vec);
+			ScreenMessage2("-> %d nodes found for SURFACE %s\n", msh_nod_vec.size(), dis_data.geo_name.c_str());
 			//#ifndef NDEBUG
 			//					debug_fname = "MeshNodesNew-BC-" + sfc_name +
 			//".gli";

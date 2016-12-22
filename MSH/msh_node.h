@@ -14,8 +14,6 @@
 #include <string>
 #include <vector>
 
-#include "matrix_class.h"
-
 #include "msh_core.h"
 
 namespace MeshLib
@@ -25,14 +23,14 @@ class CNode : public CCore
 {
 public:
 #ifndef OGS_ONLY_TH
-	int free_surface;  // MB ??? mobile
+	int free_surface = -1;  // MB ??? mobile
 	// The vector to store the representative element index.
 	// This can be used to extract the norm of the plane that the element lies
 	// on.
 	// Establishing this vector is done in the Fluid Momentum
 	// since this is bounded by velocity.
 	std::vector<long> connected_planes;
-	bool crossroad;
+	bool crossroad = false;
 #endif
 
 	/** constructor */
@@ -101,9 +99,29 @@ public:
 
 	void SetCoordinates(const double* argCoord);
 
-	int GetEquationIndex() const { return eqs_index; }
+	int GetEquationIndex(bool quadratic = false) const { return !quadratic ? eqs_index : eqs_index_quadratic; }
 
-	void SetEquationIndex(long eqIndex) { eqs_index = eqIndex; }
+	void SetEquationIndex(long eqIndex, bool quadratic = false)
+	{
+		if (!quadratic)
+			eqs_index = eqIndex;
+		else
+			eqs_index_quadratic = eqIndex;
+	}
+
+	int GetGlobalIndex() const
+	{
+#ifdef USE_PETSC
+		return global_index;
+#else
+		return GetIndex();
+#endif
+	}
+
+	void SetGlobalIndex(long index)
+	{
+		global_index = index;
+	}
 
 	// Output
 	void Write(std::ostream& os = std::cout) const;
@@ -129,8 +147,10 @@ public:
 
 private:
 	double coordinate[3];
-	long eqs_index;                        // renumber
-	std::vector<size_t> _connected_nodes;  // OK
+	long global_index = -1;
+	long eqs_index = -1;
+	long eqs_index_quadratic = -1;
+	std::vector<size_t> _connected_nodes;
 	std::vector<size_t> _connected_elements;
 };
 

@@ -56,15 +56,48 @@ public:
 };
 #endif  //#ifndef NON_GEO
 
-/// For parallel computing. 03.2012. WW
-#if defined(USE_PETSC)  // || defined(using other parallel scheme)
+#if defined(USE_PETSC)
 typedef struct
 {
-	int index;
-	double x;
-	double y;
-	double z;
+	int global_id = -1;
+	int dom_id = -1;
+	int eqs_id = -1;
+	int eqs_id_Q = -1;
+	double x = 0.0;
+	double y = 0.0;
+	double z = 0.0;
 } MeshNodes;
+
+struct MeshHeader
+{
+	int n_dom_nodes_Q;
+	int n_dom_nodes_L;
+	int n_inner_elements;
+	int n_ghost_elements;
+	int n_inner_nodes_L;
+	int n_inner_nodes_Q;
+	int n_global_nodes_L;
+	int n_global_nodes_Q;
+	int n_global_elements;
+	int n_element_integers;
+	int n_ghost_element_integers;
+
+	void set(int *array)
+	{
+		int i = 0;
+		n_dom_nodes_Q = array[i++];
+		n_dom_nodes_L = array[i++];
+		n_inner_elements = array[i++];
+		n_ghost_elements = array[i++];
+		n_inner_nodes_L = array[i++];
+		n_inner_nodes_Q = array[i++];
+		n_global_nodes_L = array[i++];
+		n_global_nodes_Q = array[i++];
+		n_global_elements = array[i++];
+		n_element_integers = array[i++];
+		n_ghost_element_integers = array[i++];
+	}
+};
 
 #endif
 
@@ -72,6 +105,7 @@ typedef struct
 // Class definition
 class CFEMesh
 {
+	friend class FileIO::OGSMeshIO;
 public:
 	/// Constructor using geometric information.
 	CFEMesh(GEOLIB::GEOObjects* geo_obj = NULL,
@@ -107,7 +141,7 @@ public:
 	 * returns the number of mesh layers
 	 * @return the number of mesh layers
 	 */
-	size_t getNumberOfMeshLayers() const;  // TF
+	size_t getNumberOfMeshLayers() const;
 
 	/**
 	 *
@@ -122,19 +156,22 @@ public:
 	size_t getNumberOfTets() const;
 	size_t getNumberOfPrisms() const;
 	size_t getNumberOfPyramids() const;
-	double getMinEdgeLength() const;
-	CNode* const* getNodes() const  // WW 05.2012.
+
+	CNode* const* getNodes() const
 	{
 		return &nod_vector[0];
 	}
+
 	/**
 	 * do not use this method REMOVE CANDIDATE
 	 * @param val
 	 */
-	void setMinEdgeLength(double val)  // TF temporary
+	void setMinEdgeLength(double val)
 	{
 		_min_edge_length = val;
 	}
+
+	double getMinEdgeLength() const;
 
 	/**
 	 * Access method to the search length for geometric search algorithms
@@ -157,13 +194,10 @@ public:
 
 	bool Read(std::ifstream*);
 
-	friend class FileIO::OGSMeshIO;
-	std::ios::pos_type GMSReadTIN(std::ifstream*);
-	//
 	void ConstructGrid();
 	void GenerateHighOrderNodes();
-/// For parallel computing. 03.2012. WW
-#if defined(USE_PETSC)  // || defined(other parallel solver libs)
+
+#if defined(USE_PETSC)
 	void ConfigHighOrderElements();
 
 	/*!
@@ -171,16 +205,20 @@ public:
 	 @param header  : mesh header
 	 @param s_nodes : mesh nodes
 	 */
-	void setSubdomainNodes(int* header, const MeshNodes* s_nodes);
+	void setSubdomainNodes(MeshHeader const& header, const MeshNodes* s_nodes);
 	/*!
 	 Fill data for subdomain mesh
 	 @param header    : mesh header
 	 @param elem_info : element information
 	 @param inside    : indicator for elements that are inside the subdomain
 	 */
-	void setSubdomainElements(int* header, const int* elem_info,
+	void setSubdomainElements(MeshHeader const& header, const int* elem_info,
 	                          const bool inside);
-	int calMaximumConnectedNodes();
+
+	int calMaximumConnectedLocalNodes(bool quadratic, std::vector<int> &d_nnz);
+	int calMaximumConnectedGhostNodes(bool quadratic, std::vector<int> &o_nnz);
+	/// Get number of elements of the entire mesh
+	int getNumElementsGlobal() const { return glb_ElementsNumber; }
 	/// Get number of nodes of the entire mesh
 	int getNumNodesGlobal() const { return glb_NodesNumber_Linear; }
 	/// Get number of nodes of the entire mesh of quadratic elements
@@ -220,15 +258,14 @@ public:
 		return static_cast<size_t>(node_id) >= NodesNumber_Linear;
 	}
 
-	//
-	//         void RenumberNodesForGlobalAssembly();
-	// For number of nodes
+	bool hasHigherOrderNodes() const { return NodesNumber_Linear != NodesNumber_Quadratic; }
+
 	int GetMaxElementDim() const { return max_ele_dim; }
 	void SwitchOnQuadraticNodes(bool quad) { useQuadratic = quad; }
 	bool getOrder() const { return useQuadratic; }
 	bool isAxisymmetry() const { return _axisymmetry; }
-	// Get number of nodes
-	// CMCD int to long
+	void isAxisymmetry(bool f) { _axisymmetry = f; }
+
 	size_t GetNodesNumber(const bool quadr) const
 	{
 		if (quadr)
@@ -245,15 +282,6 @@ public:
 			return NodesNumber_Linear;
 	}
 
-	void InitialNodesNumber()  // WW
-	{
-		NodesNumber_Quadratic = NodesNumber_Linear = nod_vector.size();
-	}
-
-	void setNumberOfNodesFromNodesVectorSize()
-	{
-		NodesNumber_Linear = nod_vector.size();
-	}
 	/// Free the memory occupied by edges
 	void FreeEdgeMemory();  // 09.2012. WW
 
@@ -271,10 +299,6 @@ public:
 	 * \brief depreciated method
 	 */
 	void CreateLineELEFromPLY(CGLPolyline*);
-	/**
-	 * \brief depreciated method
-	 */
-	void CreateLayerPolylines(CGLPolyline*);  // OK
 
 	// GEO-SFC
 	/**
@@ -370,29 +394,11 @@ public:
 	 */
 	void GetNODOnELE(const std::vector<long>& vec_ele,
 	                 std::vector<long>& vec_nod) const;
-//....................................................................
-#ifdef ObsoleteGUI  // WW 03.2012
-	// QUAD->HEX
-	void CreateHexELEFromQuad(int, double);
-	// QUAD->LINE
-	void CreateLineELEFromQuad(int, double, int);
-	void SetActiveElements(std::vector<long>&);
-	// MB
-	void SetMSHPart(std::vector<long>&, long);
-	bool NodeExists(size_t node);
-	// LINE->LINE
-	void AppendLineELE();
 
-	// TRI->PRIS
-	void CreatePriELEFromTri(int, double);
-
-#endif
-
-	// Coordinate system
 	int GetCoordinateFlag() const { return coordinate_system; }
+
 	void FillTransformMatrix();
 
-	void RenumberNodesForGlobalAssembly();
 	/**
 	 * returns the vector storing pointers to all nodes (class CNode) of the
 	 * mesh
@@ -403,62 +409,43 @@ public:
 		return nod_vector;
 	}
 
-	// All nodes - should be private!!!
 	std::vector<MeshLib::CNode*> nod_vector;
-
-	// All edges
 	std::vector<MeshLib::CEdge*> edge_vector;
-	// All surface faces
 	std::vector<MeshLib::CElem*> face_vector;
-	// All surface normal
-	std::vector<double*> face_normal;  // YD
+	std::vector<double*> face_normal;
+	std::vector<MeshLib::CElem*> ele_vector;
 
 	const std::vector<MeshLib::CElem*>& getElementVector() const
 	{
 		return ele_vector;
 	}
-	/**
-	 * all elements stored in this vector
-	 * */
-	std::vector<MeshLib::CElem*> ele_vector;
-	// Nodes in usage
+
 	// To record eqs_index->global node index
 	std::vector<long> Eqs2Global_NodeIndex;
+	std::vector<long> Eqs2Global_NodeIndex_Q;
 
-	// OK
-	void PrismRefine(int Layer, int subdivision);
-
-	void ConnectedNodes(bool quadratic) const;
-	// WW
+	void ConnectedNodes(bool quadratic);
 	void ConnectedElements2Node(bool quadratic = false);
-	// OK
+	void FaceNormal();
+
 	std::vector<std::string> mat_names_vector;
-	void FaceNormal();                    // YD
-	void SetNetworkIntersectionNodes();   // OK4319->PCH
 
 	std::string pcs_name;
-	std::string geo_name;       // MB
-	std::string geo_type_name;  // OK10_4310
+	std::string geo_name;
+	std::string geo_type_name;
 
-	size_t max_mmp_groups;  // OKCC
+	size_t max_mmp_groups;
 	int msh_max_dim;
 
-	/// Import MODFlow grid. 10.2009 WW
-	void ImportMODFlowGrid(std::string const& fname);
-	/// Convert raster cells into grid. 12.2009 WW
-	void ConvertShapeCells(std::string const& fname);
 
-	//#ifndef NDEBUG
 	/**
 	 * This is a getter method to access the private attribute _mesh_grid
 	 * that is an instance of class Grid.
 	 * @return
 	 */
 	GEOLIB::Grid<MeshLib::CNode> const* getGrid() const;
-	//#endif
 
 private:
-	// private attributes
 	/**
 	 * reference to object of class GEOObject, that manages the geometry data
 	 */
@@ -470,7 +457,7 @@ private:
 	std::vector<MeshLib::MeshNodesAlongPolyline> _mesh_nodes_along_polylines;
 
 	MshElemType::type _ele_type;
-	size_t _n_msh_layer;  // OK
+	size_t _n_msh_layer;
 	bool _cross_section;
 	size_t _msh_n_lines;
 	size_t _msh_n_quads;
@@ -485,7 +472,7 @@ private:
 	 * algorithms
 	 */
 	void computeMinEdgeLength();
-	double _min_edge_length;  // TK
+	double _min_edge_length;
 
 	/**
 	 * length for geometrical search algorithms, calculated in method
@@ -495,9 +482,8 @@ private:
 
 	size_t NodesNumber_Linear;
 	size_t NodesNumber_Quadratic;
-/// For parallel computing. 03.2012. WW
-#if defined(USE_PETSC)  // || defined(using other parallel scheme)
-	// int n_sub_elements;
+#if defined(USE_PETSC)
+	int glb_ElementsNumber;
 	int glb_NodesNumber_Linear;
 	int glb_NodesNumber_Quadratic;
 	int loc_NodesNumber_Linear;  // index of shadow nodes starts from this
@@ -506,9 +492,8 @@ private:
 #endif
 	bool useQuadratic;
 	bool _axisymmetry;
-public:
-	bool top_surface_checked;  // 07.06.2010.  WW
-private:
+	bool top_surface_checked;
+
 	// Coordinate indicator
 	// 1:  X component only
 	// 12: Y component only
@@ -519,15 +504,9 @@ private:
 	int coordinate_system;
 	bool has_multi_dim_ele;
 	int max_ele_dim;
-	int map_counter;  // 21.01.2009 WW
+	int map_counter;
 
-	bool mapping_check;  // 23.01.2009 WW
-	/// Import shape file. 16.03.2026. WW
-	size_t ncols, nrows;
-	/// (x_0, y_0): coordinate of the left down corner
-	double x0, y0, csize, ndata_v;
-	std::vector<double> zz;  // Elevation
-	inline void ReadShapeFile(std::string const& fname);
+
 	/// Store border nodes among different grids.
 public:
 	std::vector<GridsTopo*> grid_neighbors;
@@ -555,6 +534,7 @@ public:
 
 private:
 	std::vector<std::pair<std::size_t, std::size_t> > _global_local_nodeids;
+	std::vector<std::size_t > _vec_node_dom_ids;
 
 	class CompareGlobalNodeID
 	{

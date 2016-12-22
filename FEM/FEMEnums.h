@@ -170,6 +170,11 @@ std::string convertPrimaryVariableToString(PrimaryVariable pcs_pv);
 /// enum.
 const std::list<std::string> getAllPrimaryVariableNames();
 
+inline bool isPrimaryVariableDisplacement(PrimaryVariable pv)
+{
+	return pv == DISPLACEMENT_X || pv == DISPLACEMENT_Y || pv == DISPLACEMENT_Z;
+}
+
 enum DistributionType
 {
 	INVALID_DIS_TYPE = 0,

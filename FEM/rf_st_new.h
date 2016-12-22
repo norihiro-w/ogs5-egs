@@ -17,18 +17,20 @@
 #ifndef rf_st_new_INC
 #define rf_st_new_INC
 
-// FEM
-#include "DistributionInfo.h"    // TF
-#include "GeoInfo.h"             // TF
-#include "LinearFunctionData.h"  // TF
-#include "ProcessInfo.h"         // TF
+#include "LinearFunctionData.h"
+
+#include "GEOObjects.h"
+
+#include "DistributionInfo.h"
+#include "GeoInfo.h"
+#include "ProcessInfo.h"
 
 class CNodeValue;
 class CGLPolyline;
 class CGLLine;
 class Surface;
 
-namespace process  // WW
+namespace process
 {
 class CRFProcessDeformation;
 };
@@ -122,10 +124,8 @@ public:
 
 	void SetNOD();
 
-	// 23.02.2009. WW
 	void DirectAssign(const long ShiftInNodeVector);
 
-	// 03.2010. WW
 	std::string DirectAssign_Precipitation(double current_time);
 
 	double getCoupLeakance() const;
@@ -265,8 +265,8 @@ private:
 	std::vector<std::string> precip_files;
 
 	friend class CSourceTermGroup;
-	friend class process::CRFProcessDeformation;  // WW
-	friend class ::CRFProcess;                    // WW
+	friend class process::CRFProcessDeformation;
+	friend class ::CRFProcess;
 
 	std::string geo_name;
 	double _coup_leakance;
