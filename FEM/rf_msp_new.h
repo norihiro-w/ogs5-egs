@@ -187,14 +187,7 @@ public:
 	                            double* variables = NULL);
 //   int GetCapacityMode() {return Capacity_mode;};  ??
 // 3. Elasticity
-#ifdef RFW_FRACTURE
-	double Youngs_Modulus(CElem* elem, double refence = 0.0);
-	// RFW, for fracture calc
-	double Get_Youngs_Min_Aperture(CElem* elem);
-#endif
-#ifndef RFW_FRACTURE
 	double Youngs_Modulus(double refence = 0.0);
-#endif
 	void SetYoungsModulus(const double El) { (*data_Youngs)(0) = El; }
 	double Poisson_Ratio() const { return PoissonRatio; }
 	void CalcYoungs_SVV(const double strain_v);

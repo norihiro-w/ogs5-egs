@@ -1413,12 +1413,7 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 	{
 		if (smat->Youngs_mode < 10 || smat->Youngs_mode > 13)
 		{
-#ifdef RFW_FRACTURE
-			smat->Calculate_Lame_Constant(GetMeshElement());
-#else
 			smat->Calculate_Lame_Constant();
-#endif
-			//
 			smat->ElasticConsitutive(ele_dim, De);
 		}
 		else
@@ -2375,12 +2370,7 @@ bool CFiniteElementVec::LocalAssembly_CheckLocalization(CElem* MElement)
 	{
 		if (!eleV_DM->Localized)
 		{
-#ifdef RFW_FRACTURE
-			smat->Calculate_Lame_Constant(MeshElement);
-#endif
-#ifndef RFW_FRACTURE
 			smat->Calculate_Lame_Constant();
-#endif
 			smat->CalulateCoefficent_DP();
 
 			MatGroup = MeshElement->GetPatchIndex();

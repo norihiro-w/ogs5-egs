@@ -109,10 +109,6 @@ public:
 
 	void GetPointOrderByDistance();
 	void SetPointOrderByDistance(CGLPoint*);  // OK
-//	void CalcMinimumPointDistance(); //OK
-#ifdef RFW_FRACTURE
-	double CalcPolylineLength();  // RFW
-#endif
 };
 
 extern std::vector<CGLPolyline*> polyline_vector;          // CC

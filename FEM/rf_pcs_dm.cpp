@@ -1202,23 +1202,13 @@ double CRFProcessDeformation::CaclMaxiumLoadRatio(void)
 			switch (PModel)
 			{
 				case 1:
-#ifdef RFW_FRACTURE
-					SMat->Calculate_Lame_Constant(elem);
-#endif
-#ifndef RFW_FRACTURE
 					SMat->Calculate_Lame_Constant();
-#endif
 					SMat->ElasticConsitutive(fem_dm->Dim(), fem_dm->De);
 					SMat->CalulateCoefficent_DP();
 					S0 = MSqrt2Over3 * SMat->BetaN * SMat->Y0;
 					break;
 				case 2:
-#ifdef RFW_FRACTURE
-					SMat->Calculate_Lame_Constant(elem);
-#endif
-#ifndef RFW_FRACTURE
 					SMat->Calculate_Lame_Constant();
-#endif
 					SMat->ElasticConsitutive(fem_dm->Dim(), fem_dm->De);
 					Mat = eleV_DM->MatP;
 					break;
