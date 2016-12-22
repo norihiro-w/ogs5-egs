@@ -4746,9 +4746,33 @@ void CRFProcess::GlobalAssembly()
 	}
 #endif
 
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012.
+#if defined(USE_PETSC)
 	eqs_new->AssembleRHS_PETSc(false);
-	//		ScreenMessage("-> assemble a global matrix\n");
+
+	const bool compress_eqs = (type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
+	if (compress_eqs)
+	{
+		ScreenMessage("-> set deactivated DOFs in a PETSc equation system\n");
+		eqs_new->AssembleMatrixPETSc(MAT_FLUSH_ASSEMBLY);
+		const auto ndof = GetPrimaryVNumber();
+		for (CNode* node : m_msh->getNodeVector())
+		{
+			if (node->GetMark())
+				continue;
+			if (!m_msh->isNodeLocal(node->GetIndex()))
+				continue;
+
+			for (size_t ii=0; ii<ndof; ii++)
+			{
+				double prev_value = GetNodeValue(node->GetIndex(), ii*ndof);
+				int eqs_id = node->GetEquationIndex(m_msh->getOrder()) * ndof + ii;
+				MatSetValue(eqs_new->A, eqs_id, eqs_id, 1, INSERT_VALUES);
+				VecSetValue(eqs_new->b, eqs_id, prev_value, INSERT_VALUES);
+			}
+		}
+		eqs_new->AssembleRHS_PETSc(false);
+	}
+
 	eqs_new->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY);
 #endif
 	ScreenMessage("-> impose Dirichlet BC\n");
@@ -5841,8 +5865,7 @@ void CRFProcess::IncorporateSourceTerms()
 	for (size_t is = 0; is < st_vector.size(); is++)
 	{
 		CSourceTerm* m_st = st_vector[is];
-		long const begin = 0;
-		long const end = (long)st_node_value[is].size();
+		std::vector<CNodeValue*> const& vec_st_node_value = st_node_value[is];
 		bool const isQuadratic = FiniteElement::isPrimaryVariableDisplacement(m_st->getProcessPrimaryVariable());
 		std::vector<bool> active_elements;
 
@@ -5987,10 +6010,8 @@ void CRFProcess::IncorporateSourceTerms()
 
 		//====================================================================
 		// Add ST to RHS
-		for (long i = begin; i < end; i++)
+		for (CNodeValue const* cnodev : vec_st_node_value)
 		{
-			long gindex = i;
-			CNodeValue* cnodev = st_node_value[is][gindex];
 
 #if defined(USE_PETSC)
 			msh_node_id = cnodev->geo_node_number;
