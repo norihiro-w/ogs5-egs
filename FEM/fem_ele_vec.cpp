@@ -117,13 +117,6 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 				break;
 		}
 	}
-	//  10.11.2010. WW
-	if (enhanced_strain_dm)
-	{
-		X0 = new double[3];
-		n_jump = new double[3];
-		pr_stress = new double[3];
-	}
 
 	//
 	switch (dim)
@@ -150,18 +143,6 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 
 			Sxz = NULL;
 			Syz = NULL;
-
-			if (enhanced_strain_dm)
-			{
-				NodesInJumpedA = new bool[9];
-				Ge = new Matrix(4, 2);
-				Pe = new Matrix(2, 4);
-				PeDe = new Matrix(2, 4);
-
-				BDG = new Matrix(2, 18);
-				PDB = new Matrix(18, 2);
-				DtD = new Matrix(2, 2);
-			}
 			break;
 		case 3:
 			ns = 6;
@@ -353,26 +334,6 @@ CFiniteElementVec::~CFiniteElementVec()
 		RHS = NULL;
 	}
 
-	if (enhanced_strain_dm)
-	{
-		delete NodesInJumpedA;
-		delete Ge;
-		delete Pe;
-		delete PeDe;
-		delete BDG;
-		delete PDB;
-		delete DtD;
-
-		NodesInJumpedA = NULL;
-		Ge = NULL;
-		Pe = NULL;
-		PeDe = NULL;
-		BDG = NULL;
-		PDB = NULL;
-		DtD = NULL;
-	}
-
-	// 11.07.2011. WW
 	if (PressureC) delete PressureC;
 	if (PressureC_S) delete PressureC_S;
 	if (PressureC_S_dp) delete PressureC_S_dp;
@@ -943,10 +904,7 @@ void CFiniteElementVec::LocalAssembly(const int update)
 	}
 	//
 
-	if (enhanced_strain_dm && ele_value_dm[MeshElement->GetIndex()]->Localized)
-		LocalAssembly_EnhancedStrain(update);
-	else
-		LocalAssembly_continuum(update);
+	LocalAssembly_continuum(update);
 
 	if (update == 0)
 	{

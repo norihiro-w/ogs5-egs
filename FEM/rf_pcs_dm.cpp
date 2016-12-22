@@ -51,7 +51,6 @@
 double LoadFactor = 1.0;
 double Tolerance_global_Newton = 0.0;
 double Tolerance_Local_Newton = 0.0;
-int enhanced_strain_dm = 0;
 int number_of_load_steps = 1;
 int problem_dimension_dm = 0;
 int PreLoad = 0;
@@ -108,21 +107,6 @@ CRFProcessDeformation::~CRFProcessDeformation()
 	for (auto p : ele_value_dm)
 		delete p;
 	ele_value_dm.clear();
-	
-	if (enhanced_strain_dm > 0)
-	{
-		while (ele_value_dm.size() > 0)
-			ele_value_dm.pop_back();
-		for (i = 0; i < (long)LastElement.size(); i++)
-		{
-			DisElement* disEle = LastElement[i];
-			delete disEle->InterFace;
-			delete disEle;
-			disEle = NULL;
-		}
-		while (LastElement.size() > 0)
-			LastElement.pop_back();
-	}
 }
 
 /*************************************************************************
@@ -496,9 +480,6 @@ double CRFProcessDeformation::Execute(int loop_process_number)
     // Update stresses
     incrementNodalDisplacement(); // u_n1
     UpdateStress();
-
-    // Determine the discontinuity surface if enhanced strain methods is on.
-    if (enhanced_strain_dm > 0) Trace_Discontinuity();
 
     // Recovery the old solution.  Temp --> u_n	for flow proccess
     RecoverLastTimeStepDisplacements();

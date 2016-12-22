@@ -778,7 +778,6 @@ extern std::vector<ElementValue*>
     ele_gp_value;  // Gauss point value for velocity. WW
 extern bool PCSRead(std::string);
 extern void PCSWrite(std::string);
-extern void RelocateDeformationProcess(CRFProcess* m_pcs);
 extern void PCSDestroyAllProcesses(void);
 
 extern CRFProcess* PCSGet(const std::string&);
