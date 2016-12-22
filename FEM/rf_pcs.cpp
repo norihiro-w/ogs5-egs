@@ -801,87 +801,75 @@ void CRFProcess::Create()
 		// Bypassing IC
 		ScreenMessage("-> RELOAD is set to be %d. So bypassing IC's\n", reload);
 
-	if (pcs_type_name_vector.size() &&
-	    pcs_type_name_vector[0].find("DYNAMIC") != string::npos)
-		setIC_danymic_problems();
-	//
-	if (pcs_type_name_vector.size() &&
-	    pcs_type_name_vector[0].find("DYNAMIC") != string::npos)  // WW
-	{
-		setBC_danymic_problems();
-		setST_danymic_problems();
-	}
+	// BC - create BC groups for each process
+	ScreenMessage("-> Create BC\n");
+	CBoundaryConditionsGroup* m_bc_group = NULL;
+
+	// 25.08.2011. WW
+	if (WriteProcessed_BC == 2)
+		Read_Processed_BC();
 	else
 	{
-		// BC - create BC groups for each process
-		ScreenMessage("-> Create BC\n");
-		CBoundaryConditionsGroup* m_bc_group = NULL;
-
-		// 25.08.2011. WW
-		if (WriteProcessed_BC == 2)
-			Read_Processed_BC();
-		else
+		for (int i = 0; i < DOF; i++)
 		{
-			for (int i = 0; i < DOF; i++)
-			{
-				// OKm_bc_group =
-				// BCGetGroup(_pcs_type_name,pcs_primary_function_name[i]);
-				// OKif(!m_bc_group){
-				BCGroupDelete(pcs_type_name, pcs_primary_function_name[i]);
-				m_bc_group = new CBoundaryConditionsGroup();
-				// OK
-				m_bc_group->setProcessTypeName(pcs_type_name);
-				m_bc_group->setProcessPrimaryVariableName(
-				    pcs_primary_function_name[i]);  // OK
-				m_bc_group->Set(this, Shift[i]);
+			// OKm_bc_group =
+			// BCGetGroup(_pcs_type_name,pcs_primary_function_name[i]);
+			// OKif(!m_bc_group){
+			BCGroupDelete(pcs_type_name, pcs_primary_function_name[i]);
+			m_bc_group = new CBoundaryConditionsGroup();
+			// OK
+			m_bc_group->setProcessTypeName(pcs_type_name);
+			m_bc_group->setProcessPrimaryVariableName(
+				pcs_primary_function_name[i]);  // OK
+			m_bc_group->Set(this, Shift[i]);
 
-				bc_group_list.push_back(
-				    m_bc_group);  // Useless, to be removed. WW
-				m_bc_group = NULL;
-				// OK}
-			}
+			bc_group_list.push_back(
+				m_bc_group);  // Useless, to be removed. WW
+			m_bc_group = NULL;
+			// OK}
+		}
 #ifndef USE_PETSC
-			if (bc_node_value.size() < 1)  // WW
-				cout << "Warning: no boundary conditions specified for "
-				     << pcs_type_name << endl;
+		if (bc_node_value.size() < 1)  // WW
+			cout << "Warning: no boundary conditions specified for "
+				 << pcs_type_name << endl;
 #endif
-			if (WriteProcessed_BC == 1) Write_Processed_BC();
-		}
-#ifndef WIN32
-		ScreenMessaged("\tcurrent mem: %d MB\n",
-		               mem_watch.getVirtMemUsage() / (1024 * 1024));
-#endif
-		// ST - create ST groups for each process
-		ScreenMessage("-> Create ST\n");
-		CSourceTermGroup* m_st_group = NULL;
-
-		if (WriteSourceNBC_RHS == 2)  // Read from file
-			ReadRHS_of_ST_NeumannBC();
-		else  // WW // Calculate directly
-		{
-			for (int i = 0; i < DOF; i++)
-			{
-				// OK m_st_group =
-				// m_st_group->Get(pcs_primary_function_name[i]);
-				m_st_group =
-				    STGetGroup(pcs_type_name, pcs_primary_function_name[i]);
-				if (!m_st_group)
-				{
-					m_st_group = new CSourceTermGroup();
-					// OK
-					m_st_group->pcs_type_name = pcs_type_name;
-					// OK
-					m_st_group->pcs_pv_name = pcs_primary_function_name[i];
-					m_st_group->Set(this, Shift[i]);
-					// Useless, to be removed. WW
-					st_group_list.push_back(m_st_group);
-				}
-			}
-			if (WriteSourceNBC_RHS == 1)  // WW
-				WriteRHS_of_ST_NeumannBC();
-		}
-		m_st_group = NULL;
+		if (WriteProcessed_BC == 1) Write_Processed_BC();
 	}
+#ifndef WIN32
+	ScreenMessaged("\tcurrent mem: %d MB\n",
+				   mem_watch.getVirtMemUsage() / (1024 * 1024));
+#endif
+	// ST - create ST groups for each process
+	ScreenMessage("-> Create ST\n");
+	CSourceTermGroup* m_st_group = NULL;
+
+	if (WriteSourceNBC_RHS == 2)  // Read from file
+		ReadRHS_of_ST_NeumannBC();
+	else  // WW // Calculate directly
+	{
+		for (int i = 0; i < DOF; i++)
+		{
+			// OK m_st_group =
+			// m_st_group->Get(pcs_primary_function_name[i]);
+			m_st_group =
+				STGetGroup(pcs_type_name, pcs_primary_function_name[i]);
+			if (!m_st_group)
+			{
+				m_st_group = new CSourceTermGroup();
+				// OK
+				m_st_group->pcs_type_name = pcs_type_name;
+				// OK
+				m_st_group->pcs_pv_name = pcs_primary_function_name[i];
+				m_st_group->Set(this, Shift[i]);
+				// Useless, to be removed. WW
+				st_group_list.push_back(m_st_group);
+			}
+		}
+		if (WriteSourceNBC_RHS == 1)  // WW
+			WriteRHS_of_ST_NeumannBC();
+	}
+	m_st_group = NULL;
+
 	// Write BC/ST nodes for vsualization.WW
 	if (write_boundary_condition && WriteSourceNBC_RHS != 2) WriteBC();
 
@@ -1200,164 +1188,12 @@ void CRFProcess::ReadSolution()
    FEMLib-Method:
    Task:
    Programing:
-   05/2005 WW Set coupling data
-   last modified:
-**************************************************************************/
-void CRFProcess::setIC_danymic_problems()
-{
-	const char* function_name[7];
-	int i, j, nv;
-	nv = 0;
-	if (max_dim == 1)  // 2D
-	{
-		nv = 5;
-		function_name[0] = "DISPLACEMENT_X1";
-		function_name[1] = "DISPLACEMENT_Y1";
-		function_name[2] = "VELOCITY_DM_X";
-		function_name[3] = "VELOCITY_DM_Y";
-		function_name[4] = "PRESSURE1";
-	}
-	else  // 3D
-	{
-		nv = 7;
-		function_name[0] = "DISPLACEMENT_X1";
-		function_name[1] = "DISPLACEMENT_Y1";
-		function_name[2] = "DISPLACEMENT_Z1";
-		function_name[3] = "VELOCITY_DM_X";
-		function_name[4] = "VELOCITY_DM_Y";
-		function_name[5] = "VELOCITY_DM_Z";
-		function_name[6] = "PRESSURE1";
-	}
-
-	CInitialCondition* m_ic = NULL;
-	long no_ics = (long)ic_vector.size();
-	int nidx;
-	for (i = 0; i < nv; i++)
-	{
-		nidx = GetNodeValueIndex(function_name[i]);
-		for (j = 0; j < no_ics; j++)
-		{
-			m_ic = ic_vector[j];
-			if (m_ic->getProcessPrimaryVariable() ==
-			    FiniteElement::convertPrimaryVariable(function_name[i]))
-				m_ic->Set(nidx);
-		}
-	}
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   05/2005 WW Set coupling data
-   last modified:
-**************************************************************************/
-void CRFProcess::setST_danymic_problems()
-{
-	const char* function_name[7];
-	size_t nv = 0;
-	if (max_dim == 1)  // 2D
-	{
-		nv = 5;
-		function_name[0] = "DISPLACEMENT_X1";
-		function_name[1] = "DISPLACEMENT_Y1";
-		function_name[2] = "VELOCITY_DM_X";
-		function_name[3] = "VELOCITY_DM_Y";
-		function_name[4] = "PRESSURE1";
-	}  // 3D
-	else
-	{
-		nv = 7;
-		function_name[0] = "DISPLACEMENT_X1";
-		function_name[1] = "DISPLACEMENT_Y1";
-		function_name[2] = "DISPLACEMENT_Z1";
-		function_name[3] = "VELOCITY_DM_X";
-		function_name[4] = "VELOCITY_DM_Y";
-		function_name[5] = "VELOCITY_DM_Z";
-		function_name[6] = "PRESSURE1";
-	}
-
-	// ST - create ST groups for each process
-	CSourceTermGroup* m_st_group = NULL;
-	std::string pcs_type_name(
-	    convertProcessTypeToString(this->getProcessType()));
-	for (size_t i = 0; i < nv; i++)
-	{
-		m_st_group = STGetGroup(pcs_type_name, function_name[i]);
-		if (!m_st_group)
-		{
-			m_st_group = new CSourceTermGroup();
-			m_st_group->pcs_type_name = pcs_type_name;
-			m_st_group->pcs_pv_name = function_name[i];
-			m_st_group->Set(this, Shift[i], function_name[i]);
-			st_group_list.push_back(m_st_group);  // Useless, to be removed. WW
-		}
-	}
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   05/2005 WW Set coupling data
-   last modified:
-**************************************************************************/
-void CRFProcess::setBC_danymic_problems()
-{
-	const char* function_name[7];
-	size_t nv = 0;
-	if (max_dim == 1)  // 2D
-	{
-		nv = 5;
-		function_name[0] = "DISPLACEMENT_X1";
-		function_name[1] = "DISPLACEMENT_Y1";
-		function_name[2] = "VELOCITY_DM_X";
-		function_name[3] = "VELOCITY_DM_Y";
-		function_name[4] = "PRESSURE1";
-	}  // 3D
-	else
-	{
-		nv = 7;
-		function_name[0] = "DISPLACEMENT_X1";
-		function_name[1] = "DISPLACEMENT_Y1";
-		function_name[2] = "DISPLACEMENT_Z1";
-		function_name[3] = "VELOCITY_DM_X";
-		function_name[4] = "VELOCITY_DM_Y";
-		function_name[5] = "VELOCITY_DM_Z";
-		function_name[6] = "PRESSURE1";
-	}
-
-	cout << "->Create BC" << '\n';
-	CBoundaryConditionsGroup* m_bc_group = NULL;
-	std::string pcs_type_name(
-	    convertProcessTypeToString(this->getProcessType()));
-	for (size_t i = 0; i < nv; i++)
-	{
-		BCGroupDelete(pcs_type_name, function_name[i]);
-		m_bc_group = new CBoundaryConditionsGroup();
-		// OK
-		m_bc_group->setProcessTypeName(pcs_type_name);
-		// OK
-		m_bc_group->setProcessPrimaryVariableName(function_name[i]);
-		m_bc_group->Set(this, Shift[i], function_name[i]);
-		bc_group_list.push_back(m_bc_group);  // Useless, to be removed. WW
-	}
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
    02/2005 WW Set coupling data
    last modified:
 **************************************************************************/
 void CRFProcess::ConfigureCouplingForLocalAssemblier()
 {
-	bool Dyn = false;
-	if (pcs_type_name_vector.size() &&
-	    pcs_type_name_vector[0].find("DYNAMIC") != string::npos)
-		Dyn = true;
-	if (fem) fem->ConfigureCoupling(this, Shift, Dyn);
+	if (fem) fem->ConfigureCoupling(this, Shift, false);
 }
 
 /**************************************************************************
@@ -1601,8 +1437,6 @@ void CRFProcess::PCSReadConfigurations()
 		{
 			setProcessType(FiniteElement::DEFORMATION_FLOW);
 			MH_Process = true;  // MH monolithic scheme
-			if (pname.find("DYNAMIC") != string::npos)
-				pcs_type_name_vector[0] = "DYNAMIC";
 		}
 	}
 	else if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
@@ -2874,10 +2708,7 @@ void CRFProcess::ConfigDeformation()
 	// NUM
 	pcs_num_name[0] = "DISPLACEMENT0";
 	pcs_num_name[1] = "PRESSURE0";
-	if (pcs_type_name_vector[0].find("DYNAMIC") != string::npos)
-		VariableDynamics();
-	else
-		VariableStaticProblem();
+	VariableStaticProblem();
 	// OBJ names are set to PCS name
 	// Geometry dimension
 	problem_dimension_dm =
@@ -3035,138 +2866,6 @@ void CRFProcess::VariableStaticProblem()
 
 		// Output material parameters
 		configMaterialParameters();
-	}
-}
-
-/**************************************************************************
-   FEMLib-Method: Dynamic problems
-   Task:
-   Programing:
-   05/2005 WW/LD Implementation
-   last modified:
-**************************************************************************/
-void CRFProcess::VariableDynamics()
-{
-	//----------------------------------------------------------------------
-	// NOD Primary functions
-	pcs_number_of_primary_nvals = 2;
-	dm_number_of_primary_nvals = 2;
-	pcs_primary_function_name[0] = "ACCELERATION_X1";
-	pcs_primary_function_name[1] = "ACCELERATION_Y1";
-	pcs_primary_function_unit[0] = "m/s^2";
-	pcs_primary_function_unit[1] = "m/s^2";
-	if (max_dim == 2)
-	{
-		pcs_number_of_primary_nvals = 3;
-		dm_number_of_primary_nvals = 3;
-		pcs_primary_function_name[2] = "ACCELERATION_Z1";
-		pcs_primary_function_unit[2] = "m/s^2";
-	}
-	pcs_primary_function_name[pcs_number_of_primary_nvals] = "PRESSURE_RATE1";
-	pcs_primary_function_unit[pcs_number_of_primary_nvals] = "Pa/s";
-	pcs_number_of_primary_nvals++;
-
-	//----------------------------------------------------------------------
-	// NOD Secondary functions
-	pcs_number_of_secondary_nvals = 0;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRESS_XX";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRESS_XY";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRESS_YY";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRESS_ZZ";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	//  pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-	//  "POROPRESSURE0";
-	//  pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-	//  pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	//  pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRAIN_XX";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "-";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRAIN_XY";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "-";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRAIN_YY";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "-";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRAIN_ZZ";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "-";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "STRAIN_PLS";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "-";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-	    "DISPLACEMENT_X1";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "m";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-	    "DISPLACEMENT_Y1";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "m";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-	    "VELOCITY_DM_X";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "m/s";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-	    "VELOCITY_DM_Y";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "m/s";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	pcs_secondary_function_name[pcs_number_of_secondary_nvals] = "PRESSURE1";
-	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-	pcs_number_of_secondary_nvals++;
-	// 3D
-	if (max_dim == 2)  // 3D
-	{
-		pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-		    "STRESS_XZ";
-		pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-		pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-		pcs_number_of_secondary_nvals++;
-		pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-		    "STRESS_YZ";
-		pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "Pa";
-		pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-		pcs_number_of_secondary_nvals++;
-		pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-		    "STRAIN_XZ";
-		pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "-";
-		pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-		pcs_number_of_secondary_nvals++;
-		pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-		    "STRAIN_YZ";
-		pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "-";
-		pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-		pcs_number_of_secondary_nvals++;
-		pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-		    "DISPLACEMENT_Z1";
-		pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "m";
-		pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-		pcs_number_of_secondary_nvals++;
-		pcs_secondary_function_name[pcs_number_of_secondary_nvals] =
-		    "VELOCITY_DM_Z";
-		pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "m/s";
-		pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
-		pcs_number_of_secondary_nvals++;
 	}
 }
 
@@ -5696,21 +5395,7 @@ void CRFProcess::IncorporateBoundaryConditions(const int rank, const int axis)
 	}
 }
 
-/**************************************************************************
-   FEMLib-Method:
-   Task: PCS source terms into EQS
-   Programing:
-   04/2004 OK Implementation
-   08/2004 WW Extension for monolithic PCS and time curve
-   last modification:
-   02/2005 MB River Condition and CriticalDepth
-   05/2005 WW Dynamic problems
-   07/2005 WW Changes due to the geometry object applied
-   03/2006 WW Re-arrange
-   04/2006 OK CPL
-   05/2006 WW DDC
-   08/2006 YD FCT use
-**************************************************************************/
+
 void CRFProcess::IncorporateSourceTerms()
 {
 	double value = 0, fac = 1.0, time_fac;
@@ -6321,59 +6006,25 @@ std::string PCSProblemType()
 **************************************************************************/
 void CRFProcess::CalcSecondaryVariables(bool initial)
 {
-	//  char pcsT;
-	//  pcsT = _pcs_type_name[0];
-	//  if(type==1212) pcsT = 'V'; //WW
-	//  switch(pcsT){
-	//    case 'L':
-	//      break;
-	//    case 'U':
-	//      break;
-	//    case 'G':
-	//      break;
-	//    case 'T':
-	//      break;
-	//    case 'C':
-	//      break;
-	//    case 'R': // Richards flow
-	//	  if(_pcs_type_name[1] == 'I')	// PCH To make a distinction with RANDOM
-	// WALK.
-	//        CalcSecondaryVariablesUnsaturatedFlow(initial); // WW
-	//      break;
-	//    case 'D':
-	//      break;
-	//    case 'V':
-	//      CalcSecondaryVariablesUnsaturatedFlow(initial); //WW
-	//      break;
-	//	case 'P':
-	//      CalcSecondaryVariablesPSGLOBAL(); //WW
-	//      break;
-	//  }
-
 	switch (getProcessType())
 	{
 		case FiniteElement::LIQUID_FLOW:
-			break;
 		case FiniteElement::GROUNDWATER_FLOW:
-			break;
 		case FiniteElement::TWO_PHASE_FLOW:
 			break;
-		case FiniteElement::RICHARDS_FLOW:  // Richards flow
-			// WW
+		case FiniteElement::RICHARDS_FLOW:
 			CalcSecondaryVariablesUnsaturatedFlow(initial);
 			break;
-		case FiniteElement::DEFORMATION || FiniteElement::DEFORMATION_FLOW ||
-		    FiniteElement::DEFORMATION_DYNAMIC:
-			if (type == 42)  // H2M //WW
+		case FiniteElement::DEFORMATION:
+		case FiniteElement::DEFORMATION_FLOW:
+			if (type == 42)
 				CalcSecondaryVariablesUnsaturatedFlow(initial);
-
 			break;
 		case FiniteElement::PS_GLOBAL:
-			CalcSecondaryVariablesPSGLOBAL();  // WW
+			CalcSecondaryVariablesPSGLOBAL();
 			break;
 		default:
 			if (type == 1212)
-				// WW
 				CalcSecondaryVariablesUnsaturatedFlow(initial);
 			break;
 	}

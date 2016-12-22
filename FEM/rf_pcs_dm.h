@@ -107,8 +107,6 @@ public:
 	void UpdateInitialStress(bool ZeroInitialS);
 	void Extropolation_GaussValue();
 
-	// Dynamic
-	bool CalcBC_or_SecondaryVariable_Dynamics(bool BC = false);
 	// Calculate scaling factor for load increment
 	double CaclMaxiumLoadRatio();
 

@@ -52,7 +52,6 @@ public:
 	void NumConfigure(bool overall_coupling_exists);
 
 private:
-	double* DynamicDamping;
 	FiniteElement::ErrorMethod _pcs_nls_error_method;
 	FiniteElement::ErrorMethod _pcs_cpl_error_method;
 
@@ -116,12 +115,6 @@ public:
 	int fct_method;
 	unsigned int fct_prelimiter_type;
 	double fct_const_alpha;
-
-	// Dynamics
-	bool CheckDynamic();
-	double GetDynamicDamping_beta1() const { return DynamicDamping[0]; }
-	double GetDynamicDamping_beta2() const { return DynamicDamping[1]; }
-	double GetDynamicDamping_bbeta() const { return DynamicDamping[2]; }
 };
 
 extern std::vector<CNumerics*> num_vector;

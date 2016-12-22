@@ -52,7 +52,6 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 	t_pcs = NULL;
 
 	AuxNodal2 = NULL;
-	Idx_Vel = NULL;
 	X0 = n_jump = pr_stress = NULL;
 	//
 	dim = pcs->m_msh->GetMaxElementDim();  // overwrite dim in CElement
@@ -72,48 +71,17 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 	stress0 = new double[ns];
 	for (i = 0; i < 4; i++)
 		NodeShift[i] = pcs->Shift[i];
-	if (dm_pcs->pcs_type_name_vector[0].find("DYNAMIC") != std::string::npos)
-	{
-		// Indecex in nodal value table
-		Idx_Vel = new int[3];
-		Idx_dm0[0] = pcs->GetNodeValueIndex("ACCELERATION_X1");
-		Idx_dm0[1] = pcs->GetNodeValueIndex("ACCELERATION_Y1");
-		Idx_dm1[0] = Idx_dm0[0] + 1;
-		Idx_dm1[1] = Idx_dm0[1] + 1;
-		Idx_Vel[0] = pcs->GetNodeValueIndex("VELOCITY_DM_X");
-		Idx_Vel[1] = pcs->GetNodeValueIndex("VELOCITY_DM_Y");
-		//     if(problem_dimension_dm==3)
-		if (dim == 3)
-		{
-			Idx_dm0[2] = pcs->GetNodeValueIndex("ACCELERATION_Z1");
-			Idx_dm1[2] = Idx_dm1[2] + 1;
-			Idx_Vel[2] = pcs->GetNodeValueIndex("VELOCITY_DM_Z");
-		}
-		Mass = new Matrix(20, 20);
-		dAcceleration = new Vector(60);
+	// Indecex in nodal value table
+	Idx_dm0[0] = pcs->GetNodeValueIndex("DISPLACEMENT_X1");
+	Idx_dm0[1] = pcs->GetNodeValueIndex("DISPLACEMENT_Y1");
+	Idx_dm1[0] = Idx_dm0[0] + 1;
+	Idx_dm1[1] = Idx_dm0[1] + 1;
 
-		beta2 = dm_pcs->m_num->GetDynamicDamping_beta2();
-		bbeta1 = dm_pcs->m_num->GetDynamicDamping_bbeta();
-		dynamic = true;
-	}
-	else
+	//     if(problem_dimension_dm==3)
+	if (dim == 3)
 	{
-		dynamic = false;
-		dAcceleration = NULL;
-		// Idx_Vel[0] = Idx_Vel[1] = Idx_Vel[2] = -1;
-		beta2 = bbeta1 = 1.0;
-		// Indecex in nodal value table
-		Idx_dm0[0] = pcs->GetNodeValueIndex("DISPLACEMENT_X1");
-		Idx_dm0[1] = pcs->GetNodeValueIndex("DISPLACEMENT_Y1");
-		Idx_dm1[0] = Idx_dm0[0] + 1;
-		Idx_dm1[1] = Idx_dm0[1] + 1;
-
-		//     if(problem_dimension_dm==3)
-		if (dim == 3)
-		{
-			Idx_dm0[2] = pcs->GetNodeValueIndex("DISPLACEMENT_Z1");
-			Idx_dm1[2] = Idx_dm0[2] + 1;
-		}
+		Idx_dm0[2] = pcs->GetNodeValueIndex("DISPLACEMENT_Z1");
+		Idx_dm1[2] = Idx_dm0[2] + 1;
 	}
 
 	// idx_pls =  pcs->GetNodeValueIndex("STRAIN_PLS");
@@ -298,11 +266,6 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 	if (Flow_Type == 0)
 	{
 		idx_P1 = h_pcs->GetNodeValueIndex("PRESSURE1") + 1;
-		if (dynamic)
-		{
-			idx_P = h_pcs->GetNodeValueIndex("PRESSURE1");
-			idx_P1 = h_pcs->GetNodeValueIndex("PRESSURE_RATE1");
-		}
 	}
 	if (Flow_Type == 10)
 		idx_P1 = h_pcs->GetNodeValueIndex("HEAD") + 1;
@@ -382,14 +345,6 @@ CFiniteElementVec::~CFiniteElementVec()
 	if (Syz) delete[] Syz;
 	if (AuxNodal2) delete[] AuxNodal2;
 
-	if (dynamic)
-	{
-		delete Mass;
-		delete dAcceleration;
-		Mass = NULL;
-		dAcceleration = NULL;
-	}
-
 	if (pcs->Memory_Type == 0)  // Do not store local matrices
 	{
 		delete Stiffness;
@@ -444,7 +399,6 @@ CFiniteElementVec::~CFiniteElementVec()
 	if (X0) delete[] X0;
 	if (n_jump) delete[] n_jump;
 	if (pr_stress) delete[] pr_stress;
-	if (Idx_Vel) delete[] Idx_Vel;
 	X0 = n_jump = pr_stress = NULL;
 	delete[] AuxNodal;
 	delete[] AuxNodal0;
@@ -452,7 +406,6 @@ CFiniteElementVec::~CFiniteElementVec()
 	delete[] AuxNodal_S;
 	delete[] AuxNodal1;
 	AuxNodal = AuxNodal_S0 = AuxNodal_S = AuxNodal1 = NULL;
-	Idx_Vel = NULL;
 	//
 	Idx_Strain = NULL;
 	Idx_Stress = NULL;
@@ -507,16 +460,6 @@ void CFiniteElementVec::SetMaterial()
 	//......................................................................
 }
 
-/**************************************************************************
-   GeoSys - Function: SetMemory
-
-   Aufgabe:
-         Set memory for local matrices
-   Programmaenderungen:
-   01/2005   WW    Erste Version
-   05/2005   WW    Dynamic analysis
-
-**************************************************************************/
 void CFiniteElementVec::SetMemory()
 {
 	int size = 0;
@@ -539,12 +482,6 @@ void CFiniteElementVec::SetMemory()
 		Stiffness = EleMat->GetStiffness();
 		RHS = EleMat->GetRHS();
 		if (PressureC) PressureC = EleMat->GetCouplingMatrixA();
-	}
-
-	if (dynamic)
-	{
-		Mass->LimitSize(nnodesHQ, nnodesHQ);
-		dAcceleration->LimitSize(nnodesHQ * dim);
 	}
 }
 
@@ -967,29 +904,10 @@ void CFiniteElementVec::LocalAssembly(const int update)
 			(double)MeshElement->GetNode(i)->getConnectedElementIDs().size();
 
 	// Get displacement_n
-	if (dynamic)
-	{
-        a_n = pcs->GetLastTimeStepSolution();
-		for (size_t i = 0; i < dim; i++)
-			for (j = 0; j < nnodesHQ; j++)
-			{
-				// Increment of acceleration, da
-				(*dAcceleration)(i* nnodesHQ + j) =
-				    pcs->GetNodeValue(nodes[j], Idx_dm0[i]);
-				// Increment of displacement
-				// du = v_n*dt+0.5*a_n*dt*dt+0.5*beta2*da*dt*dt
-				// a_n = a_{n+1}-da
-				Disp[j + i * nnodesHQ] =
-				    pcs->GetNodeValue(nodes[j], Idx_Vel[i]) * dt +
-				    0.5 * dt * dt * (a_n[nodes[j] + NodeShift[i]] +
-				                     beta2 * (*dAcceleration)(i* nnodesHQ + j));
-			}
-	}
-	else
-		for (size_t i = 0; i < dim; i++)
-			for (j = 0; j < nnodesHQ; j++)
-				Disp[j + i * nnodesHQ] =
-				    pcs->GetNodeValue(nodes[j], Idx_dm0[i]);
+	for (size_t i = 0; i < dim; i++)
+		for (j = 0; j < nnodesHQ; j++)
+			Disp[j + i * nnodesHQ] =
+				pcs->GetNodeValue(nodes[j], Idx_dm0[i]);
 
 	// Get saturation of element nodes
 	if (Flow_Type > 0 && Flow_Type != 10)
@@ -1032,7 +950,6 @@ void CFiniteElementVec::LocalAssembly(const int update)
 
 	if (update == 0)
 	{
-		if (dynamic) ComputeMass();
 		GlobalAssembly();
 		// Output matrices
 		if (pcs->Write_Matrix)
@@ -1111,27 +1028,6 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 	CSparseMatrix* A = NULL;
 	A = pcs->eqs_new->getA();
 #endif
-
-	if (dynamic)
-	{
-		f1 = 0.5 * beta2 * dt * dt;
-		f2 = -0.5 * bbeta1 * dt;
-		// Assemble stiffness matrix
-		for (i = 0; i < nnodesHQ; i++)
-		{
-			for (j = 0; j < nnodesHQ; j++)
-			{
-				// Local assembly of stiffness matrix
-				for (size_t k = 0; k < ele_dim; k++)
-				{
-#ifdef NEW_EQS
-					(*A)(eqs_number[i] + NodeShift[k],
-					     eqs_number[j] + NodeShift[k]) += (*Mass)(i, j);
-#endif
-				}
-			}  // loop j
-		}      // loop i
-	}
 
 #ifndef USE_PETSC
 	// Assemble stiffness matrix
@@ -1269,45 +1165,6 @@ void CFiniteElementVec::add2GlobalMatrixII()
 
 /***************************************************************************
    GeoSys - Funktion:
-           CFiniteElementVec::ComputeMass()
-   Aufgabe:
-           Compute the mass matrix for dynamic analyses
-   Programming:
-   05/2005   WW   Elastische Elemente
- **************************************************************************/
-void CFiniteElementVec::ComputeMass()
-{
-	int i, j;
-	// ---- Gauss integral
-	int gp_r = 0, gp_s = 0, gp_t;
-	gp = 0;
-	gp_t = 0;
-	double fkt = 0.0;
-
-	(*Mass) = 0.0;
-	// Loop over Gauss points
-	for (gp = 0; gp < nGaussPoints; gp++)
-	{
-		//---------------------------------------------------------
-		//  Get local coordinates and weights
-		//  Compute Jacobian matrix and its determinate
-		//---------------------------------------------------------
-		fkt = GetGaussData(gp, gp_r, gp_s, gp_t);
-		ComputeShapefct(1);  // need for density calculation
-		ComputeShapefct(2);  // Quadratic interpolation function
-		fkt *= CalDensity();
-
-		for (i = 0; i < nnodesHQ; i++)
-			for (j = 0; j < nnodesHQ; j++)
-			{
-				if (i > j) continue;
-				(*Mass)(i, j) += fkt * shapefctHQ[i] * shapefctHQ[j];
-			}
-	}
-}
-
-/***************************************************************************
-   GeoSys - Funktion:
            CFiniteElementVec::  GlobalAssembly_RHS()
    Aufgabe:
            Assemble local matrics and vectors to the global system
@@ -1331,17 +1188,7 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 			Residual = true;
 	}
 
-	double fact = 0;
-	double* a_n = nullptr;
-	if (dynamic)
-	{
-		fact = bbeta1 * dt;
-		Residual = true;
-		a_n = pcs->GetLastTimeStepSolution();
-	}
-
 	// Assemble coupling matrix
-	// If dynamic GetNodeValue(nodes[i],idx_P0) = 0;
 	if (Residual)
 	{
 		// should calculate (p - p0) because OGS calculates (stress - stress0)
@@ -1453,17 +1300,6 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 				break;
 		}
 
-		if (dynamic)
-		{
-			for (int i = 0; i < nnodes; i++)
-			{
-				AuxNodal[i] *= fact;
-				AuxNodal[i] +=
-				    dt * a_n[nodes[i] + NodeShift[problem_dimension_dm]] +
-				    pcs->GetNodeValue(nodes[i], idx_P);
-			}
-		}
-
 		const int dim_times_nnodesHQ(dim * nnodesHQ);
 		// Coupling effect to RHS
 		if (Flow_Type != 2)
@@ -1475,17 +1311,6 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 		for (int i = 0; i < dim_times_nnodesHQ; i++)
 			(*RHS)(i) -= fabs(smat->biot_const) * AuxNodal1[i];
 	}  // End if partioned
-
-	// If dymanic
-	if (dynamic)
-	{
-		for (size_t i = 0; i < dim; i++)
-			for (int j = 0; j < nnodesHQ; j++)
-				for (int k = 0; k < nnodesHQ; k++)
-					(*RHS)(i* nnodesHQ + j) +=
-					    (*Mass)(j, k) * ((*dAcceleration)(i* nnodesHQ + k) +
-					                     a_n[nodes[k] + NodeShift[i]]);
-	}
 
 	// RHS->Write();
 

@@ -93,9 +93,6 @@ CNumerics::CNumerics(string const& name)
 	fct_method = -1;
 	fct_prelimiter_type = 0;
 	fct_const_alpha = -1.0;
-	//----------------------------------------------------------------------
-	// Deformation
-	DynamicDamping = NULL;
 	//
 	_pcs_cpl_error_method = FiniteElement::LMAX;
 	_pcs_nls_error_method = FiniteElement::LMAX;
@@ -110,7 +107,6 @@ CNumerics::CNumerics(string const& name)
 **************************************************************************/
 CNumerics::~CNumerics(void)
 {
-	delete[] DynamicDamping;
 }
 
 /**************************************************************************
@@ -161,20 +157,6 @@ bool NUMRead(string file_base_name)
 		}                                                  // keyword found
 	}                                                      // eof
 	return true;
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   05/2005 WW Implementation
-**************************************************************************/
-bool CNumerics::CheckDynamic()
-{
-	if (DynamicDamping)
-		return true;
-	else
-		return false;
 }
 
 /**************************************************************************
@@ -606,19 +588,6 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 			    ele_supg_method_diffusivity;
 			line.clear();
 			ScreenMessage("-> SUPG method is selected.\n");
-			continue;
-		}
-		// subkeyword found
-		if (line_string.find("$DYNAMIC_DAMPING") != string::npos)
-		{
-			line.str(GetLineFromFile1(num_file));  // WW
-			DynamicDamping = new double[3];
-			// Default
-			DynamicDamping[0] = 0.515;
-			DynamicDamping[1] = 0.51;
-			DynamicDamping[2] = 0.51;
-			line >> DynamicDamping[0] >> DynamicDamping[1] >> DynamicDamping[2];
-			line.clear();
 			continue;
 		}
 		// Flux corrected transport by Kuzmin (2009)

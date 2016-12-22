@@ -205,8 +205,6 @@ void CRFProcessDeformation::Initialization()
 			}
 		}
 	}
-
-	if (fem_dm->dynamic) CalcBC_or_SecondaryVariable_Dynamics();
 }
 
 /*************************************************************************
@@ -1120,64 +1118,6 @@ double CRFProcessDeformation::NormOfDisp()
 	return Norm1;
 }
 
-/**************************************************************************
-   ROCKFLOW - Funktion: NormOfUnkonwn
-
-   Aufgabe:
-   Compute the norm of unkowns of a linear equation
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E: LINEAR_SOLVER * ls: linear solver
-
-   Ergebnis:
-   - double - Eucleadian Norm
-
-   Programmaenderungen:
-   10/2002   WW   Erste Version
-   07/2011   WW
-
-**************************************************************************/
-#if !defined(NEW_EQS) && !defined(USE_PETSC)
-double CRFProcessDeformation::NormOfUnkonwn_orRHS(bool isUnknowns)
-{
-	int i, j;
-	long number_of_nodes;
-	long v_shift = 0;
-	double NormW = 0.0;
-	double val;
-
-#ifdef G_DEBUG
-	if (!eqs)
-	{
-		printf(" \n Warning: solver not defined, exit from loop_ww.cc");
-		exit(1);
-	}
-#endif
-
-	double* vec = NULL;
-	if (isUnknowns)
-		vec = eqs->x;
-	else
-		vec = eqs->b;
-
-	int end = pcs_number_of_primary_nvals;
-	if (fem_dm->dynamic) end = problem_dimension_dm;
-
-	for (i = 0; i < end; i++)
-	{
-		number_of_nodes = num_nodes_p_var[i];
-		for (j = 0; j < number_of_nodes; j++)
-		{
-			val = vec[v_shift + j];
-			NormW += val * val;
-		}
-
-		v_shift += number_of_nodes;
-	}
-	return sqrt(NormW);
-}
-#endif
-
 
 double CRFProcessDeformation::getNormOfCouplingError(int pvar_id_start, int n)
 {
@@ -1855,11 +1795,6 @@ void CRFProcessDeformation::GlobalAssembly()
 	if (type / 10 == 4)
 	{  // p-u monolithic scheme
 
-		// if(!fem_dm->dynamic)   ///
-		//  RecoverSolution(1);  // p_i-->p_0
-		// 2.
-		// Assemble pressure eqs
-		// Changes for OpenMP
 		GlobalAssembly_std(true);
 #if 0
 		const size_t n_nodes_linear = m_msh->GetNodesNumber(false);
@@ -1921,10 +1856,7 @@ void CRFProcessDeformation::GlobalAssembly()
 
 	// Apply Dirchlete bounday condition
 	ScreenMessage("-> impose Dirichlet BC\n");
-	if (!fem_dm->dynamic)
-		IncorporateBoundaryConditions();
-	else
-		CalcBC_or_SecondaryVariable_Dynamics(true);
+	IncorporateBoundaryConditions();
 
 	if (write_leqs)
 	{
@@ -2158,206 +2090,5 @@ void CRFProcessDeformation::UpdateInitialStress(bool ZeroInitialS)
 		}
 	}
 }
-/**************************************************************************
-   GEOSYS - Funktion: CalcBC_or_SecondaryVariable_Dynamics(bool BC);
-   Programmaenderungen:
-   05/2005  WW  Erste Version
-   letzte Aenderung:
-   09/2011 TF substituted pow by fastpow
-**************************************************************************/
-bool CRFProcessDeformation::CalcBC_or_SecondaryVariable_Dynamics(bool BC)
-{
-	const char* function_name[7];
-	size_t i;
-	long j;
-	double v, bc_value, time_fac = 1.0;
 
-	std::vector<int> bc_type;
-	long bc_msh_node;
-	long bc_eqs_index;
-	int interp_method = 0;
-	int curve, valid = 0;
-	int idx_disp[3], idx_vel[3], idx_acc[3], idx_acc0[3];
-	int idx_pre, idx_dpre, idx_dpre0;
-	int nv, k;
-
-	size_t Size = m_msh->GetNodesNumber(true) + m_msh->GetNodesNumber(false);
-	CBoundaryCondition* m_bc = NULL;
-	bc_type.resize(Size);
-
-	v = 0.0;
-	// 0: not given
-	// 1, 2, 3: x,y, or z is given
-	for (size_t i = 0; i < Size; i++)
-		bc_type[i] = 0;
-
-	idx_dpre0 = GetNodeValueIndex("PRESSURE_RATE1");
-	idx_dpre = idx_dpre0 + 1;
-	idx_pre = GetNodeValueIndex("PRESSURE1");
-
-	nv = 2 * problem_dimension_dm + 1;
-	if (m_msh->GetCoordinateFlag() / 10 == 2)  // 2D
-	{
-		function_name[0] = "DISPLACEMENT_X1";
-		function_name[1] = "DISPLACEMENT_Y1";
-		function_name[2] = "VELOCITY_DM_X";
-		function_name[3] = "VELOCITY_DM_Y";
-		function_name[4] = "PRESSURE1";
-		idx_disp[0] = GetNodeValueIndex("DISPLACEMENT_X1");
-		idx_disp[1] = GetNodeValueIndex("DISPLACEMENT_Y1");
-		idx_vel[0] = GetNodeValueIndex("VELOCITY_DM_X");
-		idx_vel[1] = GetNodeValueIndex("VELOCITY_DM_Y");
-		idx_acc0[0] = GetNodeValueIndex("ACCELERATION_X1");
-		idx_acc0[1] = GetNodeValueIndex("ACCELERATION_Y1");
-		idx_acc[0] = idx_acc0[0] + 1;
-		idx_acc[1] = idx_acc0[1] + 1;
-	}
-	else if (m_msh->GetCoordinateFlag() / 10 == 3)  // 3D
-	{
-		function_name[0] = "DISPLACEMENT_X1";
-		function_name[1] = "DISPLACEMENT_Y1";
-		function_name[2] = "DISPLACEMENT_Z1";
-		function_name[3] = "VELOCITY_DM_X";
-		function_name[4] = "VELOCITY_DM_Y";
-		function_name[5] = "VELOCITY_DM_Z";
-		function_name[6] = "PRESSURE1";
-		idx_disp[0] = GetNodeValueIndex("DISPLACEMENT_X1");
-		idx_disp[1] = GetNodeValueIndex("DISPLACEMENT_Y1");
-		idx_disp[2] = GetNodeValueIndex("DISPLACEMENT_Z1");
-		idx_vel[0] = GetNodeValueIndex("VELOCITY_DM_X");
-		idx_vel[1] = GetNodeValueIndex("VELOCITY_DM_Y");
-		idx_vel[2] = GetNodeValueIndex("VELOCITY_DM_Z");
-		idx_acc0[0] = GetNodeValueIndex("ACCELERATION_X1");
-		idx_acc0[1] = GetNodeValueIndex("ACCELERATION_Y1");
-		idx_acc0[2] = GetNodeValueIndex("ACCELERATION_Z1");
-		for (k = 0; k < 3; k++)
-			idx_acc[k] = idx_acc0[k] + 1;
-	}
-
-	//
-	for (size_t i = 0; i < bc_node_value.size(); i++)
-	{
-		CBoundaryConditionNode* m_bc_node = bc_node_value[i];
-		m_bc = bc_node[i];
-		for (j = 0; j < nv; j++)
-			if (convertPrimaryVariableToString(
-			        m_bc->getProcessPrimaryVariable())
-			        .compare(function_name[j]) == 0)
-				break;
-		if (j == nv)
-		{
-			cout << "No such primary variable found in "
-			        "CalcBC_or_SecondaryVariable_Dynamics." << endl;
-			abort();
-		}
-		bc_msh_node = m_bc_node->geo_node_number;
-		if (!m_msh->nod_vector[bc_msh_node]->GetMark()) continue;
-		if (bc_msh_node >= 0)
-		{
-			curve = m_bc_node->CurveIndex;
-			if (curve > 0)
-			{
-				time_fac =
-				    GetCurveValue(curve, interp_method, aktuelle_zeit, &valid);
-				if (!valid) continue;
-			}
-			else
-				time_fac = 1.0;
-			bc_value = time_fac * m_bc_node->node_value;
-			bc_eqs_index = m_msh->nod_vector[bc_msh_node]->GetEquationIndex();
-
-			if (BC)
-			{
-				if (j < problem_dimension_dm)  // da
-				{
-					bc_eqs_index += Shift[j];
-// da = v = 0.0;
-#if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
-// TODO
-#elif defined(NEW_EQS)  // WW
-					eqs_new->SetKnownX_i(bc_eqs_index, 0.);
-#else
-					MXRandbed(bc_eqs_index, 0.0, eqs->b);
-#endif
-				}
-				else if (j == nv - 1)  // P
-				{
-					bc_eqs_index += Shift[problem_dimension_dm];
-// da = v = 0.0;
-#if defined(USE_PETSC)  // || defined (other parallel solver lib). 04.2012 WW
-// TODO
-#elif defined(NEW_EQS)  // WW
-					eqs_new->SetKnownX_i(bc_eqs_index, 0.);
-#else
-					MXRandbed(bc_eqs_index, 0.0, eqs->b);
-#endif
-				}
-			}
-			else
-			{
-				// Bit operator
-				if (!(bc_type[bc_eqs_index] & (int)MathLib::fastpow(2, j)))
-					bc_type[bc_eqs_index] += (int)MathLib::fastpow(2, j);
-				if (j < problem_dimension_dm)  // Disp
-				{
-					SetNodeValue(bc_eqs_index, idx_disp[j], bc_value);
-					SetNodeValue(bc_eqs_index, idx_vel[j], 0.0);
-					SetNodeValue(bc_eqs_index, idx_acc[j], 0.0);
-				}
-				// Vel
-				else if (j >= problem_dimension_dm && j < nv - 1)
-				{
-					v = GetNodeValue(bc_eqs_index, idx_disp[j]);
-					v += bc_value * dt +
-					     0.5 * dt * dt *
-                             (lastTimeStepSolution[bc_eqs_index + Shift[j]] +
-					          m_num->GetDynamicDamping_beta2() *
-					              GetNodeValue(bc_eqs_index, idx_acc0[j]));
-					SetNodeValue(bc_eqs_index, idx_disp[j], v);
-					SetNodeValue(bc_eqs_index, idx_vel[j], bc_value);
-				}
-				else if (j == nv - 1)  // Vel
-				{                      // p
-					SetNodeValue(bc_eqs_index, idx_pre, bc_value);
-					SetNodeValue(bc_eqs_index, idx_dpre, 0.0);
-				}
-			}
-		}
-	}
-	if (BC) return BC;
-
-	// BC
-	for (i = 0; i < m_msh->GetNodesNumber(true); i++)
-		for (k = 0; k < problem_dimension_dm; k++)
-		{
-			// If boundary
-			if (bc_type[i] & (int)MathLib::fastpow(2, k)) continue;  // u
-			//
-			v = GetNodeValue(i, idx_disp[k]);
-			v += GetNodeValue(i, idx_vel[k]) * dt +
-                 0.5 * dt * dt * (lastTimeStepSolution[i + Shift[k]] +
-			                      m_num->GetDynamicDamping_beta2() *
-			                          GetNodeValue(i, idx_acc0[k]));
-			SetNodeValue(i, idx_disp[k], v);
-			if (bc_type[i] & (int)MathLib::fastpow(2, k + problem_dimension_dm))
-				continue;
-			// v
-			v = GetNodeValue(i, idx_vel[k]);
-            v += dt * lastTimeStepSolution[i + Shift[k]] +
-			     m_num->GetDynamicDamping_beta1() * dt *
-			         GetNodeValue(i, idx_acc0[k]);
-			SetNodeValue(i, idx_vel[k], v);
-		}
-
-	for (i = 0; i < m_msh->GetNodesNumber(false); i++)
-	{
-		if (bc_type[i] & (int)MathLib::fastpow(2, (nv - 1))) continue;
-		v = GetNodeValue(i, idx_pre);
-        v += lastTimeStepSolution[i + Shift[problem_dimension_dm]] * dt +
-		     m_num->GetDynamicDamping_beta1() * dt * GetNodeValue(i, idx_dpre0);
-		SetNodeValue(i, idx_pre, v);
-	}
-
-	return BC;
-}
 }  // end namespace

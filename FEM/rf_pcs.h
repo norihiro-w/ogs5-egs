@@ -112,7 +112,6 @@ protected:
 	Problem* _problem;
 
 	void VariableStaticProblem();
-	void VariableDynamics();
 	bool compute_domain_face_normal;  // WW
 	int continuum;
 	bool continuum_ic;
@@ -654,10 +653,6 @@ public:
 	void PCSDumpModelNodeValues(void);
 	// WW
 	int GetNODValueIndex(const std::string& name, int timelevel);
-	// BC for dynamic problems. WW
-	inline void setBC_danymic_problems();
-	inline void setST_danymic_problems();
-	inline void setIC_danymic_problems();
 	// Extropolate Gauss point values to node values. WW
 	void Extropolation_GaussValue();
 	void Extropolation_MatValue();  // WW

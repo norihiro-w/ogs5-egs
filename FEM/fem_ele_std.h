@@ -201,13 +201,6 @@ private:
 	double* eqs_rhs;  // For DDC WW
 	bool heat_phase_change;
 
-	// char pcsT;
-	//     /**
-	//      * process type, \sa enum ProcessType
-	//      */
-	//     ProcessType _pcs_type; // TF
-
-	bool dynamic;
 	CRFProcess* mfp_pcs;
 	SolidProp::CSolidProperties* SolidProp;
 	CFluidProperties* FluidProp;

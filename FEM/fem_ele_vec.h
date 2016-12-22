@@ -117,7 +117,6 @@ private:
 	Matrix* PressureC;
 	Matrix* PressureC_S;     // Function of S
 	Matrix* PressureC_S_dp;  // Function of S and ds_dp
-	Matrix* Mass;            // For dynamic analysis
 	Vector* RHS;
 	// Global RHS. 08.2010. WW
 	double* b_rhs;
@@ -214,15 +213,6 @@ private:
 	double* AuxNodal_S;
 	double* AuxNodal1;
 	double* AuxNodal2;
-
-	// Dynamic
-	// Damping parameters
-	bool dynamic;
-	int* Idx_Vel;
-	double beta2, bbeta1;
-	// Auxillarary vector
-	Vector* dAcceleration;
-	void ComputeMass();
 };
 }  // end namespace
 
