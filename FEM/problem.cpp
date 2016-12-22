@@ -144,9 +144,6 @@ Problem::Problem(char* filename)
 #ifdef BRNS
 	external_coupling_exists = true;
 #endif
-#ifdef CHEMAPP
-	external_coupling_exists = true;
-#endif
 	//
 	//......................................................................
 	//#ifdef RESET_4410
@@ -2573,42 +2570,6 @@ void Problem::LOPCalcELEResultants()
 	}
 }
 
-/**************************************************************************
-   ROCKFLOW - Funktion: ASMCalcNodeWDepth
-
-   Task:
-   Berechnung und Speichern der Knotenfl?se
-   Parameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E: long i: node index
-   Result:
-   - void -
-
-   Programmaenderungen:
-   11/2002   MB/OK  Implementation
-   10/2004   MB     PCS
-   12/2008   WW     Encapsulate to this class
-**************************************************************************/
-inline void Problem::ASMCalcNodeWDepth(CRFProcess* m_pcs)
-{
-	int nidx, nidy, nidz;
-	// OK411 int timelevel = 1;
-	double WDepth;
-
-	nidx = m_pcs->GetNodeValueIndex("HEAD") + 1;
-	nidy = m_pcs->GetNodeValueIndex("WDEPTH");
-	nidz = m_pcs->GetNodeValueIndex("COUPLING");
-
-	const size_t n_nodes(m_pcs->m_msh->nod_vector.size());
-	for (size_t nn = 0; nn < n_nodes; nn++)
-	{
-		WDepth = m_pcs->GetNodeValue(nn, nidx) -
-		         m_pcs->m_msh->nod_vector[nn]->getData()[2];
-		// JOD only needed for GREEN_AMPT source term
-		m_pcs->SetNodeValue(nn, nidz, m_pcs->GetNodeValue(nn, nidz + 1));
-		if (WDepth < 0.0) WDepth = 0.0;
-		m_pcs->SetNodeValue(nn, nidy, WDepth);
-	}
-}
 
 /**************************************************************************/
 /* ROCKFLOW - Funktion: PCSCalcSecondaryVariables

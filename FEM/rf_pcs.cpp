@@ -309,7 +309,6 @@ CRFProcess::CRFProcess(void)
 	this->FCT_d = NULL;
 #endif
 
-	isRSM = false;  // WW
 	eqs_x = NULL;
 	write_leqs = false;  // NW
 
@@ -398,25 +397,22 @@ CRFProcess::~CRFProcess(void)
 	CNodeValue* m_nod_val = NULL;
 
 	// Added &&m_nod_val for RSM model. 15.08.2011. WW
-	if (!isRSM)
+	for (i = 0; i < (int)st_node_value.size(); i++)
 	{
-		for (i = 0; i < (int)st_node_value.size(); i++)
+		for (int j = 0; j < (int)st_node_value[i].size(); j++)
 		{
-			for (int j = 0; j < (int)st_node_value[i].size(); j++)
+			m_nod_val = st_node_value[i][j];
+			// OK delete st_node_value[i];
+			// OK st_node_value[i] = NULL;
+			if (m_nod_val->check_me)  // OK
 			{
-				m_nod_val = st_node_value[i][j];
-				// OK delete st_node_value[i];
-				// OK st_node_value[i] = NULL;
-				if (m_nod_val->check_me)  // OK
-				{
-					m_nod_val->check_me = false;
-					delete m_nod_val;
-					m_nod_val = NULL;
-				}
+				m_nod_val->check_me = false;
+				delete m_nod_val;
+				m_nod_val = NULL;
 			}
 		}
-		st_node_value.clear();
 	}
+	st_node_value.clear();
 	//----------------------------------------------------------------------
 	for (i = 0; i < (int)bc_node_value.size(); i++)
 	{

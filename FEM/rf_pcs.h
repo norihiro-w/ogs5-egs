@@ -116,7 +116,6 @@ protected:
 	int continuum;
 	bool continuum_ic;
 
-	bool isRSM;     // WW
 	double* eqs_x;  //> Pointer to x array of eqs (added due to PETSC)
 
 	std::vector<std::string> pcs_type_name_vector;

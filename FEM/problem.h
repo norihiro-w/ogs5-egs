@@ -126,7 +126,6 @@ private:
 	double TH_Monolithic();
 	// Accessory
 	void LOPCalcELEResultants();
-	void ASMCalcNodeWDepth(CRFProcess* m_pcs);
 	void PCSCalcSecondaryVariables();
 	bool Check();
 	void OutputMassOfComponentInModel(std::vector<CRFProcess*> flow_pcs,
