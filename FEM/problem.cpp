@@ -45,9 +45,6 @@
 #include "rf_pcs_TH.h"
 #include "rf_random_walk.h"
 #include "rf_react.h"
-#ifdef BRNS
-#include "rf_REACT_BRNS.h"
-#endif
 #ifdef GEM_REACT
 #include "rf_REACT_GEM.h"
 #endif
@@ -139,9 +136,6 @@ Problem::Problem(char* filename)
 	external_coupling_exists = true;
 #endif
 #ifdef LIBPHREEQC
-	external_coupling_exists = true;
-#endif
-#ifdef BRNS
 	external_coupling_exists = true;
 #endif
 	//
@@ -265,16 +259,6 @@ Problem::Problem(char* filename)
 		//  delete rc;
 	}
 #endif  // GEM_REACT
-
-#ifdef BRNS
-	// Here to test BRNS; HB 02.11.2007
-	// REACT_BRNS* pBRNS;
-	// pBRNS = new REACT_BRNS();
-	m_vec_BRNS = new REACT_BRNS();
-	m_vec_BRNS->InitBRNS(this);
-#endif
-
-	//  delete rc;
 
 	//----------------------------------------------------------------------
 	// DDC
@@ -418,10 +402,6 @@ Problem::~Problem()
 
 #ifdef GEM_REACT
 	delete m_vec_GEM;
-#endif
-
-#ifdef BRNS
-	delete m_vec_BRNS;
 #endif
 
 	ScreenMessage("\nYour simulation is terminated normally\n");
@@ -2282,13 +2262,6 @@ inline double Problem::MassTrasport()
 	}
 #endif  // GEM_REACT
 
-#ifdef BRNS
-	if (m_vec_BRNS->init_flag == true)
-		m_vec_BRNS->RUN(dt /*time value in seconds*/);
-#endif
-
-	// if(KinReactData_vector.size() > 0)  //12.12.2008 WW
-	// SB4900    ClockTimeVec[0]->StopTime("EquiReact");
 
 	return error;
 }
@@ -2625,20 +2598,3 @@ bool Problem::Check()
 	}
 	return true;
 }
-
-#ifdef BRNS
-
-// BRNS-Coupling: For writing spatially resolved reaction rates at the final
-// iteration,
-// we need to get the timing information.
-
-double Problem::getCurrentTime()
-{
-	return current_time;
-}
-
-double Problem::getEndTime()
-{
-	return end_time;
-}
-#endif  // BRNS

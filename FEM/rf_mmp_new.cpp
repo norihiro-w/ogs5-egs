@@ -513,12 +513,6 @@ std::ios::pos_type CMediumProperties::Read(std::ifstream* mmp_file)
 
 					break;
 #endif
-#ifdef BRNS
-				case 16:
-					in >> porosity_model_values[0];  // set a default value for
-					                                 // BRNS calculation
-					break;
-#endif
 				default:
 					std::cerr << "Error in MMPRead: no valid porosity model"
 					          << "\n";
@@ -3956,34 +3950,6 @@ double CMediumProperties::Porosity(long number, double theta)
 					}
 				}
 
-			break;
-#endif
-#ifdef BRNS
-		case 16:
-			porosity = porosity_model_values[0];  // default value as backup
-			if (aktueller_zeitschritt > 1)
-				for (size_t i = 0; i < pcs_vector.size(); i++)
-				{
-					pcs_temp = pcs_vector[i];
-					//	            if (
-					// pcs_temp->pcs_type_name.compare("GROUNDWATER_FLOW") == 0
-					//||
-					//                     pcs_temp->pcs_type_name.compare("LIQUID_FLOW")
-					//                     == 0         ) {
-					if (pcs_temp->getProcessType() ==
-					        FiniteElement::GROUNDWATER_FLOW ||
-					    pcs_temp->getProcessType() ==
-					        FiniteElement::LIQUID_FLOW)
-					{
-						int idx;
-						idx = pcs_temp->GetElementValueIndex("POROSITY");
-
-						porosity = pcs_temp->GetElementValue(number, idx);
-						if (porosity < 1.e-6)
-							cout << "error for porosity1 " << porosity
-							     << " node " << number << endl;
-					}
-				}
 			break;
 #endif
 		default:
