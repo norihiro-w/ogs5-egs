@@ -14,7 +14,7 @@
 #include <cmath>
 #include <iomanip>
 
-#include "mathlib.h"
+#include "binarySearch.h"
 
 namespace Math_Group
 {

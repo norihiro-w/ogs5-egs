@@ -166,9 +166,6 @@
 #include "display.h"
 
 double pai = 4.0 * atan(1.0);
-//VoidFuncDXCDX ShapeFunction;
-//VoidFuncDXCDX ShapeFunctionHQ;
-//VoidFuncDXCDX GradShapeFunction = NULL;
 
 /*##########################################################################
    Mathematische Funktionen
@@ -198,33 +195,6 @@ double MBtrgVec(double* vec, long n)
 	return sqrt(zwo);
 }
 
-#ifdef obsolete  // 05.03.2010 WW
-/***************************************************************************
-   ROCKFLOW - Funktion: MGleichDouble
-   Aufgabe:
-           Vergleicht zwei double-Zahlen unter Beruecksichtigung
-           einer Fehlertoleranz
-   Formalparameter:
-           E: zahl1, zahl2
-           E: tol - Fehlertoleranz (positiv)
-   Ergebnis:
-            0 - ungleich
-            1 - gleich
-   Programmaenderungen:
-   07/1994     hh        Erste Version
-
- **************************************************************************/
-
-int MGleichDouble(double zahl1, double zahl2, double tol)
-{
-	int retval;
-	if (fabs(zahl1 - zahl2) <= tol)
-		retval = 1;
-	else
-		retval = 0;
-	return retval;
-}
-#endif  //#ifdef obsolete  //05.03.2010 WW
 
 ////////////////////////////////////////////////////////////
 #ifdef obsolete  // 05.03.2010 WW
@@ -5402,30 +5372,4 @@ double GetFCTADiff(double K_ij, double K_ji)
  ##########################################################################
  ########################################################################## */
 
-/*!
-    \brief Binary search a array
-     The array must be sorted
 
-     \param arr     an array
-     \param target  searched index
-     \param start   the start index of the array
-     \parm  end     the end index of the array
-
-     By WW. 03.2011
-
- */
-long binarySearch(long* arr, long target, long start, long end)
-{
-	long middle;
-	while (start <= end)
-	{
-		middle = (start + end) / 2;
-		if (arr[middle] == target)
-			return middle;
-		else if (arr[middle] > target)
-			end = middle - 1;
-		else
-			start = middle + 1;
-	}
-	return -1;
-}

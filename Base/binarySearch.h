@@ -68,4 +68,18 @@ size_t searchElement(double const& val, size_t beg, size_t end,
 size_t searchElement(double const& val, size_t beg, size_t end,
                      const std::vector<double*>& array);
 
+/*!
+    \brief Binary search a array
+     The array must be sorted
+
+     \param arr     an array
+     \param target  searched index
+     \param start   the start index of the array
+     \parm  end     the end index of the array
+
+     By WW. 03.2011
+
+ */
+extern long binarySearch(long* arr, long target, long start, long end);
+
 #endif /* BINARYSEARCH_H_ */
