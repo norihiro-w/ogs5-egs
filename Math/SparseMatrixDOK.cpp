@@ -596,7 +596,7 @@ void SparseMatrixDOK::ConstructCRSstructure()
 	this->entry_index = new int[total_matrix_entry_size];
 
 	long counter_ptr = 0, counter_col_idx = 0;
-	long I, J, K;
+	long J, K;
 
 	row_iter ii;
 	col_iter jj;
@@ -614,7 +614,7 @@ void SparseMatrixDOK::ConstructCRSstructure()
 		for (jj = (*ii).begin(); jj != (*ii).end(); ++jj)
 		{
 #endif
-			I = cnt_row;      // row in global matrix
+			//I = cnt_row;      // row in global matrix
 			J = (*jj).first;  // column in global matrix
 			K = counter_ptr;  // index in entry
 

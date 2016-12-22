@@ -43,18 +43,12 @@ void FEMRead(const std::string& mesh_fname,
              GEOLIB::GEOObjects* geo_obj = NULL,
              std::string* unique_name = NULL);
 
-void MSHWrite(std::string);
 void CompleteMesh();
 void FEMDeleteAll();
 
 void Read_RFI(std::istream& msh_file, MeshLib::CFEMesh* m_msh);
 
 int MSHSetMaxMMPGroups();
-
-void MSHDelete(std::string);
-//void DATWriteParticleFile(int);
-
-MeshLib::CFEMesh* MSHGet(const std::string& mat_type_name);
 
 long* GetPointsIn(Surface*, long*);
 void GEOGetNodesInMaterialDomain(MeshLib::CFEMesh const* const,
