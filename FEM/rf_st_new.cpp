@@ -1151,9 +1151,9 @@ void CSourceTermGroup::Set(CRFProcess* m_pcs, const int ShiftInNodeVector,
 		getNodesOnDistribution(distData, *m_msh, nodes_vector);
 		if (nodes_vector.empty())
 		{
-#ifndef USE_PETSC
-			ScreenMessage("-> ***ERROR* No nodes found on %s %s\n", st->getGeoName().data());
-#endif
+//#ifndef USE_PETSC
+			ScreenMessage2("-> No nodes found on %s\n", st->getGeoName().data());
+//#endif
 			continue;
 		}
 		//------------------------------------------------------------------

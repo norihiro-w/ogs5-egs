@@ -24,16 +24,19 @@ void getNodesOnDistribution(DistributionData& dis_data,
 {
 	if (dis_data.geo_type == GEOLIB::POINT)
 	{
-		// ScreenMessage2("-> looking for nodes on POINT %s\n",
-		// dis_data.geo_name.c_str());
+		ScreenMessage2("-> looking for nodes on POINT %s\n",
+					   dis_data.geo_name.c_str());
 		long node_id = msh.GetNODOnPNT(
 		    static_cast<const GEOLIB::Point*>(dis_data.geo_obj));
 		if (node_id >= 0)
 		{
 			nodes_vector.push_back(node_id);
 			ScreenMessage2("-> node ID %d is found for POINT %s\n",
-			               node_id,
+						   msh.getNodeVector()[node_id]->GetGlobalIndex(),
 			               dis_data.geo_name.c_str());
+		} else {
+			ScreenMessage2("-> No node is found for POINT %s\n",
+						   dis_data.geo_name.c_str());
 		}
 	}
 	else if (dis_data.geo_type == GEOLIB::POLYLINE)
