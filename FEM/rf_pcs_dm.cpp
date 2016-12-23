@@ -1171,7 +1171,7 @@ double CRFProcessDeformation::CaclMaxiumLoadRatio(void)
 			fem_dm->ConfigElement(elem);
 			fem_dm->SetMaterial();
 			eleV_DM = ele_value_dm[i];
-			SMat = fem_dm->smat;
+			SMat = fem_dm->m_msp;
 			SMat->axisymmetry = m_msh->isAxisymmetry();
 			PModel = SMat->Plasticity_type;
 			//

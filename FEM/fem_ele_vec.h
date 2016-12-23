@@ -38,13 +38,13 @@ using namespace Math_Group;
 namespace FiniteElement
 {
 
-// Derived element for deformation caculation
 class CFiniteElementVec : public CElement
 {
+	friend class process::CRFProcessDeformation;
 public:
 	CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 	                  const int C_Sys_Flad, const int order = 2);
-	~CFiniteElementVec();
+	virtual ~CFiniteElementVec();
 
 private:
 	void SetMemory();
@@ -53,80 +53,7 @@ private:
 	void ComputeStrain();
 	void SetMaterial();
 	double* GetStrain() const { return dstrain; }
-
-private:
-	process::CRFProcessDeformation* pcs;
-	::CRFProcess* h_pcs;
-	::CRFProcess* t_pcs;
-	//
-	int ns;  // Number of stresses components
-	// Flow coupling
-	int Flow_Type;
-
-	// Primary value indeces
-	// Column index in the node value table
-	int idx_P, idx_P0, idx_P1, idx_P1_0, idx_P2;
-	int idx_T0, idx_T1;
-	int idx_S0, idx_S, idx_Snw;
-	int idx_pls;
-	// Displacement column indeces in the node value table
-	int* Idx_Stress;
-	int* Idx_Strain;
-
-	// B matrix
-	Matrix* B_matrix;
-	Matrix* B_matrix_T;
-	std::vector<Matrix*> vec_B_matrix;
-	std::vector<Matrix*> vec_B_matrix_T;
-
-	//------ Material -------
-	CSolidProperties* smat;
-	CFluidProperties* m_mfp;
-	CMediumProperties* m_mmp;
-
 	double CalDensity();
-
-	// Elastic constitutive matrix
-	Matrix* De;
-	// Consistent tangential matrix
-	Matrix* ConsistDep;
-
-	// Local matricies and vectors
-	Matrix* AuxMatrix;
-	Matrix* AuxMatrix2;  // NW
-	Matrix* Stiffness;
-	Matrix* PressureC;
-	Matrix* PressureC_S;     // Function of S
-	Matrix* PressureC_S_dp;  // Function of S and ds_dp
-	Vector* RHS;
-	// Global RHS. 08.2010. WW
-	double* b_rhs;
-
-	//  Stresses:
-	//  s11, s22, s33, s12, s13, s23
-	double* dstress;
-	//  Straines:
-	//  s11, s22, s33, s12, s13, s23
-	double* dstrain;
-	double* strain_ne;
-	double* stress_ne;
-	double* stress0;
-	// Results, displacements
-	//  u_x1, u_x2, u_x3, ..., u_xn,
-	//  u_y1, u_y2, u_y3, ..., u_yn,
-	//  u_z1, u_z2, u_z3, ..., u_zn
-	double* Disp;
-
-	// Temperatures of nodes
-	double* Temp, Tem;
-	double* T1;
-	double S_Water;
-
-	// Element value
-	ElementValue_DM* eleV_DM;
-
-	// principle stresses
-	double* pr_stress;
 	// Compute principle stresses
 	double ComputePrincipleStresses(const double* Stresses);
 
@@ -136,17 +63,13 @@ private:
 	void setTransB_Matrix(const int LocalIndex);
 	//
 	void ComputeMatrix_RHS(const double fkt, const Matrix* p_D);
-
-	// Temporarily used variables
-	double* Sxx, *Syy, *Szz, *Sxy, *Sxz, *Syz, *pstr;
-
 	/// Extropolation
 	bool RecordGuassStrain(const int gp, const int gp_r, const int gp_s,
-	                       int gp_t);
+						   int gp_t);
 	// Effictive strain
 	double CalcStrain_v();
-    void ExtropolateGaussStrain();
-    void ExtropolateGaussStress();
+	void ExtropolateGaussStrain();
+	void ExtropolateGaussStress();
 	double CalcStress_eff();
 
 	// Compute the local finite element matrices
@@ -155,21 +78,93 @@ private:
 	// Assembly local stiffness matrix
 	void GlobalAssembly_Stiffness();
 	void GlobalAssembly_PressureCoupling(Matrix* pCMatrix, double fct,
-	                                     const int phase = 0);
+										 const int phase = 0);
 	void GlobalAssembly_RHS();
 #ifdef USE_PETSC
 	void add2GlobalMatrixII();
 #endif
 
-	friend class process::CRFProcessDeformation;
+private:
+	process::CRFProcessDeformation* pcs = nullptr;
+	::CRFProcess* h_pcs = nullptr;
+	::CRFProcess* t_pcs = nullptr;
+
+	int ns = -1;  // Number of stresses components
+	int Flow_Type = -1;
+
+	// Primary value indeces
+	// Column index in the node value table
+	int idx_P = -1, idx_P0 = -1, idx_P1 = -1, idx_P1_0 = -1, idx_P2 = -1;
+	int idx_T0 = -1, idx_T1 = -1;
+	int idx_S0 = -1, idx_S = -1, idx_Snw = -1;
+	int idx_pls = -1;
+	// Displacement column indeces in the node value table
+	int* Idx_Stress = nullptr;
+	int* Idx_Strain = nullptr;
+
+	// B matrix
+	Matrix* B_matrix = nullptr;
+	Matrix* B_matrix_T = nullptr;
+	std::vector<Matrix*> vec_B_matrix;
+	std::vector<Matrix*> vec_B_matrix_T;
+
+	//------ Material -------
+	CSolidProperties* m_msp = nullptr;
+	CFluidProperties* m_mfp = nullptr;
+	CMediumProperties* m_mmp = nullptr;
+
+
+	// Elastic constitutive matrix
+	Matrix* De = nullptr;
+	// Consistent tangential matrix
+	Matrix* ConsistDep = nullptr;
+
+	// Local matricies and vectors
+	Matrix* AuxMatrix = nullptr;
+	Matrix* AuxMatrix2 = nullptr;
+	Matrix* Stiffness = nullptr;
+	Matrix* PressureC = nullptr;
+	Matrix* PressureC_S = nullptr;
+	Matrix* PressureC_S_dp = nullptr;
+	Vector* RHS = nullptr;
+	double* b_rhs = nullptr;
+
+	//  Stresses:
+	//  s11, s22, s33, s12, s13, s23
+	double* dstress = nullptr;
+	//  Straines:
+	//  s11, s22, s33, s12, s13, s23
+	double* dstrain = nullptr;
+	double* strain_ne = nullptr;
+	double* stress_ne = nullptr;
+	double* stress0 = nullptr;
+	// Results, displacements
+	//  u_x1, u_x2, u_x3, ..., u_xn,
+	//  u_y1, u_y2, u_y3, ..., u_yn,
+	//  u_z1, u_z2, u_z3, ..., u_zn
+	double* Disp = nullptr;
+
+	// Temperatures of nodes
+	double* dT = nullptr, Tem = 0;
+	double* T1 = nullptr;
+	double S_Water = 1.0;
+
+	// Element value
+	ElementValue_DM* eleV_DM = nullptr;
+
+	// principle stresses
+	double* pr_stress = nullptr;
+
+	// Temporarily used variables
+	double* Sxx = nullptr, *Syy = nullptr, *Szz = nullptr, *Sxy = nullptr, *Sxz = nullptr, *Syz = nullptr, *pstr = nullptr;
 
 	// Auxillarary vector
-	double* AuxNodal0;
-	double* AuxNodal;
-	double* AuxNodal_S0;
-	double* AuxNodal_S;
-	double* AuxNodal1;
-	double* AuxNodal2;
+	double* AuxNodal0 = nullptr;
+	double* AuxNodal = nullptr;
+	double* AuxNodal_S0 = nullptr;
+	double* AuxNodal_S = nullptr;
+	double* AuxNodal1 = nullptr;
+	double* AuxNodal2 = nullptr;
 };
 }  // end namespace
 
