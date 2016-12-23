@@ -133,9 +133,6 @@ PrimaryVariable convertPrimaryVariable(const std::string& pcs_pv_string)
 	if (pcs_pv_string.compare("STRESS_YY") == 0) return STRESS_YY;
 	if (pcs_pv_string.compare("STRESS_YZ") == 0) return STRESS_YZ;
 	if (pcs_pv_string.compare("STRESS_ZZ") == 0) return STRESS_ZZ;
-	if (pcs_pv_string.compare("ACCELERATION_X1") == 0) return ACCELERATION_X1;
-	if (pcs_pv_string.compare("ACCELERATION_Y1") == 0) return ACCELERATION_Y1;
-	if (pcs_pv_string.compare("ACCELERATION_Z1") == 0) return ACCELERATION_Z1;
 	if (pcs_pv_string.compare("STRAIN_XX") == 0) return STRAIN_XX;
 	if (pcs_pv_string.compare("STRAIN_XY") == 0) return STRAIN_XY;
 	if (pcs_pv_string.compare("STRAIN_XZ") == 0) return STRAIN_XZ;
@@ -184,9 +181,6 @@ std::string convertPrimaryVariableToString(PrimaryVariable pcs_pv)
 	if (pcs_pv == STRAIN_YZ) return "STRAIN_YZ";
 	if (pcs_pv == STRAIN_ZZ) return "STRAIN_ZZ";
 	if (pcs_pv == STRAIN_PLS) return "STRAIN_PLS";
-	if (pcs_pv == ACCELERATION_X1) return "ACCELERATION_X1";
-	if (pcs_pv == ACCELERATION_Y1) return "ACCELERATION_Y1";
-	if (pcs_pv == ACCELERATION_Z1) return "ACCELERATION_Z1";
 	return "INVALID_PRIMARY_VARIABLE";
 }
 

@@ -105,9 +105,6 @@ const std::list<std::string> getAllProcessNames();
 enum PrimaryVariable
 {
 	INVALID_PV = 0,   //!< INVALID_PV
-	ACCELERATION_X1,  //!< ACCELERATION_X1
-	ACCELERATION_Y1,  //!< ACCELERATION_Y1
-	ACCELERATION_Z1,  //!< ACCELERATION_Z1
 	/// Mass transport
 	CONCENTRATION,  //!< CONCENTRATION
 	/// Deformation

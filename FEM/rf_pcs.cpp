@@ -1184,7 +1184,7 @@ void CRFProcess::ReadSolution()
 **************************************************************************/
 void CRFProcess::ConfigureCouplingForLocalAssemblier()
 {
-	if (fem) fem->ConfigureCoupling(this, Shift, false);
+	if (fem) fem->ConfigureCoupling(this, Shift);
 }
 
 /**************************************************************************

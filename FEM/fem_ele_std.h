@@ -94,7 +94,7 @@ public:
 	void Config();  // NW made it public for outputting MMP
 
 	// Set coupling information
-	void ConfigureCoupling(CRFProcess* pcs, const int* Shift, bool dyn = false);
+	void ConfigureCoupling(CRFProcess* pcs, const int* Shift);
 
 	// Element claculation
 	// 1. Mass matrix

@@ -693,8 +693,7 @@ void Problem::PCSCreate()
 	for (size_t i = 0; i < no_processes; i++)
 		MMP2PCSRelation(pcs_vector[i]);
 
-	for (size_t i = 0; i < no_processes; i++)  // WW
-
+	for (size_t i = 0; i < no_processes; i++)
 		pcs_vector[i]->ConfigureCouplingForLocalAssemblier();
 
 	for (size_t i = 0; i < out_vector.size(); i++)
