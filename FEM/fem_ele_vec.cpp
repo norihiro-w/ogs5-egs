@@ -446,33 +446,31 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 
 	for (i = 0; i < nnodesHQ; i++)
 	{
-		// NW      setTransB_Matrix(i);
 		tmp_B_matrix_T = this->vec_B_matrix_T[i];
+
 		// Local assembly of A*u=int(B^t*sigma) for Newton-Raphson method
-		for (j = 0; j < ele_dim; j++)
-			for (k = 0; k < ns; k++)
-				(*RHS)(j* nnodesHQ + i) +=
-				    (*tmp_B_matrix_T)(j, k) * (dstress[k] - stress0[k]) * fkt;
-		// TEST             (*B_matrix_T)(j,k)*dstress[k]*fkt;
+		for (j = 0; j < ele_dim; j++) {
+			for (k = 0; k < ns; k++) {
+				(*RHS)(j* nnodesHQ + i) += (*tmp_B_matrix_T)(j, k) * (dstress[k] - stress0[k]) * fkt;
+			}
+		}
+
 		if (PreLoad == 11) continue;
-// Local assembly of stiffness matrix, B^T C B
 		(*tmp_AuxMatrix2) = 0.0;
-		// NW
 		tmp_B_matrix_T->multi(*p_D, *tmp_AuxMatrix2);
 		for (j = 0; j < nnodesHQ; j++)
 		{
-			// NW          setB_Matrix(j);
 			tmp_B_matrix = this->vec_B_matrix[j];
 			// Compute stiffness matrix
 			(*tmp_AuxMatrix) = 0.0;
 			tmp_AuxMatrix2->multi(*tmp_B_matrix, *tmp_AuxMatrix);
-			// NW          B_matrix_T->multi(*p_D, *B_matrix, *AuxMatrix);
 
 			// Local assembly of stiffness matrix
-			for (k = 0; k < ele_dim; k++)
-				for (l = 0; l < ele_dim; l++)
-					(*tmp_Stiffness)(i + k * nnodesHQ, j + l * nnodesHQ) +=
-					    (*tmp_AuxMatrix)(k, l) * fkt;
+			for (k = 0; k < ele_dim; k++) {
+				for (l = 0; l < ele_dim; l++) {
+					(*tmp_Stiffness)(i + k * nnodesHQ, j + l * nnodesHQ) += (*tmp_AuxMatrix)(k, l) * fkt;
+				}
+			}
 		}  // loop j
 	}      // loop i
 
@@ -485,28 +483,25 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 	//---------------------------------------------------------
 	// LoadFactor: factor of incremental loading, prescibed in rf_pcs.cpp
 
-	// 07.2011 WW
 	if ((PressureC || PressureC_S || PressureC_S_dp) && !PreLoad)
 	{
 		fac = LoadFactor * fkt;
 
-		// 07.2011. WW
 		if (PressureC_S || PressureC_S_dp)
 		{
-			// Pressure 1
 			fac2 = interpolate(AuxNodal0);
-			// Saturation of phase 1
 			fac1 = m_mmp->SaturationCapillaryPressureFunction(fac2);
 			if (PressureC_S_dp)
 				fac2 = fac1 -
 				       fac2 * m_mmp->PressureSaturationDependency(fac1, true);
-			// JT: dSdP now returns actual sign (<0)
 		}
 
 		if (axisymmetry)
+		{
 			for (k = 0; k < nnodesHQ; k++)
 			{
 				for (l = 0; l < nnodes; l++)
+				{
 					for (j = 0; j < ele_dim; j++)
 					{
 						dN_dx = dshapefctHQ[nnodesHQ * j + k];
@@ -520,15 +515,18 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 							(*PressureC_S_dp)(nnodesHQ* j + k, l) +=
 							    f_buff * fac2;
 					}
+				}
 			}
+		}
 		else
+		{
 			for (k = 0; k < nnodesHQ; k++)
 			{
 				for (l = 0; l < nnodes; l++)
+				{
 					for (j = 0; j < ele_dim; j++)
 					{
-						f_buff =
-						    fac * dshapefctHQ[nnodesHQ * j + k] * shapefct[l];
+						f_buff = fac * dshapefctHQ[nnodesHQ * j + k] * shapefct[l];
 						(*PressureC)(nnodesHQ* j + k, l) += f_buff;
 						if (PressureC_S)
 							(*PressureC_S)(nnodesHQ* j + k, l) += f_buff * fac1;
@@ -536,7 +534,9 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 							(*PressureC_S_dp)(nnodesHQ* j + k, l) +=
 							    f_buff * fac2;
 					}
+				}
 			}
+		}
 	}
 	//---------------------------------------------------------
 	// Assemble gravity force vector
