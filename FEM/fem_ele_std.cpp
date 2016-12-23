@@ -6587,78 +6587,112 @@ void CFiniteElementStd::Assemble_strainCPL(const int phase)
 		return;
 	}
 
-    int i, j;
-	double fac;
-	int Residual = -1;
+	bool updateRHS = false;
+	if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION)
+	{
+		updateRHS = true;
+	}
+	else if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW
+			 && FiniteElement::isNewtonKind(dm_pcs->m_num->nls_method))
+	{
+		updateRHS = true;
+	}
 
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03~04.3012. WW
-	int shift_index = problem_dimension_dm + phase;
-#endif
-
-
-	fac = 1.0 / dt;
-	fac *= SolidProp->biot_const;  // NW
-
-	if (dm_pcs->type != 41)
-		// if(D_Flag != 41)
-		Residual = 0;
-	else                            // Mono
-	    if (pcs_deformation > 100)  // Pls
-		Residual = 1;
-
-	if (MediaProp->storage_model == 7)  // RW/WW
+#if 0
+	if (MediaProp->storage_model == 7)
 		fac *= MediaProp->storage_model_values[0];
 	else
 		fac *= fabs(SolidProp->biot_const);  // WX:11.2012. biot coeff is
 	                                         // needed, in some case biot is
 	                                         // defined negative
+#endif
 
 	//
-	for (i = nnodes; i < nnodesHQ; i++)
-		nodes[i] = MeshElement->GetNodeIndex(i);
-	(*StrainCoupling) = 0.0;
 	CalcStrainCoupling(phase);
-	//	if(D_Flag != 41&&aktueller_zeitschritt>1)
-	if (Residual >= 0)
-	{                       // Incorparate this after the first time step
-		if (Residual == 0)  // Partitioned
 
-			for (i = 0; i < nnodesHQ; i++)
-			{
-				NodalVal2[i] =
-				    -fac * (dm_pcs->GetNodeValue(nodes[i], Idx_dm1[0]) -
-				            dm_pcs->GetNodeValue(nodes[i], Idx_dm0[0]));
-				NodalVal3[i] =
-				    -fac * (dm_pcs->GetNodeValue(nodes[i], Idx_dm1[1]) -
-				            dm_pcs->GetNodeValue(nodes[i], Idx_dm0[1]));
-				if (dim == 3)  // 3D.
-					NodalVal4[i] =
-					    -fac * (dm_pcs->GetNodeValue(nodes[i], Idx_dm1[2]) -
-					            dm_pcs->GetNodeValue(nodes[i], Idx_dm0[2]));
-			}
-		else if (Residual == 1)  // Mono
+	// prepare node values of du
+	for (int i = nnodes; i < nnodesHQ; i++)
+		nodes[i] = MeshElement->GetNodeIndex(i);
 
-			// du is stored in u_0
-			for (i = 0; i < nnodesHQ; i++)
-			{
-				NodalVal2[i] = -fac * pcs->GetNodeValue(nodes[i], Idx_dm0[0]);
-				NodalVal3[i] = -fac * pcs->GetNodeValue(nodes[i], Idx_dm0[1]);
-				if (dim == 3)  // 3D.
-					NodalVal4[i] =
-					    -fac * pcs->GetNodeValue(nodes[i], Idx_dm0[2]);
-			}
+	if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION)
+	{
+		for (int i = 0; i < nnodesHQ; i++)
+		{
+			NodalVal2[i] = (dm_pcs->GetNodeValue(nodes[i], Idx_dm1[0]) -
+						dm_pcs->GetNodeValue(nodes[i], Idx_dm0[0]));
+			NodalVal3[i] = (dm_pcs->GetNodeValue(nodes[i], Idx_dm1[1]) -
+						dm_pcs->GetNodeValue(nodes[i], Idx_dm0[1]));
+			if (dim == 3)  // 3D.
+				NodalVal4[i] = (dm_pcs->GetNodeValue(nodes[i], Idx_dm1[2]) -
+							dm_pcs->GetNodeValue(nodes[i], Idx_dm0[2]));
+		}
+	}
+	else if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW
+			 && FiniteElement::isNewtonKind(dm_pcs->m_num->nls_method))
+	{
+		// du is stored in u_0
+		for (int i = 0; i < nnodesHQ; i++)
+		{
+			NodalVal2[i] = pcs->GetNodeValue(nodes[i], Idx_dm0[0]);
+			NodalVal3[i] =  pcs->GetNodeValue(nodes[i], Idx_dm0[1]);
+			if (dim == 3)
+				NodalVal4[i] = pcs->GetNodeValue(nodes[i], Idx_dm0[2]);
+		}
+	}
 
-		for (i = 0; i < nnodes; i++)
+#if 0
+	if (Index < 5)
+	{
+		std::cout << "-- u0\n";
+		for (int i = 0; i < nnodesHQ; i++)
+			std::cout << dm_pcs->GetNodeValue(nodes[i], Idx_dm0[0]) << " ";
+		std::cout << "\n";
+		for (int i = 0; i < nnodesHQ; i++)
+			std::cout << dm_pcs->GetNodeValue(nodes[i], Idx_dm0[1]) << " ";
+		std::cout << "\n";
+
+		std::cout << "-- u1\n";
+		for (int i = 0; i < nnodesHQ; i++)
+			std::cout << dm_pcs->GetNodeValue(nodes[i], Idx_dm1[0]) << " ";
+		std::cout << "\n";
+		for (int i = 0; i < nnodesHQ; i++)
+			std::cout << dm_pcs->GetNodeValue(nodes[i], Idx_dm1[1]) << " ";
+		std::cout << "\n";
+
+		std::cout << "-- du\n";
+		for (int i = 0; i < nnodesHQ; i++)
+			std::cout << NodalVal2[i] << " ";
+		std::cout << "\n";
+		for (int i = 0; i < nnodesHQ; i++)
+			std::cout << NodalVal3[i] << " ";
+		std::cout << "\n";
+	}
+#endif
+
+	double fac = 1.0 / dt;
+	fac *= SolidProp->biot_const;
+
+	if (updateRHS)
+	{
+		// -biot*du/dt
+		for (int i = 0; i < nnodesHQ; i++)
+		{
+			NodalVal2[i] *= -fac;
+			NodalVal3[i] *= -fac;
+			if (dim == 3)
+				NodalVal4[i] *= -fac;
+		}
+
+		// N_p^T B * (-biot*du/dt)
+		for (int i = 0; i < nnodes; i++)
 		{
 			NodalVal[i] = 0.0;
-			for (j = 0; j < nnodesHQ; j++)
+			for (int j = 0; j < nnodesHQ; j++)
 			{
 				NodalVal[i] += (*StrainCoupling)(i, j) * NodalVal2[j];
-				NodalVal[i] +=
-				    (*StrainCoupling)(i, j + nnodesHQ) * NodalVal3[j];
-				if (dim == 3)  // 3D.
-					NodalVal[i] +=
-					    (*StrainCoupling)(i, j + 2 * nnodesHQ) * NodalVal4[j];
+				NodalVal[i] += (*StrainCoupling)(i, j + nnodesHQ) * NodalVal3[j];
+				if (dim == 3)
+					NodalVal[i] += (*StrainCoupling)(i, j + 2 * nnodesHQ) * NodalVal4[j];
 			}
 		}
 
@@ -6667,6 +6701,11 @@ void CFiniteElementStd::Assemble_strainCPL(const int phase)
 			(*RHS)(i + LocalShift) += NodalVal[i];
 
 #ifdef NEW_EQS
+		// add to global RHS
+		int shift_index = 0;
+		if (dm_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
+			shift_index = problem_dimension_dm + phase;
+
 		for (int i = 0; i < nnodes; i++)
 		{
 			eqs_rhs[NodeShift[shift_index] + eqs_number[i]] += NodalVal[i];
