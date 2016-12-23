@@ -326,23 +326,19 @@ public:
 	double foc;         // organic carbon content
 };
 
-class CMediumPropertiesGroup  // YD
+class CMediumPropertiesGroup
 {
 public:
-	CMediumPropertiesGroup() : m_msh(NULL) { OrigSize = 0; }
 	void Set(CRFProcess* m_pcs);
+
 	std::string pcs_name;
 	std::string pcs_type_name;
-	CFEMesh* m_msh;
+	CFEMesh* m_msh = nullptr;
 	std::vector<CMediumProperties*> mmp_group_vector;
 
-private:
-	int OrigSize;  // For excavation simulation.
 };
 
-// YD
 extern CMediumPropertiesGroup* MMPGetGroup(const std::string& pcs_type_name);
-// YD
 extern std::list<CMediumPropertiesGroup*> mmp_group_list;
 extern void MMPGroupDelete(/*string pcs_type_name*/);
 

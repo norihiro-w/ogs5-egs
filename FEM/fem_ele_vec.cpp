@@ -46,8 +46,6 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
       b_rhs(NULL)
 {
 	int i;
-	excavation = false;  // 12.2009. WW
-
 	S_Water = 1.0;
 	Tem = 273.15 + 23.0;
 	h_pcs = NULL;
@@ -1027,48 +1025,6 @@ void CFiniteElementVec::LocalAssembly(const int update)
 	}
 	//
 
-	// -------------------------------12.2009.  WW
-	if (pcs->ite_steps == 1)
-	{
-		excavation = false;
-		if ((smat->excavation > 0 || pcs->ExcavMaterialGroup > -1) &&
-		    MeshElement->GetMark())
-		{
-			int valid;
-			if (smat->excavation > 0)
-			{
-				if (GetCurveValue(smat->excavation, 0, aktuelle_zeit, &valid) <
-				    1.0)
-				{
-					excavation = true;
-					smat->excavated = true;  // To be ... 12.2009. WW
-					*(eleV_DM->Stress) = 0.;
-				}
-				else
-					smat->excavated = false;  // To be ... 12.2009. WW
-			}
-			// WX:07.2011
-			if (static_cast<size_t>(pcs->ExcavMaterialGroup) ==
-			    MeshElement->GetPatchIndex())
-			{
-				double const* ele_center(MeshElement->GetGravityCenter());
-				if ((GetCurveValue(pcs->ExcavCurve, 0, aktuelle_zeit, &valid) +
-				     pcs->ExcavBeginCoordinate) >
-				        (ele_center[pcs->ExcavDirection]) &&
-				    (ele_center[pcs->ExcavDirection] -
-				     pcs->ExcavBeginCoordinate) > -0.001)
-				{
-					excavation = true;
-					*(eleV_DM->Stress) = 0.;
-#ifndef OGS_ONLY_TH
-					MeshElement->SetExcavState(1);
-#endif
-				}
-			}
-		}
-	}
-	//----------------------------------------------------
-
 	if (enhanced_strain_dm && ele_value_dm[MeshElement->GetIndex()]->Localized)
 		LocalAssembly_EnhancedStrain(update);
 	else
@@ -1117,89 +1073,11 @@ void CFiniteElementVec::LocalAssembly(const int update)
            CFiniteElementVec::  GlobalAssembly()
    Aufgabe:
            Assemble local matrics and vectors to the global system
-
-   Programming:
-   02/2005   WW
-   12/2009   WW New excavtion approach
  **************************************************************************/
 bool CFiniteElementVec::GlobalAssembly()
 {
-	// For excavation simulation. 12.2009. WW
-	int valid = 0;
-	if (excavation)
-	{
-		excavation = true;
-		bool onExBoundary = false;
-
-		CNode* node;
-		CElem* elem;
-		CSolidProperties* smat_e;
-
-		for (int i = 0; i < nnodesHQ; i++)
-		{
-			node = MeshElement->GetNode(i);
-			onExBoundary = false;
-			const size_t n_elements(node->getConnectedElementIDs().size());
-			for (size_t j = 0; j < n_elements; j++)
-			{
-				elem =
-				    pcs->m_msh->ele_vector[node->getConnectedElementIDs()[j]];
-				if (!elem->GetMark()) continue;
-
-				smat_e = msp_vector[elem->GetPatchIndex()];
-				if (smat_e->excavation > 0)
-				{
-					if (fabs(GetCurveValue(smat_e->excavation, 0, aktuelle_zeit,
-					                       &valid) -
-					         1.0) < DBL_MIN)
-					{
-						onExBoundary = true;
-						break;
-					}
-				}
-				else if (pcs->ExcavMaterialGroup > -1)
-				{
-					double const* ele_center(elem->GetGravityCenter());
-					if ((GetCurveValue(pcs->ExcavCurve, 0, aktuelle_zeit,
-					                   &valid) +
-					     pcs->ExcavBeginCoordinate) <
-					    (ele_center[pcs->ExcavDirection]))
-					{
-						onExBoundary = true;
-						break;
-					}
-					else if (elem->GetPatchIndex() !=
-					         static_cast<size_t>(pcs->ExcavMaterialGroup))
-					{
-						onExBoundary = true;
-						break;
-					}
-				}  // WX:07.2011
-				else
-				{
-					onExBoundary = true;
-					break;
-				}
-			}
-
-			if (!onExBoundary)
-				for (size_t j = 0; j < dim; j++)
-					(*RHS)(j* nnodesHQ + i) = 0.0;
-		}
-	}
-
 	GlobalAssembly_RHS();
 	if (PreLoad == 11) return true;
-
-	// For excavation simulation. 12.2009. WW
-	if (excavation)
-	{
-		MeshElement->MarkingAll(false);
-		*(eleV_DM->Stress) = 0.;
-		*(eleV_DM->Stress0) = 0.;
-		if (eleV_DM->Stress_current_ts) (*eleV_DM->Stress_current_ts) = 0.0;
-		return false;
-	}
 
 	GlobalAssembly_Stiffness();
 
@@ -1476,8 +1354,6 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 				for (int i = 0; i < nnodes; i++)
 				{
 					auto val_n = h_pcs->GetNodeValue(nodes[i], idx_P1);
-					if (pcs->PCS_ExcavState == 1)
-						val_n -= h_pcs->GetNodeValue(nodes[i], idx_P1 - 1);
 
 					// Initial pressure should be subtracted, i.e. (p-p0)
 					// because DEFORMATION
@@ -1628,69 +1504,8 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 		}
 	}
 #endif
-	int valid = 0;
-	if (excavation)
-	{
-		excavation = true;
-		bool onExBoundary = false;
-
-		CNode* node;
-		CElem* elem;
-		CSolidProperties* smat_e;
-
-		for (int i = 0; i < nnodesHQ; i++)
-		{
-			node = MeshElement->GetNode(i);
-			onExBoundary = false;
-			const size_t n_elements(node->getConnectedElementIDs().size());
-			for (size_t j = 0; j < n_elements; j++)
-			{
-				elem =
-				    pcs->m_msh->ele_vector[node->getConnectedElementIDs()[j]];
-				if (!elem->GetMark()) continue;
-
-				smat_e = msp_vector[elem->GetPatchIndex()];
-				if (smat_e->excavation > 0)
-				{
-					if (fabs(GetCurveValue(smat_e->excavation, 0, aktuelle_zeit,
-					                       &valid) -
-					         1.0) < DBL_MIN)
-					{
-						onExBoundary = true;
-						break;
-					}
-				}
-				else if (pcs->ExcavMaterialGroup > -1)
-				{
-					double const* ele_center(elem->GetGravityCenter());
-					if ((GetCurveValue(pcs->ExcavCurve, 0, aktuelle_zeit,
-					                   &valid) +
-					     pcs->ExcavBeginCoordinate) <
-					    (ele_center[pcs->ExcavDirection]))
-					{
-						onExBoundary = true;
-						break;
-					}
-					else if (elem->GetPatchIndex() !=
-					         static_cast<size_t>(pcs->ExcavMaterialGroup))
-					{
-						onExBoundary = true;
-						break;
-					}
-				}
-				else
-				{
-					onExBoundary = true;
-					break;
-				}
-			}
-
-			if (!onExBoundary)
-				for (size_t j = 0; j < dim; j++)
-					b_rhs[eqs_number[i] + NodeShift[j]] = 0.0;
-		}
-	}
 }
+
 /***************************************************************************
    GeoSys - Funktion:
            CFiniteElementVec:: LocalAssembly_continuum()

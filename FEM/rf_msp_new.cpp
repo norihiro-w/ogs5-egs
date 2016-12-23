@@ -352,14 +352,6 @@ std::ios::pos_type CSolidProperties::Read(std::ifstream* msp_file)
 			in_sd.clear();
 		}
 		//....................................................................
-		// 12.2009. WW
-		if (line_string.find("$EXCAVATION") != string::npos)
-		{
-			in_sd.str(GetLineFromFile1(msp_file));
-			in_sd >> excavation;
-			in_sd.clear();
-		}
-		//....................................................................
 		if (line_string.find("YOUNGS_MODULUS") != string::npos)
 		{  // subkeyword found
 			in_sd.str(GetLineFromFile1(msp_file));
@@ -704,8 +696,6 @@ CSolidProperties::CSolidProperties()
 	Conductivity_mode = -1;
 	Creep_mode = -1;
 	grav_const = 9.81;  // WW
-	excavation = -1;    // 12.2009. WW
-	excavated = false;  // To be .....  12.2009. WW
 
 	SwellingPressureType = -1;
 	Max_SwellingPressure = 0.0;

@@ -373,8 +373,6 @@ Problem::Problem(char* filename)
 	else
 		buffer_array = NULL;
 	buffer_array1 = NULL;
-	//========================================================================
-	CRFProcessDeformation* dm_pcs = NULL;
 
 	for (size_t i = 0; i < no_processes; i++)
 	{
@@ -382,12 +380,6 @@ Problem::Problem(char* filename)
 		m_pcs->CalcSecondaryVariables(true);
 		m_pcs->Extropolation_MatValue();
 	}
-	// Calculation of the initial stress and released load for excavation
-	// simulation
-	// 07.09.2007  WW
-	// Excavation for defromation
-	dm_pcs = (CRFProcessDeformation*)total_processes[12];
-	if (dm_pcs) dm_pcs->CreateInitialState4Excavation();
 
 #ifdef OGS_DELETE_EDGES_AFTER_INIT
 	if (!fluid_mom_pcs)

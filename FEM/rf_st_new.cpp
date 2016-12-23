@@ -655,16 +655,6 @@ void CSourceTerm::ReadGeoType(std::ifstream* st_file,
                               const std::string& unique_name)
 {
 	FileIO::GeoIO::readGeoInfo(this, *st_file, geo_name, geo_obj, unique_name);
-
-	if (getProcessPrimaryVariable() == FiniteElement::EXCAVATION)  // WW
-	{
-		std::stringstream strstr;
-		strstr.str(GetLineFromFile1(st_file));
-		// size_t tmp_geo_type;
-		std::string sub_string;
-		strstr >> sub_string >> _sub_dom_idx;
-		strstr.clear();
-	}
 }
 
 /**************************************************************************

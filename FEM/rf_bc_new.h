@@ -125,17 +125,16 @@ public:
 	size_t getMeshNodeNumber() const { return _msh_node_number; }
 	const std::string& getMeshTypeName() const { return _msh_type_name; }
 
-	int getExcav() { return bcExcav; }  // WX:12.2010 get bc excav model
-	int getExcavMatGr() const
+	int getMaterialID() const
 	{
 		return MatGr;
-	}  // WX:12.2010 get excav material group
+	}
 	int getTimeContrCurve()
 	{
 		return time_contr_curve;
-	}  // WX:12.2010 get bc ativity controlled curve
+	}
 
-	bool isMatGrSet() const { return is_MatGr_set; };  // NW
+	bool isMatGrSet() const { return is_MatGr_set; }
 
 private:
 	std::vector<std::string> _PointsFCTNames;
@@ -205,8 +204,6 @@ private:
 	long _msh_node_number;
 	std::string _msh_type_name;  // OK4105
 
-	// Excavation WX:12.2010
-	int bcExcav;
 	int MatGr;
 	// aktive state is controlled by time curve WX:01.2011
 	int time_contr_curve;

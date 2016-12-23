@@ -51,8 +51,6 @@ private:
 	// Material parameters
 	double PoissonRatio;
 	int Youngs_mode;
-	int excavation;  // 12.2009. WW
-	bool excavated;  // 12.2009. To be ..... WW
 	Matrix* data_Youngs;
 	double ThermalExpansion;
 	//

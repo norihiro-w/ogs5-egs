@@ -75,7 +75,7 @@ public:
 
 	// Aux. Memory
     double* GetLastTimeStepSolution() const { return lastTimeStepSolution; }
-	double* GetInitialFluidPressure() const { return p0; };
+	double* GetInitialFluidPressure() const { return p0; }
 
 	void ScalingNodeForce(const double SFactor);
 	void InitGauss();
@@ -84,7 +84,6 @@ public:
     void incrementNodalDUFromSolution();
     void incrementNodalPressureFromSolution();
     void incrementNodalDisplacement();
-    void InitializeNewtonSteps(const bool ini_excav = false);
     double NormOfUpdatedNewton();
     void StoreLastTimeStepDisplacements();
     void StoreLastCouplingIterationSolution();
@@ -107,10 +106,6 @@ public:
 	void UpdateStress();
 	void UpdateInitialStress(bool ZeroInitialS);
 	void Extropolation_GaussValue();
-
-	// Excavation computation
-	void ReleaseLoadingByExcavation();
-	void CreateInitialState4Excavation();
 
 	// Dynamic
 	bool CalcBC_or_SecondaryVariable_Dynamics(bool BC = false);

@@ -175,9 +175,6 @@ CRFProcess::CRFProcess(void)
 	ite_steps = 0;
 	cpl_num_dof_errors = 0;
 	continuum_ic = true;
-	ExcavDirection = 0;
-	ExcavCurve = 0;
-	ExcavBeginCoordinate = .0;
 	number_of_nvals = 0;
 	pcs_number_of_primary_nvals = 0;
 	pcs_number_of_secondary_nvals = 0;
@@ -311,8 +308,6 @@ CRFProcess::CRFProcess(void)
 	this->FCT_K = NULL;
 	this->FCT_d = NULL;
 #endif
-	ExcavMaterialGroup = -1;  // 01.2010 WX
-	PCS_ExcavState = -1;      // WX
 
 	isRSM = false;  // WW
 	eqs_x = NULL;
@@ -1535,7 +1530,6 @@ bool PCSRead(std::string file_base_name)
 **************************************************************************/
 CRFProcess* CRFProcess::CopyPCStoDM_PCS()
 {
-	// Numerics
 	if (num_type_name.compare("STRONG_DISCONTINUITY") == 0)
 		enhanced_strain_dm = 1;
 
@@ -1549,27 +1543,18 @@ CRFProcess* CRFProcess::CopyPCStoDM_PCS()
 	dm_pcs->reload = reload;
 	dm_pcs->nwrite_restart = nwrite_restart;
 	dm_pcs->isPCSDeformation = true;
-	dm_pcs->isPCSFlow = this->isPCSFlow;            // JT
-	dm_pcs->isPCSMultiFlow = this->isPCSMultiFlow;  // JT
-	// WW
+	dm_pcs->isPCSFlow = this->isPCSFlow;
+	dm_pcs->isPCSMultiFlow = this->isPCSMultiFlow;
 	dm_pcs->write_boundary_condition = write_boundary_condition;
 	dm_pcs->Deactivated_SubDomain = Deactivated_SubDomain;
 	pcs_deformation = 1;
-	// WX:01.2011 for coupled excavation
-	if (ExcavMaterialGroup >= 0)
-	{
-		dm_pcs->ExcavMaterialGroup = ExcavMaterialGroup;
-		dm_pcs->ExcavDirection = ExcavDirection;
-		dm_pcs->ExcavBeginCoordinate = ExcavBeginCoordinate;
-		dm_pcs->ExcavCurve = ExcavCurve;
-	}
 	dm_pcs->write_leqs = write_leqs;
 	dm_pcs->calcDiffFromStress0 = calcDiffFromStress0;
 	dm_pcs->resetStrain = resetStrain;
 	dm_pcs->scaleUnknowns = scaleUnknowns;
 	dm_pcs->tim_type = tim_type;
-	//
-	return dynamic_cast<CRFProcess*>(dm_pcs);
+
+	return dm_pcs;
 }
 
 CRFProcess* CRFProcess::CopyPCStoTH_PCS()
@@ -1584,28 +1569,19 @@ CRFProcess* CRFProcess::CopyPCStoTH_PCS()
 	dm_pcs->reload = reload;
 	dm_pcs->nwrite_restart = nwrite_restart;
 	dm_pcs->isPCSDeformation = false;
-	dm_pcs->isPCSFlow = this->isPCSFlow;            // JT
-	dm_pcs->isPCSMultiFlow = this->isPCSMultiFlow;  // JT
-	// WW
+	dm_pcs->isPCSFlow = this->isPCSFlow;
+	dm_pcs->isPCSMultiFlow = this->isPCSMultiFlow;
 	dm_pcs->write_boundary_condition = write_boundary_condition;
 	dm_pcs->Deactivated_SubDomain = Deactivated_SubDomain;
 	pcs_deformation = 1;
-	// WX:01.2011 for coupled excavation
-	if (ExcavMaterialGroup >= 0)
-	{
-		dm_pcs->ExcavMaterialGroup = ExcavMaterialGroup;
-		dm_pcs->ExcavDirection = ExcavDirection;
-		dm_pcs->ExcavBeginCoordinate = ExcavBeginCoordinate;
-		dm_pcs->ExcavCurve = ExcavCurve;
-	}
 	dm_pcs->write_leqs = write_leqs;
 	dm_pcs->scaleUnknowns = scaleUnknowns;
 	dm_pcs->vec_scale_dofs = vec_scale_dofs;
 	dm_pcs->scaleEQS = scaleEQS;
 	dm_pcs->vec_scale_eqs = vec_scale_eqs;
 	dm_pcs->tim_type = tim_type;
-	//
-	return dynamic_cast<CRFProcess*>(dm_pcs);
+
+	return dm_pcs;
 }
 
 /**************************************************************************
@@ -1984,13 +1960,6 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 			string tempstring;
 			*pcs_file >> tempstring;
 			if (tempstring == "CO2_H2O_NaCl") this->Phase_Transition_Model = 1;
-			continue;
-		}
-		// WX:07.2011
-		if (line_string.find("$TIME_CONTROLLED_EXCAVATION") == 0)
-		{
-			*pcs_file >> ExcavMaterialGroup >> ExcavDirection >>
-			    ExcavBeginCoordinate >> ExcavCurve;
 			continue;
 		}
 		if (line_string.find("$LEQS_OUTPUT") == 0)
@@ -3729,41 +3698,6 @@ void CRFProcess::CheckMarkedElement()
 	}
 }
 
-
-/**************************************************************************
-   FEMLib-Method:
-   Task:  check the excavation state of each aktive element
-   Programing:
-   01/2011 WX Implementation
-**************************************************************************/
-void CRFProcess::CheckExcavedElement()
-{
-#ifndef OGS_ONLY_TH
-	int valid;
-	long l;
-	// bool done;
-	CElem* elem = NULL;
-	// CNode *node = NULL;
-	for (l = 0; l < (long)m_msh->ele_vector.size(); l++)
-	{
-		elem = m_msh->ele_vector[l];
-		if (elem->GetPatchIndex() == static_cast<size_t>(ExcavMaterialGroup) &&
-		    elem->GetMark())
-		{
-			double const* ele_center(elem->GetGravityCenter());
-			if ((GetCurveValue(ExcavCurve, 0, aktuelle_zeit, &valid) +
-			     ExcavBeginCoordinate) > (ele_center[ExcavDirection]) &&
-			    (ele_center[ExcavDirection] - ExcavBeginCoordinate) > -0.001)
-				elem->SetExcavState(1);
-		}
-	}
-#endif
-}
-
-//////////////////////////////////////////////////////////////////////////
-// PCS Execution
-//////////////////////////////////////////////////////////////////////////
-
 /*************************************************************************
    ROCKFLOW - Function: CRFProcess::
    Task:
@@ -4664,12 +4598,7 @@ void CRFProcess::GlobalAssembly()
 			if (print_progress && (i + 1) % dn == 0) ScreenMessage("* ");
 			// ScreenMessage("%d \%\n", ((i+1)*100/n_eles));
 			elem = m_msh->ele_vector[i];
-// Marked for use //WX: modified for coupled excavation
-#ifndef OGS_ONLY_TH
-			if (elem->GetMark() && elem->GetExcavState() == -1)
-#else
-				if (elem->GetMark())
-#endif
+			if (elem->GetMark())
 			{
 				elem->SetOrder(false);
 				fem->ConfigElement(elem, Check2D3D);
@@ -5041,7 +4970,6 @@ void CRFProcess::IncorporateBoundaryConditions(bool updateA,
 	CBoundaryCondition* m_bc;
 	CFunction* m_fct = NULL;
 	bool is_valid = false;
-	bool excavated = false;
 #if defined(USE_PETSC)
 	vector<int> bc_eqs_id;
 	vector<double> bc_eqs_value;
@@ -5079,53 +5007,6 @@ void CRFProcess::IncorporateBoundaryConditions(bool updateA,
 			                  &valid) < MKleinsteZahl)
 				continue;
 
-		// WX: 01.2011. for excavation bc, check if excavated and if on boundary
-		if (m_bc->getExcav() > 0)
-		{
-			CNode* node;
-			CElem* elem;
-			// unsigned int counter;	//void warning
-			// WW onExBoundary = true;                     //WX:01.2011
-			excavated = false;
-			node = m_msh->nod_vector[m_bc_node->geo_node_number];
-			double const* node_coordinate(
-			    node->getData());  // Coordinates(node_coordinate);
-			                       // tmp_counter3++;
-			                       // counter = 0;
-			                       /*if((node_coordinate[ExcavDirection]-(GetCurveValue(ExcavCurve,0,aktuelle_zeit,&valid)-ExcavBeginCoordinate)<0.001
-			                             &&(node_coordinate[ExcavDirection]-ExcavBeginCoordinate)>-0.001))*/
-			// used with deactive subdomain
-			if ((node_coordinate[ExcavDirection] -
-			     (GetCurveValue(ExcavCurve, 0, aktuelle_zeit, &valid) -
-			      ExcavBeginCoordinate)) < 0.001)
-			{
-				excavated = true;
-				for (unsigned int j = 0;
-				     j < node->getConnectedElementIDs().size();
-				     j++)
-				{
-					elem = m_msh->ele_vector[node->getConnectedElementIDs()[j]];
-					double const* tmp_ele_coor(elem->GetGravityCenter());
-					// if(elem->GetPatchIndex()!=ExcavMaterialGroup){
-					// if(elem->GetExcavState()==-1)
-					if (elem->GetPatchIndex() !=
-					    static_cast<size_t>(ExcavMaterialGroup))
-						continue;
-					else if (tmp_ele_coor[ExcavDirection] -
-					             (GetCurveValue(ExcavCurve, 0, aktuelle_zeit,
-					                            &valid) -
-					              ExcavBeginCoordinate) <
-					         0.001)
-						// WW onExBoundary = false;
-						// tmp_counter1++;
-						break;
-				}
-			}
-		}
-
-		if ((m_bc->getExcav() > 0) &&
-		    !excavated)  // WX:01.2011. excav bc but is not excavated jet
-			continue;
 //
 #if defined(USE_PETSC)
 		bc_msh_node = m_bc_node->geo_node_number;

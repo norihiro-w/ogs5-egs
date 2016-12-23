@@ -117,7 +117,6 @@ enum PrimaryVariable
 	DISPLACEMENT_Y,  //!< DISPLACEMENT_Y
 	/// Deformation
 	DISPLACEMENT_Z,  //!< DISPLACEMENT_Z
-	EXCAVATION,      // ST
 	HEAD,            //!< HEAD
 	/// Flow (phase)
 	PRESSURE,        //!< PRESSURE

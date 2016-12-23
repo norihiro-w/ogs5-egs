@@ -571,7 +571,6 @@ public:
 	// WW   double GetELEValue(long index,double*gp,double theta,string
 	// nod_fct_name);
 	void CheckMarkedElement();   // WW
-	void CheckExcavedElement();  // WX
 	// Configuration 3 - ELE matrices
 	void CreateELEMatricesPointer(void);
 	// Equation system
@@ -742,11 +741,6 @@ public:
 	CRFProcess* CopyPCStoDM_PCS();
 	CRFProcess* CopyPCStoTH_PCS();
 	bool Check();
-	int ExcavMaterialGroup;       // WX
-	int ExcavDirection;           // WX
-	int ExcavCurve;               // WX
-	double ExcavBeginCoordinate;  // WX
-	int PCS_ExcavState;           // WX
     bool use_total_stress_coupling = false;
     bool calcDiffFromStress0;
 	bool resetStrain;

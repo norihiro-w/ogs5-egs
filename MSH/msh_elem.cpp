@@ -46,7 +46,6 @@ CElem::CElem(size_t Index)
 	area = 1.0;  // WW
 	transform_tensor = NULL;
 #ifndef OGS_ONLY_TH
-	excavated = -1;  // WX
 	patch_index = 0;
 	angle = NULL;
 	neumann = 0;
@@ -88,7 +87,6 @@ CElem::CElem() : CCore(0), normal_vector(NULL)
 	courant = 0;
 	representative_length = .0;
 	angle = NULL;
-	excavated = -1;  // WX
 #endif
 #if defined(USE_PETSC)  // || defined(using other parallel scheme). WW
 	g_index = NULL;
@@ -127,7 +125,6 @@ CElem::CElem(size_t Index, CElem* onwer, int Face)
 	courant = 0;
 	representative_length = .0;
 	angle = NULL;
-	excavated = -1;
 #endif
 	//
 	switch (owner->geo_type)
@@ -248,7 +245,6 @@ CElem::CElem(size_t Index, CElem* m_ele_parent)
 
 #ifndef OGS_ONLY_TH
 	angle = NULL;
-	excavated = -1;
 #endif
 }
 
@@ -322,47 +318,7 @@ CElem::CElem(CElem const& elem)
 #if defined(USE_PETSC)  // || defined(using other parallel scheme). WW
 	g_index = elem.g_index;
 #endif
-#ifndef OGS_ONLY_TH
-	excavated = -1;  // 12.08.2011. WW
-#endif
 }
-
-#if 0
-CElem::CElem (MshElemType::type t, size_t node0, size_t node1, size_t node2, int mat) :
-	CCore(0), normal_vector(NULL), geo_type(t), owner(NULL), ele_dim(2),
-	nnodes(3), nnodesHQ(6), nodes(nnodes), nodes_index(nnodes),
-	nedges(3), edges(nedges), edges_orientation(nedges)
-#ifndef OGS_ONLY_TH
-	,nfaces(3), patch_index(mat), neighbors(nfaces), angle(NULL)
-#endif
-{
-	nodes_index[0] = node0;
-	nodes_index[1] = node1;
-	nodes_index[2] = node2;
-
-	// Initialize topological properties
-	for(size_t i = 0; i < nfaces; i++)
-		neighbors[i] = NULL;
-	for(size_t i = 0; i < nedges; i++)
-	{
-		edges[i] = NULL;
-		edges_orientation[i] = 1;
-	}
-
-    transform_tensor = NULL;
-#if defined(USE_PETSC)  // || defined(using other parallel scheme). WW
-        g_index = NULL;
-#endif
-    face_index = 0;
-    neumann = .0;
-    courant = .0;
-    representative_length = .0;
-    no_faces_on_surface = 0;
-#ifndef OGS_ONLY_TH
-    excavated = -1;   //12.08.2011. WW
-#endif
-}
-#endif
 
 CElem::CElem(MshElemType::type t, size_t node0, size_t node1, size_t node2,
              size_t node3, int mat)
@@ -413,7 +369,6 @@ CElem::CElem(MshElemType::type t, size_t node0, size_t node1, size_t node2,
 	neumann = .0;
 	courant = .0;
 	representative_length = .0;
-	excavated = -1;
 #endif
 }
 
