@@ -10,6 +10,8 @@
 #ifndef fem_INC
 #define fem_INC
 
+#include <valarray>
+
 #include "prototyp.h"
 #include "MSHEnums.h"
 #include "matrix_class.h"
@@ -96,6 +98,10 @@ public:
 	int isConcentrationCoupling() const { return C_Flag; }
 
 	// Interpolate Gauss values
+	double interpolate(std::valarray<double> &nodalVal, const int order = 1) const
+	{
+		return interpolate(&nodalVal[0], order);
+	}
 	double interpolate(double* nodalVal, const int order = 1) const;
 	double interpolate(const int idx, CRFProcess* m_pcs, const int order = 1);
 	// double elemnt_average (const int idx, const int order =1);
