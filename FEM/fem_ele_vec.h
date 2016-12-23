@@ -57,7 +57,7 @@ private:
 	std::valarray<double> const& GetStrain() const { return dstrain; }
 	double CalDensity();
 	// Compute principle stresses
-	double ComputePrincipleStresses(const double* Stresses);
+	double ComputePrincipleStresses(const double* Stresses, double* pr_stress);
 
 	// Form B matric
 	void setB_Matrix(const int LocalIndex);
@@ -153,9 +153,6 @@ private:
 
 	// Element value
 	ElementValue_DM* eleV_DM = nullptr;
-
-	// principle stresses
-	double* pr_stress = nullptr;
 
 	// Temporarily used variables
 	double* Sxx = nullptr, *Syy = nullptr, *Szz = nullptr, *Sxy = nullptr, *Sxz = nullptr, *Syz = nullptr, *pstr = nullptr;
