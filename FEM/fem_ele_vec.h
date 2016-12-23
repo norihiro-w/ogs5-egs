@@ -126,8 +126,6 @@ private:
 	Matrix* AuxMatrix2 = nullptr;
 	Matrix* Stiffness = nullptr;
 	Matrix* PressureC = nullptr;
-	Matrix* PressureC_S = nullptr;
-	Matrix* PressureC_S_dp = nullptr;
 	Vector* RHS = nullptr;
 	double* b_rhs = nullptr;
 
@@ -149,7 +147,6 @@ private:
 	// Temperatures of nodes
 	double* dT = nullptr, Tem = 0;
 	double* T1 = nullptr;
-	double S_Water = 1.0;
 
 	// Element value
 	ElementValue_DM* eleV_DM = nullptr;
@@ -158,12 +155,8 @@ private:
 	double* Sxx = nullptr, *Syy = nullptr, *Szz = nullptr, *Sxy = nullptr, *Sxz = nullptr, *Syz = nullptr, *pstr = nullptr;
 
 	// Auxillarary vector
-	std::valarray<double> AuxNodal0;
 	std::valarray<double> AuxNodal;
-	std::valarray<double> AuxNodal_S0;
-	std::valarray<double> AuxNodal_S;
 	std::valarray<double> AuxNodal1;
-	std::valarray<double> AuxNodal2;
 };
 }  // end namespace
 
