@@ -1507,10 +1507,7 @@ void CFiniteElementStd::CalCoefLaplace(bool Gravity, int ip)
 	double humi = 1.0;
 	double rhow = 0.0;
 	double* tensor = NULL;
-	double Hav, manning, chezy, expp, chezy4, Ss, arg;
-	static double Hn[9], z[9];
-	double GradH[3], Gradz[3], w[3], v1[3], v2[3];
-	int nidx1;
+	double w[3];
 	int Index = MeshElement->GetIndex();
 	double k_rel;
 	ComputeShapefct(1);  //  12.3.2007 WW
@@ -5669,9 +5666,7 @@ void CFiniteElementStd::AssembleParabolicEquation()
 	if (pcs->dof > 1) cshift = NodeShift[pcs->continuum];
 	if (pcs->type / 10 == 4) dm_shift = problem_dimension_dm;
 	//----------------------------------------------------------------------
-	double* p_n = NULL;
 	double fac1, fac2;
-	double beta1 = 0.0;
 	//----------------------------------------------------------------------
 	// Initialize.
 	// if (pcs->Memory_Type==2) skip the these initialization
