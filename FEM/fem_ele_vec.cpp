@@ -345,66 +345,46 @@ void CFiniteElementVec::SetMemory()
  **************************************************************************/
 double CFiniteElementVec::CalDensity()
 {
-	double rho;
-	// OK_MFP
-	//--------------------------------------------------------------------
-	// MFP fluid properties
-	double density_fluid = 0.0;
-	double porosity = 0.0;
-	// double p_g = 0.0;
-	double Sw = 0.0;
-	int no_phases = (int)mfp_vector.size();
-	int i = 0, phase = 0;
+	double const solid_density = m_msp->Density();
+	// If negative value is given in the .msp file, gravity by solid is
+	// skipped
+	if (solid_density <= 0.0)
+		return 0.0;
 
-	rho = 0.0;
-	if (F_Flag)
+	if (!F_Flag)
+		return solid_density;
+
+	double porosity = m_mmp->Porosity(this);
+	double rho = (1. - porosity) * solid_density;
+
+	// JT, should be 1.0, unless multiphase (calculate below)
+	// (if unsaturated, fluid density would be negligible...
+	// so still works)
+	double Sw = 1.0;
+	if (Flow_Type > 0 && Flow_Type != 10)
 	{
-		if ((no_phases > 0) && (no_phases > phase))
-			density_fluid = m_mfp->Density();
-
-		// OK_MMP
-		//--------------------------------------------------------------------
-		// MMP medium properties
-		porosity = m_mmp->Porosity(this);
-		// Assume solid density is constant. (*smat->data_Density)(0)
-		if (m_msp->Density() > 0.0)
-		{
-			Sw = 1.0;  // JT, should be 1.0, unless multiphase (calculate below)
-			           // (if unsaturated, fluid density would be negligible...
-			           // so still works)
-			if (Flow_Type > 0 && Flow_Type != 10)
-			{
-				Sw = 0.;  // WW
-				for (i = 0; i < nnodes; i++)
-					Sw += shapefct[i] * AuxNodal_S[i];
-			}
-			rho = (1. - porosity) * fabs(m_msp->Density()) +
-			      porosity * Sw * density_fluid;
-
-			if (Flow_Type == 2 || Flow_Type == 3)
-			{
-				/*
-				   p_g=0.0;
-				   for(i = 0; i< nnodes; i++)
-				   p_g += shapefct[i]*AuxNodal2[i];
-				   rho += porosity *
-				   (1.0-Sw)*COMP_MOL_MASS_AIR*p_g/(GAS_CONSTANT*(Tem+273.15));
-				 */
-				CFluidProperties* GasProp;
-				GasProp = MFPGet("GAS");
-				rho += porosity * (1.0 - Sw) * GasProp->Density();
-			}
-		}
-		else
-			rho = 0.0;
+		Sw = 0.;
+		for (int i = 0; i < nnodes; i++)
+			Sw += shapefct[i] * AuxNodal_S[i];
 	}
-	else
-	    // If negative value is given in the .msp file, gravity by solid is
-	    // skipped
-	    if (m_msp->Density() > 0.0)
-		rho = m_msp->Density();
+
+	int const no_phases = (int)mfp_vector.size();
+	int phase = 0; //TDODO
+	if (no_phases > 0 && no_phases > phase)
+	{
+		rho += porosity * Sw * m_mfp->Density();
+	}
+
+	if (Flow_Type == 2 || Flow_Type == 3)
+	{
+		CFluidProperties* GasProp;
+		GasProp = MFPGet("GAS");
+		rho += porosity * (1.0 - Sw) * GasProp->Density();
+	}
+
 	return rho;
 }
+
 /***************************************************************************
    GeoSys - Funktion:
            CFiniteElementVec:: ComputeMatrix_RHS(const double fkt)
