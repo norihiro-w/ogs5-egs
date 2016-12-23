@@ -14,7 +14,7 @@
 //#include <fstream>
 //#include <iostream>
 //#include <stdio.h>
-//#include <string>
+#include <string>
 
 class CFluidProperties;  // 14.11.2012. WW
 double pressure(double rho, double T, int fluid);

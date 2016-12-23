@@ -44,22 +44,6 @@ typedef struct
 	double NaCl;       // mole of NaCl
 } Phase_Properties;
 
-typedef struct
-{
-	double B;
-	double C;
-	double D;
-	double E;
-	double F;
-	double b;
-	double G;
-	double Vc;
-	double V2, V3, V5, V6;
-	double Tc, Pc;
-	double M;
-	int id;
-} VirialCoefficients;
-
 
 #if defined(USE_PETSC)
 namespace petsc_group
