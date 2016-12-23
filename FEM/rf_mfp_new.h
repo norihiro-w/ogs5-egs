@@ -25,6 +25,8 @@
 class CompProperties;
 class CRFProcess;
 
+extern double gravity_constant;
+
 /*!
    \class hash_table
 
