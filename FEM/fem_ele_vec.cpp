@@ -373,7 +373,6 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 			}
 		}
 
-		if (PreLoad == 11) continue;
 		(*tmp_AuxMatrix2) = 0.0;
 		tmp_B_matrix_T->multi(*p_D, *tmp_AuxMatrix2);
 		for (j = 0; j < nnodesHQ; j++)
@@ -403,7 +402,7 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 
 	if (PressureC)
 	{
-		fac = LoadFactor * fkt;
+		fac = fkt;
 
 		if (axisymmetry)
 		{
@@ -440,12 +439,12 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 	//---------------------------------------------------------
 	// Assemble gravity force vector
 	//---------------------------------------------------------
-	if (rho > 0.0 && GravityForce)
+	if (rho > 0.0)
 	{
 		// 2D, in y-direction
 		// 3D, in z-direction
 		i = (ele_dim - 1) * nnodesHQ;
-		const double coeff = LoadFactor * rho * m_msp->grav_const * fkt;
+		const double coeff = rho * m_msp->grav_const * fkt;
 		for (k = 0; k < nnodesHQ; k++)
 			(*RHS)(i + k) += coeff * shapefctHQ[k];
 		//        (*RHS)(i+k) += LoadFactor * rho * smat->grav_const *
@@ -530,7 +529,6 @@ void CFiniteElementVec::LocalAssembly(const int update)
 bool CFiniteElementVec::GlobalAssembly()
 {
 	GlobalAssembly_RHS();
-	if (PreLoad == 11) return true;
 
 	GlobalAssembly_Stiffness();
 
@@ -741,13 +739,12 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 					{
 						val_n -= p0[nodes[i]];
 					}
-					AuxNodal[i] = LoadFactor * val_n;
+					AuxNodal[i] = val_n;
 				}
 				break;
 			case 10:  // Ground_flow. Will be merged to case 0
 				for (int i = 0; i < nnodes; i++)
-					AuxNodal[i] =
-					    LoadFactor * h_pcs->GetNodeValue(nodes[i], idx_P1);
+					AuxNodal[i] = h_pcs->GetNodeValue(nodes[i], idx_P1);
 				break;
 		}
 

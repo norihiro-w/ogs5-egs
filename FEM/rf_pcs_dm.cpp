@@ -53,8 +53,6 @@ double Tolerance_global_Newton = 0.0;
 double Tolerance_Local_Newton = 0.0;
 int number_of_load_steps = 1;
 int problem_dimension_dm = 0;
-int PreLoad = 0;
-bool GravityForce = true;
 
 using namespace std;
 
