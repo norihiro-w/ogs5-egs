@@ -20,19 +20,6 @@
 
 #include "rf_pcs.h"
 
-// Strong discontinuity
-extern bool Localizing;  // for tracing localization
-typedef struct
-{
-	int ElementIndex;
-	int NumInterFace;  // Number of intersection faces
-	// Local indeces of intersection faces (3D)
-	int* InterFace;
-} DisElement;
-extern std::vector<DisElement*>
-    LastElement;  // Last discontinuity element correponding to SeedElement
-extern std::vector<long> ElementOnPath;  // Element on the discontinuity path
-
 namespace FiniteElement
 {
 class CFiniteElementVec;
@@ -143,9 +130,6 @@ private:
 	//
 	double norm_du0_pre_cpl_itr;
 
-	// For strong discontinuity approach
-	void Trace_Discontinuity();
-	long MarkBifurcatedNeighbor(const int PathIndex);
 	double getNormOfDisplacements();
 };
 }  // end namespace

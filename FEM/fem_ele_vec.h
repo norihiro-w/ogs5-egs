@@ -32,16 +32,11 @@ namespace MeshLib
 {
 class CElem;
 }
+using namespace SolidProp;
+using namespace Math_Group;
+
 namespace FiniteElement
 {
-using SolidProp::CSolidProperties;
-using Math_Group::Matrix;
-using Math_Group::SymMatrix;
-using Math_Group::Vector;
-using ::CRFProcess;
-using ::CMediumProperties;
-using process::CRFProcessDeformation;
-using MeshLib::CElem;
 
 // Derived element for deformation caculation
 class CFiniteElementVec : public CElement
@@ -51,28 +46,14 @@ public:
 	                  const int C_Sys_Flad, const int order = 2);
 	~CFiniteElementVec();
 
-	// Set memory for local matrices
+private:
 	void SetMemory();
-
-	// Compute the local finite element matrices and vectors
 	void LocalAssembly(const int update);
-	// Assemble local matrics and vectors to the global system
 	bool GlobalAssembly();
-
-	// Compute strains
 	void ComputeStrain();
-
-	// Set material data
 	void SetMaterial();
-
-	// Get strain
 	double* GetStrain() const { return dstrain; }
 
-	//----------- Enhanced element -----------------------
-	// Geometry related
-	bool LocalAssembly_CheckLocalization(CElem* MElement);
-	int IntersectionPoint(const int O_edge, const double* NodeA, double* NodeB);
-	//----------- End of enhanced element ----------------
 private:
 	process::CRFProcessDeformation* pcs;
 	::CRFProcess* h_pcs;
@@ -95,14 +76,14 @@ private:
 	// B matrix
 	Matrix* B_matrix;
 	Matrix* B_matrix_T;
-	std::vector<Matrix*> vec_B_matrix;    // NW
-	std::vector<Matrix*> vec_B_matrix_T;  // NW
+	std::vector<Matrix*> vec_B_matrix;
+	std::vector<Matrix*> vec_B_matrix_T;
 
 	//------ Material -------
 	CSolidProperties* smat;
-	CFluidProperties* m_mfp;  // Fluid coupling
-	// Medium property
-	CMediumProperties* m_mmp;  // Fluid coupling
+	CFluidProperties* m_mfp;
+	CMediumProperties* m_mmp;
+
 	double CalDensity();
 
 	// Elastic constitutive matrix
@@ -144,24 +125,10 @@ private:
 	// Element value
 	ElementValue_DM* eleV_DM;
 
-	//------ Enhanced element ------
-	// Jump flag of element nodes
-	bool* NodesInJumpedA;
-	// Regular enhanced strain matrix
-	Matrix* Ge;
-	// Singular enhanced strain matrix
-	Matrix* Pe;
-	// Additional node. Normally, the gravity center
-	double* X0;
-	// Normal to the discontinuity surface
-	double* n_jump;
 	// principle stresses
 	double* pr_stress;
 	// Compute principle stresses
 	double ComputePrincipleStresses(const double* Stresses);
-	// Compute principle stresses
-	double ComputeJumpDirectionAngle(const double* Mat);
-	//------ End of enhanced element ------
 
 	// Form B matric
 	void setB_Matrix(const int LocalIndex);
@@ -172,8 +139,6 @@ private:
 
 	// Temporarily used variables
 	double* Sxx, *Syy, *Szz, *Sxy, *Sxz, *Syz, *pstr;
-	// 2. For enhanced strain approach
-	Matrix* BDG, *PDB, *DtD, *PeDe;  // For enhanced strain element
 
 	/// Extropolation
 	bool RecordGuassStrain(const int gp, const int gp_r, const int gp_s,
@@ -186,7 +151,6 @@ private:
 
 	// Compute the local finite element matrices
 	void LocalAssembly_continuum(const int update);
-	void LocalAssembly_EnhancedStrain(const int update);
 
 	// Assembly local stiffness matrix
 	void GlobalAssembly_Stiffness();
@@ -196,13 +160,6 @@ private:
 #ifdef USE_PETSC
 	void add2GlobalMatrixII();
 #endif
-
-	//----------- Enhanced element ----------------
-	void CheckNodesInJumpedDomain();
-	// Compute the regular enhanced strain matrix
-	void ComputeRESM(const double* tangJump = NULL);
-	// Compute the singular enhanced strain matrix
-	void ComputeSESM(const double* tangJump = NULL);
 
 	friend class process::CRFProcessDeformation;
 

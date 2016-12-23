@@ -41,34 +41,22 @@ public:
 	void Read_BIN(std::fstream& is);
 	void ReadElementStressASCI(std::fstream& is);
 
-	// Friend class
-	friend class SolidProp::CSolidProperties;
-	friend class process::CRFProcessDeformation;
-	friend class ::CMediumProperties;
-	friend class CFiniteElementVec;
-	Matrix* Stress0;  // Initial stress
-	Matrix* Stress;
-	Matrix* Stress_last_ts;
-	Matrix* Stress_current_ts;
+	Matrix* Stress0 = nullptr;  // Initial stress
+	Matrix* Stress = nullptr;
+	Matrix* Stress_last_ts = nullptr;
+	Matrix* Stress_current_ts = nullptr;
 	Matrix* dTotalStress = nullptr;
 
-	Matrix* Strain;
+	Matrix* Strain = nullptr;
 	Matrix* Strain_last_ts = nullptr;
-	Matrix* pStrain;
-	Matrix* y_surface;
+	Matrix* pStrain = nullptr;
+	Matrix* y_surface = nullptr;
 	// Preconsolidation pressure
-	Matrix* prep0;
-	Matrix* e_i;  // Void ratio
+	Matrix* prep0 = nullptr;
+	Matrix* e_i = nullptr;  // Void ratio
 	// Variables of single yield surface model
-	Matrix* xi;    // Rotational hardening variables
-	Matrix* MatP;  // Material parameters
-
-	// Discontinuity
-	double disp_j;
-	double tract_j;
-	bool Localized;
-	Matrix* NodesOnPath;
-	double* orientation;
+	Matrix* xi = nullptr;    // Rotational hardening variables
+	Matrix* MatP = nullptr;  // Material parameters
 };
 
 }  // end namespace
