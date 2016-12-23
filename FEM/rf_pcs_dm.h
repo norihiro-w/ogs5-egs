@@ -61,8 +61,8 @@ public:
 	double Execute(int loop_process_number);
 
 	// Aux. Memory
-    double* GetLastTimeStepSolution() const { return lastTimeStepSolution; }
-	double* GetInitialFluidPressure() const { return p0; }
+	double const* GetLastTimeStepSolution() const { return lastTimeStepSolution.data(); }
+	double const* GetInitialFluidPressure() const { return p0.data(); }
 
 	void ScalingNodeForce(const double SFactor);
 	void InitGauss();
@@ -113,22 +113,22 @@ private:
     void setPressureFromSolution();
 
 private:
-	CFiniteElementVec* fem_dm;
+	CFiniteElementVec* fem_dm = nullptr;
 	void InitialMBuffer();
-    double* lastTimeStepSolution;
-    double* lastCouplingSolution = nullptr;
-    double* p0;
-	bool _isInitialStressNonZero;
+	std::vector<double> lastTimeStepSolution;
+	std::vector<double> lastCouplingSolution;
+	std::vector<double> p0;
+	bool _isInitialStressNonZero = false;
 
-	int counter;
-	double InitialNormR0;
-	double InitialNormDU_coupling;
-	double InitialNormDU0;
+	int counter = 0;
+	double InitialNormR0 = 0;
+	double InitialNormDU_coupling = 0;
+	double InitialNormDU0 = 0;
 
-	InitDataReadWriteType idata_type;
+	InitDataReadWriteType idata_type = none;
 
 	//
-	double norm_du0_pre_cpl_itr;
+	double norm_du0_pre_cpl_itr = 0;
 
 	double getNormOfDisplacements();
 };

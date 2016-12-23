@@ -63,32 +63,15 @@ using namespace Math_Group;
 namespace process
 {
 CRFProcessDeformation::CRFProcessDeformation()
-    : CRFProcess(),
-      fem_dm(NULL),
-      lastTimeStepSolution(NULL),
-      p0(NULL),
-      counter(0),
-      InitialNormR0(0.0)
-
 {
-	norm_du0_pre_cpl_itr = 0.0;
-	idata_type = none;
-	_isInitialStressNonZero = false;  // NW
-	InitialNormDU0 = 0.0;
 }
 
 CRFProcessDeformation::~CRFProcessDeformation()
 {
-    if (lastTimeStepSolution) delete[] lastTimeStepSolution;
-    delete[] lastCouplingSolution;
-    if (p0) delete[] p0;
-	if (fem_dm) delete fem_dm;
+	delete fem_dm;
 
-	fem_dm = NULL;
-    lastTimeStepSolution = NULL;
 	// Release memory for element variables
 	// alle stationaeren Matrizen etc. berechnen
-	long i;
 	// Write Gauss stress
 	if (idata_type == write_all_binary || idata_type == read_write)
 	{
@@ -170,11 +153,10 @@ void CRFProcessDeformation::Initialization()
 		CRFProcess* h_pcs = PCSGet("LIQUID_FLOW");
 		if (h_pcs)
 		{
-			assert(p0 == NULL);
 			std::cout << "->Found LIQUID_FLOW. Store initial liquid pressure."
 			          << "\n";
 			int n_nodes = m_msh->GetNodesNumber(false);
-			p0 = new double[n_nodes];
+			p0.resize(n_nodes);
 			const int id_p0 = h_pcs->GetNodeValueIndex("PRESSURE1");
 			for (i = 0; i < n_nodes; i++)
 			{
@@ -211,9 +193,9 @@ void CRFProcessDeformation::InitialMBuffer()
 		             2 * m_msh->GetNodesNumber(false);
 
 	// Allocate memory for  temporal array
-	lastTimeStepSolution = new double[bufferSize];
+	lastTimeStepSolution.resize(bufferSize);
 	if (pcs_vector.size() > 1)
-		lastCouplingSolution = new double[bufferSize];
+		lastCouplingSolution.resize(bufferSize);
 
 	// Allocate memory for element variables
 	const bool hasCouplingLoop = (pcs_vector.size() > 1);

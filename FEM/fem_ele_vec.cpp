@@ -721,7 +721,7 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 	if (Residual)
 	{
 		// should calculate (p - p0) because OGS calculates (stress - stress0)
-		double* p0 = pcs->GetInitialFluidPressure();
+		double const* p0 = pcs->GetInitialFluidPressure();
 		switch (Flow_Type)
 		{
 			case 0:  // Liquid flow
