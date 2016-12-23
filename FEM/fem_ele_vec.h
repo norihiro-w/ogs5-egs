@@ -10,6 +10,8 @@
 #ifndef fem_dm_INC
 #define fem_dm_INC
 
+#include <valarray>
+
 #include "matrix_class.h"
 
 #include "ElementValueDM.h"
@@ -52,7 +54,7 @@ private:
 	bool GlobalAssembly();
 	void ComputeStrain();
 	void SetMaterial();
-	double* GetStrain() const { return dstrain; }
+	std::valarray<double> const& GetStrain() const { return dstrain; }
 	double CalDensity();
 	// Compute principle stresses
 	double ComputePrincipleStresses(const double* Stresses);
@@ -131,13 +133,13 @@ private:
 
 	//  Stresses:
 	//  s11, s22, s33, s12, s13, s23
-	double* dstress = nullptr;
+	std::valarray<double> dstress;
+	std::valarray<double> stress0;
+	std::valarray<double> stress_ne;
 	//  Straines:
 	//  s11, s22, s33, s12, s13, s23
-	double* dstrain = nullptr;
-	double* strain_ne = nullptr;
-	double* stress_ne = nullptr;
-	double* stress0 = nullptr;
+	std::valarray<double> dstrain;
+	std::valarray<double> strain_ne;
 	// Results, displacements
 	//  u_x1, u_x2, u_x3, ..., u_xn,
 	//  u_y1, u_y2, u_y3, ..., u_yn,
@@ -159,12 +161,12 @@ private:
 	double* Sxx = nullptr, *Syy = nullptr, *Szz = nullptr, *Sxy = nullptr, *Sxz = nullptr, *Syz = nullptr, *pstr = nullptr;
 
 	// Auxillarary vector
-	double* AuxNodal0 = nullptr;
-	double* AuxNodal = nullptr;
-	double* AuxNodal_S0 = nullptr;
-	double* AuxNodal_S = nullptr;
-	double* AuxNodal1 = nullptr;
-	double* AuxNodal2 = nullptr;
+	std::valarray<double> AuxNodal0;
+	std::valarray<double> AuxNodal;
+	std::valarray<double> AuxNodal_S0;
+	std::valarray<double> AuxNodal_S;
+	std::valarray<double> AuxNodal1;
+	std::valarray<double> AuxNodal2;
 };
 }  // end namespace
 

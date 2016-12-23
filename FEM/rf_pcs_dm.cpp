@@ -1141,7 +1141,6 @@ double CRFProcessDeformation::CaclMaxiumLoadRatio(void)
 	int j, gp, gp_r, gp_s;  //, gp_t;
 	int PModel = 1;
 	long i = 0;
-	double* dstrain;
 
 	double S0 = 0.0, p0 = 0.0;
 	double MaxS = 0.000001;
@@ -1219,7 +1218,7 @@ double CRFProcessDeformation::CaclMaxiumLoadRatio(void)
 				fem_dm->ComputeGradShapefct(2);
 				fem_dm->ComputeStrain();
 
-				dstrain = fem_dm->GetStrain();
+				auto &dstrain = fem_dm->GetStrain();
 
 				if (PModel == 3)  // Cam-Clay
 				{
@@ -1247,13 +1246,13 @@ double CRFProcessDeformation::CaclMaxiumLoadRatio(void)
 				// Compute try stress, stress incremental:
 				fem_dm->De->multi(dstrain, fem_dm->dstress);
 
-				p0 = DeviatoricStress(fem_dm->dstress) / 3.0;
+				p0 = DeviatoricStress(&fem_dm->dstress[0]) / 3.0;
 
 				switch (PModel)
 				{
 					case 1:  // Drucker-Prager model
-						EffS = sqrt(TensorMutiplication2(fem_dm->dstress,
-						                                 fem_dm->dstress,
+						EffS = sqrt(TensorMutiplication2(&fem_dm->dstress[0],
+														 &fem_dm->dstress[0],
 						                                 fem_dm->Dim())) +
 						       3.0 * SMat->Al * p0;
 
@@ -1268,10 +1267,10 @@ double CRFProcessDeformation::CaclMaxiumLoadRatio(void)
 					case 2:  // Single yield surface
 						// Compute try stress, stress incremental:
 						II = TensorMutiplication2(
-						    fem_dm->dstress, fem_dm->dstress, fem_dm->Dim());
-						III = TensorMutiplication3(fem_dm->dstress,
-						                           fem_dm->dstress,
-						                           fem_dm->dstress,
+							&fem_dm->dstress[0], &fem_dm->dstress[0], fem_dm->Dim());
+						III = TensorMutiplication3(&fem_dm->dstress[0],
+												   &fem_dm->dstress[0],
+												   &fem_dm->dstress[0],
 						                           fem_dm->Dim());
 						p0 *= 3.0;
 						EffS =
@@ -1295,8 +1294,8 @@ double CRFProcessDeformation::CaclMaxiumLoadRatio(void)
 						break;
 
 					case 3:  // Cam-Clay
-						II = 1.5 * TensorMutiplication2(fem_dm->dstress,
-						                                fem_dm->dstress,
+						II = 1.5 * TensorMutiplication2(&fem_dm->dstress[0],
+														&fem_dm->dstress[0],
 						                                fem_dm->Dim());
 						if (S0 > 0.0)
 						{

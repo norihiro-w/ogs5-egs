@@ -45,17 +45,16 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 	ns = 4;
 	if (dim == 3) ns = 6;
 
-	AuxNodal0 = new double[8];
-	AuxNodal = new double[8];
-	AuxNodal_S0 = new double[8];
-	AuxNodal_S = new double[8];
-	AuxNodal1 = new double[60];
+	AuxNodal0.resize(8);
+	AuxNodal.resize(8);
+	AuxNodal_S0.resize(8);
+	AuxNodal_S.resize(8);
+	AuxNodal1.resize(60);
 
 	Idx_Stress = new int[ns];
 	Idx_Strain = new int[ns];
-	strain_ne = new double[ns];
-	stress_ne = new double[ns];
-	stress0 = new double[ns];
+	strain_ne.resize(ns);
+	stress0.resize(ns);
 	for (int i = 0; i < 4; i++)
 		NodeShift[i] = pcs->Shift[i];
 
@@ -128,8 +127,8 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 			break;
 	}
 
-	dstress = new double[ns];
-	dstrain = new double[ns];
+	dstress.resize(ns);
+	dstrain.resize(ns);
 	B_matrix = new Matrix(ns, dim);
 	B_matrix_T = new Matrix(dim, ns);
 	De = new Matrix(ns, ns);
@@ -201,7 +200,7 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 		idx_P2 = h_pcs->GetNodeValueIndex("PRESSURE2") + 1;
 		idx_S0 = h_pcs->GetNodeValueIndex("SATURATION1");
 		idx_S = h_pcs->GetNodeValueIndex("SATURATION1") + 1;
-		AuxNodal2 = new double[8];
+		AuxNodal2.resize(8);
 	}
 	else if (Flow_Type == 3)
 	{
@@ -210,7 +209,7 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 		idx_S0 = h_pcs->GetNodeValueIndex("SATURATION1");
 		idx_S = idx_S0;
 		idx_Snw = h_pcs->GetNodeValueIndex("SATURATION2") + 1;
-		AuxNodal2 = new double[8];
+		AuxNodal2.resize(8);
 	}
 
 	if (T_Flag)
@@ -240,8 +239,6 @@ CFiniteElementVec::~CFiniteElementVec()
 {
 	delete B_matrix;
 	delete B_matrix_T;
-	delete[] dstress;
-	delete[] dstrain;
 	delete De;
 	delete ConsistDep;
 	delete AuxMatrix;
@@ -256,12 +253,8 @@ CFiniteElementVec::~CFiniteElementVec()
 	delete[] pstr;
 	delete[] Idx_Strain;
 	delete[] Idx_Stress;
-	delete[] strain_ne;
-	delete[] stress_ne;
-	delete[] stress0;
 	delete[] Sxz;
 	delete[] Syz;
-	delete[] AuxNodal2;
 
 	if (pcs->Memory_Type == 0)  // Do not store local matrices
 	{
@@ -1159,14 +1152,14 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 					dstress[i] += (*eleV_DM->Stress)(i, gp);
 				break;
 			case 1:  // Drucker-Prager model
-				if (m_msp->StressIntegrationDP(gp, eleV_DM, dstress, dPhi,
+				if (m_msp->StressIntegrationDP(gp, eleV_DM, &dstress[0], dPhi,
 				                              update))
 
 					// WW DevStress = smat->devS;
 					m_msp->ConsistentTangentialDP(ConsistDep, dPhi, ele_dim);
 				break;
 			case 10:  // Drucker-Prager model, direct integration. 02/06 WW
-				if (m_msp->DirectStressIntegrationDP(gp, eleV_DM, dstress,
+				if (m_msp->DirectStressIntegrationDP(gp, eleV_DM, &dstress[0],
 				                                    update))
 				{
 					*ConsistDep = *De;
@@ -1178,7 +1171,7 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 			{
 				double mm = 0.;  // WX:09.2010. for DP with Tension.
 				switch (m_msp->DirectStressIntegrationDPwithTension(
-				    gp, De, eleV_DM, dstress, update, mm))
+					gp, De, eleV_DM, &dstress[0], update, mm))
 				{
 					case 1:
 					{
@@ -1210,7 +1203,7 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 				// Compute stesses and plastic multi-plier
 				dPhi = 0.0;
 				if (m_msp->CalStress_and_TangentialMatrix_SYS(
-				        gp, eleV_DM, De, ConsistDep, dstress, update) > 0)
+						gp, eleV_DM, De, ConsistDep, &dstress[0], update) > 0)
 					dPhi = 1.0;
 				break;
 			case 3:  // Generalized Cam-Clay model
@@ -1224,7 +1217,7 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 					(*m_msp->data_Youngs)(7) = suc;
 					(*m_msp->data_Youngs)(8) = dsuc;
 					m_msp->CalStress_and_TangentialMatrix_CC_SubStep(
-					    gp, eleV_DM, dstress, ConsistDep, update);
+						gp, eleV_DM, &dstress[0], ConsistDep, update);
 					//
 					// double pn = -((*eleV_DM->Stress)(0,
 					// gp)+(*eleV_DM->Stress)(1, gp)+
@@ -1247,12 +1240,12 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 				 */
 				else
 					m_msp->CalStress_and_TangentialMatrix_CC(
-					    gp, eleV_DM, dstress, ConsistDep, update);
+						gp, eleV_DM, &dstress[0], ConsistDep, update);
 
 				dPhi = 1.0;
 				break;
 			case 4:  // Mohr-Coloumb	//WX:10.2010
-				if (m_msp->DirectStressIntegrationMOHR(gp, eleV_DM, dstress,
+				if (m_msp->DirectStressIntegrationMOHR(gp, eleV_DM, &dstress[0],
 				                                      update, De))
 				{
 					*ConsistDep = *De;
@@ -1303,13 +1296,13 @@ void CFiniteElementVec::LocalAssembly_continuum(const int update)
 			{
 				for (i = 0; i < ns; i++)
 					stress_ne[i] = (*eleV_DM->Stress)(i, gp);
-				m_msp->AddStain_by_Creep(ns, stress_ne, strain_ne, t1);
+				m_msp->AddStain_by_Creep(ns, &stress_ne[0], &strain_ne[0], t1);
 			}
 			if (m_msp->Creep_mode == 1000)  // HL_ODS. Strain increment by creep
 			{
 				for (i = 0; i < ns; i++)
 					stress_ne[i] = (*eleV_DM->Stress)(i, gp);
-				m_msp->AddStain_by_HL_ODS(eleV_DM, stress_ne, strain_ne, t1);
+				m_msp->AddStain_by_HL_ODS(eleV_DM, &stress_ne[0], &strain_ne[0], t1);
 			}
 			// Stress deduced by thermal or swelling strain incremental:
 			De->multi(strain_ne, dstress);
