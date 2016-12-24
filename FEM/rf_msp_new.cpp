@@ -1235,7 +1235,7 @@ void CSolidProperties::Calculate_Lame_Constant()
    11/2003   WW   Set plastic parameter
 
 *************************************************************************/
-void CSolidProperties::ElasticConsitutive(const int Dimension,
+void CSolidProperties::ElasticConstitutive(const int Dimension,
                                           Matrix* D_e) const
 {
 	(*D_e) = 0.0;
@@ -5353,7 +5353,7 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC(
 
 	Lambda = K - 2.0 * G / 3.0;
 
-	ElasticConsitutive(dim, Dep);
+	ElasticConstitutive(dim, Dep);
 
 	for (i = 0; i < ns; i++)
 		TryStress[i] = 0.0;
@@ -5696,7 +5696,7 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC(
 			TryStress[i] -= p;
 	}
 	else if (Update < 1)
-		ElasticConsitutive(dim, Dep);
+		ElasticConstitutive(dim, Dep);
 
 	for (i = 0; i < ns; i++)
 		dStrain[i] = TryStress[i];
@@ -5865,7 +5865,7 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC_SubStep(
 
 			G = 1.5 * K * (1 - 2.0 * PoissonRatio) / (1 + PoissonRatio);
 			Lambda = K - 2.0 * G / 3.0;
-			ElasticConsitutive(dim, Dep);
+			ElasticConstitutive(dim, Dep);
 			//
 			for (i = 0; i < ns; i++)
 				dsig[i] = 0.0;
@@ -6121,7 +6121,7 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC_SubStep(
 			TryStress[i] -= p;
 	}
 	else if (Update < 1)
-		ElasticConsitutive(dim, Dep);
+		ElasticConstitutive(dim, Dep);
 
 	for (i = 0; i < ns; i++)
 		dStrain[i] = TryStress[i];

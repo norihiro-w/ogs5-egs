@@ -559,7 +559,7 @@ void CFiniteElementVec::AssembleResidual()
 		// Compute elastic constitutive
 		//---------------------------------------------------------
 		m_msp->Calculate_Lame_Constant();
-		m_msp->ElasticConsitutive(ele_dim, De);
+		m_msp->ElasticConstitutive(ele_dim, De);
 
 		//---------------------------------------------------------
 		// Compute stress increment
@@ -761,7 +761,7 @@ void CFiniteElementVec::AssembleJacobian()
 		// Compute elastic constitutive
 		//---------------------------------------------------------
 		m_msp->Calculate_Lame_Constant();
-		m_msp->ElasticConsitutive(ele_dim, De);
+		m_msp->ElasticConstitutive(ele_dim, De);
 
 		//---------------------------------------------------------
 		// Assemble matrices and RHS
@@ -1029,7 +1029,7 @@ void CFiniteElementVec::UpdateStressStrain()
 		// Compute elastic constitutive
 		//---------------------------------------------------------
 		m_msp->Calculate_Lame_Constant();
-		m_msp->ElasticConsitutive(ele_dim, De);
+		m_msp->ElasticConstitutive(ele_dim, De);
 
 		//---------------------------------------------------------
 		// Material properties (Integration of the stress)
@@ -1372,7 +1372,7 @@ void CFiniteElementVec::LocalAssembly_Linear()
 		// Compute elastic constitutive
 		//---------------------------------------------------------
 		m_msp->Calculate_Lame_Constant();
-		m_msp->ElasticConsitutive(ele_dim, De);
+		m_msp->ElasticConstitutive(ele_dim, De);
 
 		//---------------------------------------------------------
 		// Material properties (Integration of the stress)
