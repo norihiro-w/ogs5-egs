@@ -48,7 +48,10 @@ public:
 	                  const int C_Sys_Flad, const int order = 2);
 	virtual ~CFiniteElementVec();
 
+	void UpdateStressStrain();
+
 private:
+	void Init();
 	void SetMemory();
 	void LocalAssembly(const int update);
 	bool GlobalAssembly();

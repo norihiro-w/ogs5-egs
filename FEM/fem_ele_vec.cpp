@@ -451,6 +451,43 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 		//        shapefctHQ[k] * fkt;
 	}
 }
+
+void CFiniteElementVec::Init()
+{
+	Index = MeshElement->GetIndex();
+	eleV_DM = ele_value_dm[MeshElement->GetIndex()];
+	ns = 4;
+	if (MeshElement->GetDimension() == 3)
+		ns = 6;
+
+	SetMemory();
+	SetMaterial();
+
+	// Get displacement increment
+	for (size_t i = 0; i < dim; i++)
+		for (int j = 0; j < nnodesHQ; j++)
+			Disp[j + i * nnodesHQ] = pcs->GetNodeValue(nodes[j], Idx_dm0[i]);
+
+	if (T_Flag)
+	{
+		for (long i = 0; i < nnodes; i++)
+		{
+			T1[i] = t_pcs->GetNodeValue(nodes[i], idx_T1);
+			dT[i] = t_pcs->GetNodeValue(nodes[i], idx_T1) -
+					  t_pcs->GetNodeValue(nodes[i], idx_T0);
+		}
+	}
+
+	for (int i = 0; i < nnodesHQ; i++)
+		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex();
+
+	// For strain and stress extropolation all element types
+	// Number of elements associated to nodes
+	for (int i = 0; i < nnodes; i++)
+		dbuff[i] =
+			(double)MeshElement->GetNode(i)->getConnectedElementIDs().size();
+}
+
 /***************************************************************************
    GeoSys - Funktion:
            CFiniteElementVec:: LocalAssembly
@@ -516,6 +553,107 @@ void CFiniteElementVec::LocalAssembly(const int update)
 				                    << "\n";
 				PressureC->Write(*pcs->matrix_file);
 			}
+		}
+	}
+}
+
+void CFiniteElementVec::UpdateStressStrain()
+{
+	Init();
+
+	auto &nodal_p1 = AuxNodal;
+	auto &nodal_p0 = AuxNodal1;
+	if (H_Process)
+	{
+		for (int i = 0; i < nnodes; i++)
+		{
+			nodal_p1[i] = h_pcs->GetNodeValue(nodes[i], idx_P1);
+			nodal_p0[i] = h_pcs->GetNodeValue(nodes[i], idx_P1 - 1);
+		}
+	}
+
+
+	// Loop over Gauss points
+	for (gp = 0; gp < nGaussPoints; gp++)
+	{
+		//---------------------------------------------------------
+		//  Get local coordinates and weights
+		//  Compute Jacobian matrix and its determinate
+		//---------------------------------------------------------
+		int gp_r = 0, gp_s = 0, gp_t = 0;
+		GetGaussData(gp, gp_r, gp_s, gp_t);
+
+		//---------------------------------------------------------
+		// Compute shape functions
+		//---------------------------------------------------------
+		ComputeGradShapefct(2);
+		ComputeShapefct(2);
+		if (F_Flag || T_Flag)
+			ComputeShapefct(1);
+
+		//---------------------------------------------------------
+		// Gauss point values
+		//---------------------------------------------------------
+
+		//---------------------------------------------------------
+		// Compute strain
+		//---------------------------------------------------------
+		ComputeStrain();
+		RecordGuassStrain(gp, gp_r, gp_s, gp_t);
+
+		//---------------------------------------------------------
+		// Compute elastic constitutive
+		//---------------------------------------------------------
+		m_msp->Calculate_Lame_Constant();
+		m_msp->ElasticConsitutive(ele_dim, De);
+
+		//---------------------------------------------------------
+		// Material properties (Integration of the stress)
+		//---------------------------------------------------------
+		dstress = 0.0;
+		De->multi(dstrain, dstress);
+
+		//---------------------------------------------------------
+		// Integrate the stress by return mapping:
+		//---------------------------------------------------------
+		for (long i = 0; i < ns; i++)
+			dstress[i] += (*eleV_DM->Stress)(i, gp);
+
+		// --------------------------------------------------------------------
+		// Stress increment by heat, swelling, or heat
+		// --------------------------------------------------------------------
+		double ThermalExpansion = 0.0;
+		if (T_Flag)
+			ThermalExpansion = m_msp->Thermal_Expansion();
+		if (T_Flag && ThermalExpansion != 0.0)
+		{
+			strain_ne = 0.0;
+			double gp_dT  = this->interpolate(dT, 1);
+			for (long i = 0; i < 3; i++)
+				strain_ne[i] -= ThermalExpansion * gp_dT;
+
+			// update stress
+			De->multi(strain_ne, dstress);
+			// don't include thermal strain to total strain
+			//dstrain += strain_ne;
+		}
+
+		// --------------------------------------------------------------------
+		// Update Gauss point stress and strain
+		// --------------------------------------------------------------------
+		for (long i = 0; i < ns; i++)
+		{
+			(*eleV_DM->Stress)(i, gp) = dstress[i];
+			(*eleV_DM->dTotalStress)(i, gp) = (*eleV_DM->Stress)(i, gp) - (*eleV_DM->Stress_last_ts)(i, gp);
+			(*eleV_DM->Strain)(i, gp) += dstrain[i];
+		}
+		if (H_Process)
+		{
+			const double gp_p1 = interpolate(nodal_p1);
+			const double gp_p0 = interpolate(nodal_p0);
+			const double d_bp = m_msp->biot_const * gp_p1 - m_msp->biot_const * gp_p0;
+			for (long i = 0; i < 3; i++)
+				(*eleV_DM->dTotalStress)(i, gp) -= d_bp;
 		}
 	}
 }

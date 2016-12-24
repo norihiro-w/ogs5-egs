@@ -90,7 +90,7 @@ public:
     void ResetStress();
 	void ResetTimeStep();
 	//
-	void UpdateStress();
+	void updateGaussStressStrain();
 	void UpdateInitialStress(bool ZeroInitialS);
 	void Extropolation_GaussValue();
 
