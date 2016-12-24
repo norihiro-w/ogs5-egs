@@ -120,7 +120,6 @@ private:
 	std::vector<double> p0;
 	bool _isInitialStressNonZero = false;
 
-	int counter = 0;
 	double InitialNormR0 = 0;
 	double InitialNormDU_coupling = 0;
 	double InitialNormDU0 = 0;
