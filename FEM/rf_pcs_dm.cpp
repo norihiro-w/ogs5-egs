@@ -374,10 +374,10 @@ void CRFProcessDeformation::solveNewton()
 		}
 #endif
 		// -----------------------------------------------------------------
-		// Evaluate residuals and Jacobian
+		// Evaluate residuals
 		// -----------------------------------------------------------------
-		ScreenMessage("Assembling a residual vector and Jacobian...\n");
-		GlobalAssembly();
+		ScreenMessage("Assembling a residual vector...\n");
+		AssembleResidual();
 
 #if defined(USE_PETSC)
 		double absNormR = eqs_new->GetVecNormRHS();
@@ -404,6 +404,20 @@ void CRFProcessDeformation::solveNewton()
 			ScreenMessage("***Attention: Newton-Raphson step is diverged.\n");
 			break;
 		}
+
+
+		// -----------------------------------------------------------------
+		// Assemble Jacobian and solve linear eqs
+		// -----------------------------------------------------------------
+		ScreenMessage("Assembling a Jacobian matrix...\n");
+		AssembleJacobian();
+#ifndef WIN32
+		if (iter_nlin == 0)
+		{
+			BaseLib::MemWatch mem_watch;
+			ScreenMessage("\tcurrent mem: %d MB\n", mem_watch.getVirtMemUsage() / (1024 * 1024));
+		}
+#endif
 
 		ScreenMessage("Calling linear solver...\n");
 #if defined(USE_PETSC)
@@ -1033,10 +1047,104 @@ void CRFProcessDeformation::GlobalAssembly_DM()
 
 		elem->SetOrder(true);
 		fem_dm->ConfigElement(elem);
-		fem_dm->LocalAssembly(0);
+		fem_dm->AssembleLinear();
 	}
 	if (print_progress)
 		ScreenMessage("done\n");
+}
+
+void CRFProcessDeformation::AssembleResidual()
+{
+	ScreenMessage("-> set Dirichlet BC to nodal values\n");
+	IncorporateBoundaryConditions(false, false, false, true);
+
+	const size_t dn = m_msh->ele_vector.size() / 10;
+	const bool print_progress = (dn >= 100);
+	if (print_progress)
+		ScreenMessage("start local assembly for %d elements...\n",
+		              m_msh->ele_vector.size());
+
+	for (long i = 0; i < (long)m_msh->ele_vector.size(); i++)
+	{
+		if (print_progress && (i + 1) % dn == 0) ScreenMessage("* ");
+		MeshLib::CElem* elem = m_msh->ele_vector[i];
+		if (!elem->GetMark())  // Marked for use
+			continue;
+
+		elem->SetOrder(true);
+		fem_dm->ConfigElement(elem);
+		fem_dm->AssembleResidual();
+	}
+	if (print_progress)
+		ScreenMessage("done\n");
+
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+	{
+		//TODO
+	}
+
+//#ifdef NEW_EQS
+//	{
+//		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_assembly.txt");
+//		eqs_new->WriteRHS(os);
+//	}
+//#endif
+	ScreenMessage("-> impose Neumann BC and source/sink terms\n");
+	IncorporateSourceTerms();
+//#ifdef NEW_EQS
+//	{
+//		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_st.txt");
+//		eqs_new->WriteRHS(os);
+//	}
+//#endif
+
+	// set bc residual = 0
+	ScreenMessage("-> set bc residual = 0 \n");
+	IncorporateBoundaryConditions(false, true, true);
+
+//#ifdef NEW_EQS
+//	{
+//		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_bc.txt");
+//		eqs_new->WriteRHS(os);
+//	}
+//#endif
+
+}
+
+void CRFProcessDeformation::AssembleJacobian()
+{
+	const size_t dn = m_msh->ele_vector.size() / 10;
+	const bool print_progress = (dn >= 100);
+	if (print_progress)
+		ScreenMessage("start local assembly for %d elements...\n",
+		              m_msh->ele_vector.size());
+
+	for (long i = 0; i < (long)m_msh->ele_vector.size(); i++)
+	{
+		if (print_progress && (i + 1) % dn == 0) ScreenMessage("* ");
+		MeshLib::CElem* elem = m_msh->ele_vector[i];
+		if (!elem->GetMark())  // Marked for use
+			continue;
+
+		elem->SetOrder(true);
+		fem_dm->ConfigElement(elem);
+		fem_dm->AssembleJacobian();
+	}
+	if (print_progress)
+		ScreenMessage("done\n");
+
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+	{
+		//TODO
+	}
+
+	IncorporateBoundaryConditions(true, false);
+//#ifdef NEW_EQS
+//	{
+//		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_J.txt");
+//		eqs_new->WriteRHS(os);
+//	}
+//#endif
 }
 
 /**************************************************************************

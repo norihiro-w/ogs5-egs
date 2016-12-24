@@ -53,88 +53,56 @@ public:
 
 	void Initialization();
 
-	// Assemble system equation
+	double Execute(int loop_process_number);
+	void ResetTimeStep();
+	void Extropolation_GaussValue();
+
+	double const* GetInitialFluidPressure() const { return p0.data(); }
+
+private:
+	void InitialMBuffer();
+	void InitGauss();
+
+	void AssembleResidual();
+	void AssembleJacobian();
 	void GlobalAssembly();
 	void GlobalAssembly_DM();
 
-	// overloaded
-	double Execute(int loop_process_number);
+	void solveLinear();
+	void solveNewton();
 
-	// Aux. Memory
-	double const* GetLastTimeStepSolution() const { return lastTimeStepSolution.data(); }
-	double const* GetInitialFluidPressure() const { return p0.data(); }
-
-	void ScalingNodeForce(const double SFactor);
-	void InitGauss();
-	//
-	void SetInitialGuess_EQS_VEC();
-    void incrementNodalDUFromSolution();
-    void incrementNodalPressureFromSolution();
-    void incrementNodalDisplacement();
-    double NormOfUpdatedNewton();
-    void StoreLastTimeStepDisplacements();
-    void StoreLastCouplingIterationSolution();
-    void RecoverLastTimeStepDisplacements();
-    void CopyLastTimeStepDisplacementToCurrent();
-
-    void zeroNodalDU();
-	double NormOfDisp();
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-	                   //#ifndef NEW_EQS
-	double NormOfUnkonwn_orRHS(bool isUnknowns = true);
-#endif
-    double getNormOfCouplingError(int pvar_id_start, int n);
-    // Stress
-	// For partitioned HM coupled scheme
-    void ResetStress();
-	void ResetTimeStep();
-	//
+	void setDUFromSolution();
+	void setPressureFromSolution();
+	void incrementNodalDUFromSolution();
+	void incrementNodalPressureFromSolution();
+	void incrementNodalDisplacement();
+	void zeroNodalDU();
 	void updateGaussStressStrain();
-	void UpdateInitialStress(bool ZeroInitialS);
-	void Extropolation_GaussValue();
 
-	// Calculate scaling factor for load increment
-	double CaclMaxiumLoadRatio();
+	double getNormOfCouplingError(int pvar_id_start, int n);
 
-	// Write stresses
+	void StoreLastTimeStepDisplacements();
+	void StoreLastCouplingIterationSolution();
+	void RecoverLastTimeStepDisplacements();
+	void ResetStress();
+	void CopyLastTimeStepDisplacementToCurrent();
+
 	std::string GetGaussPointStressFileName();
 	void WriteGaussPointStress();
 	void ReadGaussPointStress();
-	void ReadElementStress();
-
-	// Access members
-	CFiniteElementVec* GetFEM_Assembler() const { return fem_dm; }
-
-private:
-    void solveLinear();
-    void solveNewton();
-    void setDUFromSolution();
-    void setPressureFromSolution();
 
 private:
 	CFiniteElementVec* fem_dm = nullptr;
-	void InitialMBuffer();
 	std::vector<double> lastTimeStepSolution;
 	std::vector<double> lastCouplingSolution;
 	std::vector<double> p0;
 	bool _isInitialStressNonZero = false;
-
-	double InitialNormR0 = 0;
-	double InitialNormDU_coupling = 0;
-	double InitialNormDU0 = 0;
-
-	InitDataReadWriteType idata_type = none;
-
-	//
 	double norm_du0_pre_cpl_itr = 0;
-
-	double getNormOfDisplacements();
+	InitDataReadWriteType idata_type = none;
 };
 }  // end namespace
 
-extern double Tolerance_global_Newton;
 extern double Tolerance_Local_Newton;
-extern int number_of_load_steps;
 extern int problem_dimension_dm;
+
 #endif

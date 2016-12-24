@@ -48,17 +48,25 @@ public:
 	                  const int C_Sys_Flad, const int order = 2);
 	virtual ~CFiniteElementVec();
 
+	void SetMaterial();
+
+	void AssembleLinear();
+	void AssembleResidual();
+	void AssembleJacobian();
+
 	void UpdateStressStrain();
+
 
 private:
 	void Init();
 	void SetMemory();
-	void LocalAssembly(const int update);
+
 	bool GlobalAssembly();
+
 	void ComputeStrain();
-	void SetMaterial();
 	std::valarray<double> const& GetStrain() const { return dstrain; }
 	double CalDensity();
+
 	// Compute principle stresses
 	double ComputePrincipleStresses(const double* Stresses, double* pr_stress);
 
@@ -78,7 +86,7 @@ private:
 	double CalcStress_eff();
 
 	// Compute the local finite element matrices
-	void LocalAssembly_continuum(const int update);
+	void LocalAssembly_Linear();
 
 	// Assembly local stiffness matrix
 	void GlobalAssembly_Stiffness();
@@ -88,6 +96,8 @@ private:
 #ifdef USE_PETSC
 	void add2GlobalMatrixII();
 #endif
+	void assembleGlobalVector();
+	void assembleGlobalMatrix();
 
 private:
 	process::CRFProcessDeformation* pcs = nullptr;
@@ -95,13 +105,11 @@ private:
 	::CRFProcess* t_pcs = nullptr;
 
 	int ns = -1;  // Number of stresses components
-	int Flow_Type = -1;
 
 	// Primary value indeces
 	// Column index in the node value table
-	int idx_P = -1, idx_P0 = -1, idx_P1 = -1, idx_P1_0 = -1, idx_P2 = -1;
+	int idx_P1 = -1;
 	int idx_T0 = -1, idx_T1 = -1;
-	int idx_S0 = -1, idx_S = -1, idx_Snw = -1;
 	int idx_pls = -1;
 	// Displacement column indeces in the node value table
 	int* Idx_Stress = nullptr;
@@ -130,12 +138,12 @@ private:
 	Matrix* Stiffness = nullptr;
 	Matrix* PressureC = nullptr;
 	Vector* RHS = nullptr;
-	double* b_rhs = nullptr;
 
 	//  Stresses:
 	//  s11, s22, s33, s12, s13, s23
 	std::valarray<double> dstress;
 	std::valarray<double> stress0;
+	std::valarray<double> stress1;
 	std::valarray<double> stress_ne;
 	//  Straines:
 	//  s11, s22, s33, s12, s13, s23
@@ -148,7 +156,7 @@ private:
 	double* Disp = nullptr;
 
 	// Temperatures of nodes
-	double* dT = nullptr, Tem = 0;
+	double* dT = nullptr;
 	double* T1 = nullptr;
 
 	// Element value
@@ -160,6 +168,10 @@ private:
 	// Auxillarary vector
 	std::valarray<double> AuxNodal;
 	std::valarray<double> AuxNodal1;
+
+	bool isSinglePhaseFlow = false;
+	bool isRichardsFlow = false;
+	bool isMultiPhaseFlow = false;
 };
 }  // end namespace
 
