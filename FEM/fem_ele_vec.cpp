@@ -300,25 +300,7 @@ double CFiniteElementVec::CalDensity()
 
 	double porosity = m_mmp->Porosity(this);
 	double rho = (1. - porosity) * solid_density;
-
-	// JT, should be 1.0, unless multiphase (calculate below)
-	// (if unsaturated, fluid density would be negligible...
-	// so still works)
-	double Sw = 1.0;
-
-	int const no_phases = (int)mfp_vector.size();
-	int phase = 0; //TDODO
-	if (no_phases > 0 && no_phases > phase)
-	{
-		rho += porosity * Sw * m_mfp->Density();
-	}
-
-	if (Flow_Type == 2 || Flow_Type == 3)
-	{
-		CFluidProperties* GasProp;
-		GasProp = MFPGet("GAS");
-		rho += porosity * (1.0 - Sw) * GasProp->Density();
-	}
+	rho += porosity * m_mfp->Density();
 
 	return rho;
 }
