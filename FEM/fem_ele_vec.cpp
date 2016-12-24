@@ -418,6 +418,7 @@ void CFiniteElementVec::ComputeMatrix_RHS(const double fkt, const Matrix* p_D)
 			}
 		}
 	}
+
 	//---------------------------------------------------------
 	// Assemble gravity force vector
 	//---------------------------------------------------------
@@ -461,7 +462,7 @@ void CFiniteElementVec::Init()
 	}
 
 	for (int i = 0; i < nnodesHQ; i++)
-		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex();
+		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex(true);
 
 	// For strain and stress extropolation all element types
 	// Number of elements associated to nodes
@@ -469,6 +470,7 @@ void CFiniteElementVec::Init()
 		dbuff[i] =
 			(double)MeshElement->GetNode(i)->getConnectedElementIDs().size();
 }
+
 
 /***************************************************************************
    GeoSys - Funktion:
@@ -648,6 +650,9 @@ void CFiniteElementVec::UpdateStressStrain()
  **************************************************************************/
 bool CFiniteElementVec::GlobalAssembly()
 {
+	for (int i = 0; i < nnodesHQ; i++)
+		eqs_number[i] = MeshElement->GetNode(i)->GetEquationIndex(true);
+
 	GlobalAssembly_RHS();
 
 	GlobalAssembly_Stiffness();
@@ -671,24 +676,18 @@ bool CFiniteElementVec::GlobalAssembly()
  **************************************************************************/
 void CFiniteElementVec::GlobalAssembly_Stiffness()
 {
-	int i, j;
-	double f1, f2;
-	f1 = 1.0;
-	f2 = -1.0;
-
-	double biot = 1.0;
-	biot = m_msp->biot_const;
+	double biot = m_msp->biot_const;
 #if defined(NEW_EQS)
-	CSparseMatrix* A = NULL;
-	A = pcs->eqs_new->getA();
+	CSparseMatrix* A = pcs->eqs_new->getA();
 #endif
 
 #ifndef USE_PETSC
+	double f1 = 1.0;
 	// Assemble stiffness matrix
-	for (i = 0; i < nnodesHQ; i++)
+	for (int i = 0; i < nnodesHQ; i++)
 	{
 		const long eqs_number_i = eqs_number[i];
-		for (j = 0; j < nnodesHQ; j++)
+		for (int j = 0; j < nnodesHQ; j++)
 		{
 			const long eqs_number_j = eqs_number[j];
 			// Local assembly of stiffness matrix
@@ -701,15 +700,11 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 					double globalColId = eqs_number_j + NodeShift[l];
 					double val =
 					    f1 * (*Stiffness)(localRowId, j + l * nnodesHQ);
-#if defined(USE_PETSC)  // || defined(other parallel libs)//10.3012. WW
-// TODO
-#else
 #ifdef NEW_EQS
 					double& a = (*A)(globalRowId, globalColId);
-					#pragma omp atomic
+#pragma omp atomic
 					a += val;
 //(*A)(globalRowId,globalColId) += val;
-#endif
 #endif
 				}
 			}
@@ -719,14 +714,13 @@ void CFiniteElementVec::GlobalAssembly_Stiffness()
 
 	// TEST OUT
 	// Stiffness->Write();
-	if (pcs->type / 40 != 1)  // Not monolithic scheme
+	if (pcs->getProcessType() == FiniteElement::DEFORMATION)
 		return;
 
+	double f2 = -1.0;
 	if (PressureC)
 	{
-		i = 0;               // phase
-		if (Flow_Type == 2)  // Multi-phase-flow
-			i = 1;
+		int i = 0;               // phase
 		GlobalAssembly_PressureCoupling(PressureC, f2 * biot, i);
 	}
 
@@ -828,7 +822,7 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 
 	if (H_Process)
 	{
-		if (pcs->type / 10 == 4)  // Monolithic scheme
+		if (pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW)
 		{
 			if (FiniteElement::isNewtonKind(pcs->m_num->nls_method))
 				Residual = true;
@@ -842,9 +836,10 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 	{
 		// should calculate (p - p0) because OGS calculates (stress - stress0)
 		double const* p0 = pcs->GetInitialFluidPressure();
-		switch (Flow_Type)
+		switch (h_pcs->getProcessType())
 		{
-			case 0:  // Liquid flow
+			case LIQUID_FLOW:
+			case DEFORMATION_FLOW:
 				// For monolithic scheme and liquid flow, the limit of positive
 				// pressure must be removed
 				for (int i = 0; i < nnodes; i++)
@@ -862,20 +857,18 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 					AuxNodal[i] = val_n;
 				}
 				break;
-			case 10:  // Ground_flow. Will be merged to case 0
+			case GROUNDWATER_FLOW:
 				for (int i = 0; i < nnodes; i++)
 					AuxNodal[i] = h_pcs->GetNodeValue(nodes[i], idx_P1);
+				break;
+			default:
 				break;
 		}
 
 		const int dim_times_nnodesHQ(dim * nnodesHQ);
 		// Coupling effect to RHS
-		if (Flow_Type != 2)
-		{
-			for (int i = 0; i < dim_times_nnodesHQ; i++)
-				AuxNodal1[i] = 0.0;
-			PressureC->multi(AuxNodal, AuxNodal1);
-		}
+		AuxNodal1 = 0.0;
+		PressureC->multi(AuxNodal, AuxNodal1);
 		for (int i = 0; i < dim_times_nnodesHQ; i++)
 			(*RHS)(i) -= fabs(m_msp->biot_const) * AuxNodal1[i];
 	}  // End if partioned
@@ -883,6 +876,7 @@ void CFiniteElementVec::GlobalAssembly_RHS()
 	// RHS->Write();
 
 #ifndef USE_PETSC
+	double* b_rhs = pcs->eqs_new->getRHS();
 	//	std::cerr << "e: " << Index << "\n";
 	for (size_t i = 0; i < dim; i++)
 	{
