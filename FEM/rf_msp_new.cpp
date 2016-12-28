@@ -1120,9 +1120,9 @@ void CSolidProperties::HeatConductivityTensor(const int dim, double* tensor,
 	// check
 	if (thermal_conductivity_tensor_type > 0 &&
 	    dim != thermal_conductivity_tensor_dim)
-		cout << "***Error in CSolidProperties::HeatConductivityTensor(): "
-		        "problem dimension and the given tensor dimension are not same."
-		     << endl;
+		ScreenMessage("***Error in CSolidProperties::HeatConductivityTensor(): "
+		        "problem dimension (%d) and the given tensor dimension (%d) are not same.\n", dim, thermal_conductivity_tensor_dim);
+
 	// reset
 	for (i = 0; i < 9; i++)
 		tensor[i] = 0.0;
@@ -1764,7 +1764,7 @@ void CSolidProperties::CalculateCoefficent_HOEKBROWN()  // WX: 02.2011
 bool CSolidProperties::StressIntegrationDP(const int GPiGPj,
                                            const ElementValue_DM* ele_val,
                                            double* TryStress, double& dPhi,
-                                           const int Update)
+										   const int Update, double tol_newton)
 {
 	int i = 0;
 	double I1 = 0.0;
@@ -1846,7 +1846,7 @@ bool CSolidProperties::StressIntegrationDP(const int GPiGPj,
 				F = 9.0 * Xi * K * (dPhi + dl2) +
 				    BetaN * (Y0 + Hard * (ep0 + fac)) / Al - p3;
 				dl2 -= F / Jac;
-				if (fabs(F) < 1000.0 * Tolerance_Local_Newton) break;
+				if (fabs(F) < 1000.0 * tol_newton) break;
 				if (ite > max_ite) break;
 			}
 			ep = ep0 + fac;
@@ -1866,7 +1866,7 @@ bool CSolidProperties::StressIntegrationDP(const int GPiGPj,
 			{
 				ite++;
 				if (ite > max_ite) break;
-				if (F < 0.0 || fabs(F) < 10.0 * Tolerance_Local_Newton) break;
+				if (F < 0.0 || fabs(F) < 10.0 * tol_newton) break;
 				// if(err<TolLocalNewT) break;
 				dPhi -= F / Jac;
 				//
