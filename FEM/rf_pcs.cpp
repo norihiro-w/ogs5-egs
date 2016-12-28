@@ -4699,7 +4699,7 @@ void CRFProcess::IncorporateBoundaryConditions(bool updateA,
 		bc_msh_node = m_bc_node->geo_node_number;
 
 		// Check whether the node is in this subdomain
-		if (!m_msh->isNodeLocal(bc_msh_node))
+		if (!m_msh->isNodeLocal(bc_msh_node) && !updateNodalValues)
 			continue;
 
 		int dof_per_node = 0;
