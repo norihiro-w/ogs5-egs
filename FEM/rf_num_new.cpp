@@ -436,6 +436,15 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 			continue;
 		}
 		//....................................................................
+		// subkeyword found
+		if (line_string.find("$TIME_THETA") != string::npos)
+		{
+			line.str(GetLineFromFile1(num_file));
+			line >> ls_theta;
+			line.clear();
+			continue;
+		}
+		//....................................................................
 		// JT subkeyword found
 		if (line_string.find("$COUPLING_ITERATIONS") != string::npos)
 		{
@@ -591,7 +600,6 @@ ios::pos_type CNumerics::Read(ifstream* num_file)
 			continue;
 		}
 		// Flux corrected transport by Kuzmin (2009)
-		// NW
 		if (line_string.find("$FEM_FCT") != string::npos)
 		{
 			line.str(GetLineFromFile1(num_file));
