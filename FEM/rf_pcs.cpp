@@ -60,6 +60,7 @@
 #include "rfmat_cp.h"
 #include "rf_ic_new.h"
 #include "rf_fct.h"
+#include "rf_mmp_new.h"
 #include "rf_msp_new.h"
 #include "rf_node.h"
 #include "rf_pcs_dm.h"

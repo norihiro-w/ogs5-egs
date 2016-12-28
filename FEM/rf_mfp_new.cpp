@@ -21,6 +21,7 @@
 #include "fem_ele_std.h"
 #include "files0.h"
 #include "rfmat_cp.h"
+#include "rf_mmp_new.h"
 #include "tools.h"
 
 /* Umrechnungen SI - Amerikanisches System */
