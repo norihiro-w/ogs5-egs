@@ -36,6 +36,10 @@
 #include <petsctime.h>
 #endif
 
+#ifdef USE_PARALUTION
+#include <paralution.hpp>
+#endif
+
 #include "Configure.h"
 #include "BuildInfo.h"
 
@@ -225,6 +229,12 @@ int main(int argc, char* argv[])
 #ifdef LIS
 	lis_initialize(&argc, &argv);
 #endif
+#ifdef USE_PARALUTION
+	ScreenMessage("--- PARALUTION INFO BEGIN ----------------------------------\n");
+	paralution::init_paralution();
+	paralution::info_paralution();
+	ScreenMessage("--- PARALUTION INFO END ------------------------------------\n");
+#endif
 
 /*========================================================================*/
 /* Kommunikation mit Betriebssystem */
@@ -367,6 +377,9 @@ int main(int argc, char* argv[])
 	PetscFinalize();
 #elif defined(USE_MPI)
 	MPI_Finalize();
+#endif
+#ifdef USE_PARALUTION
+	paralution::stop_paralution();
 #endif
 
 	free(dateiname);

@@ -60,6 +60,9 @@ IF (OGS_FEM_PETSC)
 	TARGET_LINK_LIBRARIES( ogs  ${PETSC_LIBRARIES})
 ENDIF (OGS_FEM_PETSC)
 
+IF (OGS_FEM_Paralution)
+	TARGET_LINK_LIBRARIES( ogs  ${Paralution_LIBRARY})
+ENDIF ()
 
 ####################
 ### Installation ###
