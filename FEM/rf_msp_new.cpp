@@ -7,14 +7,6 @@
  *
  */
 
-/**************************************************************************
-   FEMLib - Object: MSP Solid Properties
-   Task:
-   Programing:
-   08/2004 WW Implementation
-   last modified:
-**************************************************************************/
-
 #include "rf_msp_new.h"
 
 #include <cfloat>
@@ -37,7 +29,6 @@
 using namespace std;
 
 vector<SolidProp::CSolidProperties*> msp_vector;
-vector<string> msp_key_word_vector;  // OK
 
 using FiniteElement::ElementValue_DM;
 namespace SolidProp
@@ -6711,20 +6702,6 @@ void MSPWrite(std::string base_file_name)
 	msp_file << "#STOP";
 	msp_file.close();
 	//----------------------------------------------------------------------
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-void MSPStandardKeywords()
-{
-	msp_key_word_vector.clear();
-	string in;
-	in = "POISSON_RATIO";
-	msp_key_word_vector.push_back(in);
-	in = "YOUNGS_MODULUS";
-	msp_key_word_vector.push_back(in);
 }
 
 /**************************************************************************

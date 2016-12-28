@@ -17,7 +17,6 @@
 
 namespace FiniteElement
 {
-class element;
 class CFiniteElementVec;
 class CFiniteElementStd;
 class ElementValue_DM;
@@ -32,19 +31,13 @@ namespace process
 class CRFProcessDeformation;
 }
 
-#if defined(WIN32)
-class CMATGroupEditorDataEdit;  // WW
-#endif
+using namespace Math_Group;
+using namespace FiniteElement;
+using namespace process;
+
 namespace SolidProp
 {
-using FiniteElement::CFiniteElementVec;
-using FiniteElement::ElementValue_DM;
-using FiniteElement::CFiniteElementStd;
-using FiniteElement::ElementValue;
-using Math_Group::Matrix;
-using process::CRFProcessDeformation;
-using ::CRFProcess;
-/*---------------------------------------------------------------*/
+
 class CSolidProperties
 {
 private:
@@ -149,9 +142,6 @@ private:
 	friend class FiniteElement::ElementValue;
 	friend class process::CRFProcessDeformation;
 	friend class ::CRFProcess;
-#if defined(WIN32)  // 15.03.2008 WW
-	friend class ::CMATGroupEditorDataEdit;
-#endif
 	// WW
 public:
 	//
@@ -357,10 +347,6 @@ extern std::vector<SolidProp::CSolidProperties*> msp_vector;
 extern bool MSPRead(std::string file_base_name);
 extern void MSPWrite(std::string);
 extern void MSPDelete();
-// OK
-extern std::vector<std::string> msp_key_word_vector;
-extern void MSPStandardKeywords();  // OK
-// OK
 extern SolidProp::CSolidProperties* MSPGet(std::string);
 
 extern double StressNorm(const double* s, const int Dim);
