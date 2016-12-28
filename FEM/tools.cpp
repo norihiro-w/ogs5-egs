@@ -22,7 +22,6 @@
 #include "msh_elem.h"
 #include "msh_lib.h"
 
-#include "femlib.h"
 #include "files0.h"
 #include "rf_fct.h"
 #include "rf_mmp_new.h"

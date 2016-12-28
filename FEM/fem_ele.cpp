@@ -15,7 +15,6 @@
 
 #include "msh_elem.h"
 
-#include "femlib.h"
 #include "rf_pcs.h"
 
 using namespace MeshLib;

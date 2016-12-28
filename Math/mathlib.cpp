@@ -2877,6 +2877,141 @@ double MXPGaussFkt(long grd, long pkt)
 	return 0.0;
 }
 
+
+/***************************************************************************
+   ROCKFLOW - Funktion: MXPGaussPktTri
+   Aufgabe:
+   X Punkt Gauss-Integration Dreieck
+		   bestimmtes Integral
+		   1/           X
+ | P(x)dx = Sigma  Fi*P(xi)
+ |
+		  -1/          i=1
+   Formalparameter:
+		   E: int anzgp:    Anzahl der Gauspunkte im Dreieck
+   E: long xx:      Nr des Gauspunktes
+   E: long coord:   coordr
+   return : double coord des Gauspunktes
+   Ergebnis:
+
+   Aenderungen/Korrekturen:
+   07/2003     mb        Erste Version
+
+ **************************************************************************/
+double MXPGaussPktTri(int anzgp, long xx, long coordr)
+{
+	double a[3] = {0.66666666666666, 0.16666666666666, 0.16666666666666};
+	double b[3] = {0.16666666666666, 0.66666666666666, 0.16666666666666};
+	double c[3] = {0.16666666666666, 0.16666666666666, 0.66666666666666};
+	if (anzgp == 1)
+		return 0.3333333333333333;
+	else if (anzgp == 3)
+	{
+		switch (xx)
+		{
+			case 0:
+				return a[coordr];
+			case 1:
+				return b[coordr];
+			case 2:
+				return c[coordr];
+		}
+	}
+	else if (anzgp == 4)
+	{
+		switch (xx)
+		{
+			case 0:
+				switch (coordr)
+				{
+					case 0:
+						return 0.333333333333333;
+					case 1:
+						return 0.333333333333333;
+				}
+				break;
+
+			case 1:
+				switch (coordr)
+				{
+					case 0:
+						return 0.600000000000000;
+					case 1:
+						return 0.200000000000000;
+				}
+				break;
+
+			case 2:
+				switch (coordr)
+				{
+					case 0:
+						return 0.200000000000000;
+					case 1:
+						return 0.600000000000000;
+				}
+				break;
+
+			case 3:
+				switch (coordr)
+				{
+					case 0:
+						return 0.200000000000000;
+					case 1:
+						return 0.200000000000000;
+				}
+				break;
+		}
+	} /*else if*/ /* switch grd */
+	return 0.0;
+}
+
+/***************************************************************************
+   ROCKFLOW - Funktion: MXPGaussFktTri
+   Aufgabe:
+   X Punkt Gauss-Integration Dreieck
+		   bestimmtes Integral
+		   1/           X
+ | P(x)dx = Sigma  Fi*P(xi)
+ |
+		  -1/          i=1
+   Formalparameter:
+		   E: int anzgp:     Anzahl der Gauspunkte im Dreieck
+   E: long pkt:      Nr des Gauspunktes
+   return : Wichtung des Gauspunktes
+   Ergebnis:  double: Wichtung des Gauspunktes
+
+   Aenderungen/Korrekturen:
+   07/2003     mb        Erste Version
+
+ **************************************************************************/
+double MXPGaussFktTri(int anzgp, long pkt)
+{
+	if (anzgp == 1)
+		return 0.5;
+	else if (anzgp == 3)
+		return 0.166666666666666;
+	else if (anzgp == 4)
+	{
+		switch (pkt)
+		{
+			case 0:
+				return -0.281250000000000;
+				break;
+			case 1:
+				return 0.260416666666667;
+				break;
+			case 2:
+				return 0.260416666666667;
+				break;
+			case 3:
+				return 0.260416666666667;
+				break;
+		}
+	}
+	return 0.0;
+}
+
+
 ///////////////////////////////////////////////////////////////////
 
 //--------------------------------------------------------------------------
