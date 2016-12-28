@@ -11,9 +11,9 @@
 
 #include <cfloat>
 
-#include "makros.h"
 #include "display.h"
 #include "FileToolsRF.h"
+#include "makros.h"
 
 #include "mathlib.h"
 
@@ -21,16 +21,14 @@
 #include "fem_ele_std.h"
 #include "files0.h"
 #include "Output.h"
-#include "rf_mmp_new.h"
 #include "rfmat_cp.h"
+#include "rf_mmp_new.h"
 #include "tools.h"
 
-// ToDo
 double aktuelle_zeit;
 size_t aktueller_zeitschritt = 0;
 double dt = 0.0;
-int rwpt_numsplits = -1;  // JT 2010
-
+int rwpt_numsplits = -1;
 std::vector<CTimeDiscretization*> time_vector;
 
 /**************************************************************************
