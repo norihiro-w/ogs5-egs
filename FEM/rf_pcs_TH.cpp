@@ -95,6 +95,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 		return error;
 	}
 #endif
+
 #if defined(NEW_EQS)
 	eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method, m_num->ls_max_iterations, m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
 #endif
@@ -107,6 +108,8 @@ double CRFProcessTH::Execute(int loop_process_number)
 	double InitialNorm = 0.0;
 	//	double InitialNormDx = 0.0;
 	//	double InitialNormU = 0.0;
+	double NormDx = std::numeric_limits<double>::max();
+#ifdef USE_PETSC
 	static double rp0 = .0, rT0 = 0;
 	static double rp0_L2 = .0, rT0_L2 = 0;
 	double dp_max = std::numeric_limits<double>::max(),
@@ -117,11 +120,11 @@ double CRFProcessTH::Execute(int loop_process_number)
 	       T_max = std::numeric_limits<double>::max();
 	double p_L2 = std::numeric_limits<double>::max(),
 	       T_L2 = std::numeric_limits<double>::max();
-	double NormDx = std::numeric_limits<double>::max();
-
-	const double newton_tol = m_num->nls_error_tolerance[0];
 	const double tol_dp = m_num->nls_error_tolerance[1];
 	const double tol_dT = m_num->nls_error_tolerance[2];
+#endif
+
+	const double newton_tol = m_num->nls_error_tolerance[0];
 	const int n_max_iterations = m_num->nls_max_iterations;
 
 	iter_nlin = 0;
@@ -130,18 +133,11 @@ double CRFProcessTH::Execute(int loop_process_number)
 	{
 		iter_nlin++;
 
-		ScreenMessage("------------------------------------------------\n");
-		ScreenMessage("-> Nonlinear iteration: %d/%d\n", iter_nlin - 1,
-		              n_max_iterations);
-		ScreenMessage("------------------------------------------------\n");
-
-		//----------------------------------------------------------------------
-		// Solve
-		//----------------------------------------------------------------------
-		// Refresh solver
-#if defined(NEW_EQS)
+//----------------------------------------------------------------------
+// Solve
+//----------------------------------------------------------------------
+// Refresh solver
 		eqs_new->Initialize();
-#endif
 
 		ScreenMessage("-> Assembling equation system...\n");
 		GlobalAssembly();
@@ -152,11 +148,11 @@ double CRFProcessTH::Execute(int loop_process_number)
 #elif defined(USE_PETSC)
 		const double NormR = eqs_new->GetVecNormRHS();
 #endif
+#if defined(USE_PETSC)
 		double rp_max = std::numeric_limits<double>::max(),
 		       rT_max = std::numeric_limits<double>::max();
 		double rp_L2 = std::numeric_limits<double>::max(),
 		       rT_L2 = std::numeric_limits<double>::max();
-#if defined(USE_PETSC)
 		Vec sub_x;
 		VecGetSubVector(eqs_new->b, eqs_new->vec_isg[0], &sub_x);
 		VecNorm(sub_x, NORM_2, &rp_L2);
@@ -172,16 +168,17 @@ double CRFProcessTH::Execute(int loop_process_number)
 		if (iter_nlin == 1 && this->first_coupling_iteration)
 		{
 			InitialNorm = NormR;
+#ifdef USE_PETSC
 			rp0 = rp_max;
 			rT0 = rT_max;
 			rp0_L2 = rp_L2;
 			rT0_L2 = rT_L2;
+#endif
 			static bool firstime = true;
 			if (firstime)
-			{
 				firstime = false;
-			}
 		}
+#ifdef USE_PETSC
 		Error = std::max(rp_max / rp0, rT_max / rT0);  // NormR / InitialNorm;
 		const double Error_L2 = std::max(rp_L2 / rp0_L2, rT_L2 / rT0_L2);
 		const double dx_i = std::max(dp_max / p_max, dT_max / T_max);
@@ -207,6 +204,34 @@ double CRFProcessTH::Execute(int loop_process_number)
 		    "|dp|_2=%.3e, |dT|_2=%.3e, |dp/p|_2=%.3e, |dT/T|_2=%.3e "
 		    "(tol.p=%.1e,T=%.1e)\n",
 		    dp_L2, dT_L2, dp_L2 / p_L2, dT_L2 / T_L2, tol_dp, tol_dT);
+		ScreenMessage("------------------------------------------------\n");
+		ScreenMessage("-> Nonlinear iteration: %d/%d, |r|=%.3e, |r|/|r0|=%.3e\n", iter_nlin - 1,
+		              n_max_iterations, NormR, NormR / InitialNorm);
+		ScreenMessage("------------------------------------------------\n");
+#else
+		Error = NormR / InitialNorm;
+#if 1
+		double r_dof[2] = {};
+		for (size_t ii = 0; ii < this->GetPrimaryVNumber(); ii++) {
+			const size_t nnodes = this->m_msh->GetNodesNumber(false);
+			const size_t shift = nnodes * ii;
+			for (size_t i = 0; i < nnodes; i++)
+				r_dof[ii] += std::pow(eqs_new->getRHS()[shift + i], 2);
+			r_dof[ii] = std::sqrt(r_dof[ii]);
+		}
+		ScreenMessage("------------------------------------------------\n");
+		ScreenMessage("-> Nonlinear iteration: %d/%d, |r|=%.3e, |r|/|r0|=%.3e, |rp|=%.3e, |rT|=%.3e\n", iter_nlin - 1,
+		              n_max_iterations, NormR, NormR / InitialNorm, r_dof[0], r_dof[1]);
+		ScreenMessage("------------------------------------------------\n");
+#else
+		ScreenMessage("------------------------------------------------\n");
+		ScreenMessage("-> Nonlinear iteration: %d/%d, |r|=%.3e, |r|/|r0|=%.3e\n", iter_nlin - 1,
+		              n_max_iterations, NormR, NormR / InitialNorm);
+		ScreenMessage("------------------------------------------------\n");
+#endif
+#endif
+
+
 		if (Error < newton_tol)
 		{
 			ScreenMessage("-> Newton-Raphson converged\n");
@@ -240,11 +265,9 @@ double CRFProcessTH::Execute(int loop_process_number)
 		//"_leqs_residual.txt";
 		//			eqs_new->Residual_Viewer(fname);
 		//		}
-		double* eqs_x = nullptr;
 		if (!m_num->petsc_split_fields)
 		{
 			eqs_new->MappingSolution();
-			eqs_x = eqs_new->GetGlobalSolution();
 		}
 		else
 		{
@@ -298,9 +321,8 @@ double CRFProcessTH::Execute(int loop_process_number)
 		NormDx = eqs_new->NormX();
 #elif defined(USE_PETSC)
 		NormDx = eqs_new->GetVecNormX();
-#else
-		NormDx = NormOfUnkonwn_orRHS();
 #endif
+		ScreenMessage("-> |dx|=%.3e\n", NormDx);
 
 // Check the convergence
 //		Error1 = Error;
@@ -351,6 +373,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 			return -1;
 		}
 #endif
+#ifdef USE_PETSC
 		if (std::max(rp_max / rp0, rT_max / rT0) < newton_tol ||
 		    (dp_max < tol_dp && dT_max < tol_dT))
 		{
@@ -358,6 +381,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 			converged = true;
 			break;
 		}
+#endif
 		//		if(InitialNorm < 10 * newton_tol
 		//			|| NormR < 0.001 * InitialNorm
 		//			|| Error <= newton_tol)
@@ -434,7 +458,7 @@ void CRFProcessTH::UpdateIterativeStep(const double damp)
 //	long shift = 0;
 #if defined(NEW_EQS)
 	const double* eqs_x = eqs_new->getX();
-#elif defined(USE_PETSC)
+#else
 	const double* eqs_x = eqs_new->GetGlobalSolution();
 #endif
 
@@ -488,45 +512,6 @@ void CRFProcessTH::UpdateIterativeStep(const double damp)
 #endif
 }
 
-#if !defined(NEW_EQS) && !defined(USE_PETSC)
-double CRFProcessTH::NormOfUnkonwn_orRHS(bool isUnknowns)
-{
-	int i, j;
-	long number_of_nodes;
-	long v_shift = 0;
-	double NormW = 0.0;
-	double val;
-
-#ifdef G_DEBUG
-	if (!eqs)
-	{
-		printf(" \n Warning: solver not defined, exit from loop_ww.cc");
-		exit(1);
-	}
-#endif
-
-	double* vec = NULL;
-	if (isUnknowns)
-		vec = eqs->x;
-	else
-		vec = eqs->b;
-
-	int end = pcs_number_of_primary_nvals;
-
-	for (i = 0; i < end; i++)
-	{
-		number_of_nodes = num_nodes_p_var[i];
-		for (j = 0; j < number_of_nodes; j++)
-		{
-			val = vec[v_shift + j];
-			NormW += val * val;
-		}
-
-		v_shift += number_of_nodes;
-	}
-	return sqrt(NormW);
-}
-#endif
 
 #ifdef USE_PETSC
 void CRFProcessTH::setSolver(petsc_group::PETScLinearSolver* petsc_solver)
@@ -569,8 +554,8 @@ void CRFProcessTH::setSolver(petsc_group::PETScLinearSolver* petsc_solver)
 			ierr = MatSetFromOptions(eqs_new->vec_subA[i]);
 			CHKERRCONTINUE(ierr);
 			ierr = MatMPIAIJSetPreallocation(eqs_new->vec_subA[i],
-											 eqs_new->sparse_index.d_nz, PETSC_NULL,
-											 eqs_new->sparse_index.o_nz, PETSC_NULL);
+			                                 eqs_new->sparse_index.d_nz, PETSC_NULL,
+			                                 eqs_new->sparse_index.o_nz, PETSC_NULL);
 			CHKERRCONTINUE(ierr);
 			MatSetOption(eqs_new->vec_subA[i], MAT_NEW_NONZERO_ALLOCATION_ERR,
 			             PETSC_FALSE);
@@ -588,7 +573,7 @@ void CRFProcessTH::setSolver(petsc_group::PETScLinearSolver* petsc_solver)
 		ierr = VecDestroy(&eqs_new->x);
 		CHKERRCONTINUE(ierr);
 		ierr = MatCreateNest(PETSC_COMM_WORLD, dof, NULL, dof, NULL,
-							 &eqs_new->vec_subA[0], &eqs_new->A);
+		                     &eqs_new->vec_subA[0], &eqs_new->A);
 		CHKERRCONTINUE(ierr);
 		ierr = MatGetVecs(eqs_new->A, &eqs_new->b, &eqs_new->x);
 		CHKERRCONTINUE(ierr);
@@ -659,7 +644,7 @@ void CRFProcessTH::setSolver(petsc_group::PETScLinearSolver* petsc_solver)
 		eqs_new->ConfigWithNonlinear(
 		    m_num->ls_error_tolerance, m_num->ls_max_iterations,
 		    m_num->getLinearSolverName(), m_num->getPreconditionerName(),
-			m_num->ls_extra_arg, "");
+		    m_num->ls_extra_arg, "");
 		//	SNESGSSetTolerances(eqs_new->snes, PETSC_DECIDE,
 		// m_num->nls_error_tolerance[0], PETSC_DECIDE,
 		// m_num->nls_max_iterations);
@@ -677,7 +662,7 @@ void CRFProcessTH::setSolver(petsc_group::PETScLinearSolver* petsc_solver)
 	{
 		eqs_new->Config(m_num->ls_error_tolerance, m_num->ls_max_iterations,
 		                m_num->getLinearSolverName(),
-						m_num->getPreconditionerName(), m_num->ls_extra_arg, "");
+		                m_num->getPreconditionerName(), m_num->ls_extra_arg, "");
 	}
 }
 
@@ -954,6 +939,7 @@ PetscErrorCode FormFunctionTH(SNES /*snes*/, Vec x, Vec f, void* ctx)
 #if (PETSC_VERSION_NUMBER >= 3050)
 PetscErrorCode FormJacobianTH(SNES snes, Vec x, Mat jac_, Mat B_, void* ctx)
 {
+	(void)snes;
 	Mat* jac = &jac_;
 	Mat* B = &B_;
 #else
