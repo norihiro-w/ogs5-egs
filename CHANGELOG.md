@@ -1,3 +1,31 @@
+## v5.3.3-egs.2.0 (draft)
+Changes in features
+- removed point output of some mechanics results into CSV
+- added $TOTAL_STRESS_COUPLING in PCS to support total stress coupling approach for HM
+- add $TIME_THETA in NUM
+- use only CRS for sparse matrix (non-PETSc builds)
+- support paralution linear solver (experimental)
+- added $PETSC_LINEAR_SOLVER in NUM
+- support output into a single CSV file with PETSc
+- support subdomain deactivation with PETSc
+
+Bug fix
+- fix MSVC builds. add /NODEFAULTLIB:libcmt to link ogs
+- fix mechanics for partitioned coupling
+- fix extrapolation of strain
+- fix total strain. no need to include thermal strain
+
+Changes in development
+- move tests/gtests to ThirdParty
+- removed unused codes related to RF solver, JFNK, old DDC, Overland flow, excavation, BRNS, etc
+- support dynamic linking
+- enabled static build in MSVC with MSVC_RUNTIME=static
+- removed unused CMake options
+- Appveyor deploys artifacts to GitHub (only tag)
+- reactivated M/TM/HM benchmarks on travis
+- support benchmarking with OGS#PETSc on travis
+- added builds with clang on travis
+
 ## v5.3.3-egs.1.9
 Changes in features
 - changed GCC optimization flag from -O3 to -O2 -march=native 
