@@ -1852,9 +1852,7 @@ void CFiniteElementStd::CalcMass()
 
 #ifndef OGS_ONLY_TH
 	int upwind_method = pcs->m_num->ele_upwind_method;
-	double alpha[3], summand[8];
-	MNulleVec(alpha, 3);
-	MNulleVec(summand, 8);
+	double alpha[3] = {}, summand[8] = {};
 	if (PcsType == T)
 		if (upwind_method > 0)
 		{

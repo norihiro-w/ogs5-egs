@@ -111,13 +111,13 @@ int CFiniteElementStd::UpwindElement(int option, int phase)
 void CFiniteElementStd::UpwindUnitCoord(int /*p*/, int point, int ind)
 {
 	double scale;
-	double alpha[3];
+	double alpha[3] = {};
 	int gp_r, gp_s, gp_t;
 	bool mmp_element_integration_method_maximum = false;
 
 	int upwind_meth;
 	double upwind_para;
-	double v[3], v_rst[3];
+	double v[3] = {}, v_rst[3];
 
 	//
 	ElementValue* gp_ele = ele_gp_value[ind];
@@ -133,10 +133,6 @@ void CFiniteElementStd::UpwindUnitCoord(int /*p*/, int point, int ind)
 	// Numerik
 	// *rupw = *supw = *tupw = 0.0;
 	gp_r = gp_s = gp_t = 0;
-	// alpha initialisieren
-	MNulleVec(alpha, 3);
-	// v initialisieren
-	MNulleVec(v, 3);
 
 	// get the velocities
 	// gp_ele->GetEleVelocity(v);
@@ -657,7 +653,7 @@ void CFiniteElementStd::UpwindAlphaMass(double* alpha)
 
 	// static long *element_nodes;
 	// WW double gp[3],
-	double v_rst[3], v_tot[3];
+	double v_rst[3], v_tot[3] = {};
 	// WW static double zeta;
 	// static double *velovec, vg, v[2], vt[2], v_rs[2];
 	// static double alpha_adv[3];
@@ -678,9 +674,8 @@ void CFiniteElementStd::UpwindAlphaMass(double* alpha)
 	// WW upwind_meth = pcs->m_num->ele_upwind_method;
 
 	// alpha initialisieren
-	MNulleVec(alpha, 3);
-	// v initialisieren
-	MNulleVec(v_tot, 3);
+	for (int i=0; i<3; i++)
+		alpha[i] = 0;
 
 	// get the velocities for phase 0
 	v_tot[0] = gp_ele->Velocity(0, 0);
