@@ -2511,32 +2511,13 @@ void Problem::LOPCalcELEResultants()
 		    convertProcessTypeToString(m_pcs->getProcessType()));
 		switch (pcs_type_name[0])
 		{
-			default:
-				break;
 			case 'L':  // Liquid flow
-				m_pcs->CalcELEVelocities();
-				break;
 			case 'G':  // Groundwater flow
-				m_pcs->CalcELEVelocities();
-				break;
 			case 'A':  // Gas flow
-				m_pcs->CalcELEVelocities();
-				// m_pcs->CalcELEMassFluxes();			// BG
-				break;
-			case 'T':  // Two-phase flow
-				break;
-			case 'C':  // Componental flow
-				break;
-			case 'H':  // Heat transport
-				break;
-			case 'M':  // Mass transport
-				break;
-			case 'D':  // Deformation
-				break;
 			case 'R':  // Richards flow
 				m_pcs->CalcELEVelocities();
 				break;
-			case 'F':  // Fluid Momentum
+			default:
 				break;
 		}
 	}
