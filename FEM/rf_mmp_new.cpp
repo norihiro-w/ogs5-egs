@@ -2666,7 +2666,7 @@ double CMediumProperties::HeatCapacity(long number, double theta,
 			if (FLOW)
 			{
 				PG = assem->interpolate(assem->NodalValC1);
-				if (assem->cpl_pcs->type == 1212)  // Multi-phase WW
+				if (assem->cpl_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)  // Multi-phase WW
 					PG *= -1.0;
 				Sat = SaturationCapillaryPressureFunction(-PG);
 			}
@@ -2787,7 +2787,7 @@ double* CMediumProperties::HeatConductivityTensor(int number, double* variables)
 		if (FLOW)  // WW
 		{
 			if (Fem_Ele_Std->cpl_pcs &&
-			    Fem_Ele_Std->cpl_pcs->type == 1212)  // Multi-phase WW
+			    Fem_Ele_Std->cpl_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)
 			{
 				double PG = Fem_Ele_Std->interpolate(
 				    Fem_Ele_Std->NodalValC1);  // Capillary pressure
@@ -3902,7 +3902,7 @@ double CMediumProperties::Porosity(long number, double theta)
 			break;
 		case 7:  // n = f(mean stress) WW
 			gval = ele_value_dm[number];
-            primary_variable[0] = - MeanStress(*gval->Stress, assem->gp) / 3.0;
+			primary_variable[0] = - MeanStress(*gval->Stress, assem->gp);
 			porosity =
 			    GetCurveValue(porosity_curve, 0, primary_variable[0], &gueltig);
 			break;
@@ -4060,7 +4060,7 @@ double CMediumProperties::Porosity(CElement* assem)
 			break;
 		case 7:  // n = f(mean stress) WW
 			gval = ele_value_dm[number];
-            primary_variable[0] = -MeanStress(*gval->Stress, assem->GetGPindex()) / 3.0;
+			primary_variable[0] = - MeanStress(*gval->Stress, assem->GetGPindex());
 			porosity =
 			    GetCurveValue(porosity_curve, 0, primary_variable[0], &gueltig);
 			break;
