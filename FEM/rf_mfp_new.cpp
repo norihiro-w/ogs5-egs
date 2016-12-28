@@ -7,55 +7,36 @@
  *
  */
 
-/**************************************************************************
-   FEMLib - Object: MFP Fluid Properties
-   Task:
-   Programing:
-   08/2004 OK Implementation
-   last modified:
-**************************************************************************/
-
 #include "rf_mfp_new.h"
 
-// C++ STL
-//#include <math.h>
-//#include <fstream>
-//#include <iostream>
 #include <cfloat>
 
-#include "makros.h"
 #include "display.h"
 #include "FileToolsRF.h"
-// FEM-Makros
-//#include "mathlib.h"
-#include "eos.h"  //NB
-// GeoSys-GeoLib
-#include "files0.h"
-// GeoSys-FEMLib
-#include "fem_ele_std.h"
-//
-//#include "rf_mmp_new.h"
-extern double InterpolValue(long number, int ndx, double r, double s, double t);
-//#include "rf_pcs.h"
-#include "rfmat_cp.h"
-extern double GetCurveValue(int, int, double, int*);
-#include "tools.h"  //GetLineFromFile
+#include "makros.h"
 
-using namespace std;
+#include "Curve.h"
+
+#include "eos.h"
+#include "fem_ele_std.h"
+#include "files0.h"
+#include "rfmat_cp.h"
+#include "tools.h"
 
 /* Umrechnungen SI - Amerikanisches System */
-// WW #include "steam67.h"
 #define PSI2PA 6895.
 #define PA2PSI 1.4503263234227701232777374909355e-4
 #define GAS_CONSTANT 8314.41
 #define COMP_MOL_MASS_AIR 28.96
 #define COMP_MOL_MASS_WATER 18.016
-#define GAS_CONSTANT_V 461.5     // WW
-#define T_KILVIN_ZERO 273.15     // AKS
-double gravity_constant = 9.81;  // TEST for FEBEX OK 9.81;
+#define GAS_CONSTANT_V 461.5
+#define T_KILVIN_ZERO 273.15
 
-//==========================================================================
+double gravity_constant = 9.81;
+
 std::vector<CFluidProperties*> mfp_vector;
+
+using namespace std;
 
 /**************************************************************************
    FEMLib-Method:
@@ -2105,7 +2086,7 @@ double MFPCalcFluidsHeatCapacity(CFiniteElementStd* assem, double* var)
 	{
 		//
 		// if (m_pcs->pcs_type_name.find("MULTI_PHASE_FLOW")!=string::npos)
-		if (m_pcs && m_pcs->type == 1212)  // non-isothermal multi-phase flow
+		if (m_pcs && m_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)
 		{
 			// Capillary pressure
 			PG = assem->interpolate(assem->NodalValC1);
