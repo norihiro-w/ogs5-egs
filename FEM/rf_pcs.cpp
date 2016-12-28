@@ -304,7 +304,6 @@ CRFProcess::CRFProcess(void)
 	this->FCT_d = NULL;
 #endif
 
-	eqs_x = NULL;
 	write_leqs = false;  // NW
 
 	pcs_num_dof_errors = 1;
@@ -3406,11 +3405,6 @@ void CRFProcess::CheckMarkedElement()
  **************************************************************************/
 double CRFProcess::Execute()
 {
-#ifndef USE_PETSC
-	int ii;
-	double val_n;
-	long nshift;
-#endif
 	int nidx1;
 	double pcs_error, nl_theta;
 	long j, k, g_nnodes;  // 07.01.07 WW
@@ -5711,7 +5705,7 @@ void CRFProcess::IncorporateSourceTerms()
 	// exist----------------------------------------------------
 	// HS, added 11.2008
 	// KG44 03/03/2010 modified to hopefully soon work with parallel solvers
-	long gem_node_index = -1, glocalindex = -1;
+	long gem_node_index = -1;
 	if (flag_couple_GEMS == 1 && aktueller_zeitschritt > 1)
 	{
 		long begin = 0;
@@ -6507,9 +6501,6 @@ double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
 	long i, k, g_nnodes;
 	double error, error_g, val1, val2, value;
 	int nidx1, ii;
-#ifndef USE_PETSC
-	double* eqs_x = NULL;  // 11.2007. WW
-#endif
 	int num_dof_errors = pcs_number_of_primary_nvals;
 	double unknowns_norm = 0.0;
 	double absolute_error[DOF_NUMBER_MAX];
@@ -6519,10 +6510,10 @@ double CRFProcess::CalcIterationNODError(FiniteElement::ErrorMethod method,
 	g_nnodes = m_msh->GetNodesNumber(false);
 #endif
 
-#if defined(NEW_EQS)
-	eqs_x = eqs_new->getX();
-#elif !defined(USE_PETSC)
-	eqs_x = eqs->x;
+#ifdef USE_PETSC
+	double* eqs_x = eqs_new->GetGlobalSolution();
+#else
+	double* eqs_x = eqs_new->getX();
 #endif
 
 	switch (method)
@@ -6920,11 +6911,9 @@ criteria
 double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 {
 	double nl_itr_err = 1.0;
-	double nl_theta, damping, norm_x0, norm_b0, norm_x, norm_b, val;
+	double nl_theta, damping, norm_x0, norm_b0, norm_x, norm_b;
 	double error_x1, error_x2, error_b1, error_b2 = .0, error, nl_itr_err_pre,
 	                                     percent_difference;
-	// double* eqs_x = NULL;     //
-	double* eqs_b = NULL;
 	bool converged;
 	int ii, nidx1, num_fail = 0;
 	size_t j, g_nnodes;
@@ -6934,21 +6923,19 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 	norm_x0 = norm_b0 = norm_x = norm_b = 0.;
 	error = 1.;
 	error_x2 = DBL_MAX;
-	nl_theta = 1.0 - m_num->nls_relaxation;  // JT
+	nl_theta = 1.0 - m_num->nls_relaxation;
 	if (nl_theta < DBL_EPSILON) nl_theta = 1.0;
 	g_nnodes = m_msh->GetNodesNumber(false);
 
-#if defined(USE_PETSC)  // || defined(other parallel libs)//03.3012. WW
-	eqs_x = eqs_new->GetGlobalSolution();
+#if defined(USE_PETSC)
+	double* eqs_x = eqs_new->GetGlobalSolution();
 #endif
 #ifdef NEW_EQS
 	int k;
-	eqs_x = eqs_new->getX();
-	eqs_b = eqs_new->getRHS();
+	double* eqs_x = eqs_new->getX();
+	double* eqs_b = eqs_new->getRHS();
 	configured_in_nonlinearloop = true;
-// Also allocate temporary memory for linear solver. WW
-//
-	eqs_new->SetDOF(pcs_number_of_primary_nvals);  //_new 02/2010. WW
+	eqs_new->SetDOF(pcs_number_of_primary_nvals);
 	eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method, m_num->ls_max_iterations, m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
 #endif
 	//..................................................................
@@ -7090,7 +7077,7 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 					{
 						for (j = 0; j < g_nnodes; j++)
 						{
-							val = eqs_b[j + ii * g_nnodes];
+							double val = eqs_b[j + ii * g_nnodes];
 							norm_b += val * val;
 						}
 					}
@@ -7202,7 +7189,7 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 				for (j = 0; j < g_nnodes; j++)
 				{
 					k = m_msh->Eqs2Global_NodeIndex[j];
-					val = GetNodeValue(k, nidx1) + damping * eqs_x[j + ish];
+					double val = GetNodeValue(k, nidx1) + damping * eqs_x[j + ish];
 					SetNodeValue(k, nidx1, val);
 				}
 #endif
@@ -10244,80 +10231,47 @@ bool PCSCheck()
    Programming:
    09/2007 WW Implementation
  **************************************************************************/
-#if defined(NEW_EQS)  // 1.09.2007 WW
-
+#if defined(NEW_EQS)
 void CreateEQS_LinearSolver()
 {
-	size_t i;
-	// CB_merge_0513
-	// int dof_DM = 1;
-	int dof_DM = 0;    // WW 02.2023. Pardiso
-	int DM_type = -1;  // 03.08.2010. WW
+	int dof_DM = 0;
 	CRFProcess* m_pcs = NULL;
 	CFEMesh* a_msh = NULL;
-	SparseTable* sp = NULL;
-	SparseTable* spH = NULL;
 	Linear_EQS* eqs = NULL;
-	Linear_EQS* eqs_dof = NULL;  // WW 02.2023. Pardiso
+	Linear_EQS* eqs_dof = NULL;
 	Linear_EQS* eqsH = NULL;
 
-	bool need_eqs = false;      // WW 02.2023. Pardiso
-	bool need_eqs_dof = false;  // WW 02.2023. Pardiso
-	int dof = 1;
-	//
-	// size_t dof_nonDM (1);     //WW 02.2023. Pardiso
+	bool need_eqs = false;
+	bool need_eqs_dof = false;
 	size_t dof_nonDM(0);
 
-	for (i = 0; i < pcs_vector.size(); i++)
+	for (size_t i = 0; i < pcs_vector.size(); i++)
 	{
 		m_pcs = pcs_vector[i];
-		if (m_pcs->type ==
-		    1212)  // Important for parallel computing. 24.1.2011 WW
+		if (m_pcs->getProcessType() == MULTI_PHASE_FLOW)
 		{
 			dof_nonDM = m_pcs->GetPrimaryVNumber();
-			dof = dof_nonDM;
 		}
-		if (m_pcs->type == 4 || m_pcs->type / 10 == 4)  // Deformation
+		if (isDeformationProcess(m_pcs->getProcessType()))
 		{
 			dof_DM = m_pcs->GetPrimaryVNumber();
-			dof = dof_DM;
-			DM_type = m_pcs->type;  // 03.08.2010. WW
-			if (m_pcs->type == 42) dof = m_pcs->m_msh->GetMaxElementDim();
 		}
 		else  // Monolithic scheme for the process with linear elements
 		{
-			// CB_merge_0513
-			// if(dof_nonDM < m_pcs->GetPrimaryVNumber()) //WW 02.2023. Pardiso
-			//{
-			//   dof_nonDM = m_pcs->GetPrimaryVNumber();
-			//   // PCH: DOF Handling for FLUID_MOMENTUM in case that the LIS
-			//   and PARDISO solvers
-			//   // are chosen.
-			//   //
-			//   if(m_pcs->_pcs_type_name.compare("FLUID_MOMENTUM")==0)
-			//   if(m_pcs->getProcessType() == FLUID_MOMENTUM)
-			//      dof_nonDM = 1;
-			//} //WW 02.2023. Pardiso
-
-			// 02.2013. WW //WW 02.2023. Pardiso
-			// Assume that the system with linear element only have one equation
-			// with DOF >1;
 			if (m_pcs->GetPrimaryVNumber() > 1)
 			{
 				dof_nonDM = m_pcs->GetPrimaryVNumber();
-				dof = dof_nonDM;
 				need_eqs_dof = true;
 			}
 			else
 			{
-				dof = 1;
 				need_eqs = true;
-			}  // WW 02.2023. Pardiso
+			}
 		}
 	}
 
 	//
-	for (i = 0; i < fem_msh_vector.size(); i++)
+	for (size_t i = 0; i < fem_msh_vector.size(); i++)
 	{
 		a_msh = fem_msh_vector[i];
 		SparseTable* sp = nullptr, *spH = nullptr;
@@ -10329,24 +10283,22 @@ void CreateEQS_LinearSolver()
 		//
 		eqs = NULL;
 		eqsH = NULL;
-		// CB_merge_0513
-		eqs_dof = NULL;  // WW 02.2023. Pardiso
-		if (sp)          // WW 02.2023. Pardiso
+		eqs_dof = NULL;
+		if (sp)
 		{
-			if (need_eqs)  // 02.2013. WW
+			if (need_eqs)
 			{
-				// eqs = new Linear_EQS(*sp, dof_nonDM);//WW 02.2023. Pardiso
 				eqs = new Linear_EQS(*sp, 1);
 			}
 			if (need_eqs_dof)
 			{
 				eqs_dof = new Linear_EQS(*sp, dof_nonDM);
 			}
-		}  // WW 02.2023. Pardiso
+		}
 		if (spH) eqsH = new Linear_EQS(*spH, dof_DM);
 		EQS_Vector.push_back(eqs);
 		EQS_Vector.push_back(eqsH);
-		EQS_Vector.push_back(eqs_dof);  // WW 02.2023. Pardiso
+		EQS_Vector.push_back(eqs_dof);
 	}
 }
 
@@ -10722,23 +10674,12 @@ void CRFProcess::IncorporateSourceTerms_GEMS(void)
  **************************************************************************/
 void CRFProcess::UpdateTransientBC()
 {
-	//--------------- 24.03.2010. WW
-	long i;
-	CSourceTerm* precip;
-	CSourceTerm* a_st;
-	precip = NULL;
-
-	for (i = 0; i < (long)st_vector.size(); i++)
-	{
-		a_st = st_vector[i];
-	}
-	// transient boundary condition
-	if (bc_transient_index.size() == 0) return;
+	if (bc_transient_index.size() == 0)
+		return;
 
 	bool valid = false;
 	long end_i = 0;
 	double t_fac = 0.;
-	std::vector<double> node_value;
 
 	for (size_t i = 0; i < bc_transient_index.size(); i++)
 	{

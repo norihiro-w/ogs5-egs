@@ -96,15 +96,13 @@ protected:
 	Problem* _problem;
 
 	void VariableStaticProblem();
-	bool compute_domain_face_normal;  // WW
+	bool compute_domain_face_normal;
 	int continuum;
 	bool continuum_ic;
 
-	double* eqs_x;  //> Pointer to x array of eqs (added due to PETSC)
-
 	std::vector<std::string> pcs_type_name_vector;
 
-protected:  // WW
+protected:
 	friend class FiniteElement::CFiniteElementStd;
 	friend class FiniteElement::CFiniteElementVec;
 	friend class FiniteElement::ElementValue;

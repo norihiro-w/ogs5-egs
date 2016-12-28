@@ -94,8 +94,6 @@ double CRFProcessTH::Execute(int loop_process_number)
 		ScreenMessage("------------------------------------------------\n");
 		return error;
 	}
-
-	eqs_x = eqs_new->GetGlobalSolution();
 #endif
 #if defined(NEW_EQS)
 	eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method, m_num->ls_max_iterations, m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
@@ -242,6 +240,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 		//"_leqs_residual.txt";
 		//			eqs_new->Residual_Viewer(fname);
 		//		}
+		double* eqs_x = nullptr;
 		if (!m_num->petsc_split_fields)
 		{
 			eqs_new->MappingSolution();
@@ -435,8 +434,8 @@ void CRFProcessTH::UpdateIterativeStep(const double damp)
 //	long shift = 0;
 #if defined(NEW_EQS)
 	const double* eqs_x = eqs_new->getX();
-#elif !defined(USE_PETSC)
-	const double* eqs_x = eqs->x;
+#elif defined(USE_PETSC)
+	const double* eqs_x = eqs_new->GetGlobalSolution();
 #endif
 
 	// x^k1 = x^k + dx
