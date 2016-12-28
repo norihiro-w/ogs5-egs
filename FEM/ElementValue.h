@@ -32,7 +32,6 @@ public:
 	ElementValue(CRFProcess* m_pcs, MeshLib::CElem* ele);
 	~ElementValue();
 	void getIPvalue_vec(const int IP, double* vec);
-	// SB 09/2010
 	void getIPvalue_vec_phase(const int IP, int phase, double* vec);
 	void GetEleVelocity(double* vec);
 	Math_Group::Matrix Velocity;

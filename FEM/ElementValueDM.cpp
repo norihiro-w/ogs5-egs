@@ -49,15 +49,11 @@ namespace FiniteElement
    ----------------------
    -----------------------------------------------------------------*/
 ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool has_coupling_loop)
-	: NodesOnPath(NULL), orientation(NULL)
 {
 	int Plastic = 1;
 	const int LengthMat = 7;  // Number of material parameter of SYS model.
-	int LengthBS = 4;         // Number of stress/strain components
-	int NGPoints = 0;
 	SolidProp::CSolidProperties* sdp = NULL;
 	int ele_dim;
-	//
 	Stress = NULL;
 	Strain = NULL;
 	pStrain = NULL;
@@ -65,18 +61,18 @@ ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool has_coupling_lo
 	e_i = NULL;
 	xi = NULL;
 	MatP = NULL;
-	NodesOnPath = NULL;
-	orientation = NULL;
 	MshElemType::type ele_type = ele->GetElementType();
 	ele_dim = ele->GetDimension();
 	sdp = msp_vector[ele->GetPatchIndex()];
 	Plastic = sdp->Plastictity();
 
+	int LengthBS = 4;         // Number of stress/strain components
 	if (ele_dim == 2)
 		LengthBS = 4;
 	else if (ele_dim == 3)
 		LengthBS = 6;
 
+	int NGPoints = 0;
 	if (ele_type == MshElemType::TRIANGLE)
 		NGPoints = 3;
 	else if (ele_type == MshElemType::TETRAHEDRON)
@@ -129,11 +125,8 @@ ElementValue_DM::ElementValue_DM(CElem* ele, const int NGP, bool has_coupling_lo
 		xi = new Matrix(LengthBS);
 		*xi = 0.0;
 	}
-	disp_j = 0.0;
-	tract_j = 0.0;
-	Localized = false;
 }
-// 01/2006 WW
+
 void ElementValue_DM::Write_BIN(std::fstream& os)
 {
 	Stress0->Write_BIN(os);
@@ -144,13 +137,8 @@ void ElementValue_DM::Write_BIN(std::fstream& os)
 	if (MatP) MatP->Write_BIN(os);
 	if (prep0) prep0->Write_BIN(os);
 	if (e_i) e_i->Write_BIN(os);
-	if (NodesOnPath) NodesOnPath->Write_BIN(os);
-	if (orientation) os.write((char*)(orientation), sizeof(*orientation));
-	os.write((char*)(&disp_j), sizeof(disp_j));
-	os.write((char*)(&tract_j), sizeof(tract_j));
-	os.write((char*)(&Localized), sizeof(Localized));
 }
-// 01/2006 WW
+
 void ElementValue_DM::Read_BIN(std::fstream& is)
 {
 	Stress0->Read_BIN(is);
@@ -161,14 +149,8 @@ void ElementValue_DM::Read_BIN(std::fstream& is)
 	if (MatP) MatP->Read_BIN(is);
 	if (prep0) prep0->Read_BIN(is);
 	if (e_i) e_i->Read_BIN(is);
-	if (NodesOnPath) NodesOnPath->Read_BIN(is);
-	if (orientation) is.read((char*)(orientation), sizeof(*orientation));
-	is.read((char*)(&disp_j), sizeof(disp_j));
-	is.read((char*)(&tract_j), sizeof(tract_j));
-	is.read((char*)(&Localized), sizeof(Localized));
 }
 
-// 10/2011 WW
 void ElementValue_DM::ReadElementStressASCI(std::fstream& is)
 {
 	size_t i, j;
@@ -220,14 +202,9 @@ ElementValue_DM::~ElementValue_DM()
 	if (xi) delete xi;      // Rotational hardening variables
 	if (MatP) delete MatP;  // Material parameters
 
-	if (NodesOnPath) delete NodesOnPath;
-	if (orientation) delete orientation;
-
 	delete Strain;
 	delete Strain_last_ts;
 
-	NodesOnPath = NULL;
-	orientation = NULL;
 	y_surface = NULL;
 	Stress0 = NULL;
 	Stress = NULL;

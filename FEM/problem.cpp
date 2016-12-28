@@ -45,9 +45,6 @@
 #include "rf_pcs_TH.h"
 #include "rf_random_walk.h"
 #include "rf_react.h"
-#ifdef BRNS
-#include "rf_REACT_BRNS.h"
-#endif
 #ifdef GEM_REACT
 #include "rf_REACT_GEM.h"
 #endif
@@ -130,21 +127,10 @@ Problem::Problem(char* filename)
 	// JT: Certain restrictions might be made if an external simulator is being
 	// used
 	external_coupling_exists = false;
-	for (size_t i = 0; i < pcs_vector.size(); i++)
-	{
-		if (pcs_vector[i]->simulator.compare("GEOSYS") != 0)
-			external_coupling_exists = true;
-	}
 #ifdef GEM_REACT
 	external_coupling_exists = true;
 #endif
 #ifdef LIBPHREEQC
-	external_coupling_exists = true;
-#endif
-#ifdef BRNS
-	external_coupling_exists = true;
-#endif
-#ifdef CHEMAPP
 	external_coupling_exists = true;
 #endif
 	//
@@ -269,16 +255,6 @@ Problem::Problem(char* filename)
 	}
 #endif  // GEM_REACT
 
-#ifdef BRNS
-	// Here to test BRNS; HB 02.11.2007
-	// REACT_BRNS* pBRNS;
-	// pBRNS = new REACT_BRNS();
-	m_vec_BRNS = new REACT_BRNS();
-	m_vec_BRNS->InitBRNS(this);
-#endif
-
-	//  delete rc;
-
 	//----------------------------------------------------------------------
 	// DDC
 	size_t no_processes = pcs_vector.size();
@@ -373,8 +349,6 @@ Problem::Problem(char* filename)
 	else
 		buffer_array = NULL;
 	buffer_array1 = NULL;
-	//========================================================================
-	CRFProcessDeformation* dm_pcs = NULL;
 
 	for (size_t i = 0; i < no_processes; i++)
 	{
@@ -382,12 +356,6 @@ Problem::Problem(char* filename)
 		m_pcs->CalcSecondaryVariables(true);
 		m_pcs->Extropolation_MatValue();
 	}
-	// Calculation of the initial stress and released load for excavation
-	// simulation
-	// 07.09.2007  WW
-	// Excavation for defromation
-	dm_pcs = (CRFProcessDeformation*)total_processes[12];
-	if (dm_pcs) dm_pcs->CreateInitialState4Excavation();
 
 #ifdef OGS_DELETE_EDGES_AFTER_INIT
 	if (!fluid_mom_pcs)
@@ -429,10 +397,6 @@ Problem::~Problem()
 
 #ifdef GEM_REACT
 	delete m_vec_GEM;
-#endif
-
-#ifdef BRNS
-	delete m_vec_BRNS;
 #endif
 
 	ScreenMessage("\nYour simulation is terminated normally\n");
@@ -724,8 +688,7 @@ void Problem::PCSCreate()
 	for (size_t i = 0; i < no_processes; i++)
 		MMP2PCSRelation(pcs_vector[i]);
 
-	for (size_t i = 0; i < no_processes; i++)  // WW
-
+	for (size_t i = 0; i < no_processes; i++)
 		pcs_vector[i]->ConfigureCouplingForLocalAssemblier();
 
 	for (size_t i = 0; i < out_vector.size(); i++)
@@ -2293,13 +2256,6 @@ inline double Problem::MassTrasport()
 	}
 #endif  // GEM_REACT
 
-#ifdef BRNS
-	if (m_vec_BRNS->init_flag == true)
-		m_vec_BRNS->RUN(dt /*time value in seconds*/);
-#endif
-
-	// if(KinReactData_vector.size() > 0)  //12.12.2008 WW
-	// SB4900    ClockTimeVec[0]->StopTime("EquiReact");
 
 	return error;
 }
@@ -2550,73 +2506,18 @@ void Problem::LOPCalcELEResultants()
 		    convertProcessTypeToString(m_pcs->getProcessType()));
 		switch (pcs_type_name[0])
 		{
-			default:
-				break;
 			case 'L':  // Liquid flow
-				m_pcs->CalcELEVelocities();
-				break;
 			case 'G':  // Groundwater flow
-				m_pcs->CalcELEVelocities();
-				break;
 			case 'A':  // Gas flow
-				m_pcs->CalcELEVelocities();
-				// m_pcs->CalcELEMassFluxes();			// BG
-				break;
-			case 'T':  // Two-phase flow
-				break;
-			case 'C':  // Componental flow
-				break;
-			case 'H':  // Heat transport
-				break;
-			case 'M':  // Mass transport
-				break;
-			case 'D':  // Deformation
-				break;
 			case 'R':  // Richards flow
 				m_pcs->CalcELEVelocities();
 				break;
-			case 'F':  // Fluid Momentum
+			default:
 				break;
 		}
 	}
 }
 
-/**************************************************************************
-   ROCKFLOW - Funktion: ASMCalcNodeWDepth
-
-   Task:
-   Berechnung und Speichern der Knotenfl?se
-   Parameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E: long i: node index
-   Result:
-   - void -
-
-   Programmaenderungen:
-   11/2002   MB/OK  Implementation
-   10/2004   MB     PCS
-   12/2008   WW     Encapsulate to this class
-**************************************************************************/
-inline void Problem::ASMCalcNodeWDepth(CRFProcess* m_pcs)
-{
-	int nidx, nidy, nidz;
-	// OK411 int timelevel = 1;
-	double WDepth;
-
-	nidx = m_pcs->GetNodeValueIndex("HEAD") + 1;
-	nidy = m_pcs->GetNodeValueIndex("WDEPTH");
-	nidz = m_pcs->GetNodeValueIndex("COUPLING");
-
-	const size_t n_nodes(m_pcs->m_msh->nod_vector.size());
-	for (size_t nn = 0; nn < n_nodes; nn++)
-	{
-		WDepth = m_pcs->GetNodeValue(nn, nidx) -
-		         m_pcs->m_msh->nod_vector[nn]->getData()[2];
-		// JOD only needed for GREEN_AMPT source term
-		m_pcs->SetNodeValue(nn, nidz, m_pcs->GetNodeValue(nn, nidz + 1));
-		if (WDepth < 0.0) WDepth = 0.0;
-		m_pcs->SetNodeValue(nn, nidy, WDepth);
-	}
-}
 
 /**************************************************************************/
 /* ROCKFLOW - Funktion: PCSCalcSecondaryVariables
@@ -2672,20 +2573,3 @@ bool Problem::Check()
 	}
 	return true;
 }
-
-#ifdef BRNS
-
-// BRNS-Coupling: For writing spatially resolved reaction rates at the final
-// iteration,
-// we need to get the timing information.
-
-double Problem::getCurrentTime()
-{
-	return current_time;
-}
-
-double Problem::getEndTime()
-{
-	return end_time;
-}
-#endif  // BRNS

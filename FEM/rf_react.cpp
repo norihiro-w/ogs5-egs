@@ -7,38 +7,31 @@
  *
  */
 
-/*
-   rf_react.cpp
-   Reaction package to go with MTM2
- */
+#include "rf_react.h"
+
+#include <cfloat>
+#include <csignal>
+#include <cstdio>
+#include <fstream>
+#include <iostream>
+#include <vector>
 
 #include "display.h"
-#include "FileToolsRF.h"
 #include "files0.h"
+#include "FileToolsRF.h"
 #include "makros.h"
 #include "memory.h"
+
 #include "mathlib.h"
+
+#include "fem_ele_std.h"
+#include "rfmat_cp.h"
 #include "rf_ic_new.h"
 #include "rf_kinreact.h"
 #include "rf_mmp_new.h"
 #include "rf_pcs.h"
-#include "rf_pcs.h"
-#include "rf_pcs.h"  //OK_MOD"
-#include "rf_react.h"
 #include "rf_tim_new.h"
-#include "rfmat_cp.h"
-#include "stdio.h"
-#include <cfloat>
-#include <fstream>
-#include <iostream>
-#include <signal.h>
-// Elem object
-#include "fem_ele_std.h"
-#ifdef CHEMAPP
-#include "eqlink.h"
-#endif
 
-#include <vector>
 using namespace std;
 
 void destroy_react(void* item);

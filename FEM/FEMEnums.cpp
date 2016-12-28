@@ -27,8 +27,6 @@ ProcessType convertProcessType(const std::string& pcs_type_string)
 	if (pcs_type_string.compare("DEFORMATION") == 0) return DEFORMATION;
 	if (pcs_type_string.compare("DEFORMATION_FLOW") == 0)
 		return DEFORMATION_FLOW;
-	if (pcs_type_string.compare("DEFORMATION_DYNAMIC") == 0)
-		return DEFORMATION_DYNAMIC;
 	if (pcs_type_string.compare("MASS_TRANSPORT") == 0) return MASS_TRANSPORT;
 	if (pcs_type_string.compare("MULTI_PHASE_FLOW") == 0)
 		return MULTI_PHASE_FLOW;
@@ -56,7 +54,6 @@ std::string convertProcessTypeToString(ProcessType pcs_type)
 	if (pcs_type == HEAT_TRANSPORT) return "HEAT_TRANSPORT";
 	if (pcs_type == DEFORMATION) return "DEFORMATION";
 	if (pcs_type == DEFORMATION_FLOW) return "DEFORMATION_FLOW";
-	if (pcs_type == DEFORMATION_DYNAMIC) return "DEFORMATION_DYNAMIC";
 	if (pcs_type == MASS_TRANSPORT) return "MASS_TRANSPORT";
 	if (pcs_type == MULTI_PHASE_FLOW) return "MULTI_PHASE_FLOW";
 	if (pcs_type == DEFORMATION_H2) return "DEFORMATION_H2";
@@ -93,7 +90,7 @@ bool isMultiFlowProcess(ProcessType pcs_type)
 bool isDeformationProcess(ProcessType pcs_type)
 {
 	if (pcs_type == DEFORMATION || pcs_type == DEFORMATION_H2 ||
-	    pcs_type == DEFORMATION_FLOW || pcs_type == DEFORMATION_DYNAMIC)
+		pcs_type == DEFORMATION_FLOW)
 		return true;
 	return false;
 }
@@ -136,10 +133,6 @@ PrimaryVariable convertPrimaryVariable(const std::string& pcs_pv_string)
 	if (pcs_pv_string.compare("STRESS_YY") == 0) return STRESS_YY;
 	if (pcs_pv_string.compare("STRESS_YZ") == 0) return STRESS_YZ;
 	if (pcs_pv_string.compare("STRESS_ZZ") == 0) return STRESS_ZZ;
-	if (pcs_pv_string.compare("ACCELERATION_X1") == 0) return ACCELERATION_X1;
-	if (pcs_pv_string.compare("ACCELERATION_Y1") == 0) return ACCELERATION_Y1;
-	if (pcs_pv_string.compare("ACCELERATION_Z1") == 0) return ACCELERATION_Z1;
-	if (pcs_pv_string.compare("EXCAVATION") == 0) return EXCAVATION;
 	if (pcs_pv_string.compare("STRAIN_XX") == 0) return STRAIN_XX;
 	if (pcs_pv_string.compare("STRAIN_XY") == 0) return STRAIN_XY;
 	if (pcs_pv_string.compare("STRAIN_XZ") == 0) return STRAIN_XZ;
@@ -188,10 +181,6 @@ std::string convertPrimaryVariableToString(PrimaryVariable pcs_pv)
 	if (pcs_pv == STRAIN_YZ) return "STRAIN_YZ";
 	if (pcs_pv == STRAIN_ZZ) return "STRAIN_ZZ";
 	if (pcs_pv == STRAIN_PLS) return "STRAIN_PLS";
-	if (pcs_pv == ACCELERATION_X1) return "ACCELERATION_X1";
-	if (pcs_pv == ACCELERATION_Y1) return "ACCELERATION_Y1";
-	if (pcs_pv == ACCELERATION_Z1) return "ACCELERATION_Z1";
-	if (pcs_pv == EXCAVATION) return "EXCAVATION";
 	return "INVALID_PRIMARY_VARIABLE";
 }
 

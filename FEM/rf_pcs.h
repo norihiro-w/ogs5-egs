@@ -44,22 +44,6 @@ typedef struct
 	double NaCl;       // mole of NaCl
 } Phase_Properties;
 
-typedef struct
-{
-	double B;
-	double C;
-	double D;
-	double E;
-	double F;
-	double b;
-	double G;
-	double Vc;
-	double V2, V3, V5, V6;
-	double Tc, Pc;
-	double M;
-	int id;
-} VirialCoefficients;
-
 
 #if defined(USE_PETSC)
 namespace petsc_group
@@ -105,53 +89,47 @@ using namespace MeshLib;
 class CRFProcess : public ProcessInfo
 {
 protected:
-	/**
-	 * _problem is a pointer to an instance of class Problem.
-	 *  The pointer is used to get the geometric entities.
-	 */
 	Problem* _problem;
 
 	void VariableStaticProblem();
-	void VariableDynamics();
-	bool compute_domain_face_normal;  // WW
+	bool compute_domain_face_normal;
 	int continuum;
 	bool continuum_ic;
 
-	bool isRSM;     // WW
-	double* eqs_x;  //> Pointer to x array of eqs (added due to PETSC)
-
 	std::vector<std::string> pcs_type_name_vector;
 
-protected:  // WW
+protected:
 	friend class FiniteElement::CFiniteElementStd;
 	friend class FiniteElement::CFiniteElementVec;
 	friend class FiniteElement::ElementValue;
 	friend class ::CSourceTermGroup;
 	friend class ::Problem;
+
 	/// Number of nodes to a primary variable. 11.08.2010. WW
 	int* p_var_index;
 	long* num_nodes_p_var;
 
-	/// Size of unknowns. 02.2011. WW
 	long size_unknowns;
-	// Assembler
+
 	CFiniteElementStd* fem;
+
 	// Time step control
-	bool accepted;     // 25.08.1008. WW
-	int accept_steps;  // 27.08.1008. WW
-	int reject_steps;  // 27.08.1008. WW
+	bool accepted;
+	int accept_steps;
+	int reject_steps;
 	bool diverged;
 	double dt_pre;
-	//
-	int dof;         // WW
+
+	int dof;
 	long orig_size;  // Size of source term nodes
-	// ELE
+
 	std::vector<FiniteElement::ElementMatrix*> Ele_Matrices;
+
 	// Global matrix
-	Math_Group::Vector* Gl_Vec;                 // NW
-	Math_Group::Vector* Gl_Vec1;                // NW
-	Math_Group::Vector* Gl_ML;                  // NW
-	Math_Group::SparseMatrixDOK* FCT_AFlux;  // NW
+	Math_Group::Vector* Gl_Vec;
+	Math_Group::Vector* Gl_Vec1;
+	Math_Group::Vector* Gl_ML;
+	Math_Group::SparseMatrixDOK* FCT_AFlux;
 #ifdef USE_PETSC
 	Math_Group::SparseMatrixDOK* FCT_K;
 	Math_Group::SparseMatrixDOK* FCT_d;
@@ -222,9 +200,6 @@ public:
 	void Read_Processed_BC();   // 05.08.2011. WW
 
 	friend bool PCSRead(std::string);
-	//....................................................................
-	// 1-GEO
-	int ite_steps;  /// Newton step index;
 public:
 	// BG, DL Calculate phase transition of CO2
 	void CO2_H2O_NaCl_VLE_isobaric(double T,
@@ -373,25 +348,15 @@ public:
 	// 16-GEM  // HS 11.2008
 	int flag_couple_GEMS;  // 0-no couple; 1-coupled
 	std::vector<Water_ST_GEMS> Water_ST_vec;
-	std::vector<long> stgem_node_value_in_dom;   // KG for domain decomposition
-	std::vector<long> stgem_local_index_in_dom;  // KG for domain decomposition
-	// KG
+	std::vector<long> stgem_node_value_in_dom;
+	std::vector<long> stgem_local_index_in_dom;
 	std::vector<long> rank_stgem_node_value_in_dom;
 
 	void Clean_Water_ST_vec(void);
 	void Add_GEMS_Water_ST(long idx, double val);
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
+#if !defined(USE_PETSC)
 	void SetSTWaterGemSubDomain(int myrank);
 #endif
-	std::string
-	    simulator;  // which solver to use, i.e. GeoSys, ECLIPSE or DuMux
-	std::string simulator_path;  // path for executable of external simulator
-	std::string simulator_model_path;  // path to exclipse input data file
-	                                   // (*.data), with extension
-	bool PrecalculatedFiles;  // defines if Eclipse or dumux is calculated or if
-	                          // precalculated files are used
-	std::string
-	    simulator_well_path;  // path to well schedule ( *.well), with extension
 	//....................................................................
 	// Construction / destruction
 	char pcs_name[MAX_ZEILE];  // string pcs_name;
@@ -473,8 +438,6 @@ public:
 	int srand_seed;
 	const char* pcs_num_name[2];  // For monolithic scheme
 	FiniteElement::TimType tim_type;
-	const char* pcs_sol_name;
-	std::string cpl_type_name;
 	CNumerics* m_num;
 	//
 	bool selected;           // OK
@@ -571,7 +534,6 @@ public:
 	// WW   double GetELEValue(long index,double*gp,double theta,string
 	// nod_fct_name);
 	void CheckMarkedElement();   // WW
-	void CheckExcavedElement();  // WX
 	// Configuration 3 - ELE matrices
 	void CreateELEMatricesPointer(void);
 	// Equation system
@@ -601,13 +563,10 @@ public:
 	void SetOBJNames();
 	// ST
 	void IncorporateSourceTerms();
-// WW void CheckSTGroup(); //OK
 #ifdef GEM_REACT
-	void IncorporateSourceTerms_GEMS(
-	    void);  // HS: dC/dt from GEMS chemical solver.
+	void IncorporateSourceTerms_GEMS();  // HS: dC/dt from GEMS chemical solver.
 	int GetRestartFlag() const { return reload; }
 #endif
-	// BC
 	void IncorporateBoundaryConditions(bool updateA = true,
 	                                   bool updateRHS = true,
 	                                   bool isResidual = false,
@@ -655,10 +614,6 @@ public:
 	void PCSDumpModelNodeValues(void);
 	// WW
 	int GetNODValueIndex(const std::string& name, int timelevel);
-	// BC for dynamic problems. WW
-	inline void setBC_danymic_problems();
-	inline void setST_danymic_problems();
-	inline void setIC_danymic_problems();
 	// Extropolate Gauss point values to node values. WW
 	void Extropolation_GaussValue();
 	void Extropolation_MatValue();  // WW
@@ -678,7 +633,6 @@ public:
 		return TempArry[index];
 	}
 	void LOPCopySwellingStrain(CRFProcess* m_pcs);
-	VoidFuncInt PCSSetIC_USER;
 	void SetIC();
 	// Remove argument. WW
 	void CalcSecondaryVariables(bool initial = false);
@@ -742,11 +696,6 @@ public:
 	CRFProcess* CopyPCStoDM_PCS();
 	CRFProcess* CopyPCStoTH_PCS();
 	bool Check();
-	int ExcavMaterialGroup;       // WX
-	int ExcavDirection;           // WX
-	int ExcavCurve;               // WX
-	double ExcavBeginCoordinate;  // WX
-	int PCS_ExcavState;           // WX
     bool use_total_stress_coupling = false;
     bool calcDiffFromStress0;
 	bool resetStrain;
@@ -790,7 +739,6 @@ extern std::vector<ElementValue*>
     ele_gp_value;  // Gauss point value for velocity. WW
 extern bool PCSRead(std::string);
 extern void PCSWrite(std::string);
-extern void RelocateDeformationProcess(CRFProcess* m_pcs);
 extern void PCSDestroyAllProcesses(void);
 
 extern CRFProcess* PCSGet(const std::string&);
@@ -843,7 +791,6 @@ extern double PCSGetELEValue(long index,
 extern void PCSRestart();
 // PCS global variables
 extern int pcs_no_components;
-extern int pcs_deformation;
 
 // ToDo
 // SB
@@ -912,10 +859,6 @@ class REACT_GEM;
 extern REACT_GEM* m_vec_GEM;
 #endif
 
-#ifdef BRNS
-class REACT_BRNS;
-extern REACT_BRNS* m_vec_BRNS;
-#endif
 
 extern bool hasAnyProcessDeactivatedSubdomains;  // NW
 #endif

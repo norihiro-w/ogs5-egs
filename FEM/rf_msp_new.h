@@ -17,7 +17,6 @@
 
 namespace FiniteElement
 {
-class element;
 class CFiniteElementVec;
 class CFiniteElementStd;
 class ElementValue_DM;
@@ -32,27 +31,19 @@ namespace process
 class CRFProcessDeformation;
 }
 
-#if defined(WIN32)
-class CMATGroupEditorDataEdit;  // WW
-#endif
+using namespace Math_Group;
+using namespace FiniteElement;
+using namespace process;
+
 namespace SolidProp
 {
-using FiniteElement::CFiniteElementVec;
-using FiniteElement::ElementValue_DM;
-using FiniteElement::CFiniteElementStd;
-using FiniteElement::ElementValue;
-using Math_Group::Matrix;
-using process::CRFProcessDeformation;
-using ::CRFProcess;
-/*---------------------------------------------------------------*/
+
 class CSolidProperties
 {
 private:
 	// Material parameters
 	double PoissonRatio;
 	int Youngs_mode;
-	int excavation;  // 12.2009. WW
-	bool excavated;  // 12.2009. To be ..... WW
 	Matrix* data_Youngs;
 	double ThermalExpansion;
 	//
@@ -151,9 +142,6 @@ private:
 	friend class FiniteElement::ElementValue;
 	friend class process::CRFProcessDeformation;
 	friend class ::CRFProcess;
-#if defined(WIN32)  // 15.03.2008 WW
-	friend class ::CMATGroupEditorDataEdit;
-#endif
 	// WW
 public:
 	//
@@ -189,14 +177,7 @@ public:
 	                            double* variables = NULL);
 //   int GetCapacityMode() {return Capacity_mode;};  ??
 // 3. Elasticity
-#ifdef RFW_FRACTURE
-	double Youngs_Modulus(CElem* elem, double refence = 0.0);
-	// RFW, for fracture calc
-	double Get_Youngs_Min_Aperture(CElem* elem);
-#endif
-#ifndef RFW_FRACTURE
 	double Youngs_Modulus(double refence = 0.0);
-#endif
 	void SetYoungsModulus(const double El) { (*data_Youngs)(0) = El; }
 	double Poisson_Ratio() const { return PoissonRatio; }
 	void CalcYoungs_SVV(const double strain_v);
@@ -221,7 +202,7 @@ public:
 	// 1. Elasticity
 	void Calculate_Lame_Constant();
 	// For thermal elastic model
-	void ElasticConsitutive(const int Dimension, Matrix* D_e) const;
+	void ElasticConstitutive(const int Dimension, Matrix* D_e) const;
 	// For transverse isotropic linear elasticity: UJG 24.11.2009
 	void ElasticConstitutiveTransverseIsotropic(const int Dimension);
 	Matrix* getD_tran() const { return D_tran; }
@@ -232,7 +213,7 @@ public:
 	double GetYieldCoefficent_DP(const double Angle);
 	void CalulateCoefficent_DP();
 	bool StressIntegrationDP(const int GPiGPj, const ElementValue_DM* ele_val,
-	                         double* TryStress, double& dPhi, const int Update);
+							 double* TryStress, double& dPhi, const int Update, double tol_newton);
 	void ConsistentTangentialDP(Matrix* Dep, const double dPhi, const int Dim);
 	bool DirectStressIntegrationDP(const int GPiGPj,
 	                               const ElementValue_DM* ele_val,
@@ -366,10 +347,6 @@ extern std::vector<SolidProp::CSolidProperties*> msp_vector;
 extern bool MSPRead(std::string file_base_name);
 extern void MSPWrite(std::string);
 extern void MSPDelete();
-// OK
-extern std::vector<std::string> msp_key_word_vector;
-extern void MSPStandardKeywords();  // OK
-// OK
 extern SolidProp::CSolidProperties* MSPGet(std::string);
 
 extern double StressNorm(const double* s, const int Dim);

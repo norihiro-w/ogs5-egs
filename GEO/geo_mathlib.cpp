@@ -570,56 +570,6 @@ int MPhi2D(double* vf, double r, double s)
 	return ok = 1;
 }
 
-#ifdef RFW_FRACTURE
-/*************************************************************************
-   ROCKFLOW - Funktion: LineSegmentIntersection
-   Aufgabe:
-   Find the intersection of 2 line segments, if it exists.  2D only.
-
-   Formalparameter: (E: Eingabe; R: Rueckgabe; X: Beides)
-   E xline1:  x-coords at the ends of first line segment
-   E yline1:  y-coords at the ends of first line segment
-   E xline2:  x-coords at the ends of second line segment
-   E yline2:  y-coords at the ends of second line segment
-   R intercept: the intersection point of the 2 segments
-
-   Ergebnis:
-   Returns the value true if an intercept exists
-   Programmaenderungen:
-   05/2005 RFW Implementierung
- ***************************************************************************/
-bool LineSegmentIntersection(vector<double> xline1, vector<double> yline1,
-                             vector<double> xline2, vector<double> yline2,
-                             vector<double>& intercept)
-{
-	double determinant, t1;  // WW, t2;
-	bool crosses = false;
-
-	determinant = ((yline2[1] - yline2[0]) * (xline1[1] - xline1[0]) -
-	               (xline2[1] - xline2[0]) * (yline1[1] - yline1[0]));
-	if (determinant == 0)
-		crosses = false;
-	else
-	{
-		t1 = ((xline2[1] - xline2[0]) * (yline1[0] - yline2[0]) -
-		      (yline2[1] - yline2[0]) * (xline1[0] - xline2[0])) /
-		     determinant;
-
-		if (t1 < 0 || t1 > 1)
-			crosses = false;
-		else
-		{
-			crosses = true;
-			intercept.push_back(xline1[0] + t1 * (xline1[1] - xline1[0]));
-			intercept.push_back(yline1[0] + t1 * (yline1[1] - yline1[0]));
-		}
-	}
-
-	return crosses;
-}
-#endif
-
-
 double sqrNrm2(const GEOLIB::Point* p0)
 {
 	return MathLib::scpr(p0->getData(), p0->getData(), 3);

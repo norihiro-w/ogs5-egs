@@ -9,23 +9,28 @@
  *
  */
 
-/**********************************************************************
-   Module: Equation of State
+#include "eos.h"
 
-   Task: This file includes coefficients and functions for calculating the
-   thermal properties of liquids and gases in relation to density, pressure
-   and temperature.
-
-   Programming: NB
-          Aug 2008
-**********************************************************************/
-
+#include "fem_ele_std.h"
 #include "rf_mfp_new.h"
 #include "rf_mmp_new.h"
-#include "fem_ele_std.h"
-//#include "rf_num_new.h"
-#include "eos.h"
 #include "tools.h"
+
+typedef struct
+{
+	double B;
+	double C;
+	double D;
+	double E;
+	double F;
+	double b;
+	double G;
+	double Vc;
+	double V2, V3, V5, V6;
+	double Tc, Pc;
+	double M;
+	int id;
+} VirialCoefficients;
 
 using namespace std;
 

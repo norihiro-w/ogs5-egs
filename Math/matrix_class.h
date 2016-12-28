@@ -15,6 +15,7 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <valarray>
 #include <vector>
 
 namespace Math_Group
@@ -47,6 +48,11 @@ public:
 
 	// vec_result = This*vec. vec_result must be initialized
 	void multi(const double* vec, double* vec_result, double fac = 1.0);
+	void multi(std::valarray<double> const& vec, std::valarray<double>& vec_result, double fac = 1.0)
+	{
+		multi(&vec[0], &vec_result[0], fac);
+	}
+
 	// m_result = this*m. m_result must be initialized
 	void multi(const Matrix& m, Matrix& m_result, double fac = 1.0);
 	// m_result = this*m1*m2. m_result must be initialized

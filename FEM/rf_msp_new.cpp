@@ -7,14 +7,6 @@
  *
  */
 
-/**************************************************************************
-   FEMLib - Object: MSP Solid Properties
-   Task:
-   Programing:
-   08/2004 WW Implementation
-   last modified:
-**************************************************************************/
-
 #include "rf_msp_new.h"
 
 #include <cfloat>
@@ -37,7 +29,6 @@
 using namespace std;
 
 vector<SolidProp::CSolidProperties*> msp_vector;
-vector<string> msp_key_word_vector;  // OK
 
 using FiniteElement::ElementValue_DM;
 namespace SolidProp
@@ -349,14 +340,6 @@ std::ios::pos_type CSolidProperties::Read(std::ifstream* msp_file)
 		{
 			in_sd.str(GetLineFromFile1(msp_file));
 			in_sd >> sub_line >> PoissonRatio;
-			in_sd.clear();
-		}
-		//....................................................................
-		// 12.2009. WW
-		if (line_string.find("$EXCAVATION") != string::npos)
-		{
-			in_sd.str(GetLineFromFile1(msp_file));
-			in_sd >> excavation;
 			in_sd.clear();
 		}
 		//....................................................................
@@ -704,8 +687,6 @@ CSolidProperties::CSolidProperties()
 	Conductivity_mode = -1;
 	Creep_mode = -1;
 	grav_const = 9.81;  // WW
-	excavation = -1;    // 12.2009. WW
-	excavated = false;  // To be .....  12.2009. WW
 
 	SwellingPressureType = -1;
 	Max_SwellingPressure = 0.0;
@@ -1139,9 +1120,9 @@ void CSolidProperties::HeatConductivityTensor(const int dim, double* tensor,
 	// check
 	if (thermal_conductivity_tensor_type > 0 &&
 	    dim != thermal_conductivity_tensor_dim)
-		cout << "***Error in CSolidProperties::HeatConductivityTensor(): "
-		        "problem dimension and the given tensor dimension are not same."
-		     << endl;
+		ScreenMessage("***Error in CSolidProperties::HeatConductivityTensor(): "
+		        "problem dimension (%d) and the given tensor dimension (%d) are not same.\n", dim, thermal_conductivity_tensor_dim);
+
 	// reset
 	for (i = 0; i < 9; i++)
 		tensor[i] = 0.0;
@@ -1245,7 +1226,7 @@ void CSolidProperties::Calculate_Lame_Constant()
    11/2003   WW   Set plastic parameter
 
 *************************************************************************/
-void CSolidProperties::ElasticConsitutive(const int Dimension,
+void CSolidProperties::ElasticConstitutive(const int Dimension,
                                           Matrix* D_e) const
 {
 	(*D_e) = 0.0;
@@ -1783,7 +1764,7 @@ void CSolidProperties::CalculateCoefficent_HOEKBROWN()  // WX: 02.2011
 bool CSolidProperties::StressIntegrationDP(const int GPiGPj,
                                            const ElementValue_DM* ele_val,
                                            double* TryStress, double& dPhi,
-                                           const int Update)
+										   const int Update, double tol_newton)
 {
 	int i = 0;
 	double I1 = 0.0;
@@ -1835,7 +1816,7 @@ bool CSolidProperties::StressIntegrationDP(const int GPiGPj,
 	if (F0 <= (*ele_val->y_surface)(GPiGPj))  // unloading
 		F = -1.0;
 	//
-	if (F > 0.0 && (!PreLoad))  // in yield status
+	if (F > 0.0)  // in yield status
 	{
 		ploading = true;
 		// err = 1.0e+5;
@@ -1865,7 +1846,7 @@ bool CSolidProperties::StressIntegrationDP(const int GPiGPj,
 				F = 9.0 * Xi * K * (dPhi + dl2) +
 				    BetaN * (Y0 + Hard * (ep0 + fac)) / Al - p3;
 				dl2 -= F / Jac;
-				if (fabs(F) < 1000.0 * Tolerance_Local_Newton) break;
+				if (fabs(F) < 1000.0 * tol_newton) break;
 				if (ite > max_ite) break;
 			}
 			ep = ep0 + fac;
@@ -1885,7 +1866,7 @@ bool CSolidProperties::StressIntegrationDP(const int GPiGPj,
 			{
 				ite++;
 				if (ite > max_ite) break;
-				if (F < 0.0 || fabs(F) < 10.0 * Tolerance_Local_Newton) break;
+				if (F < 0.0 || fabs(F) < 10.0 * tol_newton) break;
 				// if(err<TolLocalNewT) break;
 				dPhi -= F / Jac;
 				//
@@ -1993,7 +1974,7 @@ bool CSolidProperties::DirectStressIntegrationDP(const int GPiGPj,
 	//  F = -1.0;
 	if (sy <= sy0)  // unloading
 		F = -1.0;
-	if (F > 0.0 && (!PreLoad))  // in yield status
+	if (F > 0.0)  // in yield status
 	{
 		if (ep < MKleinsteZahl)  // Elastic in previous load step
 			R = F / (sy - sy0);
@@ -2133,7 +2114,7 @@ int CSolidProperties::DirectStressIntegrationDPwithTension(
 
 	if (tmpvalue == 0) Ft = F = -1;
 
-	if (F > 0.0 && (!PreLoad))
+	if (F > 0.0)
 	{
 		// return to Fs
 		Matrix* tmpMatrix = new Matrix(Size, Size);
@@ -2657,7 +2638,6 @@ int CSolidProperties::DirectStressIntegrationMOHR(
 	double TmpValue1, TmpValue2, dstrNorm = 0;
 	// double LodeAngle, I1, J2, J3;
 	double shearsurf, tensionsurf, ep;
-	LoadFactor = 1.;
 
 	// initialize all vectors
 	double dstrs[6] = {0.}, TmpStress[6] = {0.}, prin_str[6] = {0.},
@@ -3884,10 +3864,11 @@ int CSolidProperties::CalStress_and_TangentialMatrix_SYS(
 	else
 		F = -1.0;
 
+	int pcs_deformation = 1; //TODO
 	if (pcs_deformation == 1) F = -1.0;
 
 	PLASTIC = 0;
-	if (F > TolF && !PreLoad) /* In Yield Status */
+	if (F > TolF) /* In Yield Status */
 	{
 		PLASTIC = 1;
 		subPLASTIC = 0;
@@ -5364,7 +5345,7 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC(
 
 	Lambda = K - 2.0 * G / 3.0;
 
-	ElasticConsitutive(dim, Dep);
+	ElasticConstitutive(dim, Dep);
 
 	for (i = 0; i < ns; i++)
 		TryStress[i] = 0.0;
@@ -5393,12 +5374,13 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC(
 	NPStep = 0;
 
 	F0 = F;
+	int pcs_deformation = 1; //TODO
 	if (pcs_deformation == 1) F = -1.0;
 	if ((*data_Plasticity)(3) < MKleinsteZahl)  // p_c0=0
 		F = -1.0;
 	// TEST CAM-CLAY
 	if (p_tr < 0) F = -1.0;
-	if (F > 0.0 && !PreLoad)  // in yield status
+	if (F > 0.0)  // in yield status
 	{
 		// Local Newton-Raphson procedure to compute the volume plastic strain
 		vep = 0.0;
@@ -5707,7 +5689,7 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC(
 			TryStress[i] -= p;
 	}
 	else if (Update < 1)
-		ElasticConsitutive(dim, Dep);
+		ElasticConstitutive(dim, Dep);
 
 	for (i = 0; i < ns; i++)
 		dStrain[i] = TryStress[i];
@@ -5876,7 +5858,7 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC_SubStep(
 
 			G = 1.5 * K * (1 - 2.0 * PoissonRatio) / (1 + PoissonRatio);
 			Lambda = K - 2.0 * G / 3.0;
-			ElasticConsitutive(dim, Dep);
+			ElasticConstitutive(dim, Dep);
 			//
 			for (i = 0; i < ns; i++)
 				dsig[i] = 0.0;
@@ -5940,13 +5922,14 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC_SubStep(
 		NPStep = 0;
 
 		F0 = F;
+		int pcs_deformation = 1; //TODO
 		if (pcs_deformation == 1) F = -1.0;
 		if ((*data_Plasticity)(3) < MKleinsteZahl)  // p_c0=0
 			F = -1.0;
 		// TEST CAM-CLAY
 		if (p_tr < 0) F = -1.0;
 
-		if (F > f_tol && !PreLoad)  // in yield status
+		if (F > f_tol)  // in yield status
 		{
 			// Local Newton-Raphson procedure to compute the volume plastic
 			// strain
@@ -6132,7 +6115,7 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC_SubStep(
 			TryStress[i] -= p;
 	}
 	else if (Update < 1)
-		ElasticConsitutive(dim, Dep);
+		ElasticConstitutive(dim, Dep);
 
 	for (i = 0; i < ns; i++)
 		dStrain[i] = TryStress[i];
@@ -6722,20 +6705,6 @@ void MSPWrite(std::string base_file_name)
 	msp_file << "#STOP";
 	msp_file.close();
 	//----------------------------------------------------------------------
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   07/2007 OK Implementation
-**************************************************************************/
-void MSPStandardKeywords()
-{
-	msp_key_word_vector.clear();
-	string in;
-	in = "POISSON_RATIO";
-	msp_key_word_vector.push_back(in);
-	in = "YOUNGS_MODULUS";
-	msp_key_word_vector.push_back(in);
 }
 
 /**************************************************************************

@@ -513,12 +513,6 @@ std::ios::pos_type CMediumProperties::Read(std::ifstream* mmp_file)
 
 					break;
 #endif
-#ifdef BRNS
-				case 16:
-					in >> porosity_model_values[0];  // set a default value for
-					                                 // BRNS calculation
-					break;
-#endif
 				default:
 					std::cerr << "Error in MMPRead: no valid porosity model"
 					          << "\n";
@@ -2672,7 +2666,7 @@ double CMediumProperties::HeatCapacity(long number, double theta,
 			if (FLOW)
 			{
 				PG = assem->interpolate(assem->NodalValC1);
-				if (assem->cpl_pcs->type == 1212)  // Multi-phase WW
+				if (assem->cpl_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)  // Multi-phase WW
 					PG *= -1.0;
 				Sat = SaturationCapillaryPressureFunction(-PG);
 			}
@@ -2793,7 +2787,7 @@ double* CMediumProperties::HeatConductivityTensor(int number, double* variables)
 		if (FLOW)  // WW
 		{
 			if (Fem_Ele_Std->cpl_pcs &&
-			    Fem_Ele_Std->cpl_pcs->type == 1212)  // Multi-phase WW
+			    Fem_Ele_Std->cpl_pcs->getProcessType() == FiniteElement::MULTI_PHASE_FLOW)
 			{
 				double PG = Fem_Ele_Std->interpolate(
 				    Fem_Ele_Std->NodalValC1);  // Capillary pressure
@@ -3908,7 +3902,7 @@ double CMediumProperties::Porosity(long number, double theta)
 			break;
 		case 7:  // n = f(mean stress) WW
 			gval = ele_value_dm[number];
-            primary_variable[0] = - MeanStress(*gval->Stress, assem->gp) / 3.0;
+			primary_variable[0] = - MeanStress(*gval->Stress, assem->gp);
 			porosity =
 			    GetCurveValue(porosity_curve, 0, primary_variable[0], &gueltig);
 			break;
@@ -3956,34 +3950,6 @@ double CMediumProperties::Porosity(long number, double theta)
 					}
 				}
 
-			break;
-#endif
-#ifdef BRNS
-		case 16:
-			porosity = porosity_model_values[0];  // default value as backup
-			if (aktueller_zeitschritt > 1)
-				for (size_t i = 0; i < pcs_vector.size(); i++)
-				{
-					pcs_temp = pcs_vector[i];
-					//	            if (
-					// pcs_temp->pcs_type_name.compare("GROUNDWATER_FLOW") == 0
-					//||
-					//                     pcs_temp->pcs_type_name.compare("LIQUID_FLOW")
-					//                     == 0         ) {
-					if (pcs_temp->getProcessType() ==
-					        FiniteElement::GROUNDWATER_FLOW ||
-					    pcs_temp->getProcessType() ==
-					        FiniteElement::LIQUID_FLOW)
-					{
-						int idx;
-						idx = pcs_temp->GetElementValueIndex("POROSITY");
-
-						porosity = pcs_temp->GetElementValue(number, idx);
-						if (porosity < 1.e-6)
-							cout << "error for porosity1 " << porosity
-							     << " node " << number << endl;
-					}
-				}
 			break;
 #endif
 		default:
@@ -4094,7 +4060,7 @@ double CMediumProperties::Porosity(CElement* assem)
 			break;
 		case 7:  // n = f(mean stress) WW
 			gval = ele_value_dm[number];
-            primary_variable[0] = -MeanStress(*gval->Stress, assem->GetGPindex()) / 3.0;
+			primary_variable[0] = - MeanStress(*gval->Stress, assem->GetGPindex());
 			porosity =
 			    GetCurveValue(porosity_curve, 0, primary_variable[0], &gueltig);
 			break;

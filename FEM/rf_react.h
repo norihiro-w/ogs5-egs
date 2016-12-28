@@ -7,12 +7,10 @@
  *
  */
 
-/* reaction package header file */
-
 #ifndef reaction_INC
-
 #define reactions_INC
 
+#include <string>
 #include <vector>
 
 /* Structure for exchange of reaction rates */

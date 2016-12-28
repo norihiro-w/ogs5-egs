@@ -92,7 +92,6 @@ CBoundaryCondition::CBoundaryCondition()
 	time_dep_interpol = false;
 	epsilon = 1e-9;         // NW
 	time_contr_curve = -1;  // WX
-	bcExcav = -1;           // WX
 	MatGr = -1;             // WX
 	is_MatGr_set = false;   // NW
 	TimeInterpolation = 0;
@@ -430,14 +429,6 @@ std::ios::pos_type CBoundaryCondition::Read(std::ifstream* bc_file,
 		{
 			in.str(readNonBlankLineFromInputStream(*bc_file));
 			in >> time_contr_curve;
-			in.clear();
-		}
-		//....................................................................
-		// bc for excated boundaries WX
-		if (line_string.find("$EXCAVATION") != std::string::npos)
-		{
-			in.str(readNonBlankLineFromInputStream(*bc_file));
-			in >> bcExcav >> MatGr;
 			in.clear();
 		}
 		//....................................................................
@@ -987,9 +978,9 @@ void setDistributionData(CBoundaryCondition* bc, DistributionData& distData)
 	{
 		distData.mesh_node_id = bc->getMeshNodeNumber();
 	}
-	if (bc->getExcav() > 0 || bc->isMatGrSet())
+	if (bc->isMatGrSet())
 	{
-		distData.mat_id = bc->getExcavMatGr();
+		distData.mat_id = bc->getMaterialID();
 	}
 }
 

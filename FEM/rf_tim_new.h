@@ -108,7 +108,7 @@ public:
 	size_t last_rejected_timestep;
 
 	IterationType::type iteration_type;
-	bool usePIDControl;
+	bool usePIDControl = false;
 	bool usePIDControlInSelfAdaptive;
 	std::string pid_variable;
 	double pid_error;

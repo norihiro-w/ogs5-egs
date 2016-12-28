@@ -282,12 +282,6 @@ public:
 	double representative_length;
 	double courant;
 	double neumann;
-
-	int GetExcavState() { return excavated; }
-	void SetExcavState(const int ExcavState)
-	{
-		excavated = ExcavState;
-	}
 #endif
 #if defined(USE_PETSC)
 	bool isOverlapped() const { return g_index != NULL; }
@@ -326,7 +320,6 @@ private:
 	Math_Group::vec<CElem*> neighbors;
 #ifndef OGS_ONLY_TH
 	double* angle;
-	int excavated;
 #endif
 
 	int GetElementFaces1D(int* FaceNode);

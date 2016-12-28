@@ -7,19 +7,7 @@
  *
  */
 
-/**************************************************************************/
-/* ROCKFLOW - Modul: rfmat_cp.c
- */
-/* Task:
-   Methods for ComponentProperties
- */
-/* Programming:
-   10/2004   SB  First Implemented
- */
-/**************************************************************************/
-#ifdef WINDOWS
-#pragma warning(disable : 4786) /*Visual C++ 6.0*/
-#endif
+#include "rfmat_cp.h"
 
 #include <cfloat>
 #include <cmath>
@@ -29,9 +17,9 @@
 #include <string>
 #include <vector>
 
-#include "makros.h"
 #include "display.h"
 #include "FileToolsRF.h"
+#include "makros.h"
 
 #include "Curve.h"
 
@@ -41,7 +29,6 @@
 #include "rf_msp_new.h"
 #include "rf_pcs.h"
 #include "rf_tim_new.h"
-#include "rfmat_cp.h"
 #include "tools.h"
 #ifdef GEM_REACT
 #include "rf_REACT_GEM.h"

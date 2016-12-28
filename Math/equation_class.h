@@ -18,6 +18,10 @@
 #include <lis.h>
 #endif
 
+#ifdef USE_PARALUTION
+#include <paralution.hpp>
+#endif
+
 #include "sparse_matrix.h"
 
 namespace Math_Group
@@ -76,6 +80,11 @@ private:
 	LIS_VECTOR bb, xx;
 	LIS_SOLVER solver;
 #endif
+#ifdef USE_PARALUTION
+	paralution::LocalMatrix<double> plAA;
+	paralution::LocalVector<double> plbb;
+	paralution::LocalVector<double> plxx;
+#endif
 
 	// Controls
 	int precond_type;
@@ -95,6 +104,10 @@ private:
 #ifdef LIS
 	int solveWithLIS(bool compress);
 #endif
+#ifdef USE_PARALUTION
+	int solveWithParalution(bool compress);
+#endif
+
 	IndexType searcgNonZeroEntries(IndexType nrows, IndexType* ptr,
 	                               double* value,
 	                               std::vector<IndexType>& vec_nz_rows,

@@ -35,9 +35,6 @@
 #include "msh_lib.h"
 
 #include "CSVOutput.h"
-#ifdef CHEMAPP
-#include "eqlink.h"
-#endif
 #include "fem_ele_std.h"
 #include "files0.h"
 #include "LegacyVtkInterface.h"

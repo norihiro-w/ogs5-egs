@@ -10,6 +10,8 @@
 #ifndef fem_dm_INC
 #define fem_dm_INC
 
+#include <valarray>
+
 #include "matrix_class.h"
 
 #include "ElementValueDM.h"
@@ -32,139 +34,41 @@ namespace MeshLib
 {
 class CElem;
 }
+using namespace SolidProp;
+using namespace Math_Group;
+
 namespace FiniteElement
 {
-using SolidProp::CSolidProperties;
-using Math_Group::Matrix;
-using Math_Group::SymMatrix;
-using Math_Group::Vector;
-using ::CRFProcess;
-using ::CMediumProperties;
-using process::CRFProcessDeformation;
-using MeshLib::CElem;
 
-// Derived element for deformation caculation
 class CFiniteElementVec : public CElement
 {
+	friend class process::CRFProcessDeformation;
 public:
 	CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 	                  const int C_Sys_Flad, const int order = 2);
-	~CFiniteElementVec();
+	virtual ~CFiniteElementVec();
 
-	// Set memory for local matrices
-	void SetMemory();
-
-	// Compute the local finite element matrices and vectors
-	void LocalAssembly(const int update);
-	// Assemble local matrics and vectors to the global system
-	bool GlobalAssembly();
-
-	// Compute strains
-	void ComputeStrain();
-
-	// Set material data
 	void SetMaterial();
 
-	// Get strain
-	double* GetStrain() const { return dstrain; }
+	void AssembleLinear();
+	void AssembleResidual();
+	void AssembleJacobian();
 
-	//----------- Enhanced element -----------------------
-	// Geometry related
-	bool LocalAssembly_CheckLocalization(CElem* MElement);
-	int IntersectionPoint(const int O_edge, const double* NodeA, double* NodeB);
-	//----------- End of enhanced element ----------------
+	void UpdateStressStrain();
+
+
 private:
-	process::CRFProcessDeformation* pcs;
-	::CRFProcess* h_pcs;
-	::CRFProcess* t_pcs;
-	// excavation
-	bool excavation;  // 12.2009. WW
-	//
-	int ns;  // Number of stresses components
-	// Flow coupling
-	int Flow_Type;
+	void Init();
+	void SetMemory();
 
-	// Primary value indeces
-	// Column index in the node value table
-	int idx_P, idx_P0, idx_P1, idx_P1_0, idx_P2;
-	int idx_T0, idx_T1;
-	int idx_S0, idx_S, idx_Snw;
-	int idx_pls;
-	// Displacement column indeces in the node value table
-	int* Idx_Stress;
-	int* Idx_Strain;
+	bool GlobalAssembly();
 
-	// B matrix
-	Matrix* B_matrix;
-	Matrix* B_matrix_T;
-	std::vector<Matrix*> vec_B_matrix;    // NW
-	std::vector<Matrix*> vec_B_matrix_T;  // NW
-
-	//------ Material -------
-	CSolidProperties* smat;
-	CFluidProperties* m_mfp;  // Fluid coupling
-	// Medium property
-	CMediumProperties* m_mmp;  // Fluid coupling
+	void ComputeStrain();
+	std::valarray<double> const& GetStrain() const { return dstrain; }
 	double CalDensity();
 
-	// Elastic constitutive matrix
-	Matrix* De;
-	// Consistent tangential matrix
-	Matrix* ConsistDep;
-
-	// Local matricies and vectors
-	Matrix* AuxMatrix;
-	Matrix* AuxMatrix2;  // NW
-	Matrix* Stiffness;
-	Matrix* PressureC;
-	Matrix* PressureC_S;     // Function of S
-	Matrix* PressureC_S_dp;  // Function of S and ds_dp
-	Matrix* Mass;            // For dynamic analysis
-	Vector* RHS;
-	// Global RHS. 08.2010. WW
-	double* b_rhs;
-
-	//  Stresses:
-	//  s11, s22, s33, s12, s13, s23
-	double* dstress;
-	//  Straines:
-	//  s11, s22, s33, s12, s13, s23
-	double* dstrain;
-	double* strain_ne;
-	double* stress_ne;
-	double* stress0;
-	// Results, displacements
-	//  u_x1, u_x2, u_x3, ..., u_xn,
-	//  u_y1, u_y2, u_y3, ..., u_yn,
-	//  u_z1, u_z2, u_z3, ..., u_zn
-	double* Disp;
-
-	// Temperatures of nodes
-	double* Temp, Tem;
-	double* T1;
-	double S_Water;
-
-	// Element value
-	ElementValue_DM* eleV_DM;
-
-	//------ Enhanced element ------
-	// Jump flag of element nodes
-	bool* NodesInJumpedA;
-	// Regular enhanced strain matrix
-	Matrix* Ge;
-	// Singular enhanced strain matrix
-	Matrix* Pe;
-	// Additional node. Normally, the gravity center
-	double* X0;
-	// Normal to the discontinuity surface
-	double* n_jump;
-	// principle stresses
-	double* pr_stress;
 	// Compute principle stresses
-	double ComputePrincipleStresses(const double* Stresses);
-	// Compute principle stresses
-	double ComputeJumpDirectionAngle(const double* Mat);
-	//------ End of enhanced element ------
+	double ComputePrincipleStresses(const double* Stresses, double* pr_stress);
 
 	// Form B matric
 	void setB_Matrix(const int LocalIndex);
@@ -172,59 +76,102 @@ private:
 	void setTransB_Matrix(const int LocalIndex);
 	//
 	void ComputeMatrix_RHS(const double fkt, const Matrix* p_D);
-
-	// Temporarily used variables
-	double* Sxx, *Syy, *Szz, *Sxy, *Sxz, *Syz, *pstr;
-	// 2. For enhanced strain approach
-	Matrix* BDG, *PDB, *DtD, *PeDe;  // For enhanced strain element
-
 	/// Extropolation
 	bool RecordGuassStrain(const int gp, const int gp_r, const int gp_s,
-	                       int gp_t);
+						   int gp_t);
 	// Effictive strain
 	double CalcStrain_v();
-    void ExtropolateGaussStrain();
-    void ExtropolateGaussStress();
+	void ExtropolateGaussStrain();
+	void ExtropolateGaussStress();
 	double CalcStress_eff();
 
 	// Compute the local finite element matrices
-	void LocalAssembly_continuum(const int update);
-	void LocalAssembly_EnhancedStrain(const int update);
+	void LocalAssembly_Linear();
 
 	// Assembly local stiffness matrix
 	void GlobalAssembly_Stiffness();
 	void GlobalAssembly_PressureCoupling(Matrix* pCMatrix, double fct,
-	                                     const int phase = 0);
+										 const int phase = 0);
 	void GlobalAssembly_RHS();
 #ifdef USE_PETSC
 	void add2GlobalMatrixII();
 #endif
+	void assembleGlobalVector();
+	void assembleGlobalMatrix();
 
-	//----------- Enhanced element ----------------
-	void CheckNodesInJumpedDomain();
-	// Compute the regular enhanced strain matrix
-	void ComputeRESM(const double* tangJump = NULL);
-	// Compute the singular enhanced strain matrix
-	void ComputeSESM(const double* tangJump = NULL);
+private:
+	process::CRFProcessDeformation* pcs = nullptr;
+	::CRFProcess* h_pcs = nullptr;
+	::CRFProcess* t_pcs = nullptr;
 
-	friend class process::CRFProcessDeformation;
+	int ns = -1;  // Number of stresses components
+
+	// Primary value indeces
+	// Column index in the node value table
+	int idx_P1 = -1;
+	int idx_T0 = -1, idx_T1 = -1;
+	int idx_pls = -1;
+	// Displacement column indeces in the node value table
+	int* Idx_Stress = nullptr;
+	int* Idx_Strain = nullptr;
+
+	// B matrix
+	Matrix* B_matrix = nullptr;
+	Matrix* B_matrix_T = nullptr;
+	std::vector<Matrix*> vec_B_matrix;
+	std::vector<Matrix*> vec_B_matrix_T;
+
+	//------ Material -------
+	CSolidProperties* m_msp = nullptr;
+	CFluidProperties* m_mfp = nullptr;
+	CMediumProperties* m_mmp = nullptr;
+
+
+	// Elastic constitutive matrix
+	Matrix* De = nullptr;
+	// Consistent tangential matrix
+	Matrix* ConsistDep = nullptr;
+
+	// Local matricies and vectors
+	Matrix* AuxMatrix = nullptr;
+	Matrix* AuxMatrix2 = nullptr;
+	Matrix* Stiffness = nullptr;
+	Matrix* PressureC = nullptr;
+	Vector* RHS = nullptr;
+
+	//  Stresses:
+	//  s11, s22, s33, s12, s13, s23
+	std::valarray<double> dstress;
+	std::valarray<double> stress0;
+	std::valarray<double> stress1;
+	std::valarray<double> stress_ne;
+	//  Straines:
+	//  s11, s22, s33, s12, s13, s23
+	std::valarray<double> dstrain;
+	std::valarray<double> strain_ne;
+	// Results, displacements
+	//  u_x1, u_x2, u_x3, ..., u_xn,
+	//  u_y1, u_y2, u_y3, ..., u_yn,
+	//  u_z1, u_z2, u_z3, ..., u_zn
+	double* Disp = nullptr;
+
+	// Temperatures of nodes
+	double* dT = nullptr;
+	double* T1 = nullptr;
+
+	// Element value
+	ElementValue_DM* eleV_DM = nullptr;
+
+	// Temporarily used variables
+	double* Sxx = nullptr, *Syy = nullptr, *Szz = nullptr, *Sxy = nullptr, *Sxz = nullptr, *Syz = nullptr, *pstr = nullptr;
 
 	// Auxillarary vector
-	double* AuxNodal0;
-	double* AuxNodal;
-	double* AuxNodal_S0;
-	double* AuxNodal_S;
-	double* AuxNodal1;
-	double* AuxNodal2;
+	std::valarray<double> AuxNodal;
+	std::valarray<double> AuxNodal1;
 
-	// Dynamic
-	// Damping parameters
-	bool dynamic;
-	int* Idx_Vel;
-	double beta2, bbeta1;
-	// Auxillarary vector
-	Vector* dAcceleration;
-	void ComputeMass();
+	bool isSinglePhaseFlow = false;
+	bool isRichardsFlow = false;
+	bool isMultiPhaseFlow = false;
 };
 }  // end namespace
 

@@ -126,10 +126,6 @@ public:
 
 	void DirectAssign(const long ShiftInNodeVector);
 
-	std::string DirectAssign_Precipitation(double current_time);
-
-	double getCoupLeakance() const;
-
 	const std::vector<double>& getDistribution() const { return DistribedBC; }
 
 	/**
@@ -285,27 +281,17 @@ public:
 class CSourceTermGroup
 {
 public:
-	CSourceTermGroup()  // WW
+	CSourceTermGroup()
 	{
 	}
 	void Set(CRFProcess* m_pcs, const int ShiftInNodeVector,
 	         std::string this_pv_name = "");
 	std::string pcs_name;
-	std::string pcs_type_name;  // OK
-	std::string pcs_pv_name;    // OK
+	std::string pcs_type_name;
+	std::string pcs_pv_name;
 	MeshLib::CFEMesh* m_msh;
 	MeshLib::CFEMesh* m_msh_cond;
-	// WW    std::vector<CSourceTerm*>st_group_vector; //OK
-	// WW double GetConditionalNODValue(int,CSourceTerm*); //OK
-	// WW double GetRiverNODValue(int,CSourceTerm*, long msh_node); //MB
-	// WW double GetCriticalDepthNODValue(int,CSourceTerm*, long msh_node); //MB
-	// WW double GetNormalDepthNODValue(int,CSourceTerm*, long msh_node); //MB
-	// JOD
-	// WW Changed from the above
-	//    double GetAnalyticalSolution(CSourceTerm *m_st,long node_number,
-	//    std::string process);//CMCD
-	// TRANSFER OF DUAL RICHARDS
-	std::string fct_name;  // YD
+	std::string fct_name;
 private:
 	// JOD
 	void SetPNT(CRFProcess* m_pcs, CSourceTerm* m_st,
@@ -319,8 +305,6 @@ private:
 	void SetDMN(CSourceTerm* m_st, const int ShiftInNodeVector);
 	// JOD
 	void SetSFC(CSourceTerm* m_st, const int ShiftInNodeVector);
-	// JOD
-	void SetCOL(CSourceTerm* m_st, const int ShiftInNodeVector);
 
 	// JOD
 	//      void SetPolylineNodeVector(CGLPolyline* m_ply,
@@ -376,7 +360,7 @@ extern CSourceTermGroup* STGetGroup(std::string pcs_type_name,
                                     std::string pcs_pv_name);
 extern std::list<CSourceTermGroup*> st_group_list;
 
-class DistributionData;
+struct DistributionData;
 void setDistributionData(CSourceTerm* st, DistributionData& distData);
 
 /**
@@ -396,7 +380,6 @@ extern void STWrite(std::string);
 // extern void STCreateFromPNT();
 extern std::vector<CSourceTerm*> st_vector;
 extern void STDelete();
-void STCreateFromLIN(std::vector<CGLLine*>);
 CSourceTerm* STGet(std::string);
 extern void STGroupDelete(std::string pcs_type_name, std::string pcs_pv_name);
 extern void STGroupsDelete(void);  // Haibing;
@@ -406,59 +389,4 @@ extern std::vector<std::string> analytical_processes;
 // OK
 extern CSourceTerm* STGet(const std::string&, const std::string&,
                           const std::string&);
-
-// WW moved here
-// CMCD, WW
-extern double GetAnalyticalSolution(long node_number, CSourceTerm* m_st);
-// extern  void GetRiverNODValue(double& value, CNodeValue* cnodev, const
-// CSourceTerm* m_st);
-extern double GetConditionalNODValue(CSourceTerm* m_st, CNodeValue* cnodev);
-// MB
-extern void GetCriticalDepthNODValue(double& value, CSourceTerm*,
-                                     long msh_node);
-// JOD
-extern void GetCouplingNODValue(double& value, CSourceTerm* m_st,
-                                CNodeValue* cnodev);
-// JOD
-extern void GetCouplingNODValueNewton(double& value, CSourceTerm* m_st,
-                                      CNodeValue* cnodev);
-#if !defined(USE_PETSC) && \
-    !defined(NEW_EQS)  // && defined(other parallel libs)//03~04.3012. WW
-//#ifndef NEW_EQS                                   //WW. 06.11.2008
-// MB JOD
-extern void GetNormalDepthNODValue(double& value, CSourceTerm*, long msh_node);
-// JOD
-extern void GetCouplingNODValuePicard(double& value, CSourceTerm* m_st,
-                                      CNodeValue* cnodev);
-#endif
-// JOD
-extern double CalcCouplingValue(double factor,
-                                double h_this,
-                                double h_cond,
-                                double z_cond,
-                                CSourceTerm* m_st);
-// JOD
-extern void GetCouplingNODValueMixed(double& value, CSourceTerm* m_st,
-                                     CNodeValue* cnodev);
-// JOD
-extern void GetCouplingFieldVariables(double* h_this,
-                                      double* h_cond,
-                                      double* h_shifted,
-                                      double* h_averaged,
-                                      double* z_this,
-                                      double* z_cond,
-                                      CSourceTerm* m_st,
-                                      CNodeValue* cnodev);
-// JOD
-extern double GetRelativeCouplingPermeability(const CRFProcess* m_pcs,
-                                              double head,
-                                              const CSourceTerm* m_st,
-                                              long msh_node);
-// JOD
-extern void GetPhilipNODValue(double& value, const CSourceTerm* m_st);
-// JOD
-extern void GetGreenAmptNODValue(double& value, CSourceTerm* m_st,
-                                 long msh_node);
-// JOD
-extern void GetNODValue(double& value, CNodeValue* cnodev, CSourceTerm* m_st);
 #endif

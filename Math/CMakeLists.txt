@@ -39,3 +39,7 @@ if (MKL)
 	target_link_libraries( Math ${MKL_LIBRARIES} )
 endif ()
 
+if (PARALLEL_USE_MPI)
+	target_link_libraries( Math ${MPI_LIBRARIES} )
+endif ()
+

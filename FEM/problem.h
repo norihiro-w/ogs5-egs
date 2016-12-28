@@ -62,15 +62,6 @@ public:
 	 */
 	const std::string& getGeoObjName() const;
 
-#ifdef BRNS
-	// BRNS-Coupling: For writing spatially resolved reaction rates at the final
-	// iteration,
-	// we need to get the timing information.
-
-	double getCurrentTime();
-	double getEndTime();
-#endif  // BRNS
-
 private:
 	// Time:
 	double start_time;
@@ -126,7 +117,6 @@ private:
 	double TH_Monolithic();
 	// Accessory
 	void LOPCalcELEResultants();
-	void ASMCalcNodeWDepth(CRFProcess* m_pcs);
 	void PCSCalcSecondaryVariables();
 	bool Check();
 	void OutputMassOfComponentInModel(std::vector<CRFProcess*> flow_pcs,

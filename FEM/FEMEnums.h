@@ -29,7 +29,6 @@ enum ProcessType
 	AIR_FLOW,             //!< AIR_FLOW
 	/// M process, single/multi-phase flow
 	DEFORMATION,          //!< DEFORMATION
-	DEFORMATION_DYNAMIC,  //!< ...
 	/// C process, single/multi-phase flow
 	DEFORMATION_FLOW,  //!< DEFORMATION_FLOW
 	/// H2M monolithic
@@ -106,9 +105,6 @@ const std::list<std::string> getAllProcessNames();
 enum PrimaryVariable
 {
 	INVALID_PV = 0,   //!< INVALID_PV
-	ACCELERATION_X1,  //!< ACCELERATION_X1
-	ACCELERATION_Y1,  //!< ACCELERATION_Y1
-	ACCELERATION_Z1,  //!< ACCELERATION_Z1
 	/// Mass transport
 	CONCENTRATION,  //!< CONCENTRATION
 	/// Deformation
@@ -117,7 +113,6 @@ enum PrimaryVariable
 	DISPLACEMENT_Y,  //!< DISPLACEMENT_Y
 	/// Deformation
 	DISPLACEMENT_Z,  //!< DISPLACEMENT_Z
-	EXCAVATION,      // ST
 	HEAD,            //!< HEAD
 	/// Flow (phase)
 	PRESSURE,        //!< PRESSURE

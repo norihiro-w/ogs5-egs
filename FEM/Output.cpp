@@ -38,26 +38,14 @@
 #include "rf_msp_new.h"
 #include "rf_pcs.h"
 #include "rf_random_walk.h"
+#ifdef GEM_REACT
+#include "rf_REACT_GEM.h"
+#endif
 #include "rf_tim_new.h"
 #include "vtk.h"
 
 
 extern size_t max_dim;
-
-#ifdef CHEMAPP
-#include "eqlink.h"
-#endif
-
-#ifdef SUPERCOMPUTER
-// kg44 this is usefull for io-buffering as endl flushes the buffer
-#define endl \
-	'\n'  // Introduced by WW. LB super bad programming style: this breaks
-          // platform independet IO
-#define MY_IO_BUFSIZE 4096
-#endif  // SUPERCOMPUTER
-#ifdef GEM_REACT
-#include "rf_REACT_GEM.h"
-#endif  // GEM_REACT
 
 using MeshLib::CFEMesh;
 using MeshLib::CElem;
@@ -775,8 +763,6 @@ void COutput::WriteTECNodeData(fstream& tec_file)
 			NodeIndex[k] = m_pcs->GetNodeValueIndex(_nod_value_vector[k],
 			                                        true);  // JT Latest.
 			if ((m_pcs->getProcessType() == FiniteElement::DEFORMATION) ||
-			    (m_pcs->getProcessType() ==
-			     FiniteElement::DEFORMATION_DYNAMIC) ||
 			    (m_pcs->getProcessType() == FiniteElement::DEFORMATION_FLOW) ||
 			    (m_pcs->getProcessType() == FiniteElement::DEFORMATION_H2))
 			{
@@ -1559,16 +1545,6 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 		for (size_t k = 0; k < mfp_value_vector.size(); k++)
 			// NB MFP data names for multiple phases
 			tec_file << " \"" << mfp_value_vector[k] << "\"" << sep;
-//
-#ifdef RFW_FRACTURE
-		for (i = 0; i < (int)mmp_vector.size(); ++i)
-			if (mmp_vector[i]->frac_num > 0)
-				for (int j = 0; j < mmp_vector[i]->frac_num; ++j)
-					tec_file << mmp_vector[i]->frac_names[j] << "_k "
-					         << mmp_vector[i]->frac_names[j] << "_aper "
-					         << mmp_vector[i]->frac_names[j] << "_closed ";
-
-#endif
 
         if (dm_pcs && !isCSV)  // WW
 			tec_file << " p_(1st_Invariant) "
@@ -1719,18 +1695,8 @@ void COutput::NODWritePNTDataTEC(double time_current, int time_step_number)
 				// endl;
 			}
 		}
-//....................................................................
-#ifdef RFW_FRACTURE
-		for (i = 0; i < (int)mmp_vector.size(); ++i)
-			if (mmp_vector[i]->frac_num > 0)
-				for (int j = 0; j < mmp_vector[i]->frac_num; ++j)
-					tec_file << mmp_vector[i]->frac_perm[j] << " "
-					         << mmp_vector[i]->avg_aperture[j] << " "
-					         << mmp_vector[i]->closed_fraction[j] << " ";
-
-#endif
 		//....................................................................
-        if (dm_pcs && !isCSV)  // WW
+		if (dm_pcs && !isCSV)  // WW
 		{
 			for (size_t i = 0; i < ns; i++)
 				ss[i] = dm_pcs->GetNodeValue(msh_node_number, stress_i[i]);

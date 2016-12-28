@@ -31,27 +31,6 @@ namespace  MeshLib
 
 /**************************************************************************
    FEMLib-Method:
-   Task:
-   Programing:
-   04/2005 OK Implementation
-**************************************************************************/
-void MSHDelete(std::string m_msh_name)
-{
-	CFEMesh* m_fem_msh = NULL;
-	size_t fem_msh_vector_size = fem_msh_vector.size();
-	for (size_t i = 0; i < fem_msh_vector_size; i++)
-	{
-		m_fem_msh = fem_msh_vector[i];
-		if (m_fem_msh->pcs_name.compare(m_msh_name) == 0)
-		{
-			delete m_fem_msh;
-			fem_msh_vector.erase((fem_msh_vector.begin() + i));
-		}
-	}
-}
-
-/**************************************************************************
-   FEMLib-Method:
    03/2005 OK Implementation
    05/2005 TK modified
    05/2006 TK modified
@@ -192,36 +171,6 @@ void CompleteMesh()
 
 /**************************************************************************
    FEMLib-Method:
-   Task: Master write functionn
-   Programing:
-   03/2005 OK Implementation
-   10/2005 OK BINARY
-   last modification:
-   08/2010	KR binary case deleted
-**************************************************************************/
-void MSHWrite(std::string file_base_name)
-{
-	// File handling
-	std::string fem_msh_file_name = file_base_name + FEM_FILE_EXTENSION;
-	std::ofstream fem_msh_file(fem_msh_file_name.c_str(),
-	                           std::ios::trunc | std::ios::out);
-
-	if (!fem_msh_file.good()) return;
-
-	for (size_t i = 0; i < fem_msh_vector.size(); i++)
-	{
-		FileIO::OGSMeshIO meshIO;
-		meshIO.setPrecision(12);
-		meshIO.setFormat(std::ios::scientific);
-		meshIO.setMesh(fem_msh_vector[i]);
-		fem_msh_file << meshIO.writeToString();
-	}
-	fem_msh_file << "#STOP";
-	fem_msh_file.close();
-}
-
-/**************************************************************************
-   FEMLib-Method:
    Task:
    Programing:
    03/2005 OK Implementation
@@ -235,23 +184,6 @@ MeshLib::CFEMesh* FEMGet(const std::string& msh_name)
 	for (size_t i = 0; i < no_msh; i++)
 		if (fem_msh_vector[i]->pcs_name.compare(msh_name) == 0)
 			return fem_msh_vector[i];
-	return NULL;
-}
-
-/**************************************************************************
-   MSHLib-Method:
-   12/2005 OK Implementation
-   07/2007 OK PCS
-**************************************************************************/
-MeshLib::CFEMesh* MSHGet(const std::string& geo_name)
-{
-	MeshLib::CFEMesh* m_msh = NULL;
-	for (int i = 0; i < (int)fem_msh_vector.size(); i++)
-	{
-		m_msh = fem_msh_vector[i];
-		if (m_msh->geo_name.compare(geo_name) == 0) return m_msh;
-		if (m_msh->pcs_name.compare(geo_name) == 0) return m_msh;
-	}
 	return NULL;
 }
 

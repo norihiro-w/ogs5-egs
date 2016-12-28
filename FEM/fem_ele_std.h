@@ -94,7 +94,7 @@ public:
 	void Config();  // NW made it public for outputting MMP
 
 	// Set coupling information
-	void ConfigureCoupling(CRFProcess* pcs, const int* Shift, bool dyn = false);
+	void ConfigureCoupling(CRFProcess* pcs, const int* Shift);
 
 	// Element claculation
 	// 1. Mass matrix
@@ -201,13 +201,6 @@ private:
 	double* eqs_rhs;  // For DDC WW
 	bool heat_phase_change;
 
-	// char pcsT;
-	//     /**
-	//      * process type, \sa enum ProcessType
-	//      */
-	//     ProcessType _pcs_type; // TF
-
-	bool dynamic;
 	CRFProcess* mfp_pcs;
 	SolidProp::CSolidProperties* SolidProp;
 	CFluidProperties* FluidProp;
