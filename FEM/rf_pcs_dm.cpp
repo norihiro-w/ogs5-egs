@@ -1091,6 +1091,10 @@ void CRFProcessDeformation::AssembleResidual()
 //#endif
 	ScreenMessage("-> impose Neumann BC and source/sink terms\n");
 	IncorporateSourceTerms();
+#if defined(USE_PETSC)
+	eqs_new->AssembleRHS_PETSc();
+//		eqs_new->EQSV_Viewer("eqs_after_assembl");
+#endif
 //#ifdef NEW_EQS
 //	{
 //		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_st.txt");
@@ -1101,6 +1105,10 @@ void CRFProcessDeformation::AssembleResidual()
 	// set bc residual = 0
 	ScreenMessage("-> set bc residual = 0 \n");
 	IncorporateBoundaryConditions(false, true, true);
+#if defined(USE_PETSC)
+	eqs_new->AssembleRHS_PETSc();
+//		eqs_new->EQSV_Viewer("eqs_after_assembl");
+#endif
 
 //#ifdef NEW_EQS
 //	{
@@ -1138,7 +1146,14 @@ void CRFProcessDeformation::AssembleJacobian()
 		//TODO
 	}
 
+#ifdef USE_PETSC
+	eqs_new->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY);
+#endif
+
 	IncorporateBoundaryConditions(true, false);
+#ifdef USE_PETSC
+	eqs_new->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY);
+#endif
 //#ifdef NEW_EQS
 //	{
 //		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_J.txt");
