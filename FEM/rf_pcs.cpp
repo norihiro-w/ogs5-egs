@@ -9,14 +9,10 @@
 
 #include "rf_pcs.h"
 
-#ifndef __APPLE__
-#include <malloc.h>
-#endif
-
+#include <algorithm>
 #include <cfloat>
 #include <iomanip>
 #include <iostream>
-#include <algorithm>
 #include <set>
 
 #ifdef _OPENMP
@@ -69,7 +65,6 @@
 #include "rf_pcs_dm.h"
 #include "rf_pcs_TH.h"
 #ifdef GEM_REACT
-// GEMS chemical solver
 #include "rf_REACT_GEM.h"
 REACT_GEM* m_vec_GEM;
 #endif
@@ -81,12 +76,14 @@ using namespace std;
 using namespace MeshLib;
 using namespace Math_Group;
 
+template <class T>
+T* resize(T* array, size_t old_size, size_t new_size);
+
 extern VoidFuncVoid LOPCalcSecondaryVariables_USER;
 
 // Globals, to be checked
 VoidXFuncVoidX PCSDestroyELEMatrices[PCS_NUMBER_MAX];
 int pcs_no_components = 0;
-int pcs_deformation = 0;
 int dm_number_of_primary_nvals = 2;
 int problem_2d_plane_dm;
 int size_eval = 0;
@@ -111,21 +108,12 @@ int pcs_number_flow = -1;         // JT2012
 int pcs_number_heat = -1;         // JT2012
 vector<int> pcs_number_mass;      // JT2012
 
-namespace process
-{
-class CRFProcessDeformation;
-}
-using process::CRFProcessDeformation;
-using MeshLib::CNode;
-using MeshLib::CElem;
-using FiniteElement::ElementValue;
-using Math_Group::vec;
 
 #define noCHECK_EQS
 #define noCHECK_ST_GROUP
 #define noCHECK_BC_GROUP
 
-extern size_t max_dim;  // OK411 todo
+extern size_t max_dim;
 
 //////////////////////////////////////////////////////////////////////////
 // PCS vector
@@ -134,8 +122,6 @@ extern size_t max_dim;  // OK411 todo
 vector<CRFProcess*> pcs_vector;
 vector<double*> ele_val_vector;  // PCH
 // vector<string> ele_val_name_vector; // PCH
-template <class T>
-T* resize(T* array, size_t old_size, size_t new_size);
 //////////////////////////////////////////////////////////////////////////
 // Construction / destruction
 //////////////////////////////////////////////////////////////////////////
@@ -167,7 +153,6 @@ CRFProcess::CRFProcess(void)
 	iter_outer_cpl = 0;
 	first_coupling_iteration = false;
 	orig_size = 0;
-	ite_steps = 0;
 	cpl_num_dof_errors = 0;
 	continuum_ic = true;
 	number_of_nvals = 0;
@@ -191,9 +176,7 @@ CRFProcess::CRFProcess(void)
 	// NUM
 	pcs_num_name[0] = NULL;
 	pcs_num_name[1] = NULL;
-	pcs_sol_name = NULL;
 	m_num = NULL;
-	cpl_type_name = "PARTITIONED";  // OK
 	num_type_name = "FEM";          // OK
 	rwpt_app = 0;  // PCH Application types for RWPT such as Cell Dynamics,
 	               // Crypto, etc.
@@ -234,9 +217,6 @@ CRFProcess::CRFProcess(void)
 	//
 	mobile_nodes_flag = -1;
 	//----------------------------------------------------------------------
-	// USER
-	PCSSetIC_USER = NULL;
-	//----------------------------------------------------------------------
 	// TIM
 	tim_type = FiniteElement::TIM_TRANSIENT;
 	time_unit_factor = 1.0;
@@ -266,13 +246,6 @@ CRFProcess::CRFProcess(void)
 	//
 	additioanl2ndvar_print = -1;  // WW
 	flow_pcs_type = 0;            // CB default: liquid flow, Sat = 1
-	this->simulator = "GEOSYS";   // BG, 09/2009
-	this->simulator_model_path =
-	    "";  // BG, 09/2009, folder with the Eclipse or DuMux files
-	this->simulator_path = "";         // BG, 09/2009, Eclipse or Dumux
-	this->simulator_well_path = "";    // KB 02/2011, Eclipse
-	this->PrecalculatedFiles = false;  // BG, 01/2011, flag for using already
-	                                   // calculated files from Eclipse or DuMux
 	this->Phase_Transition_Model = 0;  // BG, 11/2010, flag for using CO2 Phase
 	                                   // transition (0...not used, 1...used)
 	//----------------------------------------------------------------------
@@ -293,7 +266,7 @@ CRFProcess::CRFProcess(void)
 	eqs_new = NULL;
 	configured_in_nonlinearloop = false;
 #endif
-	flag_couple_GEMS = 0;    // 11.2009 HS
+	flag_couple_GEMS = 0;
 	femFCTmode = false;      // NW
 	this->Gl_ML = NULL;      // NW
 	this->Gl_Vec = NULL;     // NW
@@ -425,9 +398,9 @@ CRFProcess::~CRFProcess(void)
 	ele_val_vector.clear();
 	//----------------------------------------------------------------------
 	// 11.08.2010. WW
-	DeleteArray(num_nodes_p_var);
+	delete [] num_nodes_p_var;
 	// 20.08.2010. WW
-	DeleteArray(p_var_index);
+	delete [] p_var_index;
 	//----------------------------------------------------------------------
 	if (this->m_num && this->m_num->fct_method > 0)  // NW
 	{
@@ -554,9 +527,7 @@ void CRFProcess::Create()
 			          << "\n";
 	}
 	//----------------------------------------------------------------------------
-	if (m_msh)  // OK->MB please shift to Config()
-
-		//		if (_pcs_type_name.compare("GROUNDWATER_FLOW") == 0)
+	if (m_msh)
 		if (this->getProcessType() == FiniteElement::GROUNDWATER_FLOW)
 			MeshLib::MSHDefineMobile(this);
 	//----------------------------------------------------------------------------
@@ -890,10 +861,7 @@ void CRFProcess::Create()
 		}
 	}
 
-	// Initialize the system equations
-	if (PCSSetIC_USER) PCSSetIC_USER(pcs_type_number);
-
-	if (compute_domain_face_normal)  // WW
+	if (compute_domain_face_normal)
 		m_msh->FaceNormal();
 	/// Variable index for equation. 20.08.2010. WW
 	if (p_var_index)
@@ -1370,7 +1338,6 @@ CRFProcess* CRFProcess::CopyPCStoDM_PCS()
 	dm_pcs->isPCSMultiFlow = this->isPCSMultiFlow;
 	dm_pcs->write_boundary_condition = write_boundary_condition;
 	dm_pcs->Deactivated_SubDomain = Deactivated_SubDomain;
-	pcs_deformation = 1;
 	dm_pcs->write_leqs = write_leqs;
 	dm_pcs->calcDiffFromStress0 = calcDiffFromStress0;
 	dm_pcs->resetStrain = resetStrain;
@@ -1396,7 +1363,6 @@ CRFProcess* CRFProcess::CopyPCStoTH_PCS()
 	dm_pcs->isPCSMultiFlow = this->isPCSMultiFlow;
 	dm_pcs->write_boundary_condition = write_boundary_condition;
 	dm_pcs->Deactivated_SubDomain = Deactivated_SubDomain;
-	pcs_deformation = 1;
 	dm_pcs->write_leqs = write_leqs;
 	dm_pcs->scaleUnknowns = scaleUnknowns;
 	dm_pcs->vec_scale_dofs = vec_scale_dofs;
@@ -1570,18 +1536,6 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 		}
 		//....................................................................
 		// subkeyword found
-		if (line_string.find("$CPL_TYPE") != string::npos)
-		{
-			*pcs_file >> cpl_type_name;
-			if (cpl_type_name.compare("MONOLITHIC") == 0)
-			{
-				pcs_deformation = 11;
-			}
-			pcs_file->ignore(MAX_ZEILE, '\n');
-			continue;
-		}
-		//....................................................................
-		// subkeyword found
 		if (line_string.find("$TIM_TYPE") != string::npos)
 		{
 			std::string tim_type_name;
@@ -1743,38 +1697,6 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 				use_velocities_for_transport = true;
 			continue;
 		}
-		// Interface to Eclipse and Dumux, BG, 09/2010
-		//	if(line_string.find("$SIMULATOR")!=string::npos) { //OK
-		if (line_string.compare("$SIMULATOR") ==
-		    0)  // BG, 09/2010, coupling to Eclipse and DuMux
-		{
-			*pcs_file >> this->simulator;
-			continue;
-		}
-		if (line_string.find("$SIMULATOR_PATH") ==
-		    0)  // BG, 09/2010, coupling to Eclipse and DuMux
-		{
-			*pcs_file >> this->simulator_path;
-			continue;
-		}
-		// BG, 09/2010, coupling to Eclipse and DuMux
-		if (line_string.find("$SIMULATOR_MODEL_PATH") == 0)
-		{
-			*pcs_file >> this->simulator_model_path;
-			continue;
-		}
-		// BG, 09/2010, coupling to Eclipse and DuMux
-		if (line_string.find("$USE_PRECALCULATED_FILES") == 0)
-		{
-			this->PrecalculatedFiles = true;
-			continue;
-		}
-		// KB, 02/2011, coupling to Eclipse and DuMux
-		if (line_string.find("$SIMULATOR_WELL_PATH") == 0)
-		{
-			*pcs_file >> this->simulator_well_path;
-			continue;
-		}
 		// BG, NB 11/2010, calculating phase transition for CO2
 		if (line_string.find("$PHASE_TRANSITION") == 0)
 		{
@@ -1900,9 +1822,6 @@ void CRFProcess::Write(std::fstream* pcs_file)
 
 	*pcs_file << " $NUM_TYPE" << endl;
 	*pcs_file << "  " << num_type_name << endl;
-
-	*pcs_file << " $CPL_TYPE" << endl;
-	*pcs_file << "  " << cpl_type_name << endl;
 
 	*pcs_file << " $TIM_TYPE" << endl;
 	*pcs_file << "  " << FiniteElement::convertTimTypeToString(tim_type)
@@ -2041,7 +1960,6 @@ void CRFProcess::Config(void)
 {
 	std::string pcs_type_name(
 	    convertProcessTypeToString(this->getProcessType()));
-	// Set mesh pointer to corresponding mesh
 	m_msh = MeshLib::FEMGet(pcs_type_name);
 	if (!m_msh)
 	{
@@ -2667,8 +2585,6 @@ void CRFProcess::ConfigDeformation()
 	{
 		type = 41;
 		if (getProcessType() == FiniteElement::DEFORMATION_H2) type = 42;
-		cpl_type_name = "MONOLITHIC";
-		pcs_deformation = 11;
 	}
 
 	CNumerics* num = NULL;
@@ -2678,13 +2594,7 @@ void CRFProcess::ConfigDeformation()
 		num = num_vector[ii];
 		if (num->pcs_type_name.find("DEFORMATION") != string::npos)
 		{
-			num->pcs_type_name = FiniteElement::convertProcessTypeToString(
-			    this->getProcessType());
-			if (FiniteElement::isNewtonKind(num->nls_method))  // Newton-Raphson
-			{
-				pcs_deformation = 101;
-				if (type / 10 == 4) pcs_deformation = 110;
-			}
+			num->pcs_type_name = FiniteElement::convertProcessTypeToString(this->getProcessType());
 			break;
 		}
 	}
@@ -2696,8 +2606,7 @@ void CRFProcess::ConfigDeformation()
 	pcs_num_name[0] = "DISPLACEMENT0";
 	pcs_num_name[1] = "PRESSURE0";
 	VariableStaticProblem();
-	// OBJ names are set to PCS name
-	// Geometry dimension
+
 	problem_dimension_dm =
 	    m_msh->GetMaxElementDim();  // m_msh->GetCoordinateFlag() / 10;
 	problem_2d_plane_dm = 1;
@@ -2707,7 +2616,6 @@ void CRFProcess::ConfigDeformation()
 	for (i = 0; i < problem_dimension_dm; i++)
 		Shift[i] = i * m_msh->GetNodesNumber(true);
 
-	/// 11-20.08.2010 WW
 	long nn_H = (long)m_msh->GetNodesNumber(true);
 	if (getProcessType() == FiniteElement::DEFORMATION)
 	{
@@ -2743,8 +2651,7 @@ void CRFProcess::ConfigDeformation()
 	}
 
 	if (type / 10 == 4)
-		SetOBJNames();  // if(type==41) SetOBJNames(); //OK->WW please put to
-	                    // Config()
+		SetOBJNames();
 }
 
 /**************************************************************************
@@ -2758,8 +2665,7 @@ void CRFProcess::VariableStaticProblem()
 {
 	//----------------------------------------------------------------------
 	// NOD Primary functions
-	pcs_number_of_primary_nvals =
-	    2;  // OK distinguish 2/3D problems, problem_dimension_dm;
+	pcs_number_of_primary_nvals = 2;
 	dm_number_of_primary_nvals = 2;
 	pcs_number_of_evals = 0;
 	pcs_primary_function_name[0] = "DISPLACEMENT_X1";
@@ -3617,9 +3523,7 @@ double CRFProcess::Execute()
 		eqs_new->Solver();
 		eqs_new->MappingSolution();
 #else
-#ifdef NEW_EQS  // WW
 		eqs_new->Solver(this->m_num);  // NW
-#endif
 #endif  // USE_PETSC
 	}
 	//----------------------------------------------------------------------
@@ -5768,45 +5672,6 @@ void CRFProcess::IncorporateSourceTerms()
 }
 
 
-/*-------------------------------------------------------------------------
-   ROCKFLOW - Function: PCSRestart
-   Task: Insert process to list
-   Programming:
-   06/2003 OK Implementation
-   11/2004 OK file_name_base
-   last modified:
-   -------------------------------------------------------------------------*/
-void PCSRestart()
-{
-	/*OK411
-	   int j;
-	   CRFProcess *m_pcs = NULL;
-	   int nidx0,nidx1;
-	   int i;
-	   int no_processes =(int)pcs_vector.size();
-	   if(no_processes==0)
-	    return; //OK41
-	   int ok = 0;
-	   //----------------------------------------------------------------------
-	   string file_name_base = pcs_vector[0]->file_name_base;
-	   //OK  ok = ReadRFRRestartData(file_name_base);
-	   if(ok==0){
-	   cout << "RFR: no restart data" << endl;
-	   return;
-	   }
-	   //----------------------------------------------------------------------
-	   for(i=0;i<no_processes;i++){
-	   m_pcs = pcs_vector[i];
-	   for(j=0;j<m_pcs->GetPrimaryVNumber();j++) {
-	   // timelevel=0;
-	   nidx0 = m_pcs->GetNodeValueIndex(m_pcs->GetPrimaryVName(j));
-	   // timelevel= 1;
-	   nidx1 = nidx0+1;
-	   CopyNodeVals(nidx1,nidx0);
-	   }
-	   }
-	 */
-}
 
 /*************************************************************************
    ROCKFLOW - Function: CRFProcess::PCSMoveNOD
@@ -5828,126 +5693,6 @@ void CRFProcess::PCSMoveNOD(void)
 	}
 }
 
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   09/2004 OK Implementation
-   10/2004 OK 2nd version
-**************************************************************************/
-std::string PCSProblemType()
-{
-	std::string pcs_problem_type;
-	size_t no_processes(pcs_vector.size());
-
-	for (size_t i = 0; i < no_processes; i++)
-	{
-		switch (pcs_vector[i]->getProcessType())
-		{
-			case FiniteElement::LIQUID_FLOW:
-				pcs_problem_type = "LIQUID_FLOW";
-				break;
-			case FiniteElement::GROUNDWATER_FLOW:
-				pcs_problem_type = "GROUNDWATER_FLOW";
-				break;
-			case FiniteElement::TWO_PHASE_FLOW:
-				pcs_problem_type = "TWO_PHASE_FLOW";
-				break;
-			case FiniteElement::RICHARDS_FLOW:  // MX test 04.2005
-				pcs_problem_type = "RICHARDS_FLOW";
-				break;
-			case FiniteElement::DEFORMATION:
-				if (pcs_problem_type.empty())
-					pcs_problem_type = "DEFORMATION";
-				else
-					pcs_problem_type += "+DEFORMATION";
-				break;
-			case FiniteElement::DEFORMATION_FLOW:
-				if (pcs_problem_type.empty())
-					pcs_problem_type = "DEFORMATION";
-				else
-					pcs_problem_type += "+DEFORMATION";
-				break;
-			case FiniteElement::HEAT_TRANSPORT:
-				if (pcs_problem_type.empty())
-					pcs_problem_type = "HEAT_TRANSPORT";
-				else
-					pcs_problem_type += "+HEAT_TRANSPORT";
-				break;
-			case FiniteElement::MASS_TRANSPORT:
-				if (pcs_problem_type.empty())
-					pcs_problem_type = "MASS_TRANSPORT";
-				else
-					pcs_problem_type += "+MASS_TRANSPORT";
-				break;
-			case FiniteElement::FLUID_MOMENTUM:
-				if (pcs_problem_type.empty())
-					pcs_problem_type = "FLUID_MOMENTUM";
-				else
-					pcs_problem_type += "+FLUID_MOMENTUM";
-				break;
-			case FiniteElement::RANDOM_WALK:
-				if (pcs_problem_type.empty())
-					pcs_problem_type = "RANDOM_WALK";
-				else
-					pcs_problem_type += "+RANDOM_WALK";
-				break;
-			default:
-				pcs_problem_type = "";
-		}
-	}
-
-	return pcs_problem_type;
-}
-
-/**************************************************************************
-   FEMLib-Method:
-   Task:
-   Programing:
-   11/2004 OK Implementation
-**************************************************************************/
-// void CRFProcess::CalcELEMassFluxes(void)
-//{
-/*OK411
-   int i;
-   double e_value = -1.0;
-   string e_value_name;
-   double geo_factor, density;
-   double velocity = 0.0;
-   int e_idx;
-   int phase = 0;
-   long e;
-   CMediumProperties* m_mmp = NULL;
-   CFluidProperties* m_mfp = NULL;
-   m_mfp = mfp_vector[phase]; //OK ToDo
-   //======================================================================
-   for(e=0;e<ElementListLength;e++){
-   m_mmp = mmp_vector[ElGetElementGroupNumber(e)];
-   geo_factor = m_mmp->geo_area;
-   density = m_mfp->Density();
-   for(i=0;i<pcs_number_of_evals;i++){
-   e_value_name = pcs_eval_data[i].name;
-   e_idx = PCSGetELEValueIndex(pcs_eval_data[i].name);
-   if(e_value_name.find("MASS_FLUX1_X")!=string::npos){
-   velocity = ElGetElementVal(e,PCSGetELEValueIndex("VELOCITY1_X"));
-   e_value = geo_factor * density * velocity;
-   ElSetElementVal(e,e_idx,e_value);
-   }
-   if(e_value_name.find("MASS_FLUX1_Y")!=string::npos){
-   velocity = ElGetElementVal(e,PCSGetELEValueIndex("VELOCITY1_Y"));
-   e_value = geo_factor * density * velocity;
-   ElSetElementVal(e,e_idx,e_value);
-   }
-   if(e_value_name.find("MASS_FLUX1_Z")!=string::npos){
-   velocity = ElGetElementVal(e,PCSGetELEValueIndex("VELOCITY1_Z"));
-   e_value = geo_factor * density * velocity;
-   ElSetElementVal(e,e_idx,e_value);
-   }
-   }
-   }
-   //======================================================================
- */
-//}
 
 /**************************************************************************
    FEMLib-Method:
@@ -5976,9 +5721,10 @@ void CRFProcess::CalcSecondaryVariables(bool initial)
 		case FiniteElement::PS_GLOBAL:
 			CalcSecondaryVariablesPSGLOBAL();
 			break;
+		case FiniteElement::MULTI_PHASE_FLOW:
+			CalcSecondaryVariablesUnsaturatedFlow(initial);
+			break;
 		default:
-			if (type == 1212)
-				CalcSecondaryVariablesUnsaturatedFlow(initial);
 			break;
 	}
 }
@@ -6083,21 +5829,6 @@ string GetPFNamebyCPName(string inname)
 	return inname;
 }  // SB:namepatch
 
-//========================================================================
-
-int GetRFProcessChemicalModel(void)
-{
-	cout << "GetRFProcessChemicalModel - to be removed" << endl;
-	return 0;
-}
-
-
-int GetRFProcessHeatReactModel(void)
-{
-	cout << "GetRFProcessHeatReactModel - to be removed" << endl;
-	return 0;
-}
-
 int GetRFProcessNumPhases(void)
 {
 	// DisplayMsgLn("GetRFProcessNumPhases - to be removed");
@@ -6105,71 +5836,11 @@ int GetRFProcessNumPhases(void)
 	return no_phases;
 }
 
-int GetRFProcessProcessing(char* rfpp_type)
-{
-	bool pcs_flow = false;
-	bool pcs_deform = false;
-	CRFProcess* m_pcs = NULL;
-	size_t no_processes = pcs_vector.size();
-	for (size_t i = 0; i < no_processes; i++)
-	{
-		m_pcs = pcs_vector[i];
-		//		if (m_pcs->_pcs_type_name.find("DEFORMATION") != string::npos)
-		if (isDeformationProcess(m_pcs->getProcessType())) pcs_deform = true;
-		//		if (m_pcs->_pcs_type_name.find("FLOW") != string::npos)
-		if (isFlowProcess(m_pcs->getProcessType())) pcs_flow = true;
-	}
-
-	if (strcmp(rfpp_type, "SD") == 0)
-	{
-		if (pcs_flow && pcs_deform) return 1;
-	}
-	else
-		cout << "GetRFProcessProcessing - to be removed" << endl;
-	return 0;
-}
-
-int GetRFProcessProcessingAndActivation(const char*)
-{
-	ScreenMessage("GetRFProcessProcessingAndActivation - to be removed\n");
-	return 0;
-}
-
 long GetRFProcessNumComponents(void)
 {
 	// DisplayMsgLn("GetRFProcessNumComponents - to be removed");
 	int no_components = (int)cp_vec.size();
 	return no_components;
-}
-
-int GetRFControlModex(void)
-{
-	cout << "GetRFControlModex - to be removed" << endl;
-	return 0;
-}
-
-int GetRFProcessNumContinua(void)
-{
-	cout << "GetRFProcessNumContinua - to be removed" << endl;
-	return 0;
-}
-
-int GetRFProcessNumElectricFields(void)
-{
-	cout << "GetRFProcessNumElectricFields - to be removed" << endl;
-	return 0;
-}
-
-int GetRFProcessNumTemperatures(void)
-{
-	cout << "GetRFProcessNumTemperatures - to be removed" << endl;
-	return -1;
-}
-
-int GetRFProcessSimulation(void)
-{
-	cout << "GetRFProcessSimulation - to be removed" << endl;
-	return -1;
 }
 
 /**************************************************************************
@@ -7277,12 +6948,9 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 	{
 		CalcSecondaryVariables();
 	}
-#if !defined(USE_PETSC)  // && !defined(other parallel libs)//03.3012. WW
-                         // Release temporary memory of linear solver. WW
-#ifdef NEW_EQS           // WW
-	eqs_new->Clean();  // Release buffer momery WW
+#ifdef NEW_EQS
+	eqs_new->Clean();
 	configured_in_nonlinearloop = false;
-#endif
 #endif
 	return nl_itr_err;
 }
@@ -7296,15 +6964,14 @@ double CRFProcess::ExecuteNonLinear(int loop_process_number, bool print_pcs)
 void CRFProcess::PrintStandardIterationInformation(bool write_std_errors,
                                                    double nl_error)
 {
-	int ii;
 	//
 	// LINEAR SOLUTION
-    if (m_num->nls_method == FiniteElement::NL_LINEAR)
+	if (m_num->nls_method == FiniteElement::NL_LINEAR)
 	{
 		ScreenMessage("      -->LINEAR solution complete. \n");
 		if (write_std_errors)
 		{
-			for (ii = 0; ii < pcs_number_of_primary_nvals; ii++)
+			for (int ii = 0; ii < pcs_number_of_primary_nvals; ii++)
 			{
 				ScreenMessage("         PCS error DOF[%d]: %g\n", ii,
 				              pcs_absolute_error[ii]);
@@ -7331,7 +6998,7 @@ void CRFProcess::PrintStandardIterationInformation(bool write_std_errors,
 		}
 		else
 		{
-			for (ii = 0; ii < pcs_number_of_primary_nvals; ii++)
+			for (int ii = 0; ii < pcs_number_of_primary_nvals; ii++)
 			{
 				ScreenMessage("\tPCS error DOF[%d]: %e\n", ii,
 				              pcs_absolute_error[ii]);
@@ -7363,7 +7030,7 @@ void CRFProcess::Extropolation_GaussValue()
 	for (i = 0; i < (long)m_msh->GetNodesNumber(false); i++)
 		for (k = 0; k < NS; k++)
 			SetNodeValue(i, idx[k], 0.0);
-	if (type == 1212 || type == 1313)  // Multi-phase flow
+	if (getProcessType() == FiniteElement::MULTI_PHASE_FLOW || getProcessType() == FiniteElement::PS_GLOBAL)  // Multi-phase flow
 	{
 		idx[0] = GetNodeValueIndex("VELOCITY_X2");
 		idx[1] = GetNodeValueIndex("VELOCITY_Y2");
@@ -7394,7 +7061,6 @@ void CRFProcess::Extropolation_GaussValue()
 **************************************************************************/
 void CRFProcess::Extropolation_MatValue()
 {
-	//	if (_pcs_type_name.find("FLOW") == string::npos)
 	if (!isFlowProcess(this->getProcessType())) return;
 	if (additioanl2ndvar_print < 0) return;
 
@@ -7403,7 +7069,7 @@ void CRFProcess::Extropolation_MatValue()
 	//
 	if ((additioanl2ndvar_print > 0) && (additioanl2ndvar_print < 3))
 	{
-		int idx[3];
+		int idx[3] = {};
 		idx[0] = GetNodeValueIndex("PERMEABILITY_X1");
 		idx[1] = GetNodeValueIndex("PERMEABILITY_Y1");
 		if (NS > 2) idx[2] = GetNodeValueIndex("PERMEABILITY_Z1");
@@ -8026,7 +7692,7 @@ void CRFProcess::CalcSaturationRichards(int timelevel, bool update)
 				volume_sum += elem->GetVolume();
 				saturation +=
 				    m_mmp->SaturationCapillaryPressureFunction(p_cap) *
-					elem->GetVolume();
+				    elem->GetVolume();
 			}
 			saturation /= volume_sum;
 			SetNodeValue(i, idxS, saturation);

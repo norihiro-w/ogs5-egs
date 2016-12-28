@@ -127,11 +127,6 @@ Problem::Problem(char* filename)
 	// JT: Certain restrictions might be made if an external simulator is being
 	// used
 	external_coupling_exists = false;
-	for (size_t i = 0; i < pcs_vector.size(); i++)
-	{
-		if (pcs_vector[i]->simulator.compare("GEOSYS") != 0)
-			external_coupling_exists = true;
-	}
 #ifdef GEM_REACT
 	external_coupling_exists = true;
 #endif

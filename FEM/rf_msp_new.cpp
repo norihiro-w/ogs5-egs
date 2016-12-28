@@ -3864,6 +3864,7 @@ int CSolidProperties::CalStress_and_TangentialMatrix_SYS(
 	else
 		F = -1.0;
 
+	int pcs_deformation = 1; //TODO
 	if (pcs_deformation == 1) F = -1.0;
 
 	PLASTIC = 0;
@@ -5373,6 +5374,7 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC(
 	NPStep = 0;
 
 	F0 = F;
+	int pcs_deformation = 1; //TODO
 	if (pcs_deformation == 1) F = -1.0;
 	if ((*data_Plasticity)(3) < MKleinsteZahl)  // p_c0=0
 		F = -1.0;
@@ -5920,6 +5922,7 @@ void CSolidProperties::CalStress_and_TangentialMatrix_CC_SubStep(
 		NPStep = 0;
 
 		F0 = F;
+		int pcs_deformation = 1; //TODO
 		if (pcs_deformation == 1) F = -1.0;
 		if ((*data_Plasticity)(3) < MKleinsteZahl)  // p_c0=0
 			F = -1.0;
