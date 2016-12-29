@@ -16,6 +16,7 @@
 
 #include "display.h"
 #include "StringTools.h"
+
 #if defined(NEW_EQS)
 #include "equation_class.h"
 #elif defined(USE_PETSC)
@@ -23,14 +24,6 @@
 #endif
 
 #include "fem_ele_std.h"
-
-CRFProcessTH::CRFProcessTH() : CRFProcess(), error_k0(0.0)
-{
-}
-
-CRFProcessTH::~CRFProcessTH()
-{
-}
 
 void CRFProcessTH::Initialization()
 {
@@ -97,7 +90,9 @@ double CRFProcessTH::Execute(int loop_process_number)
 #endif
 
 #if defined(NEW_EQS)
-	eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method, m_num->ls_max_iterations, m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
+	eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method,
+							m_num->ls_max_iterations, m_num->ls_error_tolerance,
+							m_num->ls_storage_method, m_num->ls_extra_arg);
 #endif
 
 	// Begin Newton-Raphson steps
@@ -133,10 +128,10 @@ double CRFProcessTH::Execute(int loop_process_number)
 	{
 		iter_nlin++;
 
-//----------------------------------------------------------------------
-// Solve
-//----------------------------------------------------------------------
-// Refresh solver
+		//----------------------------------------------------------------------
+		// Solve
+		//----------------------------------------------------------------------
+		// Refresh solver
 		eqs_new->Initialize();
 
 		ScreenMessage("-> Assembling equation system...\n");
@@ -498,13 +493,11 @@ void CRFProcessTH::UpdateIterativeStep(const double damp)
 				                      pcs_number_of_primary_nvals +
 				                  i];
 #else
-			double dx =
+				double dx =
 			    eqs_x[j + number_of_nodes * i] * damp * vec_scale_dofs[i];
-//			std::cout << GetNodeValue(j, ColIndex) << " ";
 #endif
-				SetNodeValue(
-				    j, p_var_index[i],
-				    GetNodeValue(j, p_var_index[i]) + dx * damp * inv_scaling);
+				double x1 = GetNodeValue(j, p_var_index[i]) + dx * damp * inv_scaling;
+				SetNodeValue(j, p_var_index[i], x1);
 			}
 		}
 #if defined(USE_PETSC)

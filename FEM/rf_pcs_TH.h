@@ -12,17 +12,18 @@
 
 #include <vector>
 
+#ifdef USE_PETSC
+#include <petscsnes.h>
+#endif
+
 #include "rf_pcs.h"
 
-#ifdef USE_PETSC
-#include "petscsnes.h"
-#endif
 
 class CRFProcessTH : public CRFProcess
 {
 public:
-	CRFProcessTH();
-	virtual ~CRFProcessTH();
+	CRFProcessTH() {}
+	virtual ~CRFProcessTH() {}
 
 	void Initialization();
 	virtual double Execute(int loop_process_number);
@@ -38,7 +39,7 @@ protected:
 #endif
 	void UpdateIterativeStep(const double damp);
 private:
-	double error_k0;
+	double error_k0 = 0.0;
 	std::vector<int> vec_pos;
 };
 
