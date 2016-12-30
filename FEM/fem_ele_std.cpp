@@ -3867,10 +3867,8 @@ void CFiniteElementStd::add2GlobalMatrixII(const int block_cols)
 	const int cshift = (pcs->dof > 1) ? NodeShift[pcs->continuum] : 0;
 	const int dm_shift = (pcs->type / 10 == 4) ? problem_dimension_dm : 0;
 
-#if defined(NEW_EQS)
-	CSparseMatrix* A = NULL;  // WW
-	A = pcs->eqs_new->getA();
-#endif
+	CSparseMatrix* A = pcs->eqs_new->getA();
+
 	// For DOF>1:
 	if (PcsType == V || PcsType == P || PcsType == TH)
 	{
@@ -3888,10 +3886,8 @@ void CFiniteElementStd::add2GlobalMatrixII(const int block_cols)
 					const int kk = i_sh + eqs_number[i];  // 02.2011. WW
 					for (int j = 0; j < nnodes; j++)
 					{
-#ifdef NEW_EQS
 						(*A)(kk, j_sh + eqs_number[j]) +=
 						    (*StiffMatrix)(i + ii_sh, j + jj_sh);
-#endif
 					}
 				}
 			}
@@ -3905,9 +3901,7 @@ void CFiniteElementStd::add2GlobalMatrixII(const int block_cols)
 			const int kk = cshift_dm + eqs_number[i];  // 02.2011. WW
 			for (int j = 0; j < nnodes; j++)
 			{
-#ifdef NEW_EQS
 				(*A)(kk, cshift_dm + eqs_number[j]) += (*StiffMatrix)(i, j);
-#endif
 			}
 		}
 	}
