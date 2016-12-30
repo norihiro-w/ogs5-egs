@@ -389,9 +389,6 @@ double CRFProcessTH::Execute(int loop_process_number)
 		//		CalIntegrationPointValue();
 	}  // Newton-Raphson iteration
 
-	// x^k1 = x^k + dx
-	UpdateIterativeStep(1.0);
-
 	iter_nlin_max = std::max(iter_nlin_max, iter_nlin);
 
 	if (!converged && m_num->nls_max_iterations > 1) accepted = false;
