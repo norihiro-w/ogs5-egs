@@ -4931,11 +4931,16 @@ void CFiniteElementStd::Assembly(bool updateA, bool updateRHS,
 			add2GlobalMatrixII();
 			break;
 		case TH:
-			AssembleTHEquation(updateA, updateRHS);
+			//AssembleTHEquation(updateA, updateRHS);
+			if (updateA)
+				AssembleTHJacobian();
+			if (updateRHS)
+				AssembleTHResidual();
 #ifdef USE_PETSC
 			add2GlobalMatrixII(updateA, updateRHS);
 #else
-			add2GlobalMatrixII();
+			if (updateA)
+				add2GlobalMatrixII();
 #endif
 			break;
 		//....................................................................
@@ -4957,30 +4962,44 @@ void CFiniteElementStd::Assembly(bool updateA, bool updateRHS,
 		std::ostream& os = std::cout;
 		os << "### Element: " << Index << "\n";
 #endif
-		os << "---Mass matrix: "
-		   << "\n";
-		if (Mass)
-			Mass->Write(os);
-		else if (Mass2)
-			Mass2->Write(os);
-		os << "---Laplacian matrix: "
-		   << "\n";
-		Laplace->Write(os);
-		if (Advection)
+//		os << "---Mass matrix: "
+//		   << "\n";
+//		if (Mass)
+//			Mass->Write(os);
+//		else if (Mass2)
+//			Mass2->Write(os);
+//		os << "---Laplacian matrix: "
+//		   << "\n";
+//		Laplace->Write(os);
+//		if (Advection)
+//		{
+//			os << "---Advective matrix: "
+//			   << "\n";
+//			Advection->Write(os);
+//		}
+//		os << "---RHS: "
+//		   << "\n";
+//		RHS->Write(os);
+//		os << "---U0: "
+//		   << "\n";
+//		for (int i = 0; i < nnodes; i++)
+//			os << "| " << NodalVal0[i] << " | "
+//			   << "\n";
+//		os << "\n";
+		if (updateRHS)
 		{
-			os << "---Advective matrix: "
+			os << "---U: \n";
+			os.setf(std::ios::scientific, std::ios::floatfield);
+			os.precision(12);
+			for (int i = 0; i < nnodes; i++)
+				os << pcs->GetNodeValue(nodes[i], idxp1) << "\n";
+			for (int i = 0; i < nnodes; i++)
+				os << pcs->GetNodeValue(nodes[i], idxT1) << "\n";
+			os << "\n";
+			os << "---RHS: "
 			   << "\n";
-			Advection->Write(os);
+			RHS->Write(os);
 		}
-		os << "---RHS: "
-		   << "\n";
-		RHS->Write(os);
-		os << "---U0: "
-		   << "\n";
-		for (int i = 0; i < nnodes; i++)
-			os << "| " << NodalVal0[i] << " | "
-			   << "\n";
-		os << "\n";
 	}
 }
 

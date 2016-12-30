@@ -325,6 +325,8 @@ private:
 	void AssembleCapillaryEffect();  // PCH
 	                                 // PCH for debugging
 	void AssembleTHEquation(bool updateA = true, bool updateRHS = true);
+	void AssembleTHResidual();
+	void AssembleTHJacobian();
 
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
 	void add2GlobalMatrixII(bool updateA = true, bool updateRHS = true);

@@ -128,14 +128,14 @@ double CRFProcessTH::Execute(int loop_process_number)
 	{
 		iter_nlin++;
 
-		//----------------------------------------------------------------------
-		// Solve
-		//----------------------------------------------------------------------
 		// Refresh solver
 		eqs_new->Initialize();
 
-		ScreenMessage("-> Assembling equation system...\n");
-		GlobalAssembly();
+		// -----------------------------------------------------------------
+		// Evaluate residuals
+		// -----------------------------------------------------------------
+		ScreenMessage("Assembling a residual vector...\n");
+		AssembleResidual();
 
 //
 #if defined(NEW_EQS)
@@ -234,12 +234,17 @@ double CRFProcessTH::Execute(int loop_process_number)
 			break;
 		}
 
+		// -----------------------------------------------------------------
+		// Assemble Jacobian and solve linear eqs
+		// -----------------------------------------------------------------
+		ScreenMessage("Assembling a Jacobian matrix...\n");
+		AssembleJacobian();
+
 		ScreenMessage("-> Calling linear solver...\n");
 // Linear solver
 #if defined(NEW_EQS)
-		bool compress_eqs =
-			(type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
-		iter_lin = eqs_new->Solver(compress_eqs);  // NW
+		bool compress_eqs = (this->Deactivated_SubDomain.size() > 0);
+		iter_lin = eqs_new->Solver(compress_eqs);
 #elif defined(USE_PETSC)
 		//		if (write_leqs) {
 		//			std::string fname = FileName + "_" +
@@ -311,7 +316,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 		}
 #endif
 
-// Norm of dx
+	// Norm of dx
 #if defined(NEW_EQS)
 		NormDx = eqs_new->NormX();
 #elif defined(USE_PETSC)
@@ -502,6 +507,114 @@ void CRFProcessTH::UpdateIterativeStep(const double damp)
 #endif
 }
 
+void CRFProcessTH::AssembleResidual()
+{
+	ScreenMessage("-> set Dirichlet BC to nodal values\n");
+	IncorporateBoundaryConditions(false, false, false, true);
+
+	const size_t dn = m_msh->ele_vector.size() / 10;
+	const bool print_progress = (dn >= 100);
+	if (print_progress)
+		ScreenMessage("start local assembly for %d elements...\n",
+					  m_msh->ele_vector.size());
+
+	for (long i = 0; i < (long)m_msh->ele_vector.size(); i++)
+	{
+		if (print_progress && (i + 1) % dn == 0) ScreenMessage("* ");
+		MeshLib::CElem* elem = m_msh->ele_vector[i];
+		if (!elem->GetMark())  // Marked for use
+			continue;
+
+		elem->SetOrder(false);
+		fem->ConfigElement(elem);
+		fem->Assembly(false, true);
+	}
+	if (print_progress)
+		ScreenMessage("done\n");
+
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+	{
+		//TODO
+	}
+
+//#ifdef NEW_EQS
+//	{
+//		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_assembly.txt");
+//		eqs_new->WriteRHS(os);
+//	}
+//#endif
+	ScreenMessage("-> impose Neumann BC and source/sink terms\n");
+	IncorporateSourceTerms();
+#if defined(USE_PETSC)
+	eqs_new->AssembleRHS_PETSc();
+//		eqs_new->EQSV_Viewer("eqs_after_assembl");
+#endif
+//#ifdef NEW_EQS
+//	{
+//		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_st.txt");
+//		eqs_new->WriteRHS(os);
+//	}
+//#endif
+
+	// set bc residual = 0
+	ScreenMessage("-> set bc residual = 0 \n");
+	IncorporateBoundaryConditions(false, true, true);
+#if defined(USE_PETSC)
+	eqs_new->AssembleRHS_PETSc();
+//		eqs_new->EQSV_Viewer("eqs_after_assembl");
+#endif
+
+//#ifdef NEW_EQS
+//	{
+//		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_bc.txt");
+//		eqs_new->WriteRHS(os);
+//	}
+//#endif
+
+}
+
+void CRFProcessTH::AssembleJacobian()
+{
+	const size_t dn = m_msh->ele_vector.size() / 10;
+	const bool print_progress = (dn >= 100);
+	if (print_progress)
+		ScreenMessage("start local assembly for %d elements...\n",
+					  m_msh->ele_vector.size());
+
+	for (long i = 0; i < (long)m_msh->ele_vector.size(); i++)
+	{
+		if (print_progress && (i + 1) % dn == 0) ScreenMessage("* ");
+		MeshLib::CElem* elem = m_msh->ele_vector[i];
+		if (!elem->GetMark())  // Marked for use
+			continue;
+
+		elem->SetOrder(false);
+		fem->ConfigElement(elem);
+		fem->Assembly(true, false);
+	}
+	if (print_progress)
+		ScreenMessage("done\n");
+
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+	{
+		//TODO
+	}
+
+#ifdef USE_PETSC
+	eqs_new->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY);
+#endif
+
+	IncorporateBoundaryConditions(true, false);
+#ifdef USE_PETSC
+	eqs_new->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY);
+#endif
+//#ifdef NEW_EQS
+//	{
+//		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_J.txt");
+//		eqs_new->WriteRHS(os);
+//	}
+//#endif
+}
 
 #ifdef USE_PETSC
 void CRFProcessTH::setSolver(petsc_group::PETScLinearSolver* petsc_solver)

@@ -34,6 +34,8 @@ public:
 #endif
 
 protected:
+	void AssembleResidual();
+	void AssembleJacobian();
 #ifdef USE_PETSC
 	double ExecuteNonlinearWithPETsc();
 #endif
