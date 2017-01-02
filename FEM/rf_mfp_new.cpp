@@ -1894,6 +1894,9 @@ double CFluidProperties::LiquidViscosity_LJH_MP2(double c, double T, double rho)
 **************************************************************************/
 double CFluidProperties::LiquidViscosity_Ramey1974(double T)
 {
+#ifndef NDEBUG
+	assert(T>0);
+#endif
 	double mu = 2.394 * std::pow(10.0, 248.37 / (T + 133.15)) * 1e-5;
 	return mu;
 }
