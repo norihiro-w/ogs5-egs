@@ -42,6 +42,7 @@ protected:
 	void UpdateIterativeStep(const double damp);
 private:
 	double error_k0 = 0.0;
+	double nl_r0 = 0;
 	std::vector<int> vec_pos;
 };
 

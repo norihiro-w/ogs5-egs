@@ -100,11 +100,11 @@ double CRFProcessTH::Execute(int loop_process_number)
 	//	double Error1 = 0.0;
 	//	double ErrorU = 1.0;
 	//	double ErrorU1 = 0.0;
-	double InitialNorm = 0.0;
 	//	double InitialNormDx = 0.0;
 	//	double InitialNormU = 0.0;
 	double NormDx = std::numeric_limits<double>::max();
 #ifdef USE_PETSC
+	double InitialNorm = 0.0;
 	static double rp0 = .0, rT0 = 0;
 	static double rp0_L2 = .0, rT0_L2 = 0;
 	double dp_max = std::numeric_limits<double>::max(),
@@ -173,6 +173,9 @@ double CRFProcessTH::Execute(int loop_process_number)
 			if (firstime)
 				firstime = false;
 		}
+#endif
+		if (nl_r0 == 0.0)
+			nl_r0 = NormR;
 #ifdef USE_PETSC
 		Error = std::max(rp_max / rp0, rT_max / rT0);  // NormR / InitialNorm;
 		const double Error_L2 = std::max(rp_L2 / rp0_L2, rT_L2 / rT0_L2);
@@ -204,7 +207,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 		              n_max_iterations, NormR, NormR / InitialNorm);
 		ScreenMessage("------------------------------------------------\n");
 #else
-		Error = NormR / InitialNorm;
+		Error = NormR / nl_r0;
 #if 1
 		double r_dof[2] = {};
 		for (size_t ii = 0; ii < this->GetPrimaryVNumber(); ii++) {
@@ -216,7 +219,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 		}
 		ScreenMessage("------------------------------------------------\n");
 		ScreenMessage("-> Nonlinear iteration: %d/%d, |r|=%.3e, |r|/|r0|=%.3e, |rp|=%.3e, |rT|=%.3e\n", iter_nlin - 1,
-		              n_max_iterations, NormR, NormR / InitialNorm, r_dof[0], r_dof[1]);
+					  n_max_iterations, NormR, NormR / nl_r0, r_dof[0], r_dof[1]);
 		ScreenMessage("------------------------------------------------\n");
 #else
 		ScreenMessage("------------------------------------------------\n");
