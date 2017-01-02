@@ -48,10 +48,6 @@ void CFiniteElementStd::AssembleTHResidual()
 	Eigen::VectorXd nodal_T0(nnodes), nodal_T1(nnodes);
 	for (int i = 0; i < nnodes; i++)
 	{
-		NodalVal_p0[i] = pcs->GetNodeValue(nodes[i], idxp0);
-		NodalVal_p1[i] = pcs->GetNodeValue(nodes[i], idxp1);
-		NodalVal_T0[i] = pcs->GetNodeValue(nodes[i], idxT0);
-		NodalVal_T1[i] = pcs->GetNodeValue(nodes[i], idxT1);
 		nodal_p0[i] = pcs->GetNodeValue(nodes[i], idxp0);
 		nodal_p1[i] = pcs->GetNodeValue(nodes[i], idxp1);
 		nodal_T0[i] = pcs->GetNodeValue(nodes[i], idxT0);
@@ -109,11 +105,13 @@ void CFiniteElementStd::AssembleTHResidual()
 	for (unsigned i=0; i<c_dim; i++)
 		for (unsigned j=0; j<c_dim; j++)
 			lambda(i,j) = lambda_tensor[i*c_dim + j];
+	Eigen::Vector3d vec_g;
+	vec_g << 0, 0, -9.81;
 
 	//======================================================================
 	// Loop over Gauss points
 	int gp_r, gp_s, gp_t;
-	double var[3] = {}, vel[3] = {};
+	double var[3] = {};
 	Eigen::RowVectorXd N(c_nnodes);
 	Eigen::MatrixXd dN(c_dim, c_nnodes);
 	Eigen::VectorXd r_p(c_nnodes), r_T(c_nnodes);
@@ -142,40 +140,20 @@ void CFiniteElementStd::AssembleTHResidual()
 		//---------------------------------------------------------
 		//  Get state variables
 		//---------------------------------------------------------
-		const double gp_p0 = interpolate(NodalVal_p0);
-		const double gp_T0 = interpolate(NodalVal_T0);
-		const double gp_p1 = interpolate(NodalVal_p1);
-		const double gp_T1 = interpolate(NodalVal_T1);
-
-		//		if (myrank==2 && gp==0 && updateA)
-		//		ScreenMessage2("%d: p0=%.3e, p1=%.3e, T0=%.3e, T1=%.3e\n",
-		//Index,
-		// gp_p0, gp_p1, gp_T0, gp_T1);
-		var[0] = gp_p1;
-		var[1] = gp_T1;
-#if 0
-		double grad_p0[3] = {}, grad_T0[3] = {};
-		double grad_p1[3] = {}, grad_T1[3] = {};
-		for (unsigned i = 0; i < c_dim; i++)
-		{
-			for (int j = 0; j < c_nnodes; j++)
-			{
-				grad_p0[i] += c_dshapefct[i * nnodes + j] * NodalVal_p0[j];
-				grad_p1[i] += c_dshapefct[i * nnodes + j] * NodalVal_p1[j];
-				grad_T0[i] += c_dshapefct[i * nnodes + j] * NodalVal_T0[j];
-				grad_T1[i] += c_dshapefct[i * nnodes + j] * NodalVal_T1[j];
-			}
-		}
-#else
+		const double gp_p0 = N * nodal_p0;
+		const double gp_T0 = N * nodal_T0;
+		const double gp_p1 = N * nodal_p1;
+		const double gp_T1 = N * nodal_T1;
 		Eigen::VectorXd grad_p0 = dN * nodal_p0;
 		Eigen::VectorXd grad_p1 = dN * nodal_p1;
 		Eigen::VectorXd grad_T0 = dN * nodal_T0;
 		Eigen::VectorXd grad_T1 = dN * nodal_T1;
-#endif
 
 		//---------------------------------------------------------
 		//  Get material properties
 		//---------------------------------------------------------
+		var[0] = gp_p1;
+		var[1] = gp_T1;
 		// Fluid properties
 		const double rho_w = FluidProp->Density(var);
 		const double vis = FluidProp->Viscosity(var);
@@ -187,14 +165,10 @@ void CFiniteElementStd::AssembleTHResidual()
 		//---------------------------------------------------------
 		//  Set velocity
 		//---------------------------------------------------------
-		Eigen::VectorXd q = - k / vis * grad_p1; //TODO gravity
-		for (unsigned i = 0; i < c_dim; i++)
-		{
-			vel[i] = .0;
-			for (unsigned j = 0; j < c_dim; j++)
-				vel[i] -= k_tensor[c_dim * i + j] / vis * grad_p1[j];
-			vel[i] -= k_tensor[c_dim * i + c_dim - 1] / vis * rho_w * g_const;
-		}
+		Eigen::VectorXd grad_h1 = grad_p1;
+		if (hasGravity)
+			grad_h1 -= rho_w * vec_g;
+		Eigen::VectorXd q = - k / vis * grad_h1;
 
 		//---------------------------------------------------------
 		//  Assemble Liquid flow equation
@@ -208,22 +182,9 @@ void CFiniteElementStd::AssembleTHResidual()
 			// 1/dt*N^T*Ss*(p1-p0)
 			const double Rp_coeff1 = dt_inverse * fkt * Ss * (gp_p1 - gp_p0);
 			r_p += N.transpose() * Rp_coeff1;
-			for (int i = 0; i < c_nnodes; i++)
-			{
-				double v_p = 0;
-				v_p += Rp_coeff1 * c_shapefct[i];
-				(*RHS)(offset_p + i) += v_p;
-			}
 		}
 		// - dN^T*vel
 		r_p += - fkt * dN.transpose() * q;
-		for (int i = 0; i < c_nnodes; i++)
-		{
-			double v_p = 0;
-			for (unsigned k = 0; k < c_dim; k++)
-				v_p += -fkt * c_dshapefct[k * c_nnodes + i] * vel[k];
-			(*RHS)(offset_p + i) += v_p;
-		}
 		//---------------------------------------------------------
 		//  Assemble Heat transport equation
 		//---------------------------------------------------------
@@ -235,30 +196,9 @@ void CFiniteElementStd::AssembleTHResidual()
 			const double coeff =
 				dt_inverse * fkt * rhocp * (gp_T1 - gp_T0);
 			r_T += N.transpose() * coeff;
-			for (int i = 0; i < c_nnodes; i++)
-				(*RHS)(offset_T + i) += c_shapefct[i] * coeff;
 		}
 		r_T += fkt * dN.transpose() * lambda * grad_T1;
 		r_T += fkt * N.transpose() * rho_w * cp_w * q.transpose() * grad_T1;
-		for (int i = 0; i < c_nnodes; i++)
-		{
-			double v_T = 0;
-			for (unsigned k = 0; k < c_dim; k++)
-			{
-				for (unsigned l = 0; l < c_dim; l++)
-				{
-					// dN^T*lambda*gradT1
-					v_T +=
-						fkt * c_dshapefct[k * c_nnodes + i] *
-						lambda_tensor[c_dim * k + l] * grad_T1[l];
-				}
-				// N^T*Cp_w*gradT1
-				const double cp_v_gradT =
-					fkt * rho_w * cp_w * vel[k] * grad_T1[k];
-				v_T += c_shapefct[i] * cp_v_gradT;
-			}
-			(*RHS)(offset_T + i) += v_T;
-		}
 	}
 
 	for (int i = 0; i < c_nnodes; i++)
@@ -307,10 +247,6 @@ void CFiniteElementStd::AssembleTHJacobian()
 	Eigen::VectorXd nodal_T0(nnodes), nodal_T1(nnodes);
 	for (int i = 0; i < nnodes; i++)
 	{
-		NodalVal_p0[i] = pcs->GetNodeValue(nodes[i], idxp0);
-		NodalVal_p1[i] = pcs->GetNodeValue(nodes[i], idxp1);
-		NodalVal_T0[i] = pcs->GetNodeValue(nodes[i], idxT0);
-		NodalVal_T1[i] = pcs->GetNodeValue(nodes[i], idxT1);
 		nodal_p0[i] = pcs->GetNodeValue(nodes[i], idxp0);
 		nodal_p1[i] = pcs->GetNodeValue(nodes[i], idxp1);
 		nodal_T0[i] = pcs->GetNodeValue(nodes[i], idxT0);
@@ -368,11 +304,13 @@ void CFiniteElementStd::AssembleTHJacobian()
 	for (unsigned i=0; i<c_dim; i++)
 		for (unsigned j=0; j<c_dim; j++)
 			lambda(i,j) = lambda_tensor[i*c_dim + j];
+	Eigen::Vector3d vec_g;
+	vec_g << 0, 0, -g_const;
 
 	//======================================================================
 	// Loop over Gauss points
 	int gp_r, gp_s, gp_t;
-	double var[3] = {}, vel[3] = {};
+	double var[3] = {};
 	Eigen::RowVectorXd N(c_nnodes);
 	Eigen::MatrixXd dN(c_dim, c_nnodes);
 	Eigen::MatrixXd J_pp(c_nnodes, c_nnodes), J_pT(c_nnodes, c_nnodes);
@@ -404,53 +342,32 @@ void CFiniteElementStd::AssembleTHJacobian()
 		//---------------------------------------------------------
 		//  Get state variables
 		//---------------------------------------------------------
-		const double gp_p0 = interpolate(NodalVal_p0);
-		const double gp_T0 = interpolate(NodalVal_T0);
-		const double gp_p1 = interpolate(NodalVal_p1);
-		const double gp_T1 = interpolate(NodalVal_T1);
+		const double gp_p0 = N * nodal_p0;
+		const double gp_T0 = N * nodal_T0;
+		const double gp_p1 = N * nodal_p1;
+		const double gp_T1 = N * nodal_T1;
+		const double gp_dp = gp_p1 - gp_p0;
+		const double gp_dT = gp_T1 - gp_T0;
 		//		if (myrank==2 && gp==0 && updateA)
 		//		ScreenMessage2("%d: p0=%.3e, p1=%.3e, T0=%.3e, T1=%.3e\n",
 		//Index,
 		// gp_p0, gp_p1, gp_T0, gp_T1);
-		var[0] = gp_p1;
-		var[1] = gp_T1;
-#if 0
-		double grad_p0[3] = {}, grad_T0[3] = {};
-		double grad_p1[3] = {}, grad_T1[3] = {};
-		double grad_T1_r[3] = {};
-		//		static double max_gradT1 = .0;
-		for (unsigned i = 0; i < c_dim; i++)
-		{
-			for (int j = 0; j < c_nnodes; j++)
-			{
-				grad_p0[i] += c_dshapefct[i * nnodes + j] * NodalVal_p0[j];
-				grad_p1[i] += c_dshapefct[i * nnodes + j] * NodalVal_p1[j];
-				grad_T0[i] += c_dshapefct[i * nnodes + j] * NodalVal_T0[j];
-				grad_T1_r[i] += c_dshapefct[i * nnodes + j] * NodalVal_T1[j];
-			}
-#define TH_INCLUDE_GRAD_T
-#ifdef TH_INCLUDE_GRAD_T
-			if (pcs->m_num->nls_jacobian_level == 0)
-				grad_T1[i] = grad_T1_r[i];
-#ifdef USE_PETSC
-//			if (fabs(grad_T1[i]) > fabs(max_gradT1) ) {
-//				max_gradT1 = grad_T1[i];
-////				ScreenMessage2("-> max grad T updated = %g\n", max_gradT1);
-//			}
-#endif
-#endif
-		}
-#else
 		Eigen::VectorXd grad_p0 = dN * nodal_p0;
 		Eigen::VectorXd grad_p1 = dN * nodal_p1;
 		Eigen::VectorXd grad_T0 = dN * nodal_T0;
 		Eigen::VectorXd grad_T1 = dN * nodal_T1;
 		Eigen::VectorXd grad_T1_r = dN * nodal_T1;
+#define TH_INCLUDE_GRAD_T
+#ifdef TH_INCLUDE_GRAD_T
+		if (pcs->m_num->nls_jacobian_level == 1)
+			grad_T1.setZero();
 #endif
 
 		//---------------------------------------------------------
 		//  Get material properties
 		//---------------------------------------------------------
+		var[0] = gp_p1;
+		var[1] = gp_T1;
 		// Fluid properties
 		const double rho_w = FluidProp->Density(var);
 		const double drho_w_dp = FluidProp->drhodP(var);
@@ -460,259 +377,56 @@ void CFiniteElementStd::AssembleTHJacobian()
 		const double dvis_dT = FluidProp->dViscositydT(var);
 		const double cp_w = FluidProp->SpecificHeatCapacity(var);
 		// Medium properties
-		const double rhocp =
-			MediaProp->HeatCapacity(Index, pcs->m_num->ls_theta, this, var);
-		const double porosity =
-			MediaProp->Porosity(Index, pcs->m_num->ls_theta);
-		const double drhocp_dp =
-			porosity * cp_w *
-			drho_w_dp;  //  MediaProp->dHeatCapacitydP(Index,pcs->m_num->ls_theta,this,var);
-		const double drhocp_dT =
-			porosity * cp_w *
-			drho_w_dT;  // MediaProp->dHeatCapacitydT(Index,pcs->m_num->ls_theta,this,var);
+		const double rhocp = MediaProp->HeatCapacity(Index, theta, this, var);
+		const double porosity = MediaProp->Porosity(Index, theta);
+		const double drhocp_dp = porosity * cp_w * drho_w_dp; //TODO d(cp)/dp
+		const double drhocp_dT = porosity * cp_w * drho_w_dT;
 
 		//---------------------------------------------------------
 		//  Set velocity
 		//---------------------------------------------------------
-		Eigen::VectorXd q = - k / vis * grad_p1; //TODO gravity
-		for (unsigned i = 0; i < c_dim; i++)
-		{
-			vel[i] = .0;
-			for (unsigned j = 0; j < c_dim; j++)
-				vel[i] -= k_tensor[c_dim * i + j] / vis * grad_p1[j];
-			vel[i] -= k_tensor[c_dim * i + c_dim - 1] / vis * rho_w * g_const;
-		}
+		Eigen::VectorXd grad_h1 = grad_p1;
+		if (hasGravity)
+			grad_h1 -= rho_w * vec_g;
+		Eigen::VectorXd q = - k / vis * grad_h1;
+
+		//-----------------------------------------
+		// Derivatives of flow velocity and heat flux
+		//-----------------------------------------
+		Eigen::MatrixXd dq_dp = - k / vis * dN;
+		if (hasGravity && drho_w_dp != 0.0)
+			dq_dp.noalias() += - k / vis * drho_w_dp * vec_g * N;
+		if (dvis_dp != 0.0)
+			dq_dp.noalias() += - dvis_dp / vis * q * N;
+		Eigen::MatrixXd dq_dT = - dvis_dT * q * N;
+		if (hasGravity && drho_w_dT != 0.0)
+			dq_dT.noalias() += - k / vis * drho_w_dT * vec_g * N;
+
+		Eigen::MatrixXd djDiff_dT = - lambda * dN;
+		Eigen::MatrixXd djAdv_dT = rhocp * q.transpose() * dN;
+		if (dq_dT.size() > 0)
+			djAdv_dT.noalias() += rhocp * grad_T1.transpose() * dq_dT;
+		if (drho_w_dT != .0)
+			djAdv_dT.noalias() += drhocp_dT * q.transpose() * grad_T1 * N;
+		Eigen::MatrixXd djAdv_dp = rhocp * grad_T1.transpose() * dq_dp;
+		if (drho_w_dp != .0)
+			djAdv_dp.noalias() += drhocp_dp * q.transpose() * grad_T1 * N;
 
 		//---------------------------------------------------------
-		//  Assemble Liquid flow equation
-		//  original: N^T*S*N*dp/dt + dN^T*k/mu*dN*p+dN^T*rho*g*z = 0
+		//  Assemble Jacobian
 		//---------------------------------------------------------
-		#define ENABLE_PT
-		#define ENABLE_TP
-		#define ENABLE_TP_MASS
-
-		const double Mpp_coeff =
-			isTransient ? dt_inverse * fkt * Ss : 0;
-		const double Lpp_coeff1 = theta * fkt / vis;
-		// const double Lpp_coeff2 = theta * fkt/(vis*vis);
-		const double Lpp_coeff3 = theta * fkt / vis * dvis_dp;
-		const double LpT_coeff3 = theta * fkt / vis * dvis_dT;
-		// const double Gpp_coeff1 = - theta * fkt / (vis*vis) * dvis_dp
-		// * rho_w * g_const;
-		const double Gpp_coeff2 =
-			theta * fkt / vis * drho_w_dp * g_const;
-		// const double GpT_coeff3 = - theta * fkt / (vis*vis) * dvis_dT
-		// * rho_w * g_const;
-		const double GpT_coeff4 =
-			theta * fkt / vis * drho_w_dT * g_const;
 
 		J_pp += fkt * N.transpose() * Ss * dt_inverse * N;
-		J_pp += fkt * dN.transpose() * k/vis * dN;
+		J_pp += - fkt * dN.transpose() * dq_dp;
+		if (dq_dT.size() > 0)
+			J_pT.noalias() += - fkt * dN.transpose() * dq_dT;
 
-		for (int i = 0; i < c_nnodes; i++)
-		{
-			// symmetric
-			for (int j = i; j < c_nnodes; j++)
-			{
-				double v_pp = .0;
-				// Jpp = 1/dt*N^T*Ss*N
-				v_pp = Mpp_coeff * c_shapefct[i] * c_shapefct[j];
-				for (unsigned k = 0; k < c_dim; k++)
-				{
-					for (unsigned l = 0; l < c_dim; l++)
-					{
-						// Jpp = theta*dN^T*k/mu*dN
-						v_pp += Lpp_coeff1 *
-								c_dshapefct[k * c_nnodes + i] *
-								k_tensor[c_dim * k + l] *
-								c_dshapefct[l * c_nnodes + j];
-					}
-				}
-
-				(*StiffMatrix)(offset_p + i, offset_p + j) += v_pp;
-				if (i != j)
-				{  // make it symmetric
-					(*StiffMatrix)(offset_p + j, offset_p + i) += v_pp;
-				}
-			}
-			// unsymmetric
-			for (int j = 0; j < c_nnodes; j++)
-			{
-				double v_pp = .0;
-				double v_pT = .0;
-				for (unsigned k = 0; k < c_dim; k++)
-				{
-					const double dN_N =
-						c_dshapefct[k * c_nnodes + i] * c_shapefct[j];
-					const double dN_kz_N =
-						dN_N * k_tensor[c_dim * k + c_dim - 1];
-					const double dN_v_N =
-						c_dshapefct[k * c_nnodes + i] * vel[k] *
-						c_shapefct[j];
-					// Jpp += theta/mu*dmu_dp*dN^T*q*N
-					v_pp += Lpp_coeff3 * dN_v_N;
-					// JpT += theta/mu*dmu_dT*dN^T*q*N
-					v_pT += LpT_coeff3 * dN_v_N;
-					// Jpp += theta*dN^T*k/mu*drho_w_dp*g*N
-					v_pp += Gpp_coeff2 * dN_kz_N;
-					// Jpt += theta*dN^T*k/mu*drho_w_dT*g*N
-					v_pT += GpT_coeff4 * dN_kz_N;
-				}
-				(*StiffMatrix)(offset_p + i, offset_p + j) += v_pp;
-#ifdef ENABLE_PT
-				(*StiffMatrix)(offset_p + i, offset_T + j) += v_pT;
-#endif
-			}
-		}
-
-		//---------------------------------------------------------
-		//  Assemble Heat transport equation
-		//---------------------------------------------------------
-
-		// Jtt = 1/dt*N^T*rho*cp*N
-		// Jtt += 1/dt*N^T*drhocp_dT*T1*N
-		// Jtp += 1/dt*N^T*drhocp_dp*T1*N
-
-		J_TT += fkt * N.transpose() * rhocp * dt_inverse * N;
-		J_TT += fkt * dN.transpose() * lambda * dN;
-		J_TT += fkt * N.transpose() * rho_w * cp_w * q.transpose() * dN;
-
-		Eigen::MatrixXd dq_dp = - k / vis * dN;
-		Eigen::MatrixXd djAdv_dp = rho_w * cp_w * grad_T1.transpose() * dq_dp;
-		J_Tp += fkt * N.transpose() * djAdv_dp;
-
-		//		const double M_tt_coeff1 = isTransient ? dt_inverse * fkt *
-		// rhocp : 0;
-		const double M_tt_coeff1 =
-			isTransient
-				? dt_inverse * fkt * (rhocp + drhocp_dT * (gp_T1 - gp_T0))
-				: 0;
-		const double M_tp_coeff1 =
-			isTransient ? dt_inverse * fkt * drhocp_dp * (gp_T1 - gp_T0)
-						: 0;
-
-		for (int i = 0; i < c_nnodes; i++)
-		{
-			for (int j = 0; j < c_nnodes; j++)
-			{
-				const double NN = c_shapefct[i] * c_shapefct[j];
-				(*StiffMatrix)(offset_T + i, offset_T + j) +=
-					M_tt_coeff1 * NN;
-				(*StiffMatrix)(offset_T + i, offset_p + j) +=
-					M_tp_coeff1 * NN;
-#ifdef TH_DEBUG
-				(*Mass)(i, j) += 1. / dt_inverse * M_tt_coeff1 * NN;
-#endif
-			}
-		}
-
-		// L = theta*dN^T*lambda*dN*T
-		// Jtt += theta*dN^T*lambda*dN
-		const double theta_fkt = theta * fkt;
-		const double theta_fkt_Cw = theta_fkt * rho_w * cp_w;
-		const double Att_coeff2 = theta_fkt * drho_w_dT * cp_w;
-		const double Att_coeff3 = theta_fkt * drho_w_dp * cp_w;
-		//		const double Att_coeff4 = theta_fkt_Cw / (vis*vis) *
-		// dvis_dT;
-		//		const double Att_coeff5 = theta_fkt_Cw / (vis*vis) *
-		// dvis_dp;
-		//		const double Att_coeff6 = - theta_fkt_Cw / vis;
-		//		double G_tt_coeff1 = theta_fkt_Cw / vis
-		//*(1./vis*dvis_dT*rho_w
-		//- drho_w_dT) * g_const;
-		//		double G_tp_coeff1 = theta_fkt_Cw / vis
-		//*(1./vis*dvis_dp*rho_w
-		//- drho_w_dp) * g_const;
-		for (int i = 0; i < c_nnodes; i++)
-		{
-			// symmetric
-			for (int j = i; j < c_nnodes; j++)
-			{
-				double v_TT = 0;
-				for (unsigned k = 0; k < c_dim; k++)
-				{
-					for (unsigned l = 0; l < c_dim; l++)
-					{
-						v_TT += theta_fkt * c_dshapefct[k * c_nnodes + i] *
-								lambda_tensor[c_dim * k + l] *
-								c_dshapefct[l * c_nnodes + j];
-#ifdef TH_DEBUG
-						(*Laplace)(i, j) += fkt *
-											lambda_tensor[dim * k + l] *
-											dshapefct[k * nnodes + i] *
-											dshapefct[l * nnodes + j];
-						if (i != j)
-							(*Laplace)(j, i) += fkt *
-												lambda_tensor[dim * k + l] *
-												dshapefct[k * nnodes + i] *
-												dshapefct[l * nnodes + j];
-#endif
-					}
-				}
-				(*StiffMatrix)(offset_T + i, offset_T + j) += v_TT;
-				if (i != j)
-					(*StiffMatrix)(offset_T + j, offset_T + i) += v_TT;
-			}
-			// unsymmetric
-			for (int j = 0; j < c_nnodes; j++)
-			{
-				double v_TT = 0;
-				double v_Tp = 0;
-				const double NN = c_shapefct[i] * c_shapefct[j];
-
-				for (unsigned k = 0; k < c_dim; k++)
-				{
-					const double NdN =
-						c_shapefct[i] * c_dshapefct[k * c_nnodes + j];
-					// Jtt += theta*N^T*rho_w*cp_w*q^T*dN
-					v_TT += theta_fkt_Cw * vel[k] * NdN;
-					// Jtt += theta*N^T*drho_w_dT*cp_w*q^T*grad(T)*N
-					v_TT += Att_coeff2 * vel[k] * grad_T1[k] * NN;
-					// Jtp += theta*N^T*drho_w_dp*cp_w*q^T*grad(T)*N
-					v_Tp += Att_coeff3 * vel[k] * grad_T1[k] * NN;
-#ifdef TH_DEBUG
-					(*Advection)(i, j) += fkt * shapefct[i] * rho_w * cp_w *
-										  vel[k] *
-										  dshapefct[k * nnodes + j];
-#endif
-					const double N_gT_kz_N =
-						grad_T1[k] * k_tensor[c_dim * k + c_dim - 1] * NN;
-					// Jtt += -
-					// theta*N^T*rho_w*cp_w*grad(T)*k/mu*g*drho_dT*N
-					v_TT += -theta_fkt_Cw / vis * drho_w_dT * g_const *
-							N_gT_kz_N;
-					// Jtt += - theta*N^T*rho_w*cp_w*grad(T)*1/mu*q*dmu_dT*N
-					v_TT += -theta_fkt_Cw * grad_T1[k] / vis * vel[k] *
-							dvis_dT * NN;
-
-					// Jtp += -
-					// theta*N^T*rho_w*cp_w*grad(T)*k/mu*g*drho_dp*N
-					v_Tp += -theta_fkt_Cw / vis * drho_w_dp * g_const *
-							N_gT_kz_N;
-					// Jtp += - theta*N^T*rho_w*cp_w*grad(T)/mu*q*dmu_dp*N
-					v_Tp += -theta_fkt_Cw * grad_T1[k] / vis * vel[k] *
-							dvis_dp * NN;
-					for (unsigned l = 0; l < c_dim; l++)
-					{
-						// Jtp += - theta*N^T*rho_w*cp_w*grad(T)*k/mu*dN
-						v_Tp += -theta_fkt_Cw * grad_T1[k] *
-								k_tensor[c_dim * k + l] / vis *
-								c_shapefct[i] *
-								c_dshapefct[l * c_nnodes + j];
-					}
-				}
-#define ADV
-#ifdef ADV
-				(*StiffMatrix)(offset_T + i, offset_T + j) += v_TT;
-#ifdef ENABLE_TP
-				(*StiffMatrix)(offset_T + i, offset_p + j) += v_Tp;
-#endif
-#endif
-			}
-		}
-
+		J_TT.noalias() += 1/dt * N.transpose() * (rhocp + gp_dT * drhocp_dT) * N * fkt;
+		J_TT.noalias() += - dN.transpose() * djDiff_dT * fkt;
+		J_TT.noalias() += N.transpose() * djAdv_dT * fkt;
+		J_Tp.noalias() += 1/dt * N.transpose() * (gp_dT * drhocp_dp) * N * fkt;
+		J_Tp.noalias() += N.transpose() * djAdv_dp * fkt;
 	}
-
 
 	for (int i=0; i<c_nnodes; i++)
 	{
