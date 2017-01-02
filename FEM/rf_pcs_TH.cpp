@@ -159,16 +159,13 @@ double CRFProcessTH::Execute(int loop_process_number)
 		VecNormBegin(sub_x, NORM_INFINITY, &rT_max);
 		VecNormEnd(sub_x, NORM_INFINITY, &rT_max);
 		VecRestoreSubVector(eqs_new->b, eqs_new->vec_isg[1], &sub_x);
-#endif
 		if (iter_nlin == 1 && this->first_coupling_iteration)
 		{
 			InitialNorm = NormR;
-#ifdef USE_PETSC
 			rp0 = rp_max;
 			rT0 = rT_max;
 			rp0_L2 = rp_L2;
 			rT0_L2 = rT_L2;
-#endif
 			static bool firstime = true;
 			if (firstime)
 				firstime = false;
@@ -229,8 +226,8 @@ double CRFProcessTH::Execute(int loop_process_number)
 #endif
 #endif
 
-
-		if (Error < newton_tol)
+		bool isFirstIterationInTimeStep = (iter_nlin == 1 && this->first_coupling_iteration);
+		if (!isFirstIterationInTimeStep && Error < newton_tol)
 		{
 			ScreenMessage("-> Newton-Raphson converged\n");
 			converged = true;
