@@ -3867,10 +3867,8 @@ void CFiniteElementStd::add2GlobalMatrixII(const int block_cols)
 	const int cshift = (pcs->dof > 1) ? NodeShift[pcs->continuum] : 0;
 	const int dm_shift = (pcs->type / 10 == 4) ? problem_dimension_dm : 0;
 
-#if defined(NEW_EQS)
-	CSparseMatrix* A = NULL;  // WW
-	A = pcs->eqs_new->getA();
-#endif
+	CSparseMatrix* A = pcs->eqs_new->getA();
+
 	// For DOF>1:
 	if (PcsType == V || PcsType == P || PcsType == TH)
 	{
@@ -3888,10 +3886,8 @@ void CFiniteElementStd::add2GlobalMatrixII(const int block_cols)
 					const int kk = i_sh + eqs_number[i];  // 02.2011. WW
 					for (int j = 0; j < nnodes; j++)
 					{
-#ifdef NEW_EQS
 						(*A)(kk, j_sh + eqs_number[j]) +=
 						    (*StiffMatrix)(i + ii_sh, j + jj_sh);
-#endif
 					}
 				}
 			}
@@ -3905,9 +3901,7 @@ void CFiniteElementStd::add2GlobalMatrixII(const int block_cols)
 			const int kk = cshift_dm + eqs_number[i];  // 02.2011. WW
 			for (int j = 0; j < nnodes; j++)
 			{
-#ifdef NEW_EQS
 				(*A)(kk, cshift_dm + eqs_number[j]) += (*StiffMatrix)(i, j);
-#endif
 			}
 		}
 	}
@@ -4937,11 +4931,16 @@ void CFiniteElementStd::Assembly(bool updateA, bool updateRHS,
 			add2GlobalMatrixII();
 			break;
 		case TH:
-			AssembleTHEquation(updateA, updateRHS);
+			//AssembleTHEquation(updateA, updateRHS);
+			if (updateA)
+				AssembleTHJacobian();
+			if (updateRHS)
+				AssembleTHResidual();
 #ifdef USE_PETSC
 			add2GlobalMatrixII(updateA, updateRHS);
 #else
-			add2GlobalMatrixII();
+			if (updateA)
+				add2GlobalMatrixII();
 #endif
 			break;
 		//....................................................................
@@ -4963,30 +4962,44 @@ void CFiniteElementStd::Assembly(bool updateA, bool updateRHS,
 		std::ostream& os = std::cout;
 		os << "### Element: " << Index << "\n";
 #endif
-		os << "---Mass matrix: "
-		   << "\n";
-		if (Mass)
-			Mass->Write(os);
-		else if (Mass2)
-			Mass2->Write(os);
-		os << "---Laplacian matrix: "
-		   << "\n";
-		Laplace->Write(os);
-		if (Advection)
+//		os << "---Mass matrix: "
+//		   << "\n";
+//		if (Mass)
+//			Mass->Write(os);
+//		else if (Mass2)
+//			Mass2->Write(os);
+//		os << "---Laplacian matrix: "
+//		   << "\n";
+//		Laplace->Write(os);
+//		if (Advection)
+//		{
+//			os << "---Advective matrix: "
+//			   << "\n";
+//			Advection->Write(os);
+//		}
+//		os << "---RHS: "
+//		   << "\n";
+//		RHS->Write(os);
+//		os << "---U0: "
+//		   << "\n";
+//		for (int i = 0; i < nnodes; i++)
+//			os << "| " << NodalVal0[i] << " | "
+//			   << "\n";
+//		os << "\n";
+		if (updateRHS)
 		{
-			os << "---Advective matrix: "
+			os << "---U: \n";
+			os.setf(std::ios::scientific, std::ios::floatfield);
+			os.precision(12);
+			for (int i = 0; i < nnodes; i++)
+				os << pcs->GetNodeValue(nodes[i], idxp1) << "\n";
+			for (int i = 0; i < nnodes; i++)
+				os << pcs->GetNodeValue(nodes[i], idxT1) << "\n";
+			os << "\n";
+			os << "---RHS: "
 			   << "\n";
-			Advection->Write(os);
+			RHS->Write(os);
 		}
-		os << "---RHS: "
-		   << "\n";
-		RHS->Write(os);
-		os << "---U0: "
-		   << "\n";
-		for (int i = 0; i < nnodes; i++)
-			os << "| " << NodalVal0[i] << " | "
-			   << "\n";
-		os << "\n";
 	}
 }
 

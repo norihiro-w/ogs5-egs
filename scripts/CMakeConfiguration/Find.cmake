@@ -27,6 +27,12 @@ MESSAGE(STATUS "- reference files dir: ${BENCHMARK_REF_DIR_FOUND}")
 ### Find libraries ###
 ######################
 
+## Eigen
+IF(USE_EXTERNAL_EIGEN)
+	FIND_PACKAGE(Eigen3)
+	INCLUDE_DIRECTORIES (${EIGEN3_INCLUDE_DIR})
+ENDIF()
+
 ## pthread ##
 SET ( CMAKE_THREAD_PREFER_PTHREAD ON CACHE BOOL "" )
 FIND_PACKAGE( Threads )

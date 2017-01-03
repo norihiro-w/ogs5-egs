@@ -16,6 +16,7 @@
 
 #include "display.h"
 #include "StringTools.h"
+
 #if defined(NEW_EQS)
 #include "equation_class.h"
 #elif defined(USE_PETSC)
@@ -23,14 +24,6 @@
 #endif
 
 #include "fem_ele_std.h"
-
-CRFProcessTH::CRFProcessTH() : CRFProcess(), error_k0(0.0)
-{
-}
-
-CRFProcessTH::~CRFProcessTH()
-{
-}
 
 void CRFProcessTH::Initialization()
 {
@@ -81,7 +74,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 #if defined(USE_PETSC)
 	// set Dirichlet BC to nodal values
 	ScreenMessage("-> set initial guess\n");
-	IncorporateBoundaryConditions(-1, false, false, true);
+	IncorporateBoundaryConditions(false, false, true);
 	copyNodalValuesToVec(eqs_new->total_x);
 	// VecView(eqs_new->total_x, PETSC_VIEWER_STDOUT_WORLD);
 
@@ -97,17 +90,13 @@ double CRFProcessTH::Execute(int loop_process_number)
 #endif
 
 #if defined(NEW_EQS)
-	eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method, m_num->ls_max_iterations, m_num->ls_error_tolerance, m_num->ls_storage_method, m_num->ls_extra_arg);
+	eqs_new->ConfigNumerics(m_num->ls_precond, m_num->ls_method,
+							m_num->ls_max_iterations, m_num->ls_error_tolerance,
+							m_num->ls_storage_method, m_num->ls_extra_arg);
 #endif
 
 	// Begin Newton-Raphson steps
 	double Error = 1.0;
-	//	double Error1 = 0.0;
-	//	double ErrorU = 1.0;
-	//	double ErrorU1 = 0.0;
-	double InitialNorm = 0.0;
-	//	double InitialNormDx = 0.0;
-	//	double InitialNormU = 0.0;
 	double NormDx = std::numeric_limits<double>::max();
 #ifdef USE_PETSC
 	static double rp0 = .0, rT0 = 0;
@@ -133,22 +122,20 @@ double CRFProcessTH::Execute(int loop_process_number)
 	{
 		iter_nlin++;
 
-//----------------------------------------------------------------------
-// Solve
-//----------------------------------------------------------------------
-// Refresh solver
+		// Refresh solver
 		eqs_new->Initialize();
 
-		ScreenMessage("-> Assembling equation system...\n");
-		GlobalAssembly();
+		// -----------------------------------------------------------------
+		// Evaluate residuals
+		// -----------------------------------------------------------------
+		ScreenMessage("Assembling a residual vector...\n");
+		AssembleResidual();
 
 //
 #if defined(NEW_EQS)
 		const double NormR = eqs_new->ComputeNormRHS();
 #elif defined(USE_PETSC)
 		const double NormR = eqs_new->GetVecNormRHS();
-#endif
-#if defined(USE_PETSC)
 		double rp_max = std::numeric_limits<double>::max(),
 		       rT_max = std::numeric_limits<double>::max();
 		double rp_L2 = std::numeric_limits<double>::max(),
@@ -164,22 +151,24 @@ double CRFProcessTH::Execute(int loop_process_number)
 		VecNormBegin(sub_x, NORM_INFINITY, &rT_max);
 		VecNormEnd(sub_x, NORM_INFINITY, &rT_max);
 		VecRestoreSubVector(eqs_new->b, eqs_new->vec_isg[1], &sub_x);
-#endif
 		if (iter_nlin == 1 && this->first_coupling_iteration)
 		{
-			InitialNorm = NormR;
-#ifdef USE_PETSC
 			rp0 = rp_max;
 			rT0 = rT_max;
 			rp0_L2 = rp_L2;
 			rT0_L2 = rT_L2;
-#endif
 			static bool firstime = true;
 			if (firstime)
 				firstime = false;
 		}
+#endif
+
+		if (nl_r0 == 0.0)
+			nl_r0 = NormR;
+		Error = NormR / nl_r0;
+
 #ifdef USE_PETSC
-		Error = std::max(rp_max / rp0, rT_max / rT0);  // NormR / InitialNorm;
+		//Error = std::max(rp_max / rp0, rT_max / rT0);  // NormR / InitialNorm;
 		const double Error_L2 = std::max(rp_L2 / rp0_L2, rT_L2 / rT0_L2);
 		const double dx_i = std::max(dp_max / p_max, dT_max / T_max);
 		const double dx_L2 = std::max(dp_L2 / p_L2, dT_L2 / T_L2);
@@ -189,7 +178,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 		    Error, Error_L2, dx_i, dx_L2, newton_tol, iter_nlin - 1,
 		    n_max_iterations);
 		ScreenMessage("|r0|=%.3e, |r|=%.3e, |r|/|r0|=%.3e, |dx|=%.3e\n",
-		              InitialNorm, NormR, NormR / InitialNorm, NormDx);
+					  nl_r0, NormR, NormR / nl_r0, NormDx);
 		ScreenMessage(
 		    "|rp|_i=%.3e, |rT|_i=%.3e, |rp/r0|_i=%.3e, |rT/r0|_i=%.3e\n",
 		    rp_max, rT_max, rp_max / rp0, rT_max / rT0);
@@ -206,10 +195,9 @@ double CRFProcessTH::Execute(int loop_process_number)
 		    dp_L2, dT_L2, dp_L2 / p_L2, dT_L2 / T_L2, tol_dp, tol_dT);
 		ScreenMessage("------------------------------------------------\n");
 		ScreenMessage("-> Nonlinear iteration: %d/%d, |r|=%.3e, |r|/|r0|=%.3e\n", iter_nlin - 1,
-		              n_max_iterations, NormR, NormR / InitialNorm);
+					  n_max_iterations, NormR, NormR / nl_r0);
 		ScreenMessage("------------------------------------------------\n");
 #else
-		Error = NormR / InitialNorm;
 #if 1
 		double r_dof[2] = {};
 		for (size_t ii = 0; ii < this->GetPrimaryVNumber(); ii++) {
@@ -221,7 +209,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 		}
 		ScreenMessage("------------------------------------------------\n");
 		ScreenMessage("-> Nonlinear iteration: %d/%d, |r|=%.3e, |r|/|r0|=%.3e, |rp|=%.3e, |rT|=%.3e\n", iter_nlin - 1,
-		              n_max_iterations, NormR, NormR / InitialNorm, r_dof[0], r_dof[1]);
+					  n_max_iterations, NormR, NormR / nl_r0, r_dof[0], r_dof[1]);
 		ScreenMessage("------------------------------------------------\n");
 #else
 		ScreenMessage("------------------------------------------------\n");
@@ -231,20 +219,24 @@ double CRFProcessTH::Execute(int loop_process_number)
 #endif
 #endif
 
-
-		if (Error < newton_tol)
+		bool isFirstIterationInTimeStep = (iter_nlin == 1 && this->first_coupling_iteration);
+		if (!isFirstIterationInTimeStep && Error < newton_tol)
 		{
 			ScreenMessage("-> Newton-Raphson converged\n");
 			converged = true;
 			break;
 		}
 
+		// -----------------------------------------------------------------
+		// Assemble Jacobian and solve linear eqs
+		// -----------------------------------------------------------------
+		ScreenMessage("Assembling a Jacobian matrix...\n");
+		AssembleJacobian();
+
 		ScreenMessage("-> Calling linear solver...\n");
-// Linear solver
+		bool compress_eqs = (this->Deactivated_SubDomain.size() > 0 || deactivateMatrixFlow);
 #if defined(NEW_EQS)
-		bool compress_eqs =
-			(type / 10 == 4 || this->Deactivated_SubDomain.size() > 0);
-		iter_lin = eqs_new->Solver(compress_eqs);  // NW
+		iter_lin = eqs_new->Solver(compress_eqs);
 #elif defined(USE_PETSC)
 		//		if (write_leqs) {
 		//			std::string fname = FileName + "_" +
@@ -252,7 +244,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 		//"_leqs_assembly.txt";
 		//			eqs_new->EQSV_Viewer(fname);
 		//		}
-		iter_lin = eqs_new->Solver();
+		iter_lin = eqs_new->Solver(compress_eqs);
 		//		if (write_leqs) {
 		//			std::string fname = FileName + "_" +
 		// convertProcessTypeToString(this->getProcessType()) +
@@ -316,7 +308,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 		}
 #endif
 
-// Norm of dx
+	// Norm of dx
 #if defined(NEW_EQS)
 		NormDx = eqs_new->NormX();
 #elif defined(USE_PETSC)
@@ -324,29 +316,6 @@ double CRFProcessTH::Execute(int loop_process_number)
 #endif
 		ScreenMessage("-> |dx|=%.3e\n", NormDx);
 
-// Check the convergence
-//		Error1 = Error;
-//		ErrorU1 = ErrorU;
-//		if(iter_nlin == 1 && this->first_coupling_iteration)
-//		{
-//			InitialNormDx = NormDx;
-//			static bool firstime = true;
-//			if (firstime) {
-////				InitialNormU = NormDx;
-//				firstime = false;
-//			}
-//		}
-
-#if 0
-		ErrorU = NormDx / InitialNormDx;
-		if(NormR < newton_tol && Error > NormR)
-			Error = NormR;
-		//           if(Norm<TolNorm)  Error = 0.01*Tolerance_global_Newton;
-		if((NormDx / InitialNormU) <= newton_tol)
-			Error = NormDx / InitialNormU;
-		if(ErrorU < Error)
-			Error = ErrorU;
-#endif
 		// JT: Store the process and coupling errors
 		pcs_num_dof_errors = 1;
 		if (iter_nlin == 1)
@@ -361,41 +330,19 @@ double CRFProcessTH::Execute(int loop_process_number)
 			pcs_absolute_error[0] = Error;
 			pcs_relative_error[0] = Error / newton_tol;
 		}
-//
-// Screan printing:
-//		ScreenMessage("-> update solutions\n");
-#if 0
-		if(Error > 100.0 && iter_nlin > 1)
-		{
-			ScreenMessage ("\n  Attention: Newton-Raphson step is diverged. Programme halt!\n");
-			accepted = false;
-			Tim->last_dt_accepted = false;
-			return -1;
-		}
-#endif
 #ifdef USE_PETSC
-		if (std::max(rp_max / rp0, rT_max / rT0) < newton_tol ||
-		    (dp_max < tol_dp && dT_max < tol_dT))
-		{
-			ScreenMessage("-> Newton-Raphson converged\n");
-			converged = true;
-			break;
-		}
+//		if (std::max(rp_max / rp0, rT_max / rT0) < newton_tol ||
+//		    (dp_max < tol_dp && dT_max < tol_dT))
+//		{
+//			ScreenMessage("-> Newton-Raphson converged\n");
+//			converged = true;
+//			break;
+//		}
 #endif
-		//		if(InitialNorm < 10 * newton_tol
-		//			|| NormR < 0.001 * InitialNorm
-		//			|| Error <= newton_tol)
-		//			break;
 
 		// x^k1 = x^k + dx
 		UpdateIterativeStep(1.0);
-
-		//		ScreenMessage("-> update velocity\n");
-		//		CalIntegrationPointValue();
 	}  // Newton-Raphson iteration
-
-	// x^k1 = x^k + dx
-	UpdateIterativeStep(1.0);
 
 	iter_nlin_max = std::max(iter_nlin_max, iter_nlin);
 
@@ -415,10 +362,8 @@ double CRFProcessTH::Execute(int loop_process_number)
 #if defined(USE_MPI) || defined(USE_PETSC)
 	}
 #endif
-// Recovery the old solution.  Temp --> u_n	for flow proccess
-//	RecoverSolution();
-//
-#ifdef NEW_EQS  // WW
+
+#ifdef NEW_EQS
 	// Also allocate temporary memory for linear solver. WW
 	eqs_new->Clean();
 #endif
@@ -498,13 +443,10 @@ void CRFProcessTH::UpdateIterativeStep(const double damp)
 				                      pcs_number_of_primary_nvals +
 				                  i];
 #else
-			double dx =
-			    eqs_x[j + number_of_nodes * i] * damp * vec_scale_dofs[i];
-//			std::cout << GetNodeValue(j, ColIndex) << " ";
+				double dx = eqs_x[j + number_of_nodes * i];
 #endif
-				SetNodeValue(
-				    j, p_var_index[i],
-				    GetNodeValue(j, p_var_index[i]) + dx * damp * inv_scaling);
+				double x1 = GetNodeValue(j, p_var_index[i]) + dx * damp * inv_scaling;
+				SetNodeValue(j, p_var_index[i], x1);
 			}
 		}
 #if defined(USE_PETSC)
@@ -512,6 +454,114 @@ void CRFProcessTH::UpdateIterativeStep(const double damp)
 #endif
 }
 
+void CRFProcessTH::AssembleResidual()
+{
+	ScreenMessage("-> set Dirichlet BC to nodal values\n");
+	IncorporateBoundaryConditions(false, false, false, true);
+
+	const size_t dn = m_msh->ele_vector.size() / 10;
+	const bool print_progress = (dn >= 100);
+	if (print_progress)
+		ScreenMessage("start local assembly for %d elements...\n",
+					  m_msh->ele_vector.size());
+
+	for (long i = 0; i < (long)m_msh->ele_vector.size(); i++)
+	{
+		if (print_progress && (i + 1) % dn == 0) ScreenMessage("* ");
+		MeshLib::CElem* elem = m_msh->ele_vector[i];
+		if (!elem->GetMark())  // Marked for use
+			continue;
+
+		elem->SetOrder(false);
+		fem->ConfigElement(elem);
+		fem->Assembly(false, true);
+	}
+	if (print_progress)
+		ScreenMessage("done\n");
+
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+	{
+		//TODO
+	}
+
+//#ifdef NEW_EQS
+//	{
+//		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_assembly.txt");
+//		eqs_new->WriteRHS(os);
+//	}
+//#endif
+	ScreenMessage("-> impose Neumann BC and source/sink terms\n");
+	IncorporateSourceTerms();
+#if defined(USE_PETSC)
+	eqs_new->AssembleRHS_PETSc();
+//		eqs_new->EQSV_Viewer("eqs_after_assembl");
+#endif
+//#ifdef NEW_EQS
+//	{
+//		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_st.txt");
+//		eqs_new->WriteRHS(os);
+//	}
+//#endif
+
+	// set bc residual = 0
+	ScreenMessage("-> set bc residual = 0 \n");
+	IncorporateBoundaryConditions(false, true, true);
+#if defined(USE_PETSC)
+	eqs_new->AssembleRHS_PETSc();
+//		eqs_new->EQSV_Viewer("eqs_after_assembl");
+#endif
+
+//#ifdef NEW_EQS
+//	{
+//		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_bc.txt");
+//		eqs_new->WriteRHS(os);
+//	}
+//#endif
+
+}
+
+void CRFProcessTH::AssembleJacobian()
+{
+	const size_t dn = m_msh->ele_vector.size() / 10;
+	const bool print_progress = (dn >= 100);
+	if (print_progress)
+		ScreenMessage("start local assembly for %d elements...\n",
+					  m_msh->ele_vector.size());
+
+	for (long i = 0; i < (long)m_msh->ele_vector.size(); i++)
+	{
+		if (print_progress && (i + 1) % dn == 0) ScreenMessage("* ");
+		MeshLib::CElem* elem = m_msh->ele_vector[i];
+		if (!elem->GetMark())  // Marked for use
+			continue;
+
+		elem->SetOrder(false);
+		fem->ConfigElement(elem);
+		fem->Assembly(true, false);
+	}
+	if (print_progress)
+		ScreenMessage("done\n");
+
+	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
+	{
+		//TODO
+	}
+
+#ifdef USE_PETSC
+	eqs_new->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY);
+#endif
+
+	IncorporateBoundaryConditions(true, false);
+#ifdef USE_PETSC
+	eqs_new->AssembleMatrixPETSc(MAT_FINAL_ASSEMBLY);
+#endif
+//#ifdef NEW_EQS
+//	{
+//		std::ofstream os(FileName + "_nl" + std::to_string(iter_nlin) + "_r_J.txt");
+//		eqs_new->WriteRHS(os);
+//	}
+//#endif
+}
 
 #ifdef USE_PETSC
 void CRFProcessTH::setSolver(petsc_group::PETScLinearSolver* petsc_solver)
@@ -795,7 +845,7 @@ PetscErrorCode FormFunctionTH(SNES /*snes*/, Vec x, Vec f, void* ctx)
 	// update nodal values
 	if (debugOutput) ScreenMessage("-> update nodal values\n");
 	pcs->copyVecToNodalValues(x);
-	//	pcs->IncorporateBoundaryConditions(-1, false, false, true); // set bc
+	//	pcs->IncorporateBoundaryConditions(false, false, true); // set bc
 	// node values
 
 	//	if (debugOutput)
@@ -849,9 +899,7 @@ PetscErrorCode FormFunctionTH(SNES /*snes*/, Vec x, Vec f, void* ctx)
 	VecAssemblyEnd(f);
 
 	if (debugOutput) ScreenMessage("-> impose Dirichlet BC\n");
-	pcs->IncorporateBoundaryConditions(-1, false, true,
-	                                   true);  // set bc residual = 0
-	                                           //
+	pcs->IncorporateBoundaryConditions(false, true, true);  // set bc residual = 0
 	VecAssemblyBegin(f);
 	VecAssemblyEnd(f);
 
@@ -961,7 +1009,7 @@ PetscErrorCode FormJacobianTH(SNES /*snes*/, Vec x, Mat* jac, Mat* B,
 
 	if (debugOutput) ScreenMessage("-> update nodal values\n");
 	pcs->copyVecToNodalValues(x);
-	//	pcs->IncorporateBoundaryConditions(-1, false, false, true); // set bc
+	//	pcs->IncorporateBoundaryConditions(false, false, true); // set bc
 	// node values
 	//	if (debugOutput)
 	//	ScreenMessage("-> update integration point values\n");
@@ -1016,7 +1064,7 @@ PetscErrorCode FormJacobianTH(SNES /*snes*/, Vec x, Mat* jac, Mat* B,
 	MatAssemblyEnd(*mat, MAT_FINAL_ASSEMBLY);
 
 	if (debugOutput) ScreenMessage("-> impose Dirichlet BC\n");
-	pcs->IncorporateBoundaryConditions(-1, true, false);
+	pcs->IncorporateBoundaryConditions(true, false);
 
 	//	MatAssemblyBegin(*jac, MAT_FINAL_ASSEMBLY);
 	//	MatAssemblyEnd(*jac, MAT_FINAL_ASSEMBLY);

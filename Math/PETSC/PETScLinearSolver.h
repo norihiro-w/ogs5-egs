@@ -61,7 +61,7 @@ public:
 
 
 	void CheckIfMatrixIsSame(const std::string& filename);
-	int Solver();
+	int Solver(bool compress_eqs = false);
 	void AssembleRHS_PETSc(bool assemble_subvec = false);
 	void AssembleUnkowns_PETSc();
 	void AssembleMatrixPETSc(

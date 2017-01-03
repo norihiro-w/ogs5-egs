@@ -296,7 +296,7 @@ void PETScLinearSolver::CheckIfMatrixIsSame(const std::string& filename)
 	ScreenMessage("\t||A_assembled - A_file|| = %e\n", diff);
 }
 
-int PETScLinearSolver::Solver()
+int PETScLinearSolver::Solver(bool compress_eqs)
 {
 // TEST
 #define TEST_MEM_PETSC
@@ -314,6 +314,31 @@ int PETScLinearSolver::Solver()
 	PetscObjectSetName((PetscObject)x,"Solution");
 	VecView(x, viewer);
 	*/
+
+	Mat old_A = A;
+	Vec old_b = b;
+	Vec old_x = x;
+	bool is_eqs_compressed = false;
+	PetscInt n_nonzero_rows = m_size;
+	IS is_nonzero_rows = NULL;
+	if (compress_eqs) {
+		MatFindNonzeroRows(A, &is_nonzero_rows);
+		if (is_nonzero_rows)
+			ISGetSize(is_nonzero_rows, &n_nonzero_rows);
+		is_eqs_compressed = (n_nonzero_rows < m_size);
+	}
+	if (is_eqs_compressed) {
+		// extract non-zero rows
+		ScreenMessage("-> compress EQS from dimension of %d to %d\n", m_size, n_nonzero_rows);
+		Mat newA;
+		Vec new_b, new_x;
+		MatGetSubMatrix(A, is_nonzero_rows, is_nonzero_rows, MAT_INITIAL_MATRIX, &newA);
+		VecGetSubVector(b, is_nonzero_rows, &new_b);
+		VecGetSubVector(x, is_nonzero_rows, &new_x);
+		A = newA;
+		b = new_b;
+		x = new_x;
+	}
 
 	int its;
 	PetscLogDouble v1, v2;
@@ -397,6 +422,17 @@ int PETScLinearSolver::Solver()
 		//      exit(1);
 		return -1;
 	}
+
+	if (is_eqs_compressed) {
+		MatDestroy(&A);
+		VecRestoreSubVector(old_b, is_nonzero_rows, &b);
+		VecRestoreSubVector(old_x, is_nonzero_rows, &x);
+		A = old_A;
+		b = old_b;
+		x = old_x;
+	}
+	if (is_nonzero_rows)
+		ISDestroy(&is_nonzero_rows);
 
 	PetscPrintf(PETSC_COMM_WORLD,
 	            "------------------------------------------------\n");
@@ -692,6 +728,13 @@ void PETScLinearSolver::Initialize()
 		MatZeroEntries(vec_subA[i]);
 	}
 	MatZeroEntries(A);
+
+	// set diagonal entries. This is needed when compressing EQS
+	for (PetscInt i=i_start; i<i_end; i++) //for (PetscInt i=0; i<m_size; i++)
+		MatSetValue(A, i, i, .0, INSERT_VALUES);
+	MatAssemblyBegin(A, MAT_FLUSH_ASSEMBLY);
+	MatAssemblyEnd(A, MAT_FLUSH_ASSEMBLY);
+
 #if 0
    for (unsigned i=0; i<vec_subRHS.size(); i++) {
       VecGetSubVector(b, vec_isg[i], &vec_subRHS[i]);

@@ -1370,6 +1370,7 @@ CRFProcess* CRFProcess::CopyPCStoTH_PCS()
 	dm_pcs->scaleEQS = scaleEQS;
 	dm_pcs->vec_scale_eqs = vec_scale_eqs;
 	dm_pcs->tim_type = tim_type;
+	dm_pcs->deactivateMatrixFlow = deactivateMatrixFlow;
 
 	return dm_pcs;
 }
@@ -1770,6 +1771,13 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 			for (int i = 0; i < n; i++)
 				ss << "[" << i << "] " << vec_scale_eqs[i] << " ";
 			ScreenMessage("%s\n", ss.str().c_str());
+			continue;
+		}
+		if (line_string.find("$DEACTIVATE_MATRIX_FLOW") != string::npos)
+		{
+			*pcs_file >> deactivateMatrixFlow;
+			if (deactivateMatrixFlow)
+				ScreenMessage("-> Deactivate matrix flow\n");
 			continue;
 		}
 		//....................................................................
@@ -3227,6 +3235,17 @@ void CRFProcess::ConfigTH()
 	pcs_secondary_function_unit[pcs_number_of_secondary_nvals] = "m/s";
 	pcs_secondary_function_timelevel[pcs_number_of_secondary_nvals] = 1;
 	pcs_number_of_secondary_nvals++;
+
+	pcs_number_of_evals = 0;
+	pcs_eval_name[pcs_number_of_evals] = "VELOCITY1_X";
+	pcs_eval_unit[pcs_number_of_evals] = "m/s";
+	pcs_number_of_evals++;
+	pcs_eval_name[pcs_number_of_evals] = "VELOCITY1_Y";
+	pcs_eval_unit[pcs_number_of_evals] = "m/s";
+	pcs_number_of_evals++;
+	pcs_eval_name[pcs_number_of_evals] = "VELOCITY1_Z";
+	pcs_eval_unit[pcs_number_of_evals] = "m/s";
+	pcs_number_of_evals++;
 
 	//
 	for (size_t i = 0; i < GetPrimaryVNumber(); i++)

@@ -245,11 +245,12 @@ void Matrix::Write(std::ostream& os)
 
 	for (size_t i = 0; i < nrows; i++)
 	{
-		os << "| ";
+		//os << "| ";
 		for (size_t j = 0; j < ncols; j++)
 			os << (*this)(i, j) << " ";
-		os << "| "
-		   << "\n";
+		os << "\n";
+		//os << "| "
+		//   << "\n";
 	}
 	os << "\n";
 }

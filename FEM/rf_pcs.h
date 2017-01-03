@@ -718,6 +718,8 @@ public:
 	void InitializeRHS_with_u0(const bool quad = false);  // in rf_pcs1.cpp
 #endif
 
+	bool deactivateMatrixFlow = false;
+
 private:
 	/**
 	 * Method configures the material parameters. For this purpose it searchs in

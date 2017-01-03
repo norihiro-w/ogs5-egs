@@ -1497,17 +1497,6 @@ double CFluidProperties::Viscosity(double* variables)
 	double mfp_arguments[2];
 	double density;
 
-	// double TTT=0, PPP=0;
-	// long Element_Index;
-	// int nod_index;
-
-	// string val_name;
-	CRFProcess* m_pcs = NULL;
-
-	//----------------------------------------------------------------------
-	// WW bool New = false;                              // To be
-	// WW if(fem_msh_vector.size()>0) New = true;
-
 	//----------------------------------------------------------------------
 	if (variables)  // OK4709: faster data access
 	{
@@ -1532,27 +1521,11 @@ double CFluidProperties::Viscosity(double* variables)
 			viscosity =
 			    my_0 * (1. + dmy_dp * (max(primary_variable[0], 0.0) - p_0));
 			break;
-		case 3:             // my^l(T), Yaws et al. (1976)
-			if (mode == 1)  // OK4704 for nodal output
-			{
-				m_pcs = PCSGet("HEAT_TRANSPORT");
-				// if(!m_pcs) return 0.0;
-				primary_variable[1] = m_pcs->GetNodeValue(
-				    node, m_pcs->GetNodeValueIndex("TEMPERATURE1") + 1);
-			}
-			// ToDo pcs_name
-			if (!T_Process)
-				primary_variable[1] = T_0 + viscosity_T_shift;
-			else
-				primary_variable[1] +=
-				    viscosity_T_shift;  // JM if viscosity_T_shift==273 (user
-			                            // defined), Celsius can be used within
-			                            // this model
+		case 3:  // my^l(T), Yaws et al. (1976)
 			viscosity = LiquidViscosity_Yaws_1976(primary_variable[1]);
 			break;
 		case 4:  // my^g(T), Marsily (1986)
 			viscosity = LiquidViscosity_Marsily_1986(primary_variable[1]);
-			// viscosity = LiquidViscosity_Marsily_1986(primary_variable[0]);
 			break;
 		case 5:  // my^g(p,T), Reichenberg (1971)
 			viscosity = GasViscosity_Reichenberg_1971(primary_variable[0],
@@ -1921,6 +1894,9 @@ double CFluidProperties::LiquidViscosity_LJH_MP2(double c, double T, double rho)
 **************************************************************************/
 double CFluidProperties::LiquidViscosity_Ramey1974(double T)
 {
+#ifndef NDEBUG
+	assert(T>0);
+#endif
 	double mu = 2.394 * std::pow(10.0, 248.37 / (T + 133.15)) * 1e-5;
 	return mu;
 }
