@@ -97,11 +97,6 @@ double CRFProcessTH::Execute(int loop_process_number)
 
 	// Begin Newton-Raphson steps
 	double Error = 1.0;
-	//	double Error1 = 0.0;
-	//	double ErrorU = 1.0;
-	//	double ErrorU1 = 0.0;
-	//	double InitialNormDx = 0.0;
-	//	double InitialNormU = 0.0;
 	double NormDx = std::numeric_limits<double>::max();
 #ifdef USE_PETSC
 	double InitialNorm = 0.0;
@@ -142,8 +137,6 @@ double CRFProcessTH::Execute(int loop_process_number)
 		const double NormR = eqs_new->ComputeNormRHS();
 #elif defined(USE_PETSC)
 		const double NormR = eqs_new->GetVecNormRHS();
-#endif
-#if defined(USE_PETSC)
 		double rp_max = std::numeric_limits<double>::max(),
 		       rT_max = std::numeric_limits<double>::max();
 		double rp_L2 = std::numeric_limits<double>::max(),
@@ -171,8 +164,10 @@ double CRFProcessTH::Execute(int loop_process_number)
 				firstime = false;
 		}
 #endif
+
 		if (nl_r0 == 0.0)
 			nl_r0 = NormR;
+
 #ifdef USE_PETSC
 		Error = std::max(rp_max / rp0, rT_max / rT0);  // NormR / InitialNorm;
 		const double Error_L2 = std::max(rp_L2 / rp0_L2, rT_L2 / rT0_L2);
@@ -324,29 +319,6 @@ double CRFProcessTH::Execute(int loop_process_number)
 #endif
 		ScreenMessage("-> |dx|=%.3e\n", NormDx);
 
-// Check the convergence
-//		Error1 = Error;
-//		ErrorU1 = ErrorU;
-//		if(iter_nlin == 1 && this->first_coupling_iteration)
-//		{
-//			InitialNormDx = NormDx;
-//			static bool firstime = true;
-//			if (firstime) {
-////				InitialNormU = NormDx;
-//				firstime = false;
-//			}
-//		}
-
-#if 0
-		ErrorU = NormDx / InitialNormDx;
-		if(NormR < newton_tol && Error > NormR)
-			Error = NormR;
-		//           if(Norm<TolNorm)  Error = 0.01*Tolerance_global_Newton;
-		if((NormDx / InitialNormU) <= newton_tol)
-			Error = NormDx / InitialNormU;
-		if(ErrorU < Error)
-			Error = ErrorU;
-#endif
 		// JT: Store the process and coupling errors
 		pcs_num_dof_errors = 1;
 		if (iter_nlin == 1)
@@ -361,18 +333,6 @@ double CRFProcessTH::Execute(int loop_process_number)
 			pcs_absolute_error[0] = Error;
 			pcs_relative_error[0] = Error / newton_tol;
 		}
-//
-// Screan printing:
-//		ScreenMessage("-> update solutions\n");
-#if 0
-		if(Error > 100.0 && iter_nlin > 1)
-		{
-			ScreenMessage ("\n  Attention: Newton-Raphson step is diverged. Programme halt!\n");
-			accepted = false;
-			Tim->last_dt_accepted = false;
-			return -1;
-		}
-#endif
 #ifdef USE_PETSC
 		if (std::max(rp_max / rp0, rT_max / rT0) < newton_tol ||
 		    (dp_max < tol_dp && dT_max < tol_dT))
@@ -382,16 +342,9 @@ double CRFProcessTH::Execute(int loop_process_number)
 			break;
 		}
 #endif
-		//		if(InitialNorm < 10 * newton_tol
-		//			|| NormR < 0.001 * InitialNorm
-		//			|| Error <= newton_tol)
-		//			break;
 
 		// x^k1 = x^k + dx
 		UpdateIterativeStep(1.0);
-
-		//		ScreenMessage("-> update velocity\n");
-		//		CalIntegrationPointValue();
 	}  // Newton-Raphson iteration
 
 	iter_nlin_max = std::max(iter_nlin_max, iter_nlin);
@@ -412,10 +365,8 @@ double CRFProcessTH::Execute(int loop_process_number)
 #if defined(USE_MPI) || defined(USE_PETSC)
 	}
 #endif
-// Recovery the old solution.  Temp --> u_n	for flow proccess
-//	RecoverSolution();
-//
-#ifdef NEW_EQS  // WW
+
+#ifdef NEW_EQS
 	// Also allocate temporary memory for linear solver. WW
 	eqs_new->Clean();
 #endif
@@ -495,8 +446,7 @@ void CRFProcessTH::UpdateIterativeStep(const double damp)
 				                      pcs_number_of_primary_nvals +
 				                  i];
 #else
-				double dx =
-			    eqs_x[j + number_of_nodes * i] * damp * vec_scale_dofs[i];
+				double dx = eqs_x[j + number_of_nodes * i];
 #endif
 				double x1 = GetNodeValue(j, p_var_index[i]) + dx * damp * inv_scaling;
 				SetNodeValue(j, p_var_index[i], x1);
