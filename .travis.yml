@@ -8,6 +8,11 @@ sudo: required
 dist: trusty
 
 language: cpp
+cache: 
+  ccache: true
+  directories:
+  - $HOME/petsc
+  - $HOME/lis-cmake-master
 
 git:
   depth: 3
@@ -28,9 +33,16 @@ matrix:
         apt:
           packages:
             - gfortran
-            #- numdiff
-    - env: CASE=PETSC BENCHMARK=ON CMAKE_ARGS="-DOGS_FEM_PETSC=ON -DPETSC_DIR=/usr/lib/petscdir/3.4.2/"
+#    - env: CASE=PETSC BENCHMARK=ON CMAKE_ARGS="-DOGS_FEM_PETSC=ON -DPETSC_DIR=/usr/lib/petscdir/3.4.2/"
+    - env: CASE=PETSC BENCHMARK=ON CMAKE_ARGS="-DOGS_FEM_PETSC=ON"
       compiler: gcc
+      addons:
+        apt:
+          packages:
+            - openmpi-bin
+            - libopenmpi-dev
+            - libblas-dev
+            - liblapack-dev
     - env: CASE=LIS BENCHMARK=OFF CMAKE_ARGS="-DOGS_FEM_LIS=ON -DLIS_INCLUDE_DIR=$TRAVIS_BUILD_DIR/lis-cmake-master/include -DLIS_LIBRARIES=$TRAVIS_BUILD_DIR/lis-cmake-master/build/lib/liblis.a"
       compiler: clang
       addons:
@@ -41,12 +53,18 @@ matrix:
 before_install:
 
 install:
-  # PetSc
-  - if [[ "$CASE" == "PETSC" ]]; then travis_retry sudo apt-get install -qq libpetsc3.4.2-dev; fi
   # Lis
   - if [[ "$CASE" == "LIS" ]]; then wget https://github.com/norihiro-w/lis-cmake/archive/master.zip; fi
   - if [[ "$CASE" == "LIS" ]]; then unzip master.zip && cd lis-cmake-master && rm -f ../master.zip; fi
   - if [[ "$CASE" == "LIS" ]]; then mkdir build && cd build && cmake .. && make && cd ../..; fi
+  # PetSc
+#  - if [[ "$CASE" == "PETSC" ]]; then travis_retry sudo apt-get install -qq libpetsc3.4.2-dev; fi
+  - if [[ "$CASE" == "PETSC" ]]; then wget http://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-lite-3.5.4.tar.gz; fi
+  - if [[ "$CASE" == "PETSC" ]]; then mkdir -p petsc && tar -xvf petsc-lite-3.5.4.tar.gz -C petsc --strip-components=1 && cd petsc; fi
+  - if [[ "$CASE" == "PETSC" ]]; then export PETSC_DIR=$TRAVIS_BUILD_DIR/petsc && export PETSC_ARCH=gcc; fi
+  - if [[ "$CASE" == "PETSC" ]]; then ./configure --PETSC_ARCH=$PETSC_ARCH --with-debugging=0; fi
+  - if [[ "$CASE" == "PETSC" ]]; then make all && make test && cd ..; fi
+  # Benchmark
   - if [[ "$BENCHMARK" == "ON" ]]; then wget https://github.com/norihiro-w/csvdiff/archive/master.zip; fi
   - if [[ "$BENCHMARK" == "ON" ]]; then unzip master.zip && cd csvdiff-master && rm -f ../master.zip; fi
   - if [[ "$BENCHMARK" == "ON" ]]; then mkdir build && cd build && cmake .. && make && cd ../..; fi
@@ -59,6 +77,7 @@ install:
 script:
   - mkdir build
   - cd build
+  - if [[ "$CASE" == "PETSC" ]]; then export CMAKE_ARGS="${CMAKE_ARGS} -DPETSC_DIR=${PETSC_DIR} -DPETSC_ARCH=${PETSC_ARCH}"; fi
   - if [[ "$BENCHMARK" == "ON" ]]; then export CMAKE_ARGS="${CMAKE_ARGS} -DCSVDIFF_TOOL_PATH=$TRAVIS_BUILD_DIR/csvdiff-master/build/csvdiff"; fi
   - if [[ "$BENCHMARK" == "ON" ]]; then export CMAKE_ARGS="${CMAKE_ARGS} -DBENCHMARK_DIR=${bench_input} -DBENCHMARK_REF_DIR=${bench_ref}"; fi
   - cmake $CMAKE_ARGS ..
@@ -66,6 +85,7 @@ script:
   - if [[ "$BENCHMARK" == "ON" ]]; then ctest -E 'Tests|FILE|EXCEED'; fi
   - if [[ "$BENCHMARK" == "ON" ]]; then ctest -R 'FILECOMPARE' -E 'EXCEED'; fi
   - if [[ "$BENCHMARK" == "ON" ]]; then find ${bench_input}/results/ -iname '*.numdiff' -exec echo -e "\n\n=======================\n{}" \;  -exec head -n 5000 {} \; || true ; fi
+#  - if [[ "$BENCHMARK" == "ON" ]]; then cat ${bench_input}/TH_monolithic/fracture_matrix/line_quad/Lauwerier.log; fi
 
 notifications:
   email:
