@@ -243,7 +243,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 		ScreenMessage("-> Calling linear solver...\n");
 // Linear solver
 #if defined(NEW_EQS)
-		bool compress_eqs = (this->Deactivated_SubDomain.size() > 0);
+		bool compress_eqs = (this->Deactivated_SubDomain.size() > 0 || deactivateMatrixFlow);
 		iter_lin = eqs_new->Solver(compress_eqs);
 #elif defined(USE_PETSC)
 		//		if (write_leqs) {

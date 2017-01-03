@@ -1370,6 +1370,7 @@ CRFProcess* CRFProcess::CopyPCStoTH_PCS()
 	dm_pcs->scaleEQS = scaleEQS;
 	dm_pcs->vec_scale_eqs = vec_scale_eqs;
 	dm_pcs->tim_type = tim_type;
+	dm_pcs->deactivateMatrixFlow = deactivateMatrixFlow;
 
 	return dm_pcs;
 }
@@ -1770,6 +1771,13 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 			for (int i = 0; i < n; i++)
 				ss << "[" << i << "] " << vec_scale_eqs[i] << " ";
 			ScreenMessage("%s\n", ss.str().c_str());
+			continue;
+		}
+		if (line_string.find("$DEACTIVATE_MATRIX_FLOW") != string::npos)
+		{
+			*pcs_file >> deactivateMatrixFlow;
+			if (deactivateMatrixFlow)
+				ScreenMessage("-> Deactivate matrix flow\n");
 			continue;
 		}
 		//....................................................................

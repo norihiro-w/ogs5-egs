@@ -21,16 +21,17 @@ void CFiniteElementStd::AssembleTHResidual()
 {
 	const unsigned c_dim = dim;
 	const int c_nnodes = nnodes;
-	const double pcs_time_step = pcs->Tim->time_step_length;
-	const double dt_inverse = 1.0 / pcs_time_step;
+	const double dt = pcs->Tim->time_step_length;
 	const double theta = pcs->m_num->ls_theta;
 	const bool hasGravity =
 		(coordinate_system) % 10 == 2 && FluidProp->CheckGravityCalculation();
 	const double g_const = hasGravity ? gravity_constant : .0;
 	const bool isTransient =
 		(this->pcs->tim_type == FiniteElement::TIM_TRANSIENT);
-	//	ElementValue* gp_ele = ele_gp_value[Index];
-	static Matrix t_transform_tensor(3, 3);
+	const bool isMatrixFlowInactive = pcs->deactivateMatrixFlow;
+	const bool isMatrixElement = (MeshElement->GetDimension() == pcs->m_msh->GetMaxElementDim());
+
+	Matrix t_transform_tensor(3, 3);
 	if (dim > MediaProp->geo_dimension)
 	{
 		if (MeshElement->getTransformTensor() == NULL)
@@ -93,7 +94,7 @@ void CFiniteElementStd::AssembleTHResidual()
 	}
 	double const* const k_tensor = tmp_k_tensor;
 	const double Ss =
-		MediaProp->StorageFunction(Index, unit, pcs->m_num->ls_theta);
+		MediaProp->StorageFunction(Index, unit, theta);
 	double dummy[3] = {};
 	double const* const lambda_tensor =
 		MediaProp->HeatDispersionTensorNew(0, dummy);
@@ -106,7 +107,7 @@ void CFiniteElementStd::AssembleTHResidual()
 		for (unsigned j=0; j<c_dim; j++)
 			lambda(i,j) = lambda_tensor[i*c_dim + j];
 	Eigen::Vector3d vec_g;
-	vec_g << 0, 0, -9.81;
+	vec_g << 0, 0, -g_const;
 
 	//======================================================================
 	// Loop over Gauss points
@@ -144,9 +145,7 @@ void CFiniteElementStd::AssembleTHResidual()
 		const double gp_T0 = N * nodal_T0;
 		const double gp_p1 = N * nodal_p1;
 		const double gp_T1 = N * nodal_T1;
-		Eigen::VectorXd grad_p0 = dN * nodal_p0;
 		Eigen::VectorXd grad_p1 = dN * nodal_p1;
-		Eigen::VectorXd grad_T0 = dN * nodal_T0;
 		Eigen::VectorXd grad_T1 = dN * nodal_T1;
 
 		//---------------------------------------------------------
@@ -159,8 +158,7 @@ void CFiniteElementStd::AssembleTHResidual()
 		const double vis = FluidProp->Viscosity(var);
 		const double cp_w = FluidProp->SpecificHeatCapacity(var);
 		// Medium properties
-		const double rhocp =
-			MediaProp->HeatCapacity(Index, pcs->m_num->ls_theta, this, var);
+		const double rhocp = MediaProp->HeatCapacity(Index, theta, this, var);
 
 		//---------------------------------------------------------
 		//  Set velocity
@@ -180,8 +178,7 @@ void CFiniteElementStd::AssembleTHResidual()
 		if (isTransient)
 		{
 			// 1/dt*N^T*Ss*(p1-p0)
-			const double Rp_coeff1 = dt_inverse * fkt * Ss * (gp_p1 - gp_p0);
-			r_p += N.transpose() * Rp_coeff1;
+			r_p += N.transpose() * Ss * (gp_p1 - gp_p0)/dt * fkt;
 		}
 		// - dN^T*vel
 		r_p += - fkt * dN.transpose() * q;
@@ -193,13 +190,14 @@ void CFiniteElementStd::AssembleTHResidual()
 		// [1/dt*N^T*Cp*N - (1-theta)*(dN^T*lambda*dN+N^T*Cp_w*dN)]*T0
 		if (isTransient)
 		{
-			const double coeff =
-				dt_inverse * fkt * rhocp * (gp_T1 - gp_T0);
-			r_T += N.transpose() * coeff;
+			r_T += N.transpose() * fkt * rhocp * (gp_T1 - gp_T0)/dt;
 		}
 		r_T += fkt * dN.transpose() * lambda * grad_T1;
 		r_T += fkt * N.transpose() * rho_w * cp_w * q.transpose() * grad_T1;
 	}
+
+	if (isMatrixElement && isMatrixFlowInactive)
+		r_p.setZero();
 
 	for (int i = 0; i < c_nnodes; i++)
 	{
@@ -220,16 +218,17 @@ void CFiniteElementStd::AssembleTHJacobian()
 {
 	const unsigned c_dim = dim;
 	const int c_nnodes = nnodes;
-	const double pcs_time_step = pcs->Tim->time_step_length;
-	const double dt_inverse = 1.0 / pcs_time_step;
+	const double dt = pcs->Tim->time_step_length;
 	const double theta = pcs->m_num->ls_theta;
 	const bool hasGravity =
 		(coordinate_system) % 10 == 2 && FluidProp->CheckGravityCalculation();
 	const double g_const = hasGravity ? gravity_constant : .0;
 	const bool isTransient =
 		(this->pcs->tim_type == FiniteElement::TIM_TRANSIENT);
-	//	ElementValue* gp_ele = ele_gp_value[Index];
-	static Matrix t_transform_tensor(3, 3);
+	const bool isMatrixFlowInactive = pcs->deactivateMatrixFlow;
+	const bool isMatrixElement = (MeshElement->GetDimension() == pcs->m_msh->GetMaxElementDim());
+
+	Matrix t_transform_tensor(3, 3);
 	if (dim > MediaProp->geo_dimension)
 	{
 		if (MeshElement->getTransformTensor() == NULL)
@@ -291,8 +290,7 @@ void CFiniteElementStd::AssembleTHJacobian()
 				tmp_k_tensor[c_dim * i + j] = global_tensor(i, j);
 	}
 	double const* const k_tensor = tmp_k_tensor;
-	const double Ss =
-		MediaProp->StorageFunction(Index, unit, pcs->m_num->ls_theta);
+	const double Ss = MediaProp->StorageFunction(Index, unit, theta);
 	double dummy[3] = {};
 	double const* const lambda_tensor =
 		MediaProp->HeatDispersionTensorNew(0, dummy);
@@ -342,26 +340,18 @@ void CFiniteElementStd::AssembleTHJacobian()
 		//---------------------------------------------------------
 		//  Get state variables
 		//---------------------------------------------------------
-		const double gp_p0 = N * nodal_p0;
+		// const double gp_p0 = N * nodal_p0;
 		const double gp_T0 = N * nodal_T0;
 		const double gp_p1 = N * nodal_p1;
 		const double gp_T1 = N * nodal_T1;
-		const double gp_dp = gp_p1 - gp_p0;
+		//const double gp_dp = gp_p1 - gp_p0;
 		const double gp_dT = gp_T1 - gp_T0;
-		//		if (myrank==2 && gp==0 && updateA)
-		//		ScreenMessage2("%d: p0=%.3e, p1=%.3e, T0=%.3e, T1=%.3e\n",
-		//Index,
-		// gp_p0, gp_p1, gp_T0, gp_T1);
-		Eigen::VectorXd grad_p0 = dN * nodal_p0;
+		//Eigen::VectorXd grad_p0 = dN * nodal_p0;
 		Eigen::VectorXd grad_p1 = dN * nodal_p1;
-		Eigen::VectorXd grad_T0 = dN * nodal_T0;
+		//Eigen::VectorXd grad_T0 = dN * nodal_T0;
 		Eigen::VectorXd grad_T1 = dN * nodal_T1;
-		Eigen::VectorXd grad_T1_r = dN * nodal_T1;
-#define TH_INCLUDE_GRAD_T
-#ifdef TH_INCLUDE_GRAD_T
 		if (pcs->m_num->nls_jacobian_level == 1)
 			grad_T1.setZero();
-#endif
 
 		//---------------------------------------------------------
 		//  Get material properties
@@ -416,16 +406,26 @@ void CFiniteElementStd::AssembleTHJacobian()
 		//  Assemble Jacobian
 		//---------------------------------------------------------
 
-		J_pp += fkt * N.transpose() * Ss * dt_inverse * N;
+		if (isTransient)
+			J_pp += 1/dt * fkt * N.transpose() * Ss * N;
 		J_pp += - fkt * dN.transpose() * dq_dp;
 		if (dq_dT.size() > 0)
 			J_pT.noalias() += - fkt * dN.transpose() * dq_dT;
 
-		J_TT.noalias() += 1/dt * N.transpose() * (rhocp + gp_dT * drhocp_dT) * N * fkt;
+		if (isTransient)
+			J_TT.noalias() += 1/dt * N.transpose() * (rhocp + gp_dT * drhocp_dT) * N * fkt;
 		J_TT.noalias() += - dN.transpose() * djDiff_dT * fkt;
 		J_TT.noalias() += N.transpose() * djAdv_dT * fkt;
-		J_Tp.noalias() += 1/dt * N.transpose() * (gp_dT * drhocp_dp) * N * fkt;
+		if (isTransient)
+			J_Tp.noalias() += 1/dt * N.transpose() * (gp_dT * drhocp_dp) * N * fkt;
 		J_Tp.noalias() += N.transpose() * djAdv_dp * fkt;
+	}
+
+	if (isMatrixElement && isMatrixFlowInactive)
+	{
+		J_pp.setZero();
+		J_pT.setZero();
+		J_Tp.setZero();
 	}
 
 	for (int i=0; i<c_nnodes; i++)
