@@ -74,7 +74,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 #if defined(USE_PETSC)
 	// set Dirichlet BC to nodal values
 	ScreenMessage("-> set initial guess\n");
-	IncorporateBoundaryConditions(-1, false, false, true);
+	IncorporateBoundaryConditions(false, false, true);
 	copyNodalValuesToVec(eqs_new->total_x);
 	// VecView(eqs_new->total_x, PETSC_VIEWER_STDOUT_WORLD);
 
@@ -898,7 +898,7 @@ PetscErrorCode FormFunctionTH(SNES /*snes*/, Vec x, Vec f, void* ctx)
 	// update nodal values
 	if (debugOutput) ScreenMessage("-> update nodal values\n");
 	pcs->copyVecToNodalValues(x);
-	//	pcs->IncorporateBoundaryConditions(-1, false, false, true); // set bc
+	//	pcs->IncorporateBoundaryConditions(false, false, true); // set bc
 	// node values
 
 	//	if (debugOutput)
@@ -952,9 +952,7 @@ PetscErrorCode FormFunctionTH(SNES /*snes*/, Vec x, Vec f, void* ctx)
 	VecAssemblyEnd(f);
 
 	if (debugOutput) ScreenMessage("-> impose Dirichlet BC\n");
-	pcs->IncorporateBoundaryConditions(-1, false, true,
-	                                   true);  // set bc residual = 0
-	                                           //
+	pcs->IncorporateBoundaryConditions(false, true, true);  // set bc residual = 0
 	VecAssemblyBegin(f);
 	VecAssemblyEnd(f);
 
@@ -1064,7 +1062,7 @@ PetscErrorCode FormJacobianTH(SNES /*snes*/, Vec x, Mat* jac, Mat* B,
 
 	if (debugOutput) ScreenMessage("-> update nodal values\n");
 	pcs->copyVecToNodalValues(x);
-	//	pcs->IncorporateBoundaryConditions(-1, false, false, true); // set bc
+	//	pcs->IncorporateBoundaryConditions(false, false, true); // set bc
 	// node values
 	//	if (debugOutput)
 	//	ScreenMessage("-> update integration point values\n");
@@ -1119,7 +1117,7 @@ PetscErrorCode FormJacobianTH(SNES /*snes*/, Vec x, Mat* jac, Mat* B,
 	MatAssemblyEnd(*mat, MAT_FINAL_ASSEMBLY);
 
 	if (debugOutput) ScreenMessage("-> impose Dirichlet BC\n");
-	pcs->IncorporateBoundaryConditions(-1, true, false);
+	pcs->IncorporateBoundaryConditions(true, false);
 
 	//	MatAssemblyBegin(*jac, MAT_FINAL_ASSEMBLY);
 	//	MatAssemblyEnd(*jac, MAT_FINAL_ASSEMBLY);
