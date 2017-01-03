@@ -234,9 +234,8 @@ double CRFProcessTH::Execute(int loop_process_number)
 		AssembleJacobian();
 
 		ScreenMessage("-> Calling linear solver...\n");
-// Linear solver
-#if defined(NEW_EQS)
 		bool compress_eqs = (this->Deactivated_SubDomain.size() > 0 || deactivateMatrixFlow);
+#if defined(NEW_EQS)
 		iter_lin = eqs_new->Solver(compress_eqs);
 #elif defined(USE_PETSC)
 		//		if (write_leqs) {
@@ -245,7 +244,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 		//"_leqs_assembly.txt";
 		//			eqs_new->EQSV_Viewer(fname);
 		//		}
-		iter_lin = eqs_new->Solver();
+		iter_lin = eqs_new->Solver(compress_eqs);
 		//		if (write_leqs) {
 		//			std::string fname = FileName + "_" +
 		// convertProcessTypeToString(this->getProcessType()) +
