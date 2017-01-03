@@ -99,7 +99,6 @@ double CRFProcessTH::Execute(int loop_process_number)
 	double Error = 1.0;
 	double NormDx = std::numeric_limits<double>::max();
 #ifdef USE_PETSC
-	double InitialNorm = 0.0;
 	static double rp0 = .0, rT0 = 0;
 	static double rp0_L2 = .0, rT0_L2 = 0;
 	double dp_max = std::numeric_limits<double>::max(),
@@ -154,7 +153,6 @@ double CRFProcessTH::Execute(int loop_process_number)
 		VecRestoreSubVector(eqs_new->b, eqs_new->vec_isg[1], &sub_x);
 		if (iter_nlin == 1 && this->first_coupling_iteration)
 		{
-			InitialNorm = NormR;
 			rp0 = rp_max;
 			rT0 = rT_max;
 			rp0_L2 = rp_L2;
@@ -167,9 +165,10 @@ double CRFProcessTH::Execute(int loop_process_number)
 
 		if (nl_r0 == 0.0)
 			nl_r0 = NormR;
+		Error = NormR / nl_r0;
 
 #ifdef USE_PETSC
-		Error = std::max(rp_max / rp0, rT_max / rT0);  // NormR / InitialNorm;
+		//Error = std::max(rp_max / rp0, rT_max / rT0);  // NormR / InitialNorm;
 		const double Error_L2 = std::max(rp_L2 / rp0_L2, rT_L2 / rT0_L2);
 		const double dx_i = std::max(dp_max / p_max, dT_max / T_max);
 		const double dx_L2 = std::max(dp_L2 / p_L2, dT_L2 / T_L2);
@@ -179,7 +178,7 @@ double CRFProcessTH::Execute(int loop_process_number)
 		    Error, Error_L2, dx_i, dx_L2, newton_tol, iter_nlin - 1,
 		    n_max_iterations);
 		ScreenMessage("|r0|=%.3e, |r|=%.3e, |r|/|r0|=%.3e, |dx|=%.3e\n",
-		              InitialNorm, NormR, NormR / InitialNorm, NormDx);
+					  nl_r0, NormR, NormR / nl_r0, NormDx);
 		ScreenMessage(
 		    "|rp|_i=%.3e, |rT|_i=%.3e, |rp/r0|_i=%.3e, |rT/r0|_i=%.3e\n",
 		    rp_max, rT_max, rp_max / rp0, rT_max / rT0);
@@ -196,10 +195,9 @@ double CRFProcessTH::Execute(int loop_process_number)
 		    dp_L2, dT_L2, dp_L2 / p_L2, dT_L2 / T_L2, tol_dp, tol_dT);
 		ScreenMessage("------------------------------------------------\n");
 		ScreenMessage("-> Nonlinear iteration: %d/%d, |r|=%.3e, |r|/|r0|=%.3e\n", iter_nlin - 1,
-		              n_max_iterations, NormR, NormR / InitialNorm);
+					  n_max_iterations, NormR, NormR / nl_r0);
 		ScreenMessage("------------------------------------------------\n");
 #else
-		Error = NormR / nl_r0;
 #if 1
 		double r_dof[2] = {};
 		for (size_t ii = 0; ii < this->GetPrimaryVNumber(); ii++) {
@@ -334,13 +332,13 @@ double CRFProcessTH::Execute(int loop_process_number)
 			pcs_relative_error[0] = Error / newton_tol;
 		}
 #ifdef USE_PETSC
-		if (std::max(rp_max / rp0, rT_max / rT0) < newton_tol ||
-		    (dp_max < tol_dp && dT_max < tol_dT))
-		{
-			ScreenMessage("-> Newton-Raphson converged\n");
-			converged = true;
-			break;
-		}
+//		if (std::max(rp_max / rp0, rT_max / rT0) < newton_tol ||
+//		    (dp_max < tol_dp && dT_max < tol_dT))
+//		{
+//			ScreenMessage("-> Newton-Raphson converged\n");
+//			converged = true;
+//			break;
+//		}
 #endif
 
 		// x^k1 = x^k + dx
