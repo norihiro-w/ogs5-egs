@@ -34,6 +34,17 @@ attribute the work of the OpenGeoSys Community especially in scientific
 publications. See the [LICENSE.txt][license-source] for the license text.
 
 
+## External library ##
+
+Current implementation uses the following external libraries:
+- [Eigen](http://eigen.tuxfamily.org)
+- [ExprTk](http://www.partow.net/programming/exprtk/index.html) 
+- [Google Test](https://github.com/google/googletest)
+- [Lis](http://www.ssisc.org/lis)
+- [PARALUTION](http://www.paralution.com)
+- [PETSc](https://www.mcs.anl.gov/petsc)
+
+
 ## Quickstart ##
 
 For Windows user, the executable file might be available from [the GitHub release page](https://github.com/norihiro-w/ogs5-egs/releases/latest). For other environments, one needs to compile the code by themselves.
