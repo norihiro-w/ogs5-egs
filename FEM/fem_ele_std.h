@@ -324,7 +324,6 @@ private:
 	void AssembleRHSVector();        // OK
 	void AssembleCapillaryEffect();  // PCH
 	                                 // PCH for debugging
-	void AssembleTHEquation(bool updateA = true, bool updateRHS = true);
 	void AssembleTHResidual();
 	void AssembleTHJacobian();
 
