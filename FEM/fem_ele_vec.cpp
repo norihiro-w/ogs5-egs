@@ -149,8 +149,10 @@ CFiniteElementVec::CFiniteElementVec(process::CRFProcessDeformation* dm_pcs,
 	for (size_t i = 0; i < pcs_vector.size(); i++)
 	{
 		if (isFlowProcess(pcs_vector[i]->getProcessType()))
+		{
 			h_pcs = pcs_vector[i];
 			break;
+		}
 	}
 	if (h_pcs)
 	{
