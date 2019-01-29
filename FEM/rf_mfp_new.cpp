@@ -440,7 +440,7 @@ std::ios::pos_type CFluidProperties::Read(std::ifstream* mfp_file)
 			if (viscosity_model == 6)  // my(C,T),
 			{
 			}
-			if (viscosity_model == 7)  // my(p,T,C)
+			if (viscosity_model == 8)  // my(p,T,C)
 			{
 				in >> C_0;
 				viscosity_pcs_name_vector.push_back("PRESSURE1");
