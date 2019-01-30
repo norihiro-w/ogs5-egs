@@ -22,6 +22,7 @@
 #include "StringTools.h"
 
 #include "ElementValue.h"
+#include "ElementValueDM.h"
 #include "fem_ele_std.h"
 #include "Output.h"
 #include "rf_mmp_new.h"
@@ -1200,12 +1201,24 @@ bool CVTK::WriteElementValue(std::fstream& fin,
 
 	// Element values
 	bool outEleVelocity = false;
+	bool outEleStress = false;
+	bool outEleStrain = false;
 	for (int i = 0; i < (int)ele_value_index_vector.size(); i++)
 	{
 		if (ele_value_index_vector[i] < 0) continue;
 		if (out->getElementValueVector()[i].find("VELOCITY") != string::npos)
 		{
 			outEleVelocity = true;
+			continue;
+		}
+		if (out->getElementValueVector()[i].find("ELE_STRESS") != string::npos)
+		{
+			outEleStress = true;
+			continue;
+		}
+		if (out->getElementValueVector()[i].find("ELE_STRAIN") != string::npos)
+		{
+			outEleStrain = true;
 			continue;
 		}
 		m_pcs = out->GetPCS_ELE(out->getElementValueVector()[i]);
@@ -1400,6 +1413,87 @@ bool CVTK::WriteElementValue(std::fstream& fin,
 			if (!useBinary || !output_data) WriteDataArrayFooter(fin);
 		}
 	}
+
+	if (outEleStress)
+	{
+		const int n_comp = (msh->GetMaxElementDim() == 2) ? 4 : 6;
+		if (!useBinary || !output_data)
+			WriteDataArrayHeader(fin, this->type_Double, "ELE_STRESS", n_comp,
+			                     str_format, offset);
+		if (output_data)
+		{
+			if (!useBinary)
+			{
+				fin << "          ";
+				static double ele_stress[6] = {};
+				for (long i = 0; i < (long)ele_value_dm.size(); i++)
+				{
+					for (int c=0; c<n_comp; c++)
+					{
+						ele_stress[c] = 0.0;
+						for (size_t ip=0; ip<ele_value_dm[i]->Stress->Cols(); ip++)
+							ele_stress[c] += (*ele_value_dm[i]->Stress)(c, ip);
+						ele_stress[c] /= ele_value_dm[i]->Stress->Cols();
+					}
+					for (int c=0; c<n_comp; c++)
+						fin << ele_stress[c] << " ";
+				}
+				fin << "\n";
+			}
+			else
+			{
+				//TODO
+			}
+		}
+		else
+			// OK411
+			offset += (long)ele_value_dm.size() * sizeof(double) * n_comp +
+			          SIZE_OF_BLOCK_LENGTH_TAG;
+
+		if (!useBinary || !output_data)
+			WriteDataArrayFooter(fin);
+	}
+
+	if (outEleStrain)
+	{
+		const int n_comp = (msh->GetMaxElementDim() == 2) ? 4 : 6;
+		if (!useBinary || !output_data)
+			WriteDataArrayHeader(fin, this->type_Double, "ELE_STRAIN", n_comp,
+			                     str_format, offset);
+		if (output_data)
+		{
+			if (!useBinary)
+			{
+				fin << "          ";
+				static double ele_strain[6] = {};
+				for (long i = 0; i < (long)ele_value_dm.size(); i++)
+				{
+					for (int c=0; c<n_comp; c++)
+					{
+						ele_strain[c] = 0.0;
+						for (size_t ip=0; ip<ele_value_dm[i]->Strain->Cols(); ip++)
+							ele_strain[c] += (*ele_value_dm[i]->Strain)(c, ip);
+						ele_strain[c] /= ele_value_dm[i]->Strain->Cols();
+					}
+					for (int c=0; c<n_comp; c++)
+						fin << ele_strain[c] << " ";
+				}
+				fin << "\n";
+			}
+			else
+			{
+				//TODO
+			}
+		}
+		else
+			// OK411
+			offset += (long)ele_value_dm.size() * sizeof(double) * n_comp +
+			          SIZE_OF_BLOCK_LENGTH_TAG;
+
+		if (!useBinary || !output_data)
+			WriteDataArrayFooter(fin);
+	}
+
 	// Material information
 	// MMP
 	if (out->mmp_value_vector.size() > 0)

@@ -2757,6 +2757,52 @@ void CRFProcess::VariableStaticProblem()
 		pcs_number_of_secondary_nvals++;
 	}
 
+	pcs_number_of_evals = 0;
+	pcs_eval_name[pcs_number_of_evals] = "ELE_STRESS_XX";
+	pcs_eval_unit[pcs_number_of_evals] = "Pa";
+	pcs_number_of_evals++;
+	pcs_eval_name[pcs_number_of_evals] = "ELE_STRESS_YY";
+	pcs_eval_unit[pcs_number_of_evals] = "Pa";
+	pcs_number_of_evals++;
+	pcs_eval_name[pcs_number_of_evals] = "ELE_STRESS_ZZ";
+	pcs_eval_unit[pcs_number_of_evals] = "Pa";
+	pcs_number_of_evals++;
+	pcs_eval_name[pcs_number_of_evals] = "ELE_STRESS_XY";
+	pcs_eval_unit[pcs_number_of_evals] = "Pa";
+	pcs_number_of_evals++;
+	if (m_msh->GetMaxElementDim() == 3)
+	{
+		pcs_eval_name[pcs_number_of_evals] = "ELE_STRESS_XZ";
+		pcs_eval_unit[pcs_number_of_evals] = "Pa";
+		pcs_number_of_evals++;
+		pcs_eval_name[pcs_number_of_evals] = "ELE_STRESS_YZ";
+		pcs_eval_unit[pcs_number_of_evals] = "Pa";
+		pcs_number_of_evals++;
+	}
+
+	pcs_eval_name[pcs_number_of_evals] = "ELE_STRAIN_XX";
+	pcs_eval_unit[pcs_number_of_evals] = "Pa";
+	pcs_number_of_evals++;
+	pcs_eval_name[pcs_number_of_evals] = "ELE_STRAIN_YY";
+	pcs_eval_unit[pcs_number_of_evals] = "Pa";
+	pcs_number_of_evals++;
+	pcs_eval_name[pcs_number_of_evals] = "ELE_STRAIN_ZZ";
+	pcs_eval_unit[pcs_number_of_evals] = "Pa";
+	pcs_number_of_evals++;
+	pcs_eval_name[pcs_number_of_evals] = "ELE_STRAIN_XY";
+	pcs_eval_unit[pcs_number_of_evals] = "Pa";
+	pcs_number_of_evals++;
+	if (m_msh->GetMaxElementDim() == 3)
+	{
+		pcs_eval_name[pcs_number_of_evals] = "ELE_STRAIN_XZ";
+		pcs_eval_unit[pcs_number_of_evals] = "Pa";
+		pcs_number_of_evals++;
+		pcs_eval_name[pcs_number_of_evals] = "ELE_STRAIN_YZ";
+		pcs_eval_unit[pcs_number_of_evals] = "Pa";
+		pcs_number_of_evals++;
+	}
+
+
 	if (getProcessType() == FiniteElement::DEFORMATION_FLOW)
 	{
 		Def_Variable_LiquidFlow();
