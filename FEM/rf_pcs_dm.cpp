@@ -391,7 +391,7 @@ void CRFProcessDeformation::solveNewton()
 		double relNormR = absNormR / (absNormR0 == 0 ? 1 : absNormR0);
 
 		//
-		ScreenMessage("-->Newton-Raphson %d: Abs.Res.=%g, Rel.Res.=%g\n", iter_nlin+1, absNormR, relNormR);
+		ScreenMessage("-->|r|=%g, |r/r0|=%g\n", iter_nlin+1, absNormR, relNormR);
 
 		if (relNormR <= Tolerance_global_Newton)
 		{
@@ -441,7 +441,7 @@ void CRFProcessDeformation::solveNewton()
 		}
 		double relNormDX = absNormDX / (absNormDX0 == 0 ? 1 : absNormDX0);
 
-		ScreenMessage("-->Newton-Raphson %d: Abs.DU=%g, Rel.DU=%g\n", iter_nlin+1, absNormDX, relNormDX);
+		ScreenMessage("-->|du|=%g, |du/du0|=%g\n", iter_nlin+1, absNormDX, relNormDX);
 
 		// -----------------------------------------------------------------
 		// Update solution
