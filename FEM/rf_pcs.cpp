@@ -1743,6 +1743,15 @@ std::ios::pos_type CRFProcess::Read(std::ifstream* pcs_file)
 				ScreenMessage("-> coupling with deformation will be done via total stress instead of strain\n", dummy);
 			continue;
 		}
+		if (line_string.find("$DISABLE_M_COUPLING_IN_FLOW") == 0)
+		{
+			int dummy = 0;
+			*pcs_file >> dummy;
+			disable_deformation_coupling_in_flow = (dummy != 0);
+			if (disable_deformation_coupling_in_flow)
+				ScreenMessage("-> disable deformation coupling in fluid flow process\n");
+			continue;
+		}
 		if (line_string.find("$SCALE_DOF") == 0)
 		{
 			int n = 0;

@@ -696,9 +696,10 @@ public:
 	CRFProcess* CopyPCStoDM_PCS();
 	CRFProcess* CopyPCStoTH_PCS();
 	bool Check();
-    bool use_total_stress_coupling = false;
-    bool calcDiffFromStress0;
+	bool use_total_stress_coupling = false;
+	bool calcDiffFromStress0;
 	bool resetStrain;
+	bool disable_deformation_coupling_in_flow = false;
 	bool scaleUnknowns;
 	std::vector<double> vec_scale_dofs;
 	bool scaleEQS;

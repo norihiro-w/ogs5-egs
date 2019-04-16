@@ -1408,7 +1408,7 @@ void CFiniteElementStd::CalCoefLaplace(bool Gravity, int ip)
 			                 if(pcs->m_msh->mat_names_vector[i].compare("PERMEABILITY")==0)
 			                   break;
 			               }
-	 
+
 			               mat_fac = MeshElement->mat_vector(i);
 			               mat_fac /= FluidProp->Viscosity();
 			              for(i=0; i<dim; i++) //WW
@@ -3669,7 +3669,7 @@ void CFiniteElementStd::AssembleParabolicEquation()
 #if defined(USE_PETSC)  // || defined(other parallel libs)//03~04.3012. WW
                         /*!
                            \brief Add the local stiff matrix to the global one
-                        
+
                            04.2012. WW
                          */
 //------------------------------------------------------
@@ -4374,7 +4374,8 @@ void CFiniteElementStd::Assemble_totalStressCPL(const int phase)
  **************************************************************************/
 void CFiniteElementStd::Assemble_strainCPL(const int phase)
 {
-	if (this->pcs->tim_type == FiniteElement::TIM_STEADY)
+	if (this->pcs->tim_type == FiniteElement::TIM_STEADY ||
+	    this->pcs->disable_deformation_coupling_in_flow)
 		return;
 
 	if (pcs->use_total_stress_coupling)
