@@ -975,7 +975,7 @@ double CFiniteElementStd::CalCoefMass()
 				val *= storage_effstress;
 			}
 
-			if (M_Process && pcs->use_total_stress_coupling)
+			if (M_Process && pcs->use_total_stress_coupling && !pcs->disable_deformation_coupling_in_flow)
 			{
 				if (fabs(SolidProp->K) < DBL_MIN)
 					SolidProp->Calculate_Lame_Constant();
