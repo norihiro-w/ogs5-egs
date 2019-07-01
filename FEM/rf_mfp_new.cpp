@@ -3589,8 +3589,19 @@ fraction
 **************************************************************************/
 double CFluidProperties::drhodP(double* variables)
 {
-	double p = variables[0];
-	double T = variables[1];
+	double p;
+	double T;
+	if (variables!=NULL)
+	{
+		p = variables[0];
+		T = variables[1];
+	}
+	else
+	{
+		CalPrimaryVariable(density_pcs_name_vector);
+		p = primary_variable[0];
+		T = primary_variable[1];
+	}
 
 	double arguments[3] = {};
 	double rho1, rho2, drhodP;
