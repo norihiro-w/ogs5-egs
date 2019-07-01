@@ -790,6 +790,10 @@ std::ios::pos_type CMediumProperties::Read(std::ifstream* mmp_file)
 					in >> storage_model_values[0];  // some dummy default value
 					                                // is read
 					break;
+				case 9:                             // Dynamic fluid compressibility
+					in >> storage_model_values[0];  // some dummy default value
+					                                // is read
+					break;
 				default:
 					cout << "Error in MMPRead: no valid storativity model"
 					     << endl;
