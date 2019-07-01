@@ -958,7 +958,7 @@ double CFiniteElementStd::CalCoefMass()
 				       (biot_val - poro_val) * (1.0 - biot_val) / SolidProp->K;
 				// Will handle the dual porosity version later...
 			}
-			else if (MediaProp->storage_model == 9)
+			else if (MediaProp->storage_model == 9 || MediaProp->storage_model == 10)
 			{
 				val = 0.0;
 				poro_val = MediaProp->Porosity(Index, pcs->m_num->ls_theta);
@@ -966,9 +966,14 @@ double CFiniteElementStd::CalCoefMass()
 				FluidProp->compressibility_model_pressure = 0;
 				drho_dp_rho = FluidProp->drhodP(NULL) / rho_val;
 				val += poro_val * drho_dp_rho;
-				// if (fabs(SolidProp->K) < DBL_MIN)
-				// 	SolidProp->Calculate_Lame_Constant();
-				// val += (SolidProp->biot_const - poro_val)*(1.0 - biot_val) / SolidProp->K;
+
+				if (MediaProp->storage_model == 10)
+				{
+					// if (fabs(SolidProp->K) < DBL_MIN)
+					// 	SolidProp->Calculate_Lame_Constant();
+					// val += (SolidProp->biot_const - poro_val)*(1.0 - biot_val) / SolidProp->K;
+					val += MediaProp->storage_model_values[0]; //e.g. (biot-n)/Ks
+				}
 			}
 			else if (MediaProp->storage_model != 1)
 			{
